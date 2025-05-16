@@ -1,0 +1,212 @@
+version: "3"
+
+vars:
+  GO_FILES_CMD: >-
+    go list -f {{"{{.Dir}}"}} ./... | xargs -I {} find {} -name "*.go"
+  PRETTIER_TARGETS: "*.{yaml,md,json} **/*.{yaml,md,json}"
+
+env:
+  HOSTNAME:
+    sh: hostname
+
+tasks:
+  default:
+    cmds:
+      - task: format
+      - task: lint
+      - task: test
+      - task: build
+
+  format:
+    desc: Runs all format targets
+    deps: [go-format, prettier-format]
+
+  lint:
+    desc: Runs all lint targets
+    deps:
+      - go-lint
+      - renovate-lint
+      - actions-lint
+      - goreleaser-lint
+      - prettier-lint
+
+  test:
+    desc: Runs all test targets
+    deps: [go-test]
+
+  pre-commit:
+    desc: Runs all pre-commit targets
+    deps: [lint, test]
+
+  build:
+    desc: Runs all build targets
+    deps: [go-build]
+
+  release:
+    desc: Runs all release targets
+    deps: [go-release]
+
+  dev-install:
+    desc: Installs development dependencies
+    cmds:
+      - devbox install
+      - nix-collect-garbage
+
+  install:
+    desc: Builds and installs binaries
+    cmds:
+      - goreleaser build --snapshot --clean --single-target
+
+  go-format:
+    desc: Formats Go code including imports
+    cmds:
+      - golangci-lint run --fix --exclude-use-default=false
+
+  go-lint:
+    desc: Lints Go code
+    cmds:
+      - golangci-lint run --exclude-use-default=false
+
+  go-test:
+    desc: Run Go tests
+    summary: |
+      Run Go tests
+
+      Args:
+        PKG: Go package to test (default: ./...)
+        FLAGS: Additional flags to pass to `go test` (default: "")
+        PKG_FLAGS: Additional flags to pass to test packages (default: "")
+    vars:
+      PKG: '{{.PKG | default "./..."}}'
+      FLAGS: '{{.FLAGS | default ""}}'
+      PKG_FLAGS: '{{.PKG_FLAGS | default ""}}'
+    cmds:
+      - go test {{.FLAGS}} {{.PKG}} {{.PKG_FLAGS}}
+
+  go-cover:
+    desc: Runs Go tests with coverage
+    cmds:
+      - cmd: mkdir -p .test/
+        silent: true
+      - go test -coverprofile=.test/cover.out ./...
+
+  go-bench:
+    desc: Run Go benchmarks
+    summary: |
+      Run Go benchmarks
+
+      Args:
+        PKG: Go package to test (default: ./...)
+        FLAGS: Additional flags to pass to `go test` (default: "")
+
+      Examples:
+        task go-bench PKG=./pkg/helm FLAGS="-cpuprofile profile.out -run=^\$"
+    vars:
+      PKG: '{{.PKG | default "./..."}}'
+      FLAGS: '{{.FLAGS | default ""}}'
+    cmds:
+      - go test -bench=. -benchmem -tags={{.BUILD_TAGS}} {{.FLAGS}} {{.PKG}}
+
+  go-gen:
+    desc: Generates Go code
+    cmds:
+      - go generate ./...
+
+  go-build:
+    desc: Builds Go binaries
+    vars:
+      FLAGS: '{{.FLAGS | default "--skip=docker,homebrew"}}'
+    cmds:
+      - goreleaser release --snapshot --clean {{ .FLAGS }}
+
+  go-build-images:
+    desc: Builds Go binaries and Docker images
+    vars:
+      FLAGS: '{{.FLAGS | default "--skip=archive,homebrew"}}'
+    cmds:
+      - goreleaser release --snapshot --clean {{ .FLAGS }}
+
+  go-release:
+    desc: Releases Go binaries and Docker images
+    vars:
+      FLAGS: '{{.FLAGS | default ""}}'
+    cmds:
+      - goreleaser release --clean {{.FLAGS}}
+
+  prettier-format:
+    desc: Formats YAML, JSON, and Markdown files
+    cmds:
+      - prettier --config ./.prettierrc.yaml -w {{.PRETTIER_TARGETS}}
+
+  prettier-lint:
+    desc: Lints YAML, JSON, and Markdown files
+    cmds:
+      - prettier --config ./.prettierrc.yaml --check {{.PRETTIER_TARGETS}}
+
+  go-deadcode:
+    desc: Finds dead code in Go
+    summary: |
+      Finds dead code in Go.
+
+      Args:
+        PKG: Go package(s) to evaluate (default: ./...)
+        FLAGS: Additional flags to pass to `deadcode` (default: "")
+
+      Examples:
+        task go-deadcode FLAGS="-test -generated"
+    vars:
+      PKG: '{{.PKG | default "./..."}}'
+      FLAGS: '{{.FLAGS | default ""}}'
+    cmds:
+      - go install golang.org/x/tools/cmd/deadcode@latest
+      - deadcode {{.FLAGS}} {{.PKG}}
+
+  renovate-lint:
+    desc: Lints Renovate configuration
+    cmds:
+      - renovate-config-validator .github/renovate.json5
+
+  actions-lint:
+    desc: Lints GitHub Actions
+    cmds:
+      - zizmor .github/workflows --config .github/zizmor.yaml
+
+  goreleaser-lint:
+    desc: Lints GoReleaser configuration
+    cmds:
+      - goreleaser check
+
+  install-hooks:
+    desc: Install git hooks
+    vars:
+      PRE_COMMIT_FILE: "{{.ROOT_DIR}}/.git/hooks/pre-commit"
+      COMMIT_MSG_FILE: "{{.ROOT_DIR}}/.git/hooks/commit-msg"
+    env:
+      PRE_COMMIT: |-
+        #!/bin/bash
+
+        git stash --keep-index --include-untracked --quiet
+
+        exitCode=0
+
+        devbox run -- task {{.TASK}} || exitCode=$?
+        devbox run -- task pre-commit || exitCode=$?
+
+        if [ $exitCode -eq 0 ]; then
+          git add .
+        else
+          git stash --keep-index --include-untracked --quiet && git stash drop --quiet
+        fi
+
+        git stash pop --quiet
+
+        exit $exitCode
+      COMMIT_MSG: |-
+        #!/bin/bash
+
+        devbox run -- conform enforce --commit-msg-file $1
+    cmds:
+      - echo "${PRE_COMMIT}" > {{.PRE_COMMIT_FILE}}
+      - chmod u+x {{.PRE_COMMIT_FILE}}
+      - echo "${COMMIT_MSG}" > {{.COMMIT_MSG_FILE}}
+      - chmod u+x {{.COMMIT_MSG_FILE}}

@@ -1,0 +1,221 @@
+# This file contains all available configuration options
+# with their default values.
+
+run:
+  # Timeout for analysis, e.g. 30s, 5m.
+  timeout: 5m
+  allow-parallel-runners: true
+
+output:
+  show-stats: true
+  formats:
+    - format: colored-line-number
+
+linters:
+  disable-all: true
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - canonicalheader
+    - containedctx
+    - contextcheck
+    - copyloopvar
+    - dupl
+    - durationcheck
+    - errcheck
+    - errchkjson
+    - errname
+    - errorlint
+    - exhaustive
+    - exptostd
+    - fatcontext
+    - forcetypeassert
+    - gci
+    - gocheckcompilerdirectives
+    - goconst
+    - gocritic
+    - godot
+    - gofmt
+    - gofumpt
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - grouper
+    - iface
+    - inamedparam
+    - ineffassign
+    - intrange
+    - ireturn
+    - makezero
+    - mirror
+    - misspell
+    - musttag
+    - nakedret
+    - nestif
+    - nilerr
+    - nilnesserr
+    - nilnil
+    - nlreturn
+    - noctx
+    - nonamedreturns
+    - nosprintfhostport
+    - paralleltest
+    - perfsprint
+    - prealloc
+    - predeclared
+    - reassign
+    - recvcheck
+    - revive
+    - sloglint
+    - staticcheck
+    - tagalign
+    - testableexamples
+    - testifylint
+    - testpackage
+    - thelper
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    - usetesting
+    - wastedassign
+    - whitespace
+    - wrapcheck
+
+linters-settings:
+  misspell:
+    locale: US
+    mode: default
+
+  exhaustive:
+    default-signifies-exhaustive: true
+
+  gci:
+    sections:
+      - standard
+      - default
+      - blank
+      - dot
+      - alias
+      - localmodule
+
+  wsl:
+    force-err-cuddling: true
+    force-case-trailing-whitespace: 2
+
+  unused:
+    exported-fields-are-used: false
+    local-variables-are-used: false
+
+  whitespace:
+    multi-if: true
+    multi-func: true
+
+  govet:
+    enable-all: true
+    disable:
+      - shadow
+
+  usetesting:
+    os-temp-dir: true
+
+  testifylint:
+    enable-all: true
+    expected-actual:
+      pattern: ^want
+
+  sloglint:
+    attr-only: true
+    static-msg: true
+    args-on-sep-lines: true
+    key-naming-case: snake
+    context: scope
+    forbidden-keys:
+      - time
+      - level
+      - msg
+
+  gofmt:
+    simplify: true
+    rewrite-rules:
+      - pattern: "interface{}"
+        replacement: "any"
+
+  gofumpt:
+    extra-rules: true
+
+  gocritic:
+    enable-all: true
+    disabled-checks:
+      - commentedOutCode
+      - filepathJoin
+      - unnamedResult
+
+  godot:
+    scope: all
+    period: true
+    capital: true
+
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+    exclude-functions:
+      - io/ioutil.ReadFile
+      - io.Copy(*bytes.Buffer)
+      - io.Copy(os.Stdout)
+      - os.Remove
+      - os.RemoveAll
+
+  grouper:
+    const-require-single-const: true
+    import-require-single-import: true
+    var-require-single-var: true
+
+  revive:
+    enable-all-rules: true
+    rules:
+      - name: line-length-limit
+        disabled: true
+      - name: cyclomatic
+        disabled: true
+      - name: cognitive-complexity
+        disabled: true
+      - name: add-constant
+        disabled: true
+      - name: function-length
+        disabled: true
+      - name: max-public-structs
+        disabled: true
+      - name: unused-receiver
+        disabled: true
+      - name: flag-parameter
+        disabled: true
+      - name: confusing-results
+        disabled: true
+      - name: exported
+        disabled: true
+      - name: package-comments
+        disabled: true
+      - name: nested-structs
+        disabled: true
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - dupl
+        - promlinter
+        - godot
+        - gosec
+    - source: "^\\) .+ \\{$"
+      linters:
+        - whitespace
+    - source: "= `"
+      linters:
+        - grouper
+    - text: "\\*github\\.com/hashicorp/go-multierror\\.Error"
+      linters:
+        - wrapcheck

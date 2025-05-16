@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.13.7/.schema/devbox.schema.json",
+  "packages": {
+    "go-task": "3.43.2",
+    "goreleaser": "2.9.0",
+    "golangci-lint": "1.64.8",
+    "go": "1.24.2",
+    "git": "2.49.0",
+    "nodePackages.prettier": "3.5.3",
+    "zizmor": "1.6.0",
+    "conform": "0.1.0-alpha.29"
+  },
+  "shell": {
+    "init_hook": ["echo 'Welcome to devbox!' > /dev/null"]
+  }
+}

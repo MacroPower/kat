@@ -1,0 +1,10 @@
+rules:
+  cache-poisoning:
+    ignore:
+      - release.yaml:3
+  unpinned-uses:
+    ignore:
+      - validate.yaml
+      - renovate.yaml
+      - release.yaml
+      - build.yaml
