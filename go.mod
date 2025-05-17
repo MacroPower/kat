@@ -12,7 +12,6 @@ require (
 	github.com/charmbracelet/glamour v0.10.0
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
 	github.com/charmbracelet/log v0.4.2
-	github.com/charmbracelet/x/editor v0.1.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/mattn/go-runewidth v0.0.16
@@ -22,6 +21,7 @@ require (
 	github.com/muesli/termenv v0.16.0
 	github.com/sahilm/fuzzy v0.1.1
 	github.com/stretchr/testify v1.10.0
+	golang.org/x/term v0.31.0
 	golang.org/x/text v0.24.0
 	k8s.io/apimachinery v0.33.1
 	sigs.k8s.io/yaml v1.4.0
@@ -66,7 +66,6 @@ require (
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
-	golang.org/x/term v0.31.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

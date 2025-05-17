@@ -1,4 +1,4 @@
-// Package ui provides the main UI for the glow application.
+// Package ui provides the main UI for the kat application.
 package ui
 
 import (
@@ -8,26 +8,25 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour/styles"
 	"github.com/charmbracelet/log"
 	"github.com/muesli/gitcha"
+
+	tea "github.com/charmbracelet/bubbletea"
 	te "github.com/muesli/termenv"
 )
 
 const (
-	statusMessageTimeout = time.Second * 3 // how long to show status messages like "stashed!"
+	statusMessageTimeout = time.Second * 3 // How long to show status messages.
 	ellipsis             = "…"
 )
 
-var (
-	config Config
-)
+var config Config
 
 // NewProgram returns a new Tea program.
 func NewProgram(cfg Config, content string) *tea.Program {
 	log.Debug(
-		"Starting glow",
+		"Starting kat",
 		"glamour",
 		cfg.GlamourEnabled,
 	)
@@ -38,17 +37,18 @@ func NewProgram(cfg Config, content string) *tea.Program {
 		opts = append(opts, tea.WithMouseCellMotion())
 	}
 	m := newModel(cfg, content)
+
 	return tea.NewProgram(m, opts...)
 }
 
-type errMsg struct{ err error }
+type errMsg struct{ err error } //nolint:errname // Tea message.
 
 func (e errMsg) Error() string { return e.err.Error() }
 
 type (
 	initLocalFileSearchMsg struct {
-		cwd string
 		ch  chan gitcha.SearchResult
+		cwd string
 	}
 )
 
@@ -84,24 +84,23 @@ func (s state) String() string {
 
 // Common stuff we'll need to access in all models.
 type commonModel struct {
-	cfg    Config
 	cwd    string
+	cfg    Config
 	width  int
 	height int
 }
 
 type model struct {
-	common   *commonModel
-	state    state
+	pager    pagerModel
 	fatalErr error
-
-	// Sub-models
-	stash stashModel
-	pager pagerModel
+	common   *commonModel
 
 	// Channel that receives paths to local markdown files
-	// (via the github.com/muesli/gitcha package)
+	// via the github.com/muesli/gitcha package.
 	localFileFinder chan gitcha.SearchResult
+
+	stash stashModel
+	state state
 }
 
 // unloadDocument unloads a document from the pager. Note that while this
@@ -116,6 +115,7 @@ func (m *model) unloadDocument() []tea.Cmd {
 	if !m.stash.shouldSpin() {
 		batch = append(batch, m.stash.spinner.Tick)
 	}
+
 	return batch
 }
 
@@ -145,6 +145,7 @@ func newModel(cfg Config, content string) tea.Model {
 	if path == "" && content != "" {
 		m.state = stateShowDocument
 		m.pager.currentDocument = yaml{Body: content}
+
 		return m
 	}
 
@@ -155,12 +156,16 @@ func newModel(cfg Config, content string) tea.Model {
 	if err != nil {
 		log.Error("unable to stat file", "file", path, "error", err)
 		m.fatalErr = err
+
 		return m
 	}
 	if info.IsDir() {
 		m.state = stateShowStash
 	} else {
-		cwd, _ := os.Getwd()
+		cwd, err := os.Getwd()
+		if err != nil {
+			panic(err)
+		}
 		m.state = stateShowDocument
 		m.pager.currentDocument = yaml{
 			localPath: path,
@@ -182,6 +187,7 @@ func (m model) Init() tea.Cmd {
 		content, err := os.ReadFile(m.common.cfg.Path)
 		if err != nil {
 			log.Error("unable to read file", "file", m.common.cfg.Path, "error", err)
+
 			return func() tea.Msg { return errMsg{err} }
 		}
 		body := string(content)
@@ -192,7 +198,7 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// If there's been an error, any key exits
+	// If there's been an error, any key exits.
 	if m.fatalErr != nil {
 		if _, ok := msg.(tea.KeyMsg); ok {
 			return m, tea.Quit
@@ -207,28 +213,32 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			if m.state == stateShowDocument || m.stash.viewState == stashStateLoadingDocument {
 				batch := m.unloadDocument()
+
 				return m, tea.Batch(batch...)
 			}
 		case "r":
 			var cmd tea.Cmd
 			if m.state == stateShowStash {
-				// pass through all keys if we're editing the filter
+				// Pass through all keys if we're editing the filter.
 				if m.stash.filterState == filtering {
 					m.stash, cmd = m.stash.update(msg)
+
 					return m, cmd
 				}
 				m.stash.yamls = nil
+
 				return m, m.Init()
 			}
 
 		case "q":
 			var cmd tea.Cmd
 
-			switch m.state { //nolint:exhaustive
+			switch m.state {
 			case stateShowStash:
-				// pass through all keys if we're editing the filter
+				// Pass through all keys if we're editing the filter.
 				if m.stash.filterState == filtering {
 					m.stash, cmd = m.stash.update(msg)
+
 					return m, cmd
 				}
 			}
@@ -238,6 +248,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "left", "h", "delete":
 			if m.state == stateShowDocument {
 				cmds = append(cmds, m.unloadDocument()...)
+
 				return m, tea.Batch(cmds...)
 			}
 
@@ -249,7 +260,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-	// Window size is received when starting up and on every resize
+	// Window size is received when starting up and on every resize.
 	case tea.WindowSizeMsg:
 		m.common.width = msg.Width
 		m.common.height = msg.Height
@@ -262,7 +273,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, findNextLocalFile(m))
 
 	case fetchedYAMLMsg:
-		// We've loaded a YAML file's contents for rendering
+		// We've loaded a YAML file's contents for rendering.
 		m.pager.currentDocument = *msg
 		body := msg.Body
 		cmds = append(cmds, renderWithGlamour(m.pager, body))
@@ -276,6 +287,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// the stash.
 		stashModel, cmd := m.stash.update(msg)
 		m.stash = stashModel
+
 		return m, cmd
 
 	case foundLocalFileMsg:
@@ -297,7 +309,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Process children
+	// Process children.
 	switch m.state {
 	case stateShowStash:
 		newStashModel, cmd := m.stash.update(msg)
@@ -318,7 +330,7 @@ func (m model) View() string {
 		return errorView(m.fatalErr, true)
 	}
 
-	switch m.state { //nolint:exhaustive
+	switch m.state {
 	case stateShowDocument:
 		return m.pager.View()
 	default:
@@ -338,10 +350,11 @@ func errorView(err error, fatal bool) string {
 		err,
 		subtleStyle.Render(exitMsg),
 	)
+
 	return "\n" + indent(s, 3)
 }
 
-// COMMANDS
+// COMMANDS.
 
 func findLocalFiles(m commonModel) tea.Cmd {
 	return func() tea.Msg {
@@ -361,15 +374,16 @@ func findLocalFiles(m commonModel) tea.Cmd {
 			}
 		}
 
-		// Note that this is one error check for both cases above
+		// Note that this is one error check for both cases above.
 		if err != nil {
 			log.Error("error finding local files", "error", err)
+
 			return errMsg{err}
 		}
 
 		log.Debug("local directory is", "cwd", cwd)
 
-		// Switch between FindFiles and FindAllFiles to bypass .gitignore rules
+		// Switch between FindFiles and FindAllFiles to bypass .gitignore rules.
 		var ch chan gitcha.SearchResult
 		if m.cfg.ShowAllFiles {
 			ch, err = gitcha.FindAllFilesExcept(cwd, yamlGlobs, nil)
@@ -379,6 +393,7 @@ func findLocalFiles(m commonModel) tea.Cmd {
 
 		if err != nil {
 			log.Error("error finding local files", "error", err)
+
 			return errMsg{err}
 		}
 
@@ -399,11 +414,12 @@ func findNextLocalFile(m model) tea.Cmd {
 		res, ok := <-m.localFileFinder
 
 		if ok {
-			// Okay now find the next one
+			// Okay now find the next one.
 			return foundLocalFileMsg(res)
 		}
-		// We're done
+		// We're done.
 		log.Debug("local file search finished")
+
 		return localFileSearchFinished{}
 	}
 }
@@ -411,11 +427,12 @@ func findNextLocalFile(m model) tea.Cmd {
 func waitForStatusMessageTimeout(appCtx applicationContext, t *time.Timer) tea.Cmd {
 	return func() tea.Msg {
 		<-t.C
+
 		return statusMessageTimeoutMsg(appCtx)
 	}
 }
 
-// ETC
+// ETC.
 
 // Convert a Gitcha result to an internal representation of a YAML
 // document. Note that we could be doing things like checking if the file is
@@ -429,8 +446,9 @@ func localFileToYAML(cwd string, res gitcha.SearchResult) *yaml {
 }
 
 func stripAbsolutePath(fullPath, cwd string) string {
-	fp, _ := filepath.EvalSymlinks(fullPath)
-	cp, _ := filepath.EvalSymlinks(cwd)
+	fp, _ := filepath.EvalSymlinks(fullPath) //nolint:errcheck // Can be ignored.
+	cp, _ := filepath.EvalSymlinks(cwd)      //nolint:errcheck // Can be ignored.
+
 	return strings.ReplaceAll(fp, cp+string(os.PathSeparator), "")
 }
 
@@ -445,5 +463,6 @@ func indent(s string, n int) string {
 	for _, v := range l {
 		fmt.Fprintf(&b, "%s%s\n", i, v)
 	}
+
 	return b.String()
 }

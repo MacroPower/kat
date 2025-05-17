@@ -49,6 +49,7 @@ func ExpandPath(path string) string {
 	if err == nil {
 		return os.ExpandEnv(s)
 	}
+
 	return os.ExpandEnv(path)
 }
 
@@ -58,6 +59,7 @@ func GlamourStyle(style string, isCode bool) (ansi.StyleConfig, error) {
 		if style == styles.AutoStyle {
 			return getDefaultStyle(style)
 		}
+
 		return withStylePath(style)
 	}
 
@@ -99,12 +101,12 @@ func GlamourStyle(style string, isCode bool) (ansi.StyleConfig, error) {
 func withStylesFromJSONFile(filename string) (ansi.StyleConfig, error) {
 	var styleConfig ansi.StyleConfig
 
-	jsonBytes, err := os.ReadFile(filename)
+	jsonBytes, err := os.ReadFile(filename) //nolint:gosec // G304: Potential file inclusion via variable.
 	if err != nil {
 		return styleConfig, fmt.Errorf("glamour: error reading file: %w", err)
 	}
 	if err := json.Unmarshal(jsonBytes, &styleConfig); err != nil {
-		return styleConfig, fmt.Errorf("glamour: error parsing file", err)
+		return styleConfig, fmt.Errorf("glamour: error parsing file: %w", err)
 	}
 
 	return styleConfig, nil
@@ -118,20 +120,23 @@ func getDefaultStyle(style string) (ansi.StyleConfig, error) {
 		if termenv.HasDarkBackground() {
 			return styles.DarkStyleConfig, nil
 		}
+
 		return styles.LightStyleConfig, nil
 	}
 
-	styles, ok := styles.DefaultStyles[style]
+	ds, ok := styles.DefaultStyles[style]
 	if !ok {
 		return ansi.StyleConfig{}, fmt.Errorf("%s: style not found", style)
 	}
-	return *styles, nil
+
+	return *ds, nil
 }
 
 func withStylePath(stylePath string) (ansi.StyleConfig, error) {
-	styles, err := getDefaultStyle(stylePath)
+	ds, err := getDefaultStyle(stylePath)
 	if err != nil {
 		return withStylesFromJSONFile(stylePath)
 	}
-	return styles, nil
+
+	return ds, nil
 }

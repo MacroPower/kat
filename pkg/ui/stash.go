@@ -11,25 +11,28 @@ import (
 	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/muesli/reflow/ansi"
 	"github.com/muesli/reflow/truncate"
 	"github.com/sahilm/fuzzy"
+
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/MacroPower/kat/pkg/version"
 )
 
 const (
 	stashIndent                = 1
-	stashViewItemHeight        = 3 // height of stash entry, including gap
-	stashViewTopPadding        = 5 // logo, status bar, gaps
-	stashViewBottomPadding     = 3 // pagination and gaps, but not help
+	stashViewItemHeight        = 3 // Height of stash entry, including gap.
+	stashViewTopPadding        = 5 // Logo, status bar, gaps.
+	stashViewBottomPadding     = 3 // Pagination and gaps, but not help.
 	stashViewHorizontalPadding = 6
 )
 
-var stashingStatusMessage = statusMessage{normalStatusMessage, "Stashing..."}
-
 var (
+	stashingStatusMessage = statusMessage{"Stashing...", normalStatusMessage}
+
 	dividerDot = darkGrayFg.SetString(" • ")
 	dividerBar = darkGrayFg.SetString(" │ ")
 
@@ -48,14 +51,14 @@ var (
 				MarginRight(1)
 )
 
-// MSG
+// MSG.
 
 type (
 	filteredYAMLMsg []*yaml
 	fetchedYAMLMsg  *yaml
 )
 
-// MODEL
+// MODEL.
 
 // stashViewState is the high-level state of the file listing.
 type stashViewState int
@@ -77,8 +80,8 @@ const (
 // section contains definitions and state information for displaying a tab and
 // its contents in the file listing view.
 type section struct {
-	key       sectionKey
 	paginator paginator.Model
+	key       sectionKey
 	cursor    int
 }
 
@@ -89,9 +92,9 @@ var sections = map[sectionKey]section{}
 type filterState int
 
 const (
-	unfiltered    filterState = iota // no filter set
-	filtering                        // user is actively setting a filter
-	filterApplied                    // a filter is applied and user is not editing filter
+	unfiltered    filterState = iota // No filter set.
+	filtering                        // User is actively setting a filter.
+	filterApplied                    // A filter is applied and user is not editing filter.
 )
 
 // statusMessageType adds some context to the status message being sent.
@@ -106,8 +109,8 @@ const (
 
 // statusMessage is an ephemeral note displayed in the UI.
 type statusMessage struct {
-	status  statusMessageType
 	message string
+	status  statusMessageType
 }
 
 func initSections() {
@@ -126,7 +129,7 @@ func initSections() {
 // String returns a styled version of the status message appropriate for the
 // given context.
 func (s statusMessage) String() string {
-	switch s.status { //nolint:exhaustive
+	switch s.status {
 	case subtleStatusMessage:
 		return dimGreenFg(s.message)
 	case errorStatusMessage:
@@ -137,26 +140,10 @@ func (s statusMessage) String() string {
 }
 
 type stashModel struct {
-	common             *commonModel
 	err                error
-	spinner            spinner.Model
-	filterInput        textinput.Model
-	viewState          stashViewState
-	filterState        filterState
-	showFullHelp       bool
-	showStatusMessage  bool
-	statusMessage      statusMessage
 	statusMessageTimer *time.Timer
-
-	// Available document sections we can cycle through. We use a slice, rather
-	// than a map, because order is important.
-	sections []section
-
-	// Index of the section we're currently looking at
-	sectionIndex int
-
-	// Tracks if docs were loaded
-	loaded bool
+	common             *commonModel
+	statusMessage      statusMessage
 
 	// The master set of yaml documents we're working with.
 	yamls []*yaml
@@ -166,11 +153,28 @@ type stashModel struct {
 	// reason, this field should be considered ephemeral.
 	filteredYAMLs []*yaml
 
+	// Available document sections we can cycle through. We use a slice, rather
+	// than a map, because order is important.
+	sections    []section
+	filterInput textinput.Model
+	spinner     spinner.Model
+	viewState   stashViewState
+
+	// Index of the section we're currently looking at.
+	sectionIndex int
+	filterState  filterState
+
 	// Page we're fetching stash items from on the server, which is different
 	// from the local pagination. Generally, the server will return more items
 	// than we can display at a time so we can paginate locally without having
 	// to fetch every time.
 	serverPage int64
+
+	showStatusMessage bool
+
+	// Tracks if files were loaded.
+	loaded       bool
+	showFullHelp bool
 }
 
 func (m stashModel) loadingDone() bool {
@@ -201,6 +205,7 @@ func (m *stashModel) setCursor(i int) {
 func (m stashModel) shouldSpin() bool {
 	loading := !m.loadingDone()
 	openingDocument := m.viewState == stashStateLoadingDocument
+
 	return loading || openingDocument
 }
 
@@ -268,7 +273,7 @@ func (m *stashModel) updatePagination() {
 		m.paginator().SetTotalPages(pages)
 	}
 
-	// Make sure the page stays in bounds
+	// Make sure the page stays in bounds.
 	if m.paginator().Page >= m.paginator().TotalPages-1 {
 		m.paginator().Page = max(0, m.paginator().TotalPages-1)
 	}
@@ -319,6 +324,7 @@ func (m stashModel) getVisibleYAMLs() []*yaml {
 func (m *stashModel) openYAML(md *yaml) tea.Cmd {
 	m.viewState = stashStateLoadingDocument
 	cmd := loadLocalYAML(md)
+
 	return tea.Batch(cmd, m.spinner.Tick)
 }
 
@@ -333,15 +339,17 @@ func (m *stashModel) hideStatusMessage() {
 func (m *stashModel) moveCursorUp() {
 	m.setCursor(m.cursor() - 1)
 	if m.cursor() < 0 && m.paginator().Page == 0 {
-		// Stop
+		// Stop.
 		m.setCursor(0)
+
 		return
 	}
 
 	if m.cursor() >= 0 {
 		return
 	}
-	// Go to previous page
+
+	// Go to previous page.
 	m.paginator().PrevPage()
 
 	m.setCursor(m.paginator().ItemsOnPage(len(m.getVisibleYAMLs())) - 1)
@@ -358,6 +366,7 @@ func (m *stashModel) moveCursorDown() {
 	if !m.paginator().OnLastPage() {
 		m.paginator().NextPage()
 		m.setCursor(0)
+
 		return
 	}
 
@@ -366,12 +375,13 @@ func (m *stashModel) moveCursorDown() {
 	// topmost position when moving it down in this scenario.
 	if m.cursor() > itemsOnPage {
 		m.setCursor(0)
+
 		return
 	}
 	m.setCursor(itemsOnPage - 1)
 }
 
-// INIT
+// INIT.
 
 func newStashModel(common *commonModel) stashModel {
 	sp := spinner.New()
@@ -404,10 +414,11 @@ func newStashPaginator() paginator.Model {
 	p.Type = paginator.Dots
 	p.ActiveDot = brightGrayFg("•")
 	p.InactiveDot = darkGrayFg.Render("•")
+
 	return p
 }
 
-// UPDATE
+// UPDATE.
 
 func (m stashModel) update(msg tea.Msg) (stashModel, tea.Cmd) {
 	var cmds []tea.Cmd
@@ -417,12 +428,13 @@ func (m stashModel) update(msg tea.Msg) (stashModel, tea.Cmd) {
 		m.err = msg
 
 	case localFileSearchFinished:
-		// We're finished searching for local files
+		// We're finished searching for local files.
 		m.loaded = true
 
 	case filteredYAMLMsg:
 		m.filteredYAMLs = msg
 		m.setCursor(0)
+
 		return m, nil
 
 	case spinner.TickMsg:
@@ -440,15 +452,16 @@ func (m stashModel) update(msg tea.Msg) (stashModel, tea.Cmd) {
 
 	if m.filterState == filtering {
 		cmds = append(cmds, m.handleFiltering(msg))
+
 		return m, tea.Batch(cmds...)
 	}
 
-	// Updates per the current state
-	switch m.viewState { //nolint:exhaustive
+	// Updates per the current state.
+	switch m.viewState {
 	case stashStateReady:
 		cmds = append(cmds, m.handleDocumentBrowsing(msg))
 	case stashStateShowingError:
-		// Any key exists the error view
+		// Any key exists the error view.
 		if _, ok := msg.(tea.KeyMsg); ok {
 			m.viewState = stashStateReady
 		}
@@ -464,7 +477,7 @@ func (m *stashModel) handleDocumentBrowsing(msg tea.Msg) tea.Cmd {
 	numDocs := len(m.getVisibleYAMLs())
 
 	switch msg := msg.(type) {
-	// Handle keys
+	// Handle keys.
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "k", "ctrl+k", "up":
@@ -473,23 +486,23 @@ func (m *stashModel) handleDocumentBrowsing(msg tea.Msg) tea.Cmd {
 		case "j", "ctrl+j", "down":
 			m.moveCursorDown()
 
-		// Go to the very start
+		// Go to the very start.
 		case "home", "g":
 			m.paginator().Page = 0
 			m.setCursor(0)
 
-		// Go to the very end
+		// Go to the very end.
 		case "end", "G":
 			m.paginator().Page = m.paginator().TotalPages - 1
 			m.setCursor(m.paginator().ItemsOnPage(numDocs) - 1)
 
-		// Clear filter (if applicable)
+		// Clear filter (if applicable).
 		case keyEsc:
 			if m.filterApplied() {
 				m.resetFiltering()
 			}
 
-		// Next section
+		// Next section.
 		case "tab", "L":
 			if len(m.sections) == 0 || m.filterState == filtering {
 				break
@@ -500,7 +513,7 @@ func (m *stashModel) handleDocumentBrowsing(msg tea.Msg) tea.Cmd {
 			}
 			m.updatePagination()
 
-		// Previous section
+		// Previous section.
 		case "shift+tab", "H":
 			if len(m.sections) == 0 || m.filterState == filtering {
 				break
@@ -513,20 +526,10 @@ func (m *stashModel) handleDocumentBrowsing(msg tea.Msg) tea.Cmd {
 
 		case "F":
 			m.loaded = false
+
 			return findLocalFiles(*m.common)
 
-		// Edit document in EDITOR
-		case "e":
-			md := m.selectedYAML()
-
-			// In case no file is available
-			if md == nil {
-				return nil
-			}
-
-			return openEditor(md.localPath, 0)
-
-		// Open document
+		// Open document.
 		case keyEnter:
 			m.hideStatusMessage()
 
@@ -539,11 +542,11 @@ func (m *stashModel) handleDocumentBrowsing(msg tea.Msg) tea.Cmd {
 			md := m.selectedYAML()
 			cmds = append(cmds, m.openYAML(md))
 
-		// Filter your notes
+		// Filter your notes.
 		case "/":
 			m.hideStatusMessage()
 
-			// Build values we'll filter against
+			// Build values we'll filter against.
 			for _, md := range m.yamls {
 				md.buildFilterValue()
 			}
@@ -555,17 +558,19 @@ func (m *stashModel) handleDocumentBrowsing(msg tea.Msg) tea.Cmd {
 			m.filterState = filtering
 			m.filterInput.CursorEnd()
 			m.filterInput.Focus()
+
 			return textinput.Blink
 
-		// Toggle full help
+		// Toggle full help.
 		case "?":
 			m.showFullHelp = !m.showFullHelp
 			m.updatePagination()
 
-		// Show errors
+		// Show errors.
 		case "!":
 			if m.err != nil && m.viewState == stashStateReady {
 				m.viewState = stashStateShowingError
+
 				return nil
 			}
 		}
@@ -578,7 +583,7 @@ func (m *stashModel) handleDocumentBrowsing(msg tea.Msg) tea.Cmd {
 	m.setPaginator(newPaginatorModel)
 	cmds = append(cmds, cmd)
 
-	// Extra paginator keystrokes
+	// Extra paginator keystrokes.
 	if key, ok := msg.(tea.KeyMsg); ok {
 		switch key.String() {
 		case "b", "u":
@@ -588,7 +593,7 @@ func (m *stashModel) handleDocumentBrowsing(msg tea.Msg) tea.Cmd {
 		}
 	}
 
-	// Keep the index in bounds when paginating
+	// Keep the index in bounds when paginating.
 	itemsOnPage := m.paginator().ItemsOnPage(len(m.getVisibleYAMLs()))
 	if m.cursor() > itemsOnPage-1 {
 		m.setCursor(max(0, itemsOnPage-1))
@@ -601,11 +606,11 @@ func (m *stashModel) handleDocumentBrowsing(msg tea.Msg) tea.Cmd {
 func (m *stashModel) handleFiltering(msg tea.Msg) tea.Cmd {
 	var cmds []tea.Cmd
 
-	// Handle keys
-	if msg, ok := msg.(tea.KeyMsg); ok { //nolint:nestif
+	// Handle keys.
+	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch msg.String() {
 		case keyEsc:
-			// Cancel filtering
+			// Cancel filtering.
 			m.resetFiltering()
 		case keyEnter, "tab", "shift+tab", "ctrl+k", "up", "ctrl+j", "down":
 			m.hideStatusMessage()
@@ -616,23 +621,24 @@ func (m *stashModel) handleFiltering(msg tea.Msg) tea.Cmd {
 
 			h := m.getVisibleYAMLs()
 
-			// If we've filtered down to nothing, clear the filter
+			// If we've filtered down to nothing, clear the filter.
 			if len(h) == 0 {
 				m.viewState = stashStateReady
 				m.resetFiltering()
+
 				break
 			}
 
-			// When there's only one filtered yaml left we can just
-			// "open" it directly
+			// When there's only one filtered yaml left we can just "open" it directly.
 			if len(h) == 1 {
 				m.viewState = stashStateReady
 				m.resetFiltering()
 				cmds = append(cmds, m.openYAML(h[0]))
+
 				break
 			}
 
-			// Add new section if it's not present
+			// Add new section if it's not present.
 			if m.sections[len(m.sections)-1].key != filterSection {
 				m.sections = append(m.sections, sections[filterSection])
 			}
@@ -647,25 +653,25 @@ func (m *stashModel) handleFiltering(msg tea.Msg) tea.Cmd {
 		}
 	}
 
-	// Update the filter text input component
+	// Update the filter text input component.
 	newFilterInputModel, inputCmd := m.filterInput.Update(msg)
 	currentFilterVal := m.filterInput.Value()
 	newFilterVal := newFilterInputModel.Value()
 	m.filterInput = newFilterInputModel
 	cmds = append(cmds, inputCmd)
 
-	// If the filtering input has changed, request updated filtering
+	// If the filtering input has changed, request updated filtering.
 	if newFilterVal != currentFilterVal {
 		cmds = append(cmds, filterYAMLs(*m))
 	}
 
-	// Update pagination
+	// Update pagination.
 	m.updatePagination()
 
 	return tea.Batch(cmds...)
 }
 
-// VIEW
+// VIEW.
 
 func (m stashModel) view() string {
 	var s string
@@ -686,17 +692,19 @@ func (m stashModel) view() string {
 
 		// Rules for the logo, filter and status message.
 		logoOrFilter := " "
-		if m.showStatusMessage && m.filterState == filtering {
-			logoOrFilter += m.statusMessage.String()
-		} else if m.filterState == filtering {
-			logoOrFilter += m.filterInput.View()
+		if m.filterState == filtering {
+			if m.showStatusMessage {
+				logoOrFilter += m.statusMessage.String()
+			} else {
+				logoOrFilter += m.filterInput.View()
+			}
 		} else {
-			logoOrFilter += glowLogoView()
+			logoOrFilter += katLogoView()
 			if m.showStatusMessage {
 				logoOrFilter += "  " + m.statusMessage.String()
 			}
 		}
-		logoOrFilter = truncate.StringWithTail(logoOrFilter, uint(m.common.width-1), ellipsis) //nolint:gosec
+		logoOrFilter = truncate.StringWithTail(logoOrFilter, uint(max(0, m.common.width-1)), ellipsis) //nolint:gosec // Uses max.
 
 		help, helpHeight := m.helpView()
 
@@ -744,19 +752,19 @@ func (m stashModel) view() string {
 			help,
 		)
 	}
+
 	return "\n" + indent(s, stashIndent)
 }
 
-func glowLogoView() string {
-	return logoStyle.Render(" Glow ")
+func katLogoView() string {
+	return logoStyle.Render(fmt.Sprintf(" kat %s ", version.Revision))
 }
 
 func (m stashModel) headerView() string {
 	localCount := len(m.yamls)
+	sections := []string{}
 
-	var sections []string //nolint:prealloc
-
-	// Filter results
+	// Filter results.
 	if m.filterState == filtering {
 		if localCount == 0 {
 			return grayFg("Nothing found.")
@@ -772,11 +780,11 @@ func (m stashModel) headerView() string {
 		return strings.Join(sections, dividerDot.String())
 	}
 
-	// Tabs
-	for i, v := range m.sections {
+	// Tabs.
+	for i := range len(m.sections) {
 		var s string
 
-		switch v.key {
+		switch m.sections[i].key {
 		case documentsSection:
 			s = fmt.Sprintf("%d documents", localCount)
 
@@ -800,7 +808,7 @@ func (m stashModel) populatedView() string {
 
 	var b strings.Builder
 
-	// Empty states
+	// Empty states.
 	if len(mds) == 0 {
 		f := func(s string) {
 			b.WriteString("  " + grayFg(s))
@@ -839,7 +847,7 @@ func (m stashModel) populatedView() string {
 		if len(mds) == 0 {
 			n -= stashViewItemHeight - 1
 		}
-		for i := 0; i < n; i++ {
+		for range n {
 			fmt.Fprint(&b, "\n")
 		}
 	}
@@ -847,7 +855,7 @@ func (m stashModel) populatedView() string {
 	return b.String()
 }
 
-// COMMANDS
+// COMMANDS.
 
 func loadLocalYAML(md *yaml) tea.Cmd {
 	return func() tea.Msg {
@@ -858,9 +866,11 @@ func loadLocalYAML(md *yaml) tea.Cmd {
 		data, err := os.ReadFile(md.localPath)
 		if err != nil {
 			log.Debug("error reading local file", "error", err)
+
 			return errMsg{err}
 		}
 		md.Body = string(data)
+
 		return fetchedYAMLMsg(md)
 	}
 }
@@ -868,7 +878,7 @@ func loadLocalYAML(md *yaml) tea.Cmd {
 func filterYAMLs(m stashModel) tea.Cmd {
 	return func() tea.Msg {
 		if m.filterInput.Value() == "" || !m.filterApplied() {
-			return filteredYAMLMsg(m.yamls) // return everything
+			return filteredYAMLMsg(m.yamls) // Return everything.
 		}
 
 		targets := []string{}

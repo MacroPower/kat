@@ -153,6 +153,8 @@ linters-settings:
       - commentedOutCode
       - filepathJoin
       - unnamedResult
+      - singleCaseSwitch
+      - hugeParam # TODO: Re-enable this.
 
   godot:
     scope: all
@@ -201,6 +203,8 @@ linters-settings:
         disabled: true
       - name: nested-structs
         disabled: true
+      - name: unnecessary-stmt
+        disabled: true
 
 issues:
   exclude-rules:
@@ -210,6 +214,13 @@ issues:
         - promlinter
         - godot
         - gosec
+    - path: /ui/
+      linters:
+        - grouper
+        - ireturn
+        - recvcheck
+        - exhaustive
+        - nestif
     - source: "^\\) .+ \\{$"
       linters:
         - whitespace

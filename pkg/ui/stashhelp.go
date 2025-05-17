@@ -17,23 +17,27 @@ type helpColumn []helpEntry
 // newHelpColumn creates a help column from pairs of string arguments
 // representing keys and values. If the arguments are not even (and therein
 // not every key has a matching value) the function will panic.
-func newHelpColumn(pairs ...string) (h helpColumn) {
+func newHelpColumn(pairs ...string) helpColumn {
 	if len(pairs)%2 != 0 {
 		panic("help text group must have an even number of items")
 	}
 
-	for i := 0; i < len(pairs); i = i + 2 {
+	var h helpColumn
+
+	for i := 0; i < len(pairs); i += 2 {
 		h = append(h, helpEntry{key: pairs[i], val: pairs[i+1]})
 	}
 
-	return
+	return h
 }
 
 // render returns styled and formatted rows from keys and values.
-func (h helpColumn) render(height int) (rows []string) {
+func (h helpColumn) render(height int) []string {
 	keyWidth, valWidth := h.maxWidths()
 
-	for i := 0; i < height; i++ {
+	rows := []string{}
+
+	for i := range height {
 		var (
 			b    = strings.Builder{}
 			k, v string
@@ -52,18 +56,19 @@ func (h helpColumn) render(height int) (rows []string) {
 			}
 		}
 		b.WriteString(k)
-		b.WriteString(strings.Repeat(" ", keyWidth-ansi.PrintableRuneWidth(k))) // pad keys
-		b.WriteString("  ")                                                     // gap
+		b.WriteString(strings.Repeat(" ", keyWidth-ansi.PrintableRuneWidth(k))) // Pad keys.
+		b.WriteString("  ")                                                     // Gap.
 		b.WriteString(v)
-		b.WriteString(strings.Repeat(" ", valWidth-ansi.PrintableRuneWidth(v))) // pad vals
+		b.WriteString(strings.Repeat(" ", valWidth-ansi.PrintableRuneWidth(v))) // Pad vals.
 		rows = append(rows, b.String())
 	}
 
-	return
+	return rows
 }
 
 // maxWidths returns the widest key and values in the column, respectively.
-func (h helpColumn) maxWidths() (maxKey int, maxVal int) {
+func (h helpColumn) maxWidths() (int, int) {
+	var maxKey, maxVal int
 	for _, v := range h {
 		kw := ansi.PrintableRuneWidth(v.key)
 		vw := ansi.PrintableRuneWidth(v.val)
@@ -75,7 +80,7 @@ func (h helpColumn) maxWidths() (maxKey int, maxVal int) {
 		}
 	}
 
-	return
+	return maxKey, maxVal
 }
 
 // helpView returns either the mini or full help view depending on the state of
@@ -83,7 +88,7 @@ func (h helpColumn) maxWidths() (maxKey int, maxVal int) {
 func (m stashModel) helpView() (string, int) {
 	numDocs := len(m.getVisibleYAMLs())
 
-	// Help for when we're filtering
+	// Help for when we're filtering.
 	if m.filterState == filtering {
 		var h []string
 
@@ -103,7 +108,6 @@ func (m stashModel) helpView() (string, int) {
 		navHelp       []string
 		filterHelp    []string
 		selectionHelp []string
-		editHelp      []string
 		sectionHelp   []string
 		appHelp       []string
 	)
@@ -124,39 +128,36 @@ func (m stashModel) helpView() (string, int) {
 		navHelp = append(navHelp, "h/l ←/→", "page")
 	}
 
-	// If we're browsing a filtered set
+	// If we're browsing a filtered set.
 	if m.filterApplied() {
 		filterHelp = []string{"/", "edit search", "esc", "clear filter"}
 	} else {
 		filterHelp = []string{"/", "find"}
 	}
 
-	// If there are errors
+	// If there are errors.
 	if m.err != nil {
 		appHelp = append(appHelp, "!", "errors")
 	}
 
-	appHelp = append(appHelp, "r", "refresh")
+	appHelp = append(appHelp,
+		"r", "refresh",
+		"q", "quit",
+	)
 
-	if numDocs > 0 {
-		appHelp = append(appHelp, "e", "edit")
-	}
-
-	appHelp = append(appHelp, "q", "quit")
-
-	// Detailed help
+	// Detailed help.
 	if m.showFullHelp {
 		if m.filterState != filtering {
 			appHelp = append(appHelp, "?", "close help")
 		}
-		return m.renderHelp(navHelp, filterHelp, append(selectionHelp, editHelp...), sectionHelp, appHelp)
 	}
 
-	// Mini help
+	// Mini help.
 	if m.filterState != filtering {
 		appHelp = append(appHelp, "?", "more")
 	}
-	return m.renderHelp(navHelp, filterHelp, selectionHelp, editHelp, sectionHelp, appHelp)
+
+	return m.renderHelp(navHelp, filterHelp, selectionHelp, sectionHelp, appHelp)
 }
 
 const minHelpViewHeight = 5
@@ -167,8 +168,10 @@ func (m stashModel) renderHelp(groups ...[]string) (string, int) {
 	if m.showFullHelp {
 		str := m.fullHelpView(groups...)
 		numLines := strings.Count(str, "\n") + 1
+
 		return str, max(numLines, minHelpViewHeight)
 	}
+
 	return m.miniHelpView(concatStringSlices(groups...)...), 1
 }
 
@@ -195,7 +198,7 @@ func (m stashModel) miniHelpView(entries ...string) string {
 		s = leftGutter
 	)
 
-	for i := 0; i < len(entries); i = i + 2 {
+	for i := 0; i < len(entries); i += 2 {
 		k := entries[i]
 		v := entries[i+1]
 
@@ -209,44 +212,46 @@ func (m stashModel) miniHelpView(entries ...string) string {
 		}
 
 		// Only this (and the following) help text items if we have the
-		// horizontal space
+		// horizontal space.
 		if ansi.PrintableRuneWidth(s)+ansi.PrintableRuneWidth(next) >= maxWidth {
 			s += truncationChar
+
 			break
 		}
 
 		s += next
 	}
+
 	return s
 }
 
 func (m stashModel) fullHelpView(groups ...[]string) string {
 	var tallestCol int
 	columns := make([]helpColumn, 0, len(groups))
-	renderedCols := make([][]string, 0, len(groups)) // final rows grouped by column
+	renderedCols := make([][]string, 0, len(groups)) // Final rows grouped by column.
 
-	// Get key/value pairs
+	// Get key/value pairs.
 	for _, g := range groups {
 		if len(g) == 0 {
-			continue // ignore empty columns
+			continue // Ignore empty columns.
 		}
 
 		columns = append(columns, newHelpColumn(g...))
 	}
 
-	// Find the tallest column
+	// Find the tallest column.
 	for _, c := range columns {
 		if len(c) > tallestCol {
 			tallestCol = len(c)
 		}
 	}
 
-	// Build columns
+	// Build columns.
 	for _, c := range columns {
 		renderedCols = append(renderedCols, c.render(tallestCol))
 	}
 
-	// Merge columns
+	// Merge columns.
 	return mergeColumns(renderedCols...)
 }
 
@@ -254,7 +259,7 @@ func (m stashModel) fullHelpView(groups ...[]string) string {
 func mergeColumns(cols ...[]string) string {
 	const minimumHeight = 3
 
-	// Find the tallest column
+	// Find the tallest column.
 	var tallestCol int
 	for _, v := range cols {
 		n := len(v)
@@ -263,21 +268,21 @@ func mergeColumns(cols ...[]string) string {
 		}
 	}
 
-	// Make sure the tallest column meets the minimum height
+	// Make sure the tallest column meets the minimum height.
 	if tallestCol < minimumHeight {
 		tallestCol = minimumHeight
 	}
 
 	b := strings.Builder{}
-	for i := 0; i < tallestCol; i++ {
+	for i := range tallestCol {
 		for j, col := range cols {
 			if i >= len(col) {
-				continue // skip if we're past the length of this column
+				continue // Skip if we're past the length of this column.
 			}
 			if j == 0 {
-				b.WriteString("  ") // gutter
+				b.WriteString("  ") // Gutter.
 			} else if j > 0 {
-				b.WriteString("    ") // gap
+				b.WriteString("    ") // Gap.
 			}
 			b.WriteString(col[i])
 		}
@@ -289,9 +294,12 @@ func mergeColumns(cols ...[]string) string {
 	return b.String()
 }
 
-func concatStringSlices(s ...[]string) (agg []string) {
+func concatStringSlices(s ...[]string) []string {
+	agg := []string{}
+
 	for _, v := range s {
 		agg = append(agg, v...)
 	}
-	return
+
+	return agg
 }

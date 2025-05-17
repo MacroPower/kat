@@ -5,20 +5,22 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	glamouransi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/fsnotify/fsnotify"
-	runewidth "github.com/mattn/go-runewidth"
 	"github.com/muesli/reflow/ansi"
 	"github.com/muesli/reflow/truncate"
 	"github.com/muesli/termenv"
+
+	tea "github.com/charmbracelet/bubbletea"
+	glamouransi "github.com/charmbracelet/glamour/ansi"
+	runewidth "github.com/mattn/go-runewidth"
 )
 
 const (
@@ -90,23 +92,21 @@ const (
 )
 
 type pagerModel struct {
-	common   *commonModel
-	viewport viewport.Model
-	state    pagerState
-	showHelp bool
-
-	statusMessage      string
-	statusMessageTimer *time.Timer
-
 	// Current document being rendered, sans-glamour rendering. We cache
 	// it here so we can re-render it on resize.
 	currentDocument yaml
 
-	watcher *fsnotify.Watcher
+	common             *commonModel
+	statusMessageTimer *time.Timer
+	watcher            *fsnotify.Watcher
+	statusMessage      string
+	viewport           viewport.Model
+	state              pagerState
+	showHelp           bool
 }
 
 func newPagerModel(common *commonModel) pagerModel {
-	// Init viewport
+	// Init viewport.
 	vp := viewport.New(0, 0)
 	vp.YPosition = 0
 
@@ -116,6 +116,7 @@ func newPagerModel(common *commonModel) pagerModel {
 		viewport: vp,
 	}
 	m.initWatcher()
+
 	return m
 }
 
@@ -152,7 +153,7 @@ type pagerStatusMessage struct {
 // that the the returned command should be sent back the through the pager
 // update function.
 func (m *pagerModel) showStatusMessage(msg pagerStatusMessage) tea.Cmd {
-	// Show a success message to the user
+	// Show a success message to the user.
 	m.state = pagerStateStatusMessage
 	m.statusMessage = msg.message
 	if m.statusMessageTimer != nil {
@@ -189,6 +190,7 @@ func (m pagerModel) update(msg tea.Msg) (pagerModel, tea.Cmd) {
 		case "q", keyEsc:
 			if m.state != pagerStateBrowse {
 				m.state = pagerStateBrowse
+
 				return m, nil
 			}
 
@@ -204,23 +206,11 @@ func (m pagerModel) update(msg tea.Msg) (pagerModel, tea.Cmd) {
 		case "u":
 			m.viewport.HalfPageUp()
 
-		case "e":
-			lineno := int(math.RoundToEven(float64(m.viewport.TotalLineCount()) * m.viewport.ScrollPercent()))
-			if m.viewport.AtTop() {
-				lineno = 0
-			}
-			log.Info(
-				"opening editor",
-				"file", m.currentDocument.localPath,
-				"line", fmt.Sprintf("%d/%d", lineno, m.viewport.TotalLineCount()),
-			)
-			return m, openEditor(m.currentDocument.localPath, lineno)
-
 		case "c":
-			// Copy using OSC 52
+			// Copy using OSC 52.
 			termenv.Copy(m.currentDocument.Body)
-			// Copy using native system clipboard
-			_ = clipboard.WriteAll(m.currentDocument.Body)
+			// Copy using native system clipboard.
+			_ = clipboard.WriteAll(m.currentDocument.Body) //nolint:errcheck // Can be ignored.
 			cmds = append(cmds, m.showStatusMessage(pagerStatusMessage{"Copied contents", false}))
 
 		case "r":
@@ -230,25 +220,19 @@ func (m pagerModel) update(msg tea.Msg) (pagerModel, tea.Cmd) {
 			m.toggleHelp()
 		}
 
-	// Glow has rendered the content
+	// App has rendered the content.
 	case contentRenderedMsg:
 		log.Info("content rendered", "state", m.state)
 
 		m.setContent(string(msg))
 		cmds = append(cmds, m.watchFile)
 
-	// The file was changed on disk and we're reloading it
+	// The file was changed on disk and we're reloading it.
 	case reloadMsg:
 		return m, loadLocalYAML(&m.currentDocument)
 
-	// We've finished editing the document, potentially making changes. Let's
-	// retrieve the latest version of the document so that we display
-	// up-to-date contents.
-	case editorFinishedMsg:
-		return m, loadLocalYAML(&m.currentDocument)
-
 	// We've received terminal dimensions, either for the first time or
-	// after a resize
+	// after a resize.
 	case tea.WindowSizeMsg:
 		return m, renderWithGlamour(m, m.currentDocument.Body)
 
@@ -266,7 +250,7 @@ func (m pagerModel) View() string {
 	var b strings.Builder
 	fmt.Fprint(&b, m.viewport.View()+"\n")
 
-	// Footer
+	// Footer.
 	m.statusBarView(&b)
 
 	if m.showHelp {
@@ -285,10 +269,10 @@ func (m pagerModel) statusBarView(b *strings.Builder) {
 
 	showStatusMessage := m.state == pagerStateStatusMessage
 
-	// Logo
-	logo := glowLogoView()
+	// Logo.
+	logo := katLogoView()
 
-	// Scroll percent
+	// Scroll percent.
 	percent := math.Max(minPercent, math.Min(maxPercent, m.viewport.ScrollPercent()))
 	scrollPercent := fmt.Sprintf(" %3.f%% ", percent*percentToStringMagnitude)
 	if showStatusMessage {
@@ -297,7 +281,7 @@ func (m pagerModel) statusBarView(b *strings.Builder) {
 		scrollPercent = statusBarScrollPosStyle(scrollPercent)
 	}
 
-	// "Help" note
+	// "Help" note.
 	var helpNote string
 	if showStatusMessage {
 		helpNote = statusBarMessageHelpStyle(" ? Help ")
@@ -305,14 +289,14 @@ func (m pagerModel) statusBarView(b *strings.Builder) {
 		helpNote = statusBarHelpStyle(" ? Help ")
 	}
 
-	// Note
+	// Note.
 	var note string
 	if showStatusMessage {
 		note = m.statusMessage
 	} else {
 		note = m.currentDocument.Note
 	}
-	note = truncate.StringWithTail(" "+note+" ", uint(max(0, //nolint:gosec
+	note = truncate.StringWithTail(" "+note+" ", uint(max(0, //nolint:gosec // Uses max.
 		m.common.width-
 			ansi.PrintableRuneWidth(logo)-
 			ansi.PrintableRuneWidth(scrollPercent)-
@@ -324,7 +308,7 @@ func (m pagerModel) statusBarView(b *strings.Builder) {
 		note = statusBarNoteStyle(note)
 	}
 
-	// Empty space
+	// Empty space.
 	padding := max(0,
 		m.common.width-
 			ansi.PrintableRuneWidth(logo)-
@@ -348,16 +332,17 @@ func (m pagerModel) statusBarView(b *strings.Builder) {
 	)
 }
 
-func (m pagerModel) helpView() (s string) {
+func (m pagerModel) helpView() string {
 	col1 := []string{
 		"g/home  go to top",
 		"G/end   go to bottom",
 		"c       copy contents",
-		"e       edit this document",
 		"r       reload this document",
 		"esc     back to files",
 		"q       quit",
 	}
+
+	var s string
 
 	s += "\n"
 	s += "k/↑      up                  " + col1[0] + "\n"
@@ -373,10 +358,10 @@ func (m pagerModel) helpView() (s string) {
 
 	s = indent(s, 2)
 
-	// Fill up empty cells with spaces for background coloring
+	// Fill up empty cells with spaces for background coloring.
 	if m.common.width > 0 {
 		lines := strings.Split(s, "\n")
-		for i := 0; i < len(lines); i++ {
+		for i := range lines {
 			l := runewidth.StringWidth(lines[i])
 			n := max(m.common.width-l, 0)
 			lines[i] += strings.Repeat(" ", n)
@@ -388,15 +373,17 @@ func (m pagerModel) helpView() (s string) {
 	return helpViewStyle(s)
 }
 
-// COMMANDS
+// COMMANDS.
 
 func renderWithGlamour(m pagerModel, md string) tea.Cmd {
 	return func() tea.Msg {
 		s, err := glamourRender(m, md)
 		if err != nil {
 			log.Error("error rendering with Glamour", "error", err)
+
 			return errMsg{err}
 		}
+
 		return contentRenderedMsg(s)
 	}
 }
@@ -410,7 +397,7 @@ func glamourRender(m pagerModel, yaml string) (string, error) {
 	}
 
 	isCode := !IsYAMLFile(m.currentDocument.Note)
-	width := max(0, min(int(m.common.cfg.GlamourMaxWidth), m.viewport.Width)) //nolint:gosec
+	width := max(0, min(int(m.common.cfg.GlamourMaxWidth), m.viewport.Width)) //nolint:gosec // Uses max.
 	if isCode {
 		width = 0
 	}
@@ -440,19 +427,19 @@ func glamourRender(m pagerModel, yaml string) (string, error) {
 		out = strings.TrimSpace(out)
 	}
 
-	// trim lines
+	// Trim lines.
 	lines := strings.Split(out, "\n")
 
 	var content strings.Builder
 	for i, s := range lines {
 		if isCode || m.common.cfg.ShowLineNumbers {
-			content.WriteString(lineNumberStyle(fmt.Sprintf("%"+fmt.Sprint(lineNumberWidth)+"d", i+1)))
+			content.WriteString(lineNumberStyle(fmt.Sprintf("%"+strconv.Itoa(lineNumberWidth)+"d", i+1)))
 			content.WriteString(trunc(s))
 		} else {
 			content.WriteString(s)
 		}
 
-		// don't add an artificial newline after the last split
+		// Don't add an artificial newline after the last split.
 		if i+1 < len(lines) {
 			content.WriteRune('\n')
 		}
@@ -474,6 +461,7 @@ func (m *pagerModel) watchFile() tea.Msg {
 
 	if err := m.watcher.Add(dir); err != nil {
 		log.Error("error adding dir to fsnotify watcher", "error", err)
+
 		return nil
 	}
 
@@ -491,6 +479,7 @@ func (m *pagerModel) watchFile() tea.Msg {
 			}
 
 			log.Debug("fsnotify event", "file", event.Name, "event", event.Op)
+
 			return reloadMsg{}
 		case err, ok := <-m.watcher.Errors:
 			if !ok {

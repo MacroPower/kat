@@ -20,10 +20,8 @@ var (
 	red            = lipgloss.AdaptiveColor{Light: "#FF4672", Dark: "#ED567A"}
 	semiDimGreen   = lipgloss.AdaptiveColor{Light: "#35D79C", Dark: "#036B46"}
 	dimGreen       = lipgloss.AdaptiveColor{Light: "#72D2B0", Dark: "#0B5137"}
-)
 
-// Ulimately, we'll transition to named styles.
-var (
+	// Ulimately, we'll transition to named styles.
 	dimNormalFg      = lipgloss.NewStyle().Foreground(normalDim).Render
 	brightGrayFg     = lipgloss.NewStyle().Foreground(brightGray).Render
 	dimBrightGrayFg  = lipgloss.NewStyle().Foreground(dimBrightGray).Render

@@ -14,6 +14,8 @@ import (
 )
 
 type yaml struct {
+	Modtime time.Time
+
 	// Full path of a local yaml file. Only relevant to local documents and
 	// those that have been stashed in this session.
 	localPath string
@@ -23,9 +25,8 @@ type yaml struct {
 	// field is ephemeral, and should only be referenced during filtering.
 	filterValue string
 
-	Body    string
-	Note    string
-	Modtime time.Time
+	Body string
+	Note string
 }
 
 // Generate the value we're doing to filter against.
@@ -39,7 +40,7 @@ func (m *yaml) buildFilterValue() {
 	m.filterValue = note
 }
 
-func (m yaml) relativeTime() string {
+func (m *yaml) relativeTime() string {
 	return relativeTime(m.Modtime)
 }
 
@@ -52,6 +53,7 @@ func normalize(in string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error normalizing: %w", err)
 	}
+
 	return out, nil
 }
 
@@ -63,6 +65,7 @@ func relativeTime(then time.Time) string {
 	} else if ago < humanize.Week {
 		return humanize.CustomRelTime(then, now, "ago", "from now", magnitudes)
 	}
+
 	return then.Format("02 Jan 2006 15:04 MST")
 }
 

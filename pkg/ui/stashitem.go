@@ -17,7 +17,7 @@ const (
 
 func stashItemView(b *strings.Builder, m stashModel, index int, y *yaml) {
 	var (
-		truncateTo  = uint(m.common.width - stashViewHorizontalPadding*2) //nolint:gosec
+		truncateTo  = uint(max(0, m.common.width-stashViewHorizontalPadding*2)) //nolint:gosec // Uses max.
 		gutter      string
 		title       = truncate.StringWithTail(y.Note, truncateTo, ellipsis)
 		date        = y.relativeTime()
@@ -34,8 +34,8 @@ func stashItemView(b *strings.Builder, m stashModel, index int, y *yaml) {
 	// If there are multiple items being filtered don't highlight a selected
 	// item in the results. If we've filtered down to one item, however,
 	// highlight that first item since pressing return will open it.
-	if isSelected && !isFiltering || singleFilteredItem { //nolint:nestif
-		// Selected item
+	if isSelected && !isFiltering || singleFilteredItem {
+		// Selected item.
 		if m.statusMessage == stashingStatusMessage {
 			gutter = greenFg(verticalLine)
 			icon = dimGreenFg(icon)
@@ -45,8 +45,7 @@ func stashItemView(b *strings.Builder, m stashModel, index int, y *yaml) {
 			separator = semiDimGreenFg(separator)
 		} else {
 			gutter = dullFuchsiaFg(verticalLine)
-			if m.currentSection().key == filterSection &&
-				m.filterState == filterApplied || singleFilteredItem {
+			if m.currentSection().key == filterSection && m.filterState == filterApplied || singleFilteredItem {
 				s := lipgloss.NewStyle().Foreground(fuchsia)
 				title = styleFilteredText(title, m.filterInput.Value(), s, s.Underline(true))
 			} else {
@@ -59,7 +58,7 @@ func stashItemView(b *strings.Builder, m stashModel, index int, y *yaml) {
 		}
 	} else {
 		gutter = " "
-		if m.statusMessage == stashingStatusMessage {
+		if m.statusMessage == stashingStatusMessage { //nolint:gocritic // TODO: Refactor.
 			icon = dimGreenFg(icon)
 			title = greenFg(title)
 			date = semiDimGreenFg(date)
@@ -102,7 +101,7 @@ func styleFilteredText(haystack, needles string, defaultStyle, matchedStyle lipg
 		return defaultStyle.Render(haystack)
 	}
 
-	m := matches[0] // only one match exists
+	m := matches[0] // Only one match exists.
 	for i, rune := range []rune(haystack) {
 		styled := false
 		for _, mi := range m.MatchedIndexes {
