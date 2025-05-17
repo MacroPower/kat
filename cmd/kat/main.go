@@ -3,11 +3,12 @@ package main
 import (
 	"io"
 	"log/slog"
-	"strings"
+	"path/filepath"
 
 	"github.com/alecthomas/kong"
 
 	"github.com/MacroPower/kat/pkg/log"
+	"github.com/MacroPower/kat/pkg/ui"
 	"github.com/MacroPower/kat/pkg/version"
 )
 
@@ -35,9 +36,15 @@ func main() {
 		slog.String("revision", version.Revision),
 	)
 
-	sb := strings.Builder{}
-	Hello(&sb)
-	cliCtx.Printf("%s", sb.String())
+	path, err := filepath.Abs(".")
+	if err != nil {
+		cliCtx.FatalIfErrorf(err)
+	}
+
+	p := ui.NewProgram(ui.Config{Path: path, ShowAllFiles: true, GlamourEnabled: true, GlamourStyle: "dark"}, "")
+	if _, err := p.Run(); err != nil {
+		cliCtx.Fatalf("tea: %v", err)
+	}
 }
 
 func Hello(r io.Writer) {
