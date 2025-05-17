@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	main "github.com/MacroPower/go_template/cmd/go_template"
+	main "github.com/MacroPower/kat/cmd/kat"
 )
 
 func BenchmarkMain(b *testing.B) {

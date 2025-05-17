@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/MacroPower/go_template/pkg/log"
+	"github.com/MacroPower/kat/pkg/log"
 )
 
 func TestGetLevel(t *testing.T) {

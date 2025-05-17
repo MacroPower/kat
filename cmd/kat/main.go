@@ -7,11 +7,11 @@ import (
 
 	"github.com/alecthomas/kong"
 
-	"github.com/MacroPower/go_template/pkg/log"
-	"github.com/MacroPower/go_template/pkg/version"
+	"github.com/MacroPower/kat/pkg/log"
+	"github.com/MacroPower/kat/pkg/version"
 )
 
-const appName = "go_template"
+const appName = "kat"
 
 var cli struct {
 	Log struct {

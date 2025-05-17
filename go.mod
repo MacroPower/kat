@@ -1,4 +1,4 @@
-module github.com/MacroPower/go_template
+module github.com/MacroPower/kat
 
 go 1.24
 

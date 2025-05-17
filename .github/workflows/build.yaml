@@ -36,4 +36,4 @@ jobs:
           enable-cache: true
 
       - name: Build in devbox
-        run: devbox run -- task go-build-images
+        run: devbox run -- task go-build

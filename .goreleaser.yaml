@@ -1,10 +1,7 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 version: 2
 
-project_name: go_template
-
-env:
-  - DOCKER_REGISTRY=ghcr.io/macropower
+project_name: kat
 
 before:
   hooks:
@@ -14,8 +11,8 @@ before:
     - go generate ./...
 
 builds:
-  - id: go_template
-    main: ./cmd/go_template
+  - id: kat
+    main: ./cmd/kat
     goos:
       - linux
       - windows
@@ -27,59 +24,13 @@ builds:
       - CGO_ENABLED=0
     ldflags:
       - -s -w
-      - -X github.com/MacroPower/go_template/pkg/version.Version={{.Version}}
-      - -X github.com/MacroPower/go_template/pkg/version.Branch={{.Branch}}
-      - -X github.com/MacroPower/go_template/pkg/version.BuildUser={{.Env.USER}}@{{.Env.HOSTNAME}}
-      - -X github.com/MacroPower/go_template/pkg/version.BuildDate={{.Date}}
+      - -X github.com/MacroPower/kat/pkg/version.Version={{.Version}}
+      - -X github.com/MacroPower/kat/pkg/version.Branch={{.Branch}}
+      - -X github.com/MacroPower/kat/pkg/version.BuildUser={{.Env.USER}}@{{.Env.HOSTNAME}}
+      - -X github.com/MacroPower/kat/pkg/version.BuildDate={{.Date}}
     flags:
       - -trimpath
     buildmode: pie
-
-dockers:
-  - goos: linux
-    goarch: amd64
-    dockerfile: Dockerfile
-    use: buildx
-    image_templates:
-      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-amd64"
-    build_flag_templates:
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.version={{ .Tag }}"
-      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.source={{ .GitURL }}"
-  - goos: linux
-    goarch: arm64
-    dockerfile: Dockerfile
-    use: buildx
-    image_templates:
-      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-arm64"
-    build_flag_templates:
-      - "--platform=linux/arm64"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.version={{ .Tag }}"
-      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.source={{ .GitURL }}"
-
-docker_manifests:
-  - name_template: "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:latest"
-    image_templates:
-      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-amd64"
-      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-arm64"
-  - name_template: "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}"
-    image_templates:
-      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-amd64"
-      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-arm64"
-  - name_template: "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}"
-    image_templates:
-      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-amd64"
-      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-arm64"
-  - name_template: "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}"
-    image_templates:
-      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-amd64"
-      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-arm64"
 
 archives:
   - formats: [tar.gz]
