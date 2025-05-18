@@ -1,12 +1,20 @@
 ui:
-  showLineNumbers: true
-  style: dark
-
-commands:
-  - match: ^.*/kustomization\\.ya?ml$
-    command: kustomize
-    args: [build, "."]
-    watch: 5s
-  - match: ^.*/Chart\\.ya?ml$
-    command: helm
-    args: [template, ".", "--generate-name", "--debug"]
+  glamour-style: auto
+  glamour-max-width: 0
+  glamour-disabled: false
+  show-line-numbers: true
+  enable-mouse: true
+kube:
+  commands:
+    - match: .*/Chart\.ya?ml
+      command: helm
+      args:
+        - template
+        - .
+        - --generate-name
+        - --debug
+    - match: .*/kustomization\.ya?ml
+      command: kustomize
+      args:
+        - build
+        - .

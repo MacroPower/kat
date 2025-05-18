@@ -1,23 +1,25 @@
 # kat
 
-`cat` for Kubernetes resources. Uses [bubbletea](https://github.com/charmbracelet/bubbletea) and code from [glow](https://github.com/charmbracelet/glow).
+`cat` for Kubernetes manifests. Uses [bubbletea](https://github.com/charmbracelet/bubbletea) and code from [glow](https://github.com/charmbracelet/glow).
 
 ```sh
-# Chart or Kustomization in the current directory
+# kat the current directory.
 kat .
 
-# Resources from stdin
-kustomize ./example | kat
+# kat a file or directory path.
+kat ./example/kustomize
 
-# Output from a command (with watch/reload)
-kat -- helm template .
+# kat with command passthrough.
+kat ./example/helm -- helm template foobar .
 ```
+
+Automatically detects and renders `helm` and `kustomize` projects by default, can be extended via `$XDG_CONFIG_HOME/kat/config.yaml`.
 
 ## TODO
 
-- `/` to find inside the YAML viewer.
-- vim/k9s-like command mode.
-- watch/reload `kat -- helm template . -g --debug`
+- Support manifests from stdin.
+- Watch/reload (i.e. re-run commands automatically).
+- Vim keybindings inside the YAML viewer.
 
 ## Similar Tools
 
