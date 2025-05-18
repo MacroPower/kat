@@ -120,41 +120,41 @@ type CommandOutput struct {
 // RunFirstMatch executes the first matching command for the given path.
 // If path is a file, it checks for direct matches.
 // If path is a directory, it checks all files in the directory for matches.
-func (c *CommandRunner) Run() (CommandOutput, error) {
-	slog.Debug("run command", slog.Any("cmd", *c))
+func (cr *CommandRunner) Run() (CommandOutput, error) {
+	slog.Debug("run command", slog.Any("cmd", *cr))
 
-	if c.command != nil {
+	if cr.command != nil {
 		// Custom command provided.
-		return c.command.Exec(c.path)
+		return cr.command.Exec(cr.path)
 	}
 
-	fileInfo, err := os.Stat(c.path)
+	fileInfo, err := os.Stat(cr.path)
 	if err != nil {
 		return CommandOutput{}, fmt.Errorf("stat path: %w", err)
 	}
 
 	if fileInfo.IsDir() {
 		// Path is a directory, find matching files inside.
-		cmd, err := c.findMatchInDirectory(c.path)
+		cmd, err := cr.findMatchInDirectory(cr.path)
 		if err != nil {
 			return CommandOutput{}, err
 		}
 
-		return cmd.Exec(c.path)
+		return cmd.Exec(cr.path)
 	}
 
 	// Path is a file, check for direct match.
-	for _, cmd := range c.commands {
-		if cmd.Match.MatchString(c.path) {
-			return cmd.Exec(filepath.Dir(c.path))
+	for _, cmd := range cr.commands {
+		if cmd.Match.MatchString(cr.path) {
+			return cmd.Exec(filepath.Dir(cr.path))
 		}
 	}
 
-	return CommandOutput{}, fmt.Errorf("%w: %s", ErrNoCommandForPath, c.path)
+	return CommandOutput{}, fmt.Errorf("%w: %s", ErrNoCommandForPath, cr.path)
 }
 
 // findMatchInDirectory looks for matching files in a directory.
-func (c *CommandRunner) findMatchInDirectory(dirPath string) (*Command, error) {
+func (cr *CommandRunner) findMatchInDirectory(dirPath string) (*Command, error) {
 	var matchedCommand *Command
 	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -164,7 +164,7 @@ func (c *CommandRunner) findMatchInDirectory(dirPath string) (*Command, error) {
 			return filepath.SkipDir // Skip subdirectories.
 		}
 		if !d.IsDir() {
-			for _, cmd := range c.commands {
+			for _, cmd := range cr.commands {
 				if cmd.Match.MatchString(path) {
 					matchedCommand = cmd
 

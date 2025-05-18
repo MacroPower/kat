@@ -38,8 +38,8 @@ var cli struct {
 		Level  string `default:"info"   help:"Log level."`
 		Format string `default:"logfmt" help:"Log format. One of: [logfmt, json]"`
 	} `embed:"" prefix:"log-"`
-	Path    string        `arg:"" help:"File or directory path, default is $PWD." required:"" type:"path"`
-	Command []string      `arg:"" help:"Command to run, defaults set in $XDG_CONFIG_HOME/kat/config.yaml." optional:"" passthrough:"all"`
+	Path    string        `arg:""   help:"File or directory path, default is $PWD."                          required:"" type:"path"`
+	Command []string      `arg:""   help:"Command to run, defaults set in $XDG_CONFIG_HOME/kat/config.yaml." optional:"" passthrough:"all"`
 	Config  config.Config `embed:""`
 }
 

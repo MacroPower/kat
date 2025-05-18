@@ -205,6 +205,8 @@ linters-settings:
         disabled: true
       - name: unnecessary-stmt
         disabled: true
+      - name: struct-tag
+        disabled: true
 
 issues:
   exclude-rules:
