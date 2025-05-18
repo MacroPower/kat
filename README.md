@@ -1,6 +1,21 @@
-# kat
+<p align="center">
+  <a href="#"><img src="docs/assets/logo.svg" width="250px"></a>
+  <h1 align="center">kat</h1>
+</p>
 
-`cat` for Kubernetes manifests. Uses [bubbletea](https://github.com/charmbracelet/bubbletea) and code from [glow](https://github.com/charmbracelet/glow).
+<p align="center"><i><code>cat</code> for Kubernetes manifests</i></p>
+
+## Overview
+
+- Easily filter and view hundreds of manifests in your shell
+- Automatically detect and render `helm` and `kustomize` projects
+- Can be extended via `$XDG_CONFIG_HOME/kat/config.yaml`
+
+![demo](docs/assets/demo.gif)
+
+Uses [bubbletea](https://github.com/charmbracelet/bubbletea) and code from [glow](https://github.com/charmbracelet/glow).
+
+## Usage
 
 ```sh
 # kat the current directory.
@@ -12,8 +27,6 @@ kat ./example/kustomize
 # kat with command passthrough.
 kat ./example/helm -- helm template foobar .
 ```
-
-Automatically detects and renders `helm` and `kustomize` projects by default, can be extended via `$XDG_CONFIG_HOME/kat/config.yaml`.
 
 ## TODO
 
