@@ -29,6 +29,19 @@ kat ./example/kustomize
 kat ./example/helm -- helm template foobar .
 ```
 
+## Installation
+
+### Homebrew
+
+```sh
+brew tap macropower/tap
+brew install kat
+```
+
+### Releases
+
+Archives are posted in [releases](https://github.com/MacroPower/kat/releases).
+
 ## TODO
 
 - Support manifests from stdin.

@@ -53,3 +53,27 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
+
+brews:
+  - name: kat
+    repository:
+      owner: MacroPower
+      name: homebrew-tap
+    url_template: >-
+      https://github.com/MacroPower/kat/releases/download/{{ .Tag }}/
+      {{- .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end -}}
+      {{- if .Arm }}v{{ .Arm }}{{ end -}}
+      .tar.gz
+    download_strategy: CurlDownloadStrategy
+    commit_msg_template: "chore: formula update for kat {{ .Tag }}"
+    commit_author:
+      name: botty-mcbottington
+      email: 168950816+botty-mcbottington[bot]@users.noreply.github.com
+    homepage: "https://github.com/MacroPower/kat/"
+    description: "cat for Kubernetes manifests"
+    license: "Apache License"
+    skip_upload: false
