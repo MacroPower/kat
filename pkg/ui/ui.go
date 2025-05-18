@@ -152,19 +152,7 @@ func newModel(cfg Config, cmd Commander) tea.Model {
 func (m model) Init() tea.Cmd {
 	cmds := []tea.Cmd{m.stash.spinner.Tick}
 
-	switch m.state {
-	case stateShowStash:
-		cmds = append(cmds, runCommand(*m.common))
-		// case stateShowDocument:
-		// 	content, err := os.ReadFile(m.common.cfg.Path)
-		// 	if err != nil {
-		// 		log.Error("unable to read file", "file", m.common.cfg.Path, "error", err)
-
-		// 		return func() tea.Msg { return errMsg{err} }
-		// 	}
-		// 	body := string(content)
-		// 	cmds = append(cmds, renderWithGlamour(m.pager, body))
-	}
+	cmds = append(cmds, runCommand(*m.common))
 
 	return tea.Batch(cmds...)
 }
@@ -197,10 +185,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 					return m, cmd
 				}
-				m.stash.yamls = nil
-
-				return m, m.Init()
 			}
+			m.stash.yamls = nil
+
+			return m, m.Init()
 
 		case "q":
 			var cmd tea.Cmd
@@ -259,27 +247,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.stash.filterApplied() {
 				newYaml.buildFilterValue()
 			}
+			if m.state == stateShowDocument && kube.UnstructuredEqual(yml.Object, m.pager.currentDocument.object) {
+				cmds = append(cmds, loadLocalYAML(newYaml))
+			}
 		}
 		if m.stash.shouldUpdateFilter() {
 			cmds = append(cmds, filterYAMLs(m.stash))
 		}
-		// Always pass these messages to the stash so we can keep it updated
-		// about network activity, even if the user isn't currently viewing
-		// the stash.
+
+		// Always pass these messages to the other models so we can keep them
+		// updated, even if the user isn't currently viewing them.
 		stashModel, cmd := m.stash.update(msg)
 		m.stash = stashModel
 		cmds = append(cmds, cmd)
-
-	// case foundLocalFileMsg:
-	// 	newMd := localFileToYAML(m.common.cwd, gitcha.SearchResult(msg))
-	// 	m.stash.addYAMLs(newMd)
-	// 	if m.stash.filterApplied() {
-	// 		newMd.buildFilterValue()
-	// 	}
-	// 	if m.stash.shouldUpdateFilter() {
-	// 		cmds = append(cmds, filterYAMLs(m.stash))
-	// 	}
-	// 	cmds = append(cmds, findNextLocalFile(m))
 
 	case filteredYAMLMsg:
 		if m.state == stateShowDocument {
@@ -338,7 +318,7 @@ func errorView(err error, fatal bool) string {
 
 func runCommand(m commonModel) tea.Cmd {
 	return func() tea.Msg {
-		log.Info("runCommand")
+		log.Debug("runCommand")
 
 		ch := make(chan runOutput)
 		go func() {
@@ -352,14 +332,6 @@ func runCommand(m commonModel) tea.Cmd {
 	}
 }
 
-// func ignorePatterns(m commonModel) []string {
-// 	return []string{
-// 		m.cfg.Gopath,
-// 		"node_modules",
-// 		".*",
-// 	}
-// }
-
 func getKubeResources(m model) tea.Cmd {
 	return func() tea.Msg {
 		res := <-m.resources
@@ -370,21 +342,6 @@ func getKubeResources(m model) tea.Cmd {
 		return commandRunFinished(res)
 	}
 }
-
-// func findNextLocalFile(m model) tea.Cmd {
-// 	return func() tea.Msg {
-// 		res, ok := <-m.localFileFinder
-
-// 		if ok {
-// 			// Okay now find the next one.
-// 			return foundLocalFileMsg(res)
-// 		}
-// 		// We're done.
-// 		log.Debug("local file search finished")
-
-// 		return commandRunFinished{}
-// 	}
-// }
 
 func waitForStatusMessageTimeout(appCtx applicationContext, t *time.Timer) tea.Cmd {
 	return func() tea.Msg {

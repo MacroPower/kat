@@ -12,7 +12,6 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
-	"github.com/fsnotify/fsnotify"
 	"github.com/muesli/reflow/ansi"
 	"github.com/muesli/reflow/truncate"
 	"github.com/muesli/termenv"
@@ -97,7 +96,6 @@ type pagerModel struct {
 
 	common             *commonModel
 	statusMessageTimer *time.Timer
-	watcher            *fsnotify.Watcher
 	statusMessage      string
 	viewport           viewport.Model
 	state              pagerState
@@ -114,7 +112,6 @@ func newPagerModel(common *commonModel) pagerModel {
 		state:    pagerStateBrowse,
 		viewport: vp,
 	}
-	//m.initWatcher()
 
 	return m
 }
@@ -174,7 +171,6 @@ func (m *pagerModel) unload() {
 	m.state = pagerStateBrowse
 	m.viewport.SetContent("")
 	m.viewport.YOffset = 0
-	//m.unwatchFile()
 }
 
 func (m pagerModel) update(msg tea.Msg) (pagerModel, tea.Cmd) {
@@ -212,19 +208,15 @@ func (m pagerModel) update(msg tea.Msg) (pagerModel, tea.Cmd) {
 			_ = clipboard.WriteAll(m.currentDocument.Body) //nolint:errcheck // Can be ignored.
 			cmds = append(cmds, m.showStatusMessage(pagerStatusMessage{"Copied contents", false}))
 
-		case "r":
-			return m, loadLocalYAML(&m.currentDocument)
-
 		case "?":
 			m.toggleHelp()
 		}
 
 	// App has rendered the content.
 	case contentRenderedMsg:
-		log.Info("content rendered", "state", m.state)
+		log.Debug("content rendered", "state", m.state)
 
 		m.setContent(string(msg))
-		//cmds = append(cmds, m.watchFile)
 
 	// The file was changed on disk and we're reloading it.
 	case reloadMsg:
@@ -446,60 +438,3 @@ func glamourRender(m pagerModel, yaml string) (string, error) {
 
 	return content.String(), nil
 }
-
-// func (m *pagerModel) initWatcher() {
-// 	var err error
-// 	m.watcher, err = fsnotify.NewWatcher()
-// 	if err != nil {
-// 		log.Error("error creating fsnotify watcher", "error", err)
-// 	}
-// }
-
-// func (m *pagerModel) watchFile() tea.Msg {
-// 	dir := m.localDir()
-
-// 	if err := m.watcher.Add(dir); err != nil {
-// 		log.Error("error adding dir to fsnotify watcher", "error", err)
-
-// 		return nil
-// 	}
-
-// 	log.Info("fsnotify watching dir", "dir", dir)
-
-// 	for {
-// 		select {
-// 		case event, ok := <-m.watcher.Events:
-// 			if !ok || event.Name != m.currentDocument.localPath {
-// 				continue
-// 			}
-
-// 			if !event.Has(fsnotify.Write) && !event.Has(fsnotify.Create) {
-// 				continue
-// 			}
-
-// 			log.Debug("fsnotify event", "file", event.Name, "event", event.Op)
-
-// 			return reloadMsg{}
-// 		case err, ok := <-m.watcher.Errors:
-// 			if !ok {
-// 				continue
-// 			}
-// 			log.Debug("fsnotify error", "dir", dir, "error", err)
-// 		}
-// 	}
-// }
-
-// func (m *pagerModel) unwatchFile() {
-// 	dir := m.localDir()
-
-// 	err := m.watcher.Remove(dir)
-// 	if err == nil {
-// 		log.Debug("fsnotify dir unwatched", "dir", dir)
-// 	} else {
-// 		log.Error("fsnotify fail to unwatch dir", "dir", dir, "error", err)
-// 	}
-// }
-
-// func (m *pagerModel) localDir() string {
-// 	return filepath.Dir(m.currentDocument.localPath)
-// }

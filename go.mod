@@ -13,7 +13,6 @@ require (
 	github.com/charmbracelet/glamour v0.10.0
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
 	github.com/charmbracelet/log v0.4.2
-	github.com/fsnotify/fsnotify v1.9.0
 	github.com/mattn/go-runewidth v0.0.16
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.16.0

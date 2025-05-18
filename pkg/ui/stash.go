@@ -856,18 +856,6 @@ func (m stashModel) populatedView() string {
 
 func loadLocalYAML(md *yaml) tea.Cmd {
 	return func() tea.Msg {
-		// if md.localPath == "" {
-		// 	return errMsg{errors.New("could not load file: missing path")}
-		// }
-
-		// data, err := os.ReadFile(md.localPath)
-		// if err != nil {
-		// 	log.Debug("error reading local file", "error", err)
-
-		// 	return errMsg{err}
-		// }
-		// md.Body = string(data)
-
 		return fetchedYAMLMsg(md)
 	}
 }

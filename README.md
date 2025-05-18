@@ -8,6 +8,7 @@
 ## Overview
 
 - Easily filter and view hundreds of manifests in your shell
+- Quickly iterate over changes to a single manifest (press `r` to reload)
 - Automatically detect and render `helm` and `kustomize` projects
 - Can be extended via `$XDG_CONFIG_HOME/kat/config.yaml`
 
