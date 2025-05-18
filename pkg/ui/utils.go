@@ -10,7 +10,6 @@ import (
 	"github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/glamour/styles"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/mitchellh/go-homedir"
 	"github.com/muesli/termenv"
 	"golang.org/x/term"
 )
@@ -41,16 +40,6 @@ func IsYAMLFile(filename string) bool {
 	// Has an extension but not yaml
 	// so assume this is a code file.
 	return false
-}
-
-// ExpandPath expands tilde and all environment variables from the given path.
-func ExpandPath(path string) string {
-	s, err := homedir.Expand(path)
-	if err == nil {
-		return os.ExpandEnv(s)
-	}
-
-	return os.ExpandEnv(path)
 }
 
 // GlamourStyle returns ansi.StyleConfig based on the given style.

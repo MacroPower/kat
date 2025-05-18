@@ -7,6 +7,7 @@ import (
 
 	"github.com/alecthomas/kong"
 
+	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/log"
 	"github.com/MacroPower/kat/pkg/ui"
 	"github.com/MacroPower/kat/pkg/version"
@@ -30,26 +31,22 @@ func main() {
 	}
 	slog.SetDefault(slog.New(logHandler))
 
-	slog.Info("starting",
-		slog.String("app", appName),
-		slog.String("v", version.Version),
-		slog.String("revision", version.Revision),
-	)
-
-	path, err := filepath.Abs(".")
+	path, err := filepath.Abs("./example/kustomize")
 	if err != nil {
 		cliCtx.FatalIfErrorf(err)
 	}
 
-	p := ui.NewProgram(ui.Config{Path: path, ShowAllFiles: true, GlamourEnabled: true, GlamourStyle: "dark"}, "")
+	slog.Info("starting",
+		slog.String("app", appName),
+		slog.String("v", version.Version),
+		slog.String("revision", version.Revision),
+		slog.String("path", path),
+	)
+
+	cmd := kube.NewCommandRunner(path)
+
+	p := ui.NewProgram(ui.Config{GlamourEnabled: true, GlamourStyle: "dark"}, cmd)
 	if _, err := p.Run(); err != nil {
 		cliCtx.Fatalf("tea: %v", err)
-	}
-}
-
-func Hello(r io.Writer) {
-	_, err := r.Write([]byte("Hello World!"))
-	if err != nil {
-		panic(err)
 	}
 }

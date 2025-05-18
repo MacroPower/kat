@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/charmbracelet/glamour/styles"
 	"github.com/charmbracelet/log"
-	"github.com/muesli/gitcha"
 
 	tea "github.com/charmbracelet/bubbletea"
 	te "github.com/muesli/termenv"
@@ -23,12 +23,21 @@ const (
 
 var config Config
 
+type Commander interface {
+	Run() (kube.CommandOutput, error)
+}
+
+type runOutput struct {
+	out kube.CommandOutput
+	err error
+}
+
 // NewProgram returns a new Tea program.
-func NewProgram(cfg Config, content string) *tea.Program {
+func NewProgram(cfg Config, cmd Commander) *tea.Program {
 	log.Debug(
 		"Starting kat",
 		"glamour",
-		cfg.GlamourEnabled,
+		!cfg.GlamourDisabled,
 	)
 
 	config = cfg
@@ -36,7 +45,7 @@ func NewProgram(cfg Config, content string) *tea.Program {
 	if cfg.EnableMouse {
 		opts = append(opts, tea.WithMouseCellMotion())
 	}
-	m := newModel(cfg, content)
+	m := newModel(cfg, cmd)
 
 	return tea.NewProgram(m, opts...)
 }
@@ -46,15 +55,14 @@ type errMsg struct{ err error } //nolint:errname // Tea message.
 func (e errMsg) Error() string { return e.err.Error() }
 
 type (
-	initLocalFileSearchMsg struct {
-		ch  chan gitcha.SearchResult
+	initCommandRunMsg struct {
+		ch  chan runOutput
 		cwd string
 	}
 )
 
 type (
-	foundLocalFileMsg       gitcha.SearchResult
-	localFileSearchFinished struct{}
+	commandRunFinished      runOutput
 	statusMessageTimeoutMsg applicationContext
 )
 
@@ -84,6 +92,7 @@ func (s state) String() string {
 
 // Common stuff we'll need to access in all models.
 type commonModel struct {
+	cmd    Commander
 	cwd    string
 	cfg    Config
 	width  int
@@ -95,15 +104,13 @@ type model struct {
 	fatalErr error
 	common   *commonModel
 
-	// Channel that receives paths to local markdown files
-	// via the github.com/muesli/gitcha package.
-	localFileFinder chan gitcha.SearchResult
+	resources chan runOutput
 
 	stash stashModel
 	state state
 }
 
-// unloadDocument unloads a document from the pager. Note that while this
+// unloadDocument unloads a document from the pager. Title that while this
 // method alters the model we also need to send along any commands returned.
 func (m *model) unloadDocument() []tea.Cmd {
 	m.state = stateShowStash
@@ -119,7 +126,7 @@ func (m *model) unloadDocument() []tea.Cmd {
 	return batch
 }
 
-func newModel(cfg Config, content string) tea.Model {
+func newModel(cfg Config, cmd Commander) tea.Model {
 	initSections()
 
 	if cfg.GlamourStyle == styles.AutoStyle {
@@ -132,6 +139,7 @@ func newModel(cfg Config, content string) tea.Model {
 
 	common := commonModel{
 		cfg: cfg,
+		cmd: cmd,
 	}
 
 	m := model{
@@ -139,39 +147,6 @@ func newModel(cfg Config, content string) tea.Model {
 		state:  stateShowStash,
 		pager:  newPagerModel(&common),
 		stash:  newStashModel(&common),
-	}
-
-	path := cfg.Path
-	if path == "" && content != "" {
-		m.state = stateShowDocument
-		m.pager.currentDocument = yaml{Body: content}
-
-		return m
-	}
-
-	if path == "" {
-		path = "."
-	}
-	info, err := os.Stat(path)
-	if err != nil {
-		log.Error("unable to stat file", "file", path, "error", err)
-		m.fatalErr = err
-
-		return m
-	}
-	if info.IsDir() {
-		m.state = stateShowStash
-	} else {
-		cwd, err := os.Getwd()
-		if err != nil {
-			panic(err)
-		}
-		m.state = stateShowDocument
-		m.pager.currentDocument = yaml{
-			localPath: path,
-			Note:      stripAbsolutePath(path, cwd),
-			Modtime:   info.ModTime(),
-		}
 	}
 
 	return m
@@ -182,16 +157,16 @@ func (m model) Init() tea.Cmd {
 
 	switch m.state {
 	case stateShowStash:
-		cmds = append(cmds, findLocalFiles(*m.common))
-	case stateShowDocument:
-		content, err := os.ReadFile(m.common.cfg.Path)
-		if err != nil {
-			log.Error("unable to read file", "file", m.common.cfg.Path, "error", err)
+		cmds = append(cmds, runCommand(*m.common))
+		// case stateShowDocument:
+		// 	content, err := os.ReadFile(m.common.cfg.Path)
+		// 	if err != nil {
+		// 		log.Error("unable to read file", "file", m.common.cfg.Path, "error", err)
 
-			return func() tea.Msg { return errMsg{err} }
-		}
-		body := string(content)
-		cmds = append(cmds, renderWithGlamour(m.pager, body))
+		// 		return func() tea.Msg { return errMsg{err} }
+		// 	}
+		// 	body := string(content)
+		// 	cmds = append(cmds, renderWithGlamour(m.pager, body))
 	}
 
 	return tea.Batch(cmds...)
@@ -267,10 +242,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.stash.setSize(msg.Width, msg.Height)
 		m.pager.setSize(msg.Width, msg.Height)
 
-	case initLocalFileSearchMsg:
-		m.localFileFinder = msg.ch
-		m.common.cwd = msg.cwd
-		cmds = append(cmds, findNextLocalFile(m))
+	case initCommandRunMsg:
+		m.resources = msg.ch
+		cmds = append(cmds, getKubeResources(m))
 
 	case fetchedYAMLMsg:
 		// We've loaded a YAML file's contents for rendering.
@@ -281,7 +255,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case contentRenderedMsg:
 		m.state = stateShowDocument
 
-	case localFileSearchFinished:
+	case commandRunFinished:
+		for _, yml := range msg.out.Resources {
+			newYaml := localFileToYAML(m.common.cwd, yml)
+			m.stash.addYAMLs(newYaml)
+			if m.stash.filterApplied() {
+				newYaml.buildFilterValue()
+			}
+		}
+		if m.stash.shouldUpdateFilter() {
+			cmds = append(cmds, filterYAMLs(m.stash))
+		}
 		// Always pass these messages to the stash so we can keep it updated
 		// about network activity, even if the user isn't currently viewing
 		// the stash.
@@ -290,16 +274,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, cmd
 
-	case foundLocalFileMsg:
-		newMd := localFileToYAML(m.common.cwd, gitcha.SearchResult(msg))
-		m.stash.addYAMLs(newMd)
-		if m.stash.filterApplied() {
-			newMd.buildFilterValue()
-		}
-		if m.stash.shouldUpdateFilter() {
-			cmds = append(cmds, filterYAMLs(m.stash))
-		}
-		cmds = append(cmds, findNextLocalFile(m))
+	// case foundLocalFileMsg:
+	// 	newMd := localFileToYAML(m.common.cwd, gitcha.SearchResult(msg))
+	// 	m.stash.addYAMLs(newMd)
+	// 	if m.stash.filterApplied() {
+	// 		newMd.buildFilterValue()
+	// 	}
+	// 	if m.stash.shouldUpdateFilter() {
+	// 		cmds = append(cmds, filterYAMLs(m.stash))
+	// 	}
+	// 	cmds = append(cmds, findNextLocalFile(m))
 
 	case filteredYAMLMsg:
 		if m.state == stateShowDocument {
@@ -356,73 +340,55 @@ func errorView(err error, fatal bool) string {
 
 // COMMANDS.
 
-func findLocalFiles(m commonModel) tea.Cmd {
+func runCommand(m commonModel) tea.Cmd {
 	return func() tea.Msg {
-		log.Info("findLocalFiles")
-		var (
-			cwd = m.cfg.Path
-			err error
-		)
+		log.Info("runCommand")
 
-		if cwd == "" {
-			cwd, err = os.Getwd()
-		} else {
-			var info os.FileInfo
-			info, err = os.Stat(cwd)
-			if err == nil && info.IsDir() {
-				cwd, err = filepath.Abs(cwd)
-			}
-		}
+		ch := make(chan runOutput)
+		go func() {
+			defer close(ch)
 
-		// Note that this is one error check for both cases above.
-		if err != nil {
-			log.Error("error finding local files", "error", err)
+			out, err := m.cmd.Run()
+			ch <- runOutput{out, err}
+		}()
 
-			return errMsg{err}
-		}
-
-		log.Debug("local directory is", "cwd", cwd)
-
-		// Switch between FindFiles and FindAllFiles to bypass .gitignore rules.
-		var ch chan gitcha.SearchResult
-		if m.cfg.ShowAllFiles {
-			ch, err = gitcha.FindAllFilesExcept(cwd, yamlGlobs, nil)
-		} else {
-			ch, err = gitcha.FindFilesExcept(cwd, yamlGlobs, ignorePatterns(m))
-		}
-
-		if err != nil {
-			log.Error("error finding local files", "error", err)
-
-			return errMsg{err}
-		}
-
-		return initLocalFileSearchMsg{ch: ch, cwd: cwd}
+		return initCommandRunMsg{ch: ch}
 	}
 }
 
-func ignorePatterns(m commonModel) []string {
-	return []string{
-		m.cfg.Gopath,
-		"node_modules",
-		".*",
-	}
-}
+// func ignorePatterns(m commonModel) []string {
+// 	return []string{
+// 		m.cfg.Gopath,
+// 		"node_modules",
+// 		".*",
+// 	}
+// }
 
-func findNextLocalFile(m model) tea.Cmd {
+func getKubeResources(m model) tea.Cmd {
 	return func() tea.Msg {
-		res, ok := <-m.localFileFinder
+		res := <-m.resources
 
-		if ok {
-			// Okay now find the next one.
-			return foundLocalFileMsg(res)
-		}
 		// We're done.
-		log.Debug("local file search finished")
+		log.Debug("command run finished")
 
-		return localFileSearchFinished{}
+		return commandRunFinished(res)
 	}
 }
+
+// func findNextLocalFile(m model) tea.Cmd {
+// 	return func() tea.Msg {
+// 		res, ok := <-m.localFileFinder
+
+// 		if ok {
+// 			// Okay now find the next one.
+// 			return foundLocalFileMsg(res)
+// 		}
+// 		// We're done.
+// 		log.Debug("local file search finished")
+
+// 		return commandRunFinished{}
+// 	}
+// }
 
 func waitForStatusMessageTimeout(appCtx applicationContext, t *time.Timer) tea.Cmd {
 	return func() tea.Msg {
@@ -435,13 +401,18 @@ func waitForStatusMessageTimeout(appCtx applicationContext, t *time.Timer) tea.C
 // ETC.
 
 // Convert a Gitcha result to an internal representation of a YAML
-// document. Note that we could be doing things like checking if the file is
+// document. Title that we could be doing things like checking if the file is
 // a directory, but we trust that gitcha has already done that.
-func localFileToYAML(cwd string, res gitcha.SearchResult) *yaml {
+func localFileToYAML(cwd string, res *kube.Resource) *yaml {
+	title := res.Object.GetName()
+	if res.Object.GetNamespace() != "" {
+		title = fmt.Sprintf("%s/%s", res.Object.GetNamespace(), res.Object.GetName())
+	}
 	return &yaml{
-		localPath: res.Path,
-		Note:      stripAbsolutePath(res.Path, cwd),
-		Modtime:   res.Info.ModTime(),
+		object: res.Object,
+		Body:   res.YAML,
+		Title:  title,
+		Desc:   fmt.Sprintf("%s/%s", res.Object.GetAPIVersion(), res.Object.GetKind()),
 	}
 }
 

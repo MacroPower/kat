@@ -1,9 +1,7 @@
 package ui
 
 import (
-	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -12,7 +10,6 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 	"github.com/muesli/reflow/ansi"
 	"github.com/muesli/reflow/truncate"
 	"github.com/sahilm/fuzzy"
@@ -427,7 +424,7 @@ func (m stashModel) update(msg tea.Msg) (stashModel, tea.Cmd) {
 	case errMsg:
 		m.err = msg
 
-	case localFileSearchFinished:
+	case commandRunFinished:
 		// We're finished searching for local files.
 		m.loaded = true
 
@@ -527,7 +524,7 @@ func (m *stashModel) handleDocumentBrowsing(msg tea.Msg) tea.Cmd {
 		case "F":
 			m.loaded = false
 
-			return findLocalFiles(*m.common)
+			return runCommand(*m.common)
 
 		// Open document.
 		case keyEnter:
@@ -859,17 +856,17 @@ func (m stashModel) populatedView() string {
 
 func loadLocalYAML(md *yaml) tea.Cmd {
 	return func() tea.Msg {
-		if md.localPath == "" {
-			return errMsg{errors.New("could not load file: missing path")}
-		}
+		// if md.localPath == "" {
+		// 	return errMsg{errors.New("could not load file: missing path")}
+		// }
 
-		data, err := os.ReadFile(md.localPath)
-		if err != nil {
-			log.Debug("error reading local file", "error", err)
+		// data, err := os.ReadFile(md.localPath)
+		// if err != nil {
+		// 	log.Debug("error reading local file", "error", err)
 
-			return errMsg{err}
-		}
-		md.Body = string(data)
+		// 	return errMsg{err}
+		// }
+		// md.Body = string(data)
 
 		return fetchedYAMLMsg(md)
 	}

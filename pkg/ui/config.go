@@ -2,13 +2,15 @@ package ui
 
 // Config contains TUI-specific configuration.
 type Config struct {
-	Gopath          string `env:"GOPATH"`
-	HomeDir         string `env:"HOME"`
-	GlamourStyle    string `env:"GLAMOUR_STYLE"`
-	Path            string // Working directory or file path.
-	GlamourMaxWidth uint
-	ShowAllFiles    bool
-	ShowLineNumbers bool
-	EnableMouse     bool
-	GlamourEnabled  bool `env:"GLAMOUR_ENABLED" envDefault:"true"` // For debugging the UI.
+	GlamourStyle    string `yaml:"glamour-style"`
+	GlamourMaxWidth uint   `yaml:"glamour-max-width"`
+	GlamourDisabled bool   `yaml:"glamour-disabled"` // For debugging the UI.
+	ShowLineNumbers bool   `yaml:"show-line-numbers"`
+	EnableMouse     bool   `yaml:"enable-mouse"`
+}
+
+var DefaultConfig = Config{
+	GlamourStyle:    "auto",
+	ShowLineNumbers: true,
+	EnableMouse:     true,
 }

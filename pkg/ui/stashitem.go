@@ -19,8 +19,8 @@ func stashItemView(b *strings.Builder, m stashModel, index int, y *yaml) {
 	var (
 		truncateTo  = uint(max(0, m.common.width-stashViewHorizontalPadding*2)) //nolint:gosec // Uses max.
 		gutter      string
-		title       = truncate.StringWithTail(y.Note, truncateTo, ellipsis)
-		date        = y.relativeTime()
+		title       = truncate.StringWithTail(y.Title, truncateTo, ellipsis)
+		desc        = truncate.StringWithTail(y.Desc, truncateTo, ellipsis)
 		editedBy    = ""
 		hasEditedBy = false
 		icon        = ""
@@ -40,7 +40,7 @@ func stashItemView(b *strings.Builder, m stashModel, index int, y *yaml) {
 			gutter = greenFg(verticalLine)
 			icon = dimGreenFg(icon)
 			title = greenFg(title)
-			date = semiDimGreenFg(date)
+			desc = semiDimGreenFg(desc)
 			editedBy = semiDimGreenFg(editedBy)
 			separator = semiDimGreenFg(separator)
 		} else {
@@ -52,7 +52,7 @@ func stashItemView(b *strings.Builder, m stashModel, index int, y *yaml) {
 				title = fuchsiaFg(title)
 				icon = fuchsiaFg(icon)
 			}
-			date = dimFuchsiaFg(date)
+			desc = dimFuchsiaFg(desc)
 			editedBy = dimDullFuchsiaFg(editedBy)
 			separator = dullFuchsiaFg(separator)
 		}
@@ -61,13 +61,13 @@ func stashItemView(b *strings.Builder, m stashModel, index int, y *yaml) {
 		if m.statusMessage == stashingStatusMessage { //nolint:gocritic // TODO: Refactor.
 			icon = dimGreenFg(icon)
 			title = greenFg(title)
-			date = semiDimGreenFg(date)
+			desc = semiDimGreenFg(desc)
 			editedBy = semiDimGreenFg(editedBy)
 			separator = semiDimGreenFg(separator)
 		} else if isFiltering && m.filterInput.Value() == "" {
 			icon = dimGreenFg(icon)
 			title = dimNormalFg(title)
-			date = dimBrightGrayFg(date)
+			desc = dimBrightGrayFg(desc)
 			editedBy = dimBrightGrayFg(editedBy)
 			separator = dimBrightGrayFg(separator)
 		} else {
@@ -75,14 +75,14 @@ func stashItemView(b *strings.Builder, m stashModel, index int, y *yaml) {
 
 			s := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#dddddd"})
 			title = styleFilteredText(title, m.filterInput.Value(), s, s.Underline(true))
-			date = grayFg(date)
+			desc = grayFg(desc)
 			editedBy = midGrayFg(editedBy)
 			separator = brightGrayFg(separator)
 		}
 	}
 
 	fmt.Fprintf(b, "%s %s%s%s%s\n", gutter, icon, separator, separator, title)
-	fmt.Fprintf(b, "%s %s", gutter, date)
+	fmt.Fprintf(b, "%s %s", gutter, desc)
 	if hasEditedBy {
 		fmt.Fprintf(b, " %s", editedBy)
 	}

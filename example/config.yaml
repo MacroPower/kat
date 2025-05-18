@@ -1,0 +1,12 @@
+ui:
+  showLineNumbers: true
+  style: dark
+
+commands:
+  - match: ^.*/kustomization\\.ya?ml$
+    command: kustomize
+    args: [build, "."]
+    watch: 5s
+  - match: ^.*/Chart\\.ya?ml$
+    command: helm
+    args: [template, ".", "--generate-name", "--debug"]
