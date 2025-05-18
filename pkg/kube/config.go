@@ -1,7 +1,7 @@
 package kube
 
 type Config struct {
-	Commands []*Command
+	Commands []*Command `hidden:""`
 }
 
 var DefaultConfig = Config{
