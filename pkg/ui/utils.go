@@ -18,10 +18,6 @@ var yamlExtensions = []string{
 	".yaml", ".yml",
 }
 
-var yamlGlobs = []string{
-	"*.yaml", "*.yml",
-}
-
 // IsYAMLFile returns whether the filename has a YAML extension.
 func IsYAMLFile(filename string) bool {
 	ext := filepath.Ext(filename)

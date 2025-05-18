@@ -33,8 +33,8 @@ var (
 )
 
 type Resource struct {
-	YAML   string
 	Object *unstructured.Unstructured
+	YAML   string
 }
 
 // SplitYAML splits a YAML file into unstructured objects. Returns list of all unstructured objects

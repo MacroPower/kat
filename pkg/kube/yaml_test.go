@@ -68,7 +68,7 @@ func TestSplitYAML_InvalidYAML(t *testing.T) {
 
 	objs, err := kube.SplitYAML([]byte(invalidYAML))
 	require.Error(t, err)
-	assert.ErrorIs(t, err, kube.ErrInvalidKubeResource)
+	require.ErrorIs(t, err, kube.ErrInvalidKubeResource)
 	assert.Empty(t, objs)
 }
 

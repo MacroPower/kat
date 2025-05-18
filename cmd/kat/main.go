@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/alecthomas/kong"
+
 	kongyaml "github.com/alecthomas/kong-yaml"
 
 	"github.com/MacroPower/kat/pkg/config"

@@ -3,17 +3,16 @@ package ui
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/charmbracelet/glamour/styles"
 	"github.com/charmbracelet/log"
 
 	tea "github.com/charmbracelet/bubbletea"
 	te "github.com/muesli/termenv"
+
+	"github.com/MacroPower/kat/pkg/kube"
 )
 
 const (
@@ -28,8 +27,8 @@ type Commander interface {
 }
 
 type runOutput struct {
-	out kube.CommandOutput
 	err error
+	out kube.CommandOutput
 }
 
 // NewProgram returns a new Tea program.
@@ -56,8 +55,7 @@ func (e errMsg) Error() string { return e.err.Error() }
 
 type (
 	initCommandRunMsg struct {
-		ch  chan runOutput
-		cwd string
+		ch chan runOutput
 	}
 )
 
@@ -93,7 +91,6 @@ func (s state) String() string {
 // Common stuff we'll need to access in all models.
 type commonModel struct {
 	cmd    Commander
-	cwd    string
 	cfg    Config
 	width  int
 	height int
@@ -257,7 +254,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case commandRunFinished:
 		for _, yml := range msg.out.Resources {
-			newYaml := localFileToYAML(m.common.cwd, yml)
+			newYaml := kubeResourceToYAML(yml)
 			m.stash.addYAMLs(newYaml)
 			if m.stash.filterApplied() {
 				newYaml.buildFilterValue()
@@ -271,8 +268,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// the stash.
 		stashModel, cmd := m.stash.update(msg)
 		m.stash = stashModel
-
-		return m, cmd
+		cmds = append(cmds, cmd)
 
 	// case foundLocalFileMsg:
 	// 	newMd := localFileToYAML(m.common.cwd, gitcha.SearchResult(msg))
@@ -349,7 +345,7 @@ func runCommand(m commonModel) tea.Cmd {
 			defer close(ch)
 
 			out, err := m.cmd.Run()
-			ch <- runOutput{out, err}
+			ch <- runOutput{out: out, err: err}
 		}()
 
 		return initCommandRunMsg{ch: ch}
@@ -400,27 +396,19 @@ func waitForStatusMessageTimeout(appCtx applicationContext, t *time.Timer) tea.C
 
 // ETC.
 
-// Convert a Gitcha result to an internal representation of a YAML
-// document. Title that we could be doing things like checking if the file is
-// a directory, but we trust that gitcha has already done that.
-func localFileToYAML(cwd string, res *kube.Resource) *yaml {
+// Convert a [kube.Resource] to an internal representation of a YAML document.
+func kubeResourceToYAML(res *kube.Resource) *yaml {
 	title := res.Object.GetName()
 	if res.Object.GetNamespace() != "" {
 		title = fmt.Sprintf("%s/%s", res.Object.GetNamespace(), res.Object.GetName())
 	}
+
 	return &yaml{
 		object: res.Object,
 		Body:   res.YAML,
 		Title:  title,
 		Desc:   fmt.Sprintf("%s/%s", res.Object.GetAPIVersion(), res.Object.GetKind()),
 	}
-}
-
-func stripAbsolutePath(fullPath, cwd string) string {
-	fp, _ := filepath.EvalSymlinks(fullPath) //nolint:errcheck // Can be ignored.
-	cp, _ := filepath.EvalSymlinks(cwd)      //nolint:errcheck // Can be ignored.
-
-	return strings.ReplaceAll(fp, cp+string(os.PathSeparator), "")
 }
 
 // Lightweight version of reflow's indent function.

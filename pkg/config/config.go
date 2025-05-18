@@ -5,14 +5,15 @@ import (
 	"os"
 	"path/filepath"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/ui"
-	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	UI   ui.Config   `embed:"" prefix:"ui-"`
-	Kube kube.Config `embed:"" prefix:"kube-"`
+	Kube kube.Config `embed:"" prefix:"kube-" yaml:"kube"`
+	UI   ui.Config   `embed:"" prefix:"ui-"   yaml:"ui"`
 }
 
 func NewConfig() *Config {
@@ -31,6 +32,7 @@ func (c *Config) Write(path string) error {
 		if pathInfo.IsDir() {
 			return fmt.Errorf("%s: path is a directory", path)
 		}
+
 		return fmt.Errorf("%s: unknown file state", path)
 	}
 
@@ -38,7 +40,7 @@ func (c *Config) Write(path string) error {
 		return fmt.Errorf("create directories: %w", err)
 	}
 
-	data, err := yaml.Marshal(c)
+	data, err := yaml.Marshal(c) //nolint:musttag // Tagged.
 	if err != nil {
 		return fmt.Errorf("marshal yaml: %w", err)
 	}

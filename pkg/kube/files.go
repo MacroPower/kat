@@ -29,8 +29,9 @@ type Command struct {
 func NewCommand(match, cmd string, args ...string) (*Command, error) {
 	re, err := regexp.Compile(match)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("compile regex: %w", err)
 	}
+
 	return &Command{
 		Match:   re,
 		Command: cmd,
@@ -43,6 +44,7 @@ func MustNewCommand(match, cmd string, args ...string) *Command {
 	if err != nil {
 		panic(err)
 	}
+
 	return c
 }
 
@@ -148,6 +150,7 @@ func (c *CommandRunner) Run() (CommandOutput, error) {
 		if err != nil {
 			return CommandOutput{}, err
 		}
+
 		return cmd.Exec(c.path)
 	}
 
@@ -175,6 +178,7 @@ func (c *CommandRunner) findMatchInDirectory(dirPath string) (*Command, error) {
 			for _, cmd := range c.commands {
 				if cmd.Match.MatchString(path) {
 					matchedCommand = cmd
+
 					return nil
 				}
 			}
