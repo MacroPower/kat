@@ -98,27 +98,16 @@ type CommandRunner struct {
 }
 
 // NewCommandRunner creates a new CommandRunner with default command mappings.
-func NewCommandRunner(path string, opts ...CommandRunnerOpts) *CommandRunner {
-	cr := &CommandRunner{path, nil, DefaultConfig.Commands}
-	for _, opt := range opts {
-		opt(cr)
-	}
-
-	return cr
+func NewCommandRunner(path string) *CommandRunner {
+	return &CommandRunner{path, nil, DefaultConfig.Commands}
 }
 
-type CommandRunnerOpts func(*CommandRunner)
-
-func WithCommand(cmd *Command) CommandRunnerOpts {
-	return func(cr *CommandRunner) {
-		cr.command = cmd
-	}
+func (cr *CommandRunner) SetCommand(cmd *Command) {
+	cr.command = cmd
 }
 
-func WithCommands(cmds []*Command) CommandRunnerOpts {
-	return func(cr *CommandRunner) {
-		cr.commands = cmds
-	}
+func (cr *CommandRunner) SetCommands(cmds []*Command) {
+	cr.commands = cmds
 }
 
 // CommandOutput represents the output of a command execution.

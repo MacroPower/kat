@@ -105,9 +105,8 @@ func TestCommandRunner_RunForPath(t *testing.T) {
 func TestCommandRunner_WithCommand(t *testing.T) {
 	t.Parallel()
 
-	runner := kube.NewCommandRunner("", kube.WithCommand(
-		kube.MustNewCommand("", "echo", "{apiVersion: v1, kind: Resource}"),
-	))
+	runner := kube.NewCommandRunner("")
+	runner.SetCommand(kube.MustNewCommand("", "echo", "{apiVersion: v1, kind: Resource}"))
 	customRunner, err := runner.Run()
 	require.NoError(t, err)
 
