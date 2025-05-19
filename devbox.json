@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.13.7/.schema/devbox.schema.json",
   "packages": {
-    "go-task": "3.43.2",
+    "go-task": "3.43.3",
     "goreleaser": "2.9.0",
     "golangci-lint": "1.64.8",
     "go": "1.24.2",
