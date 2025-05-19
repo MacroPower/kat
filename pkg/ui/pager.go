@@ -10,7 +10,7 @@ import (
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/viewport"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/log"
 	"github.com/muesli/reflow/ansi"
 	"github.com/muesli/reflow/truncate"
