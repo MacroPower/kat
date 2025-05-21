@@ -6,6 +6,13 @@ metadata:
     {{- include "example.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": test
+    # This annotation uses `randAlphaNum`.
+    # The value will change on every re-render!
+    random-value: |
+      {{ randAlphaNum 40 }}
+      {{ randAlphaNum 40 }}
+      {{ randAlphaNum 40 }}
+      {{ randAlphaNum 40 }}
 spec:
   containers:
     - name: wget
