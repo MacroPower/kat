@@ -37,7 +37,7 @@ Examples:
 
 var cli struct {
 	Log struct {
-		Level  string `default:"info"   help:"Log level."`
+		Level  string `default:"info" help:"Log level."`
 		Format string `default:"text" help:"Log format. One of: [text, logfmt, json]"`
 	} `embed:"" prefix:"log-"`
 	Path    string        `arg:""   help:"File or directory path, default is $PWD."                          optional:"" type:"path"`
@@ -91,6 +91,7 @@ func initializeConfig() (string, error) {
 	if err := config.NewConfig().Write(configPathExp); err != nil {
 		return "", fmt.Errorf("failed to write config: %w", err)
 	}
+
 	return configPathExp, nil
 }
 
@@ -100,10 +101,11 @@ func resolvePath(path string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve absolute path: %w", err)
 	}
+
 	return absPath, nil
 }
 
-// setupCommandRunner creates and configures the command runner
+// setupCommandRunner creates and configures the command runner.
 func setupCommandRunner(path string) (*kube.CommandRunner, error) {
 	cr := kube.NewCommandRunner(path)
 
@@ -135,6 +137,7 @@ func parseCommand(cmdArgs []string) *kube.Command {
 	if len(cmdArgs) > cmdIdx {
 		cmd.Args = cmdArgs[cmdIdx+1:]
 	}
+
 	return cmd
 }
 
