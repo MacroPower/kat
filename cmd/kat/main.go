@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/alecthomas/kong"
 
@@ -36,50 +38,77 @@ Examples:
 var cli struct {
 	Log struct {
 		Level  string `default:"info"   help:"Log level."`
-		Format string `default:"logfmt" help:"Log format. One of: [logfmt, json]"`
+		Format string `default:"text" help:"Log format. One of: [text, logfmt, json]"`
 	} `embed:"" prefix:"log-"`
-	Path    string        `arg:""   help:"File or directory path, default is $PWD."                          required:"" type:"path"`
-	Command []string      `arg:""   help:"Command to run, defaults set in $XDG_CONFIG_HOME/kat/config.yaml." optional:"" passthrough:"all"`
+	Path    string        `arg:""   help:"File or directory path, default is $PWD."                          optional:"" type:"path"`
+	Command []string      `arg:""   help:"Command to run, defaults set in $XDG_CONFIG_HOME/kat/config.yaml." optional:""`
 	Config  config.Config `embed:""`
 }
 
 func main() {
-	configPathExp := os.ExpandEnv(configPath)
-	err := config.NewConfig().Write(configPathExp)
+	configPathExp, err := initializeConfig()
+	if err != nil {
+		panic(err)
+	}
 
 	cliCtx := kong.Parse(&cli,
 		kong.Name(cmdName),
 		kong.Description(cmdDesc+"\n"+cmdExamples),
-		kong.DefaultEnvars("KAT"),
+		kong.DefaultEnvars(strings.ToUpper(cmdName)),
 		kong.Configuration(kongyaml.Loader, configPathExp),
 	)
 
-	if err != nil {
-		cliCtx.Fatalf("failed to initialize config: %v", err)
-	}
-
 	logHandler, err := log.CreateHandlerWithStrings(cliCtx.Stderr, cli.Log.Level, cli.Log.Format)
 	if err != nil {
-		cliCtx.FatalIfErrorf(err)
+		cliCtx.Fatalf("failed to create log handler: %v", err)
 	}
 	slog.SetDefault(slog.New(logHandler))
 
-	path, err := filepath.Abs(cli.Path)
+	path, err := resolvePath(cli.Path)
 	if err != nil {
-		cliCtx.FatalIfErrorf(err)
+		slog.Error("resolve paths", slog.Any("err", err))
+		cliCtx.Fatalf("initialization failed")
+	}
+	slog.Debug("parsed args",
+		slog.String("path", path),
+		slog.Any("command", cli.Command),
+	)
+
+	cr, err := setupCommandRunner(path)
+	if err != nil {
+		slog.Error("setup command runner", slog.Any("err", err))
+		cliCtx.Fatalf("initialization failed")
 	}
 
+	if err := runUI(cli.Config.UI, cr); err != nil {
+		cliCtx.FatalIfErrorf(err)
+	}
+}
+
+// initializeConfig initializes the configuration file.
+func initializeConfig() (string, error) {
+	configPathExp := os.ExpandEnv(configPath)
+	if err := config.NewConfig().Write(configPathExp); err != nil {
+		return "", fmt.Errorf("failed to write config: %w", err)
+	}
+	return configPathExp, nil
+}
+
+// resolvePath resolves the input path.
+func resolvePath(path string) (string, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve absolute path: %w", err)
+	}
+	return absPath, nil
+}
+
+// setupCommandRunner creates and configures the command runner
+func setupCommandRunner(path string) (*kube.CommandRunner, error) {
 	cr := kube.NewCommandRunner(path)
+
 	if len(cli.Command) > 0 {
-		cmd := &kube.Command{}
-		cmdIdx := 0
-		if cli.Command[0] == "--" {
-			cmdIdx = 1
-		}
-		cmd.Command = cli.Command[cmdIdx]
-		if len(cli.Command) > cmdIdx {
-			cmd.Args = cli.Command[cmdIdx+1:]
-		}
+		cmd := parseCommand(cli.Command)
 		cr.SetCommand(cmd)
 	} else {
 		// No specific command, so use the config file.
@@ -88,12 +117,33 @@ func main() {
 
 	// Hack: make sure that we can run the command.
 	// TODO: implement proper error handling in the UI.
-	if _, err = cr.Run(); err != nil {
-		cliCtx.FatalIfErrorf(err)
+	if _, err := cr.Run(); err != nil {
+		return nil, fmt.Errorf("failed to run command: %w", err)
 	}
 
-	p := ui.NewProgram(cli.Config.UI, cr)
-	if _, err := p.Run(); err != nil {
-		cliCtx.Fatalf("tea: %v", err)
+	return cr, nil
+}
+
+// parseCommand parses the CLI command arguments into a [kube.Command].
+func parseCommand(cmdArgs []string) *kube.Command {
+	cmd := &kube.Command{}
+	cmdIdx := 0
+	if cmdArgs[0] == "--" {
+		cmdIdx = 1
 	}
+	cmd.Command = cmdArgs[cmdIdx]
+	if len(cmdArgs) > cmdIdx {
+		cmd.Args = cmdArgs[cmdIdx+1:]
+	}
+	return cmd
+}
+
+// runUI starts the UI program.
+func runUI(cfg ui.Config, cr *kube.CommandRunner) error {
+	p := ui.NewProgram(cfg, cr)
+	if _, err := p.Run(); err != nil {
+		return fmt.Errorf("tea: %w", err)
+	}
+
+	return nil
 }

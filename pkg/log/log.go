@@ -5,8 +5,15 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"slices"
 	"strings"
+	"time"
+
+	"github.com/mattn/go-isatty"
+	"github.com/muesli/termenv"
+
+	charmlog "github.com/charmbracelet/log"
 )
 
 type Format string
@@ -14,6 +21,7 @@ type Format string
 const (
 	FormatJSON   Format = "json"
 	FormatLogfmt Format = "logfmt"
+	FormatText   Format = "text"
 )
 
 var (
@@ -49,6 +57,8 @@ func CreateHandler(w io.Writer, logLvl slog.Level, logFmt Format) slog.Handler {
 			AddSource: true,
 			Level:     logLvl,
 		})
+	case FormatText:
+		return newCharmLogHandler(w, logLvl)
 	}
 
 	return nil
@@ -71,9 +81,27 @@ func GetLevel(level string) (slog.Level, error) {
 
 func GetFormat(format string) (Format, error) {
 	logFmt := Format(strings.ToLower(format))
-	if slices.Contains([]Format{FormatJSON, FormatLogfmt}, logFmt) {
+	if slices.Contains([]Format{FormatJSON, FormatLogfmt, FormatText}, logFmt) {
 		return logFmt, nil
 	}
 
 	return "", ErrUnknownLogFormat
+}
+
+func newCharmLogHandler(w io.Writer, level slog.Level) slog.Handler {
+	//nolint:gosec // G115: input from GetLevel.
+	lvl := int32(level)
+
+	logger := charmlog.NewWithOptions(w, charmlog.Options{
+		Level:           charmlog.Level(lvl),
+		Formatter:       charmlog.TextFormatter,
+		ReportTimestamp: true,
+		ReportCaller:    true,
+		TimeFormat:      time.StampMilli,
+	})
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		logger.SetColorProfile(termenv.ANSI256)
+	}
+
+	return logger
 }

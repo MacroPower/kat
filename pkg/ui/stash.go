@@ -754,7 +754,7 @@ func (m stashModel) view() string {
 }
 
 func katLogoView() string {
-	return logoStyle.Render(fmt.Sprintf(" kat %s ", version.Revision))
+	return logoStyle.Render(fmt.Sprintf(" kat %s ", version.GetVersion()))
 }
 
 func (m stashModel) headerView() string {

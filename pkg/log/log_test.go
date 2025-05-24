@@ -91,6 +91,11 @@ func TestGetFormat(t *testing.T) {
 			expected:    log.FormatLogfmt,
 			expectError: false,
 		},
+		"text format": {
+			input:       "text",
+			expected:    log.FormatText,
+			expectError: false,
+		},
 		"case insensitive": {
 			input:       "JSON",
 			expected:    log.FormatJSON,
@@ -145,6 +150,16 @@ func TestCreateHandler(t *testing.T) {
 				outputStr := string(output)
 				assert.Contains(t, outputStr, "level=INFO")
 				assert.Contains(t, outputStr, "msg=\"test message\"")
+				assert.Contains(t, outputStr, "key=value")
+			},
+		},
+		"text handler": {
+			format: log.FormatText,
+			checkFunc: func(t *testing.T, output []byte) {
+				t.Helper()
+				outputStr := string(output)
+				assert.Contains(t, outputStr, "INFO")
+				assert.Contains(t, outputStr, "test message")
 				assert.Contains(t, outputStr, "key=value")
 			},
 		},
