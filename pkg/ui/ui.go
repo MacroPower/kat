@@ -3,43 +3,30 @@ package ui
 
 import (
 	"fmt"
-	"strings"
-	"time"
 
-	"github.com/charmbracelet/glamour/styles"
 	"github.com/charmbracelet/log"
 
 	tea "github.com/charmbracelet/bubbletea"
+	glamourstyles "github.com/charmbracelet/glamour/styles"
 	te "github.com/muesli/termenv"
 
 	"github.com/MacroPower/kat/pkg/kube"
+	"github.com/MacroPower/kat/pkg/ui/common"
+	"github.com/MacroPower/kat/pkg/ui/config"
+	"github.com/MacroPower/kat/pkg/ui/keys"
+	"github.com/MacroPower/kat/pkg/ui/pager"
+	"github.com/MacroPower/kat/pkg/ui/stash"
+	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
-
-const (
-	statusMessageTimeout = time.Second * 3 // How long to show status messages.
-	ellipsis             = "…"
-)
-
-var config Config
-
-type Commander interface {
-	Run() (kube.CommandOutput, error)
-}
-
-type runOutput struct {
-	err error
-	out kube.CommandOutput
-}
 
 // NewProgram returns a new Tea program.
-func NewProgram(cfg Config, cmd Commander) *tea.Program {
+func NewProgram(cfg config.Config, cmd common.Commander) *tea.Program {
 	log.Debug(
 		"Starting kat",
 		"glamour",
 		!cfg.GlamourDisabled,
 	)
 
-	config = cfg
 	opts := []tea.ProgramOption{tea.WithAltScreen()}
 	if cfg.EnableMouse {
 		opts = append(opts, tea.WithMouseCellMotion())
@@ -49,108 +36,80 @@ func NewProgram(cfg Config, cmd Commander) *tea.Program {
 	return tea.NewProgram(m, opts...)
 }
 
-type errMsg struct{ err error } //nolint:errname // Tea message.
-
-func (e errMsg) Error() string { return e.err.Error() }
-
 type (
 	initCommandRunMsg struct {
-		ch chan runOutput
+		ch chan common.RunOutput
 	}
 )
 
-type (
-	commandRunFinished      runOutput
-	statusMessageTimeoutMsg applicationContext
-)
-
-// applicationContext indicates the area of the application something applies
-// to. Occasionally used as an argument to commands and messages.
-type applicationContext int
+// State is the top-level application State.
+type State int
 
 const (
-	stashContext applicationContext = iota
-	pagerContext
-)
-
-// state is the top-level application state.
-type state int
-
-const (
-	stateShowStash state = iota
+	stateShowStash State = iota
 	stateShowDocument
 )
 
-func (s state) String() string {
-	return map[state]string{
+func (s State) String() string {
+	return map[State]string{
 		stateShowStash:    "showing file listing",
 		stateShowDocument: "showing document",
 	}[s]
 }
 
-// Common stuff we'll need to access in all models.
-type commonModel struct {
-	cmd    Commander
-	cfg    Config
-	width  int
-	height int
-}
-
 type model struct {
-	pager    pagerModel
+	pager    pager.PagerModel
 	fatalErr error
-	common   *commonModel
+	common   *common.CommonModel
 
-	resources chan runOutput
+	resources chan common.RunOutput
 
-	stash stashModel
-	state state
+	stash stash.StashModel
+	state State
 }
 
 // unloadDocument unloads a document from the pager. Title that while this
 // method alters the model we also need to send along any commands returned.
 func (m *model) unloadDocument() []tea.Cmd {
 	m.state = stateShowStash
-	m.stash.viewState = stashStateReady
-	m.pager.unload()
-	m.pager.showHelp = false
+	m.stash.ViewState = stash.StashStateReady
+	m.pager.Unload()
+	m.pager.ShowHelp = false
 
 	var batch []tea.Cmd
-	if !m.stash.shouldSpin() {
-		batch = append(batch, m.stash.spinner.Tick)
+	if !m.stash.ShouldSpin() {
+		batch = append(batch, m.stash.Spinner.Tick)
 	}
 
 	return batch
 }
 
-func newModel(cfg Config, cmd Commander) tea.Model {
-	initSections()
-
-	if cfg.GlamourStyle == styles.AutoStyle {
+func newModel(cfg config.Config, cmd common.Commander) tea.Model {
+	if cfg.GlamourStyle == glamourstyles.AutoStyle {
 		if te.HasDarkBackground() {
-			cfg.GlamourStyle = styles.DarkStyle
+			cfg.GlamourStyle = glamourstyles.DarkStyle
 		} else {
-			cfg.GlamourStyle = styles.LightStyle
+			cfg.GlamourStyle = glamourstyles.LightStyle
 		}
 	}
 
-	common := commonModel{
-		cfg: cfg,
-		cmd: cmd,
+	cm := common.CommonModel{
+		Config: cfg,
+		Cmd:    cmd,
 	}
 
 	m := model{
-		common: &common,
+		common: &cm,
 		state:  stateShowStash,
-		pager:  newPagerModel(&common),
-		stash:  newStashModel(&common),
+		pager:  pager.NewPagerModel(&cm),
+		stash:  stash.NewStashModel(&cm),
 	}
 
 	return m
 }
 
 func (m model) Init() tea.Cmd {
-	cmds := []tea.Cmd{m.stash.spinner.Tick}
+	cmds := []tea.Cmd{m.stash.Spinner.Tick}
 
 	cmds = append(cmds, runCommand(*m.common))
 
@@ -169,163 +128,187 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "esc":
-			if m.state == stateShowDocument || m.stash.viewState == stashStateLoadingDocument {
-				batch := m.unloadDocument()
+		// Handle global key events that should work anywhere in the app.
+		if newModel, cmd, handled := m.handleGlobalKeys(msg); handled {
+			return newModel, cmd
+		}
 
-				return m, tea.Batch(batch...)
-			}
-		case "r":
-			var cmd tea.Cmd
-			if m.state == stateShowStash {
-				// Pass through all keys if we're editing the filter.
-				if m.stash.filterState == filtering {
-					m.stash, cmd = m.stash.update(msg)
-
-					return m, cmd
-				}
-			}
-			m.stash.yamls = nil
-
-			return m, m.Init()
-
-		case "q":
-			var cmd tea.Cmd
-
-			switch m.state {
-			case stateShowStash:
-				// Pass through all keys if we're editing the filter.
-				if m.stash.filterState == filtering {
-					m.stash, cmd = m.stash.update(msg)
-
-					return m, cmd
-				}
-			}
-
-			return m, tea.Quit
-
-		case "left", "h", "delete":
+		if keys.KeyMatches(msg.String(), keys.DefaultKeyBindings.Navigate.Left) {
 			if m.state == stateShowDocument {
-				cmds = append(cmds, m.unloadDocument()...)
+				cmds := m.unloadDocument()
 
 				return m, tea.Batch(cmds...)
 			}
-
-		case "ctrl+z":
-			return m, tea.Suspend
-
-		// Ctrl+C always quits no matter where in the application you are.
-		case "ctrl+c":
-			return m, tea.Quit
 		}
 
 	// Window size is received when starting up and on every resize.
 	case tea.WindowSizeMsg:
-		m.common.width = msg.Width
-		m.common.height = msg.Height
-		m.stash.setSize(msg.Width, msg.Height)
-		m.pager.setSize(msg.Width, msg.Height)
+		m.handleWindowResize(msg)
 
 	case initCommandRunMsg:
 		m.resources = msg.ch
 		cmds = append(cmds, getKubeResources(m))
 
-	case fetchedYAMLMsg:
+	case stash.FetchedYAMLMsg:
 		// We've loaded a YAML file's contents for rendering.
-		m.pager.currentDocument = *msg
+		m.pager.CurrentDocument = *msg
 		body := msg.Body
-		cmds = append(cmds, renderWithGlamour(m.pager, body))
+		cmds = append(cmds, m.pager.RenderWithGlamour(body))
 
-	case contentRenderedMsg:
+	case pager.ContentRenderedMsg:
 		m.state = stateShowDocument
 
-	case commandRunFinished:
-		for _, yml := range msg.out.Resources {
-			newYaml := kubeResourceToYAML(yml)
-			m.stash.addYAMLs(newYaml)
-			if m.stash.filterApplied() {
-				newYaml.buildFilterValue()
-			}
-			if m.state == stateShowDocument && kube.UnstructuredEqual(yml.Object, m.pager.currentDocument.object) {
-				cmds = append(cmds, loadLocalYAML(newYaml))
-			}
-		}
-		if m.stash.shouldUpdateFilter() {
-			cmds = append(cmds, filterYAMLs(m.stash))
-		}
+	case common.CommandRunFinished:
+		// Use the new handler utility for resource updates.
+		cmds = append(cmds, m.handleResourceUpdate(msg)...)
 
 		// Always pass these messages to the other models so we can keep them
 		// updated, even if the user isn't currently viewing them.
-		stashModel, cmd := m.stash.update(msg)
+		stashModel, cmd := m.stash.Update(msg)
 		m.stash = stashModel
 		cmds = append(cmds, cmd)
 
-	case filteredYAMLMsg:
+	case stash.FilteredYAMLMsg:
 		if m.state == stateShowDocument {
-			newStashModel, cmd := m.stash.update(msg)
+			newStashModel, cmd := m.stash.Update(msg)
 			m.stash = newStashModel
 			cmds = append(cmds, cmd)
 		}
 	}
 
-	// Process children.
-	switch m.state {
-	case stateShowStash:
-		newStashModel, cmd := m.stash.update(msg)
-		m.stash = newStashModel
-		cmds = append(cmds, cmd)
-
-	case stateShowDocument:
-		newPagerModel, cmd := m.pager.update(msg)
-		m.pager = newPagerModel
-		cmds = append(cmds, cmd)
-	}
+	// Process child models using the new utility.
+	cmds = append(cmds, m.updateChildModels(msg)...)
 
 	return m, tea.Batch(cmds...)
 }
 
 func (m model) View() string {
 	if m.fatalErr != nil {
-		return errorView(m.fatalErr, true)
+		return common.ErrorView(m.fatalErr, true)
 	}
 
 	switch m.state {
 	case stateShowDocument:
 		return m.pager.View()
 	default:
-		return m.stash.view()
+		return m.stash.View()
 	}
 }
 
-func errorView(err error, fatal bool) string {
-	exitMsg := "press any key to "
-	if fatal {
-		exitMsg += "exit"
-	} else {
-		exitMsg += "return"
-	}
-	s := fmt.Sprintf("%s\n\n%v\n\n%s",
-		errorTitleStyle.Render("ERROR"),
-		err,
-		subtleStyle.Render(exitMsg),
-	)
+// handleGlobalKeys handles keys that work across all contexts.
+func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	key := msg.String()
 
-	return "\n" + indent(s, 3)
+	switch {
+	case keys.KeyMatches(key, keys.DefaultKeyBindings.Quit):
+		if m.state == stateShowStash && m.stash.FilterState == stash.Filtering {
+			// Pass through to filter handler.
+			return m, nil, false
+		}
+
+		return m, tea.Quit, true
+
+	case keys.KeyMatches(key, keys.DefaultKeyBindings.Suspend):
+		return m, tea.Suspend, true
+
+	case keys.KeyMatches(key, keys.DefaultKeyBindings.Escape):
+		model, cmd := m.handleEscapeKey()
+
+		return model, cmd, true
+
+	case keys.KeyMatches(key, keys.DefaultKeyBindings.Refresh):
+		return m.handleRefreshKey(msg)
+	}
+
+	return m, nil, false
+}
+
+// handleEscapeKey handles the escape key based on current state.
+func (m *model) handleEscapeKey() (tea.Model, tea.Cmd) {
+	if m.state == stateShowDocument || m.stash.ViewState == stash.StashStateLoadingDocument {
+		batch := m.unloadDocument()
+
+		return m, tea.Batch(batch...)
+	}
+
+	return m, nil
+}
+
+// handleRefreshKey handles the refresh key based on current state.
+func (m *model) handleRefreshKey(_ tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	if m.state == stateShowStash && m.stash.FilterState == stash.Filtering {
+		// Pass through to stash handler.
+		return m, nil, false
+	}
+
+	m.stash.YAMLs = nil
+
+	return m, m.Init(), true
+}
+
+// handleResourceUpdate processes kubernetes resource updates.
+func (m *model) handleResourceUpdate(msg common.CommandRunFinished) []tea.Cmd {
+	var cmds []tea.Cmd
+
+	for _, yml := range msg.Out.Resources {
+		newYaml := kubeResourceToYAML(yml)
+		m.stash.AddYAMLs(newYaml)
+
+		if m.stash.FilterApplied() {
+			newYaml.BuildFilterValue()
+		}
+
+		if m.state == stateShowDocument && kube.UnstructuredEqual(yml.Object, m.pager.CurrentDocument.Object) {
+			cmds = append(cmds, stash.LoadYAML(newYaml))
+		}
+	}
+
+	if m.stash.ShouldUpdateFilter() {
+		cmds = append(cmds, stash.FilterYAMLs(m.stash))
+	}
+
+	return cmds
+}
+
+// updateChildModels updates child models based on current state.
+func (m *model) updateChildModels(msg tea.Msg) []tea.Cmd {
+	var cmds []tea.Cmd
+
+	switch m.state {
+	case stateShowStash:
+		newStashModel, cmd := m.stash.Update(msg)
+		m.stash = newStashModel
+		cmds = append(cmds, cmd)
+
+	case stateShowDocument:
+		newPagerModel, cmd := m.pager.Update(msg)
+		m.pager = newPagerModel
+		cmds = append(cmds, cmd)
+	}
+
+	return cmds
+}
+
+// handleWindowResize handles terminal window resize events.
+func (m *model) handleWindowResize(msg tea.WindowSizeMsg) {
+	m.common.Width = msg.Width
+	m.common.Height = msg.Height
+	m.stash.SetSize(msg.Width, msg.Height)
+	m.pager.SetSize(msg.Width, msg.Height)
 }
 
 // COMMANDS.
 
-func runCommand(m commonModel) tea.Cmd {
+func runCommand(m common.CommonModel) tea.Cmd {
 	return func() tea.Msg {
 		log.Debug("runCommand")
 
-		ch := make(chan runOutput)
+		ch := make(chan common.RunOutput)
 		go func() {
 			defer close(ch)
 
-			out, err := m.cmd.Run()
-			ch <- runOutput{out: out, err: err}
+			out, err := m.Cmd.Run()
+			ch <- common.RunOutput{Out: out, Err: err}
 		}()
 
 		return initCommandRunMsg{ch: ch}
@@ -339,46 +322,30 @@ func getKubeResources(m model) tea.Cmd {
 		// We're done.
 		log.Debug("command run finished")
 
-		return commandRunFinished(res)
-	}
-}
-
-func waitForStatusMessageTimeout(appCtx applicationContext, t *time.Timer) tea.Cmd {
-	return func() tea.Msg {
-		<-t.C
-
-		return statusMessageTimeoutMsg(appCtx)
+		return common.CommandRunFinished(res)
 	}
 }
 
 // ETC.
 
 // Convert a [kube.Resource] to an internal representation of a YAML document.
-func kubeResourceToYAML(res *kube.Resource) *yaml {
+func kubeResourceToYAML(res *kube.Resource) *yamldoc.YAMLDocument {
 	title := res.Object.GetName()
 	if res.Object.GetNamespace() != "" {
 		title = fmt.Sprintf("%s/%s", res.Object.GetNamespace(), res.Object.GetName())
 	}
 
-	return &yaml{
-		object: res.Object,
+	return &yamldoc.YAMLDocument{
+		Object: res.Object,
 		Body:   res.YAML,
 		Title:  title,
 		Desc:   fmt.Sprintf("%s/%s", res.Object.GetAPIVersion(), res.Object.GetKind()),
 	}
 }
 
-// Lightweight version of reflow's indent function.
-func indent(s string, n int) string {
-	if n <= 0 || s == "" {
-		return s
+// LogKeyPress logs key presses for debugging (optional, can be enabled via config).
+func LogKeyPress(key, context string) {
+	if log.GetLevel() == log.DebugLevel {
+		log.Debug("key pressed", "key", key, "context", context)
 	}
-	l := strings.Split(s, "\n")
-	b := strings.Builder{}
-	i := strings.Repeat(" ", n)
-	for _, v := range l {
-		fmt.Fprintf(&b, "%s%s\n", i, v)
-	}
-
-	return b.String()
 }

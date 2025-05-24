@@ -1,0 +1,10 @@
+{
+  "github.copilot.chat.codeGeneration.instructions": [
+    {
+      "file": "go.instructions.md"
+    },
+    {
+      "file": "test.instructions.md"
+    }
+  ]
+}

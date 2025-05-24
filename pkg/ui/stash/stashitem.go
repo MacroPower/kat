@@ -1,4 +1,4 @@
-package ui
+package stash
 
 import (
 	"fmt"
@@ -8,6 +8,9 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/muesli/reflow/truncate"
 	"github.com/sahilm/fuzzy"
+
+	"github.com/MacroPower/kat/pkg/ui/styles"
+	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
 
 const (
@@ -15,12 +18,12 @@ const (
 	fileListingStashIcon = "• "
 )
 
-func stashItemView(b *strings.Builder, m stashModel, index int, y *yaml) {
+func stashItemView(b *strings.Builder, m StashModel, index int, y *yamldoc.YAMLDocument) {
 	var (
-		truncateTo  = uint(max(0, m.common.width-stashViewHorizontalPadding*2)) //nolint:gosec // Uses max.
+		truncateTo  = uint(max(0, m.common.Width-stashViewHorizontalPadding*2)) //nolint:gosec // Uses max.
 		gutter      string
-		title       = truncate.StringWithTail(y.Title, truncateTo, ellipsis)
-		desc        = truncate.StringWithTail(y.Desc, truncateTo, ellipsis)
+		title       = truncate.StringWithTail(y.Title, truncateTo, styles.Ellipsis)
+		desc        = truncate.StringWithTail(y.Desc, truncateTo, styles.Ellipsis)
 		editedBy    = ""
 		hasEditedBy = false
 		icon        = ""
@@ -28,7 +31,7 @@ func stashItemView(b *strings.Builder, m stashModel, index int, y *yaml) {
 	)
 
 	isSelected := index == m.cursor()
-	isFiltering := m.filterState == filtering
+	isFiltering := m.FilterState == Filtering
 	singleFilteredItem := isFiltering && len(m.getVisibleYAMLs()) == 1
 
 	// If there are multiple items being filtered don't highlight a selected
@@ -37,47 +40,47 @@ func stashItemView(b *strings.Builder, m stashModel, index int, y *yaml) {
 	if isSelected && !isFiltering || singleFilteredItem {
 		// Selected item.
 		if m.statusMessage == stashingStatusMessage {
-			gutter = greenFg(verticalLine)
-			icon = dimGreenFg(icon)
-			title = greenFg(title)
-			desc = semiDimGreenFg(desc)
-			editedBy = semiDimGreenFg(editedBy)
-			separator = semiDimGreenFg(separator)
+			gutter = styles.GreenFg(verticalLine)
+			icon = styles.DimGreenFg(icon)
+			title = styles.GreenFg(title)
+			desc = styles.SemiDimGreenFg(desc)
+			editedBy = styles.SemiDimGreenFg(editedBy)
+			separator = styles.SemiDimGreenFg(separator)
 		} else {
-			gutter = dullFuchsiaFg(verticalLine)
-			if m.currentSection().key == filterSection && m.filterState == filterApplied || singleFilteredItem {
-				s := lipgloss.NewStyle().Foreground(fuchsia)
+			gutter = styles.DullFuchsiaFg(verticalLine)
+			if m.currentSection().key == filterSection && m.FilterState == FilterApplied || singleFilteredItem {
+				s := lipgloss.NewStyle().Foreground(styles.Fuchsia)
 				title = styleFilteredText(title, m.filterInput.Value(), s, s.Underline(true))
 			} else {
-				title = fuchsiaFg(title)
-				icon = fuchsiaFg(icon)
+				title = styles.FuchsiaFg(title)
+				icon = styles.FuchsiaFg(icon)
 			}
-			desc = dimFuchsiaFg(desc)
-			editedBy = dimDullFuchsiaFg(editedBy)
-			separator = dullFuchsiaFg(separator)
+			desc = styles.DimFuchsiaFg(desc)
+			editedBy = styles.DimDullFuchsiaFg(editedBy)
+			separator = styles.DullFuchsiaFg(separator)
 		}
 	} else {
 		gutter = " "
 		if m.statusMessage == stashingStatusMessage { //nolint:gocritic // TODO: Refactor.
-			icon = dimGreenFg(icon)
-			title = greenFg(title)
-			desc = semiDimGreenFg(desc)
-			editedBy = semiDimGreenFg(editedBy)
-			separator = semiDimGreenFg(separator)
+			icon = styles.DimGreenFg(icon)
+			title = styles.GreenFg(title)
+			desc = styles.SemiDimGreenFg(desc)
+			editedBy = styles.SemiDimGreenFg(editedBy)
+			separator = styles.SemiDimGreenFg(separator)
 		} else if isFiltering && m.filterInput.Value() == "" {
-			icon = dimGreenFg(icon)
-			title = dimNormalFg(title)
-			desc = dimBrightGrayFg(desc)
-			editedBy = dimBrightGrayFg(editedBy)
-			separator = dimBrightGrayFg(separator)
+			icon = styles.DimGreenFg(icon)
+			title = styles.DimNormalFg(title)
+			desc = styles.DimBrightGrayFg(desc)
+			editedBy = styles.DimBrightGrayFg(editedBy)
+			separator = styles.DimBrightGrayFg(separator)
 		} else {
-			icon = greenFg(icon)
+			icon = styles.GreenFg(icon)
 
 			s := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#dddddd"})
 			title = styleFilteredText(title, m.filterInput.Value(), s, s.Underline(true))
-			desc = grayFg(desc)
-			editedBy = midGrayFg(editedBy)
-			separator = brightGrayFg(separator)
+			desc = styles.GrayFg(desc)
+			editedBy = styles.MidGrayFg(editedBy)
+			separator = styles.BrightGrayFg(separator)
 		}
 	}
 
@@ -91,7 +94,7 @@ func stashItemView(b *strings.Builder, m stashModel, index int, y *yaml) {
 func styleFilteredText(haystack, needles string, defaultStyle, matchedStyle lipgloss.Style) string {
 	b := strings.Builder{}
 
-	normalizedHay, err := normalize(haystack)
+	normalizedHay, err := yamldoc.Normalize(haystack)
 	if err != nil {
 		log.Error("error normalizing", "haystack", haystack, "error", err)
 	}

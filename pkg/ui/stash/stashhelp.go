@@ -1,10 +1,12 @@
-package ui
+package stash
 
 import (
 	"fmt"
 	"strings"
 
 	"github.com/muesli/reflow/ansi"
+
+	"github.com/MacroPower/kat/pkg/ui/styles"
 )
 
 // helpEntry is a entry in a help menu containing values for a keystroke and
@@ -48,11 +50,11 @@ func (h helpColumn) render(height int) []string {
 
 			switch k {
 			case "s":
-				k = greenFg(k)
-				v = semiDimGreenFg(v)
+				k = styles.GreenFg(k)
+				v = styles.SemiDimGreenFg(v)
 			default:
-				k = grayFg(k)
-				v = midGrayFg(v)
+				k = styles.GrayFg(k)
+				v = styles.MidGrayFg(v)
 			}
 		}
 		b.WriteString(k)
@@ -85,11 +87,11 @@ func (h helpColumn) maxWidths() (int, int) {
 
 // helpView returns either the mini or full help view depending on the state of
 // the model, as well as the total height of the help view.
-func (m stashModel) helpView() (string, int) {
+func (m StashModel) helpView() (string, int) {
 	numDocs := len(m.getVisibleYAMLs())
 
 	// Help for when we're filtering.
-	if m.filterState == filtering {
+	if m.FilterState == Filtering {
 		var h []string
 
 		switch numDocs {
@@ -129,7 +131,7 @@ func (m stashModel) helpView() (string, int) {
 	}
 
 	// If we're browsing a filtered set.
-	if m.filterApplied() {
+	if m.FilterApplied() {
 		filterHelp = []string{"/", "edit search", "esc", "clear filter"}
 	} else {
 		filterHelp = []string{"/", "find"}
@@ -147,13 +149,13 @@ func (m stashModel) helpView() (string, int) {
 
 	// Detailed help.
 	if m.showFullHelp {
-		if m.filterState != filtering {
+		if m.FilterState != Filtering {
 			appHelp = append(appHelp, "?", "close help")
 		}
 	}
 
 	// Mini help.
-	if m.filterState != filtering {
+	if m.FilterState != Filtering {
 		appHelp = append(appHelp, "?", "more")
 	}
 
@@ -164,7 +166,7 @@ const minHelpViewHeight = 5
 
 // renderHelp returns the rendered help view and associated line height for
 // the given groups of help items.
-func (m stashModel) renderHelp(groups ...[]string) (string, int) {
+func (m StashModel) renderHelp(groups ...[]string) (string, int) {
 	if m.showFullHelp {
 		str := m.fullHelpView(groups...)
 		numLines := strings.Count(str, "\n") + 1
@@ -178,20 +180,20 @@ func (m stashModel) renderHelp(groups ...[]string) (string, int) {
 // Builds the help view from various sections pieces, truncating it if the view
 // would otherwise wrap to two lines. Help view entries should come in as pairs,
 // with the first being the key and the second being the help text.
-func (m stashModel) miniHelpView(entries ...string) string {
+func (m StashModel) miniHelpView(entries ...string) string {
 	if len(entries) == 0 {
 		return ""
 	}
 
 	var (
-		truncationChar  = subtleStyle.Render("…")
+		truncationChar  = styles.SubtleStyle.Render("…")
 		truncationWidth = ansi.PrintableRuneWidth(truncationChar)
 	)
 
 	var (
 		next       string
 		leftGutter = "  "
-		maxWidth   = m.common.width -
+		maxWidth   = m.common.Width -
 			stashViewHorizontalPadding -
 			truncationWidth -
 			ansi.PrintableRuneWidth(leftGutter)
@@ -202,8 +204,8 @@ func (m stashModel) miniHelpView(entries ...string) string {
 		k := entries[i]
 		v := entries[i+1]
 
-		k = grayFg(k)
-		v = midGrayFg(v)
+		k = styles.GrayFg(k)
+		v = styles.MidGrayFg(v)
 
 		next = fmt.Sprintf("%s %s", k, v)
 
@@ -225,7 +227,7 @@ func (m stashModel) miniHelpView(entries ...string) string {
 	return s
 }
 
-func (m stashModel) fullHelpView(groups ...[]string) string {
+func (m StashModel) fullHelpView(groups ...[]string) string {
 	var tallestCol int
 	columns := make([]helpColumn, 0, len(groups))
 	renderedCols := make([][]string, 0, len(groups)) // Final rows grouped by column.

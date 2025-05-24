@@ -17,7 +17,6 @@ dist/
 *.out
 
 # Editor
-.vscode/
 .devcontainer/
 .idea/
 

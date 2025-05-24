@@ -15,6 +15,7 @@ import (
 	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/log"
 	"github.com/MacroPower/kat/pkg/ui"
+	uiconfig "github.com/MacroPower/kat/pkg/ui/config"
 )
 
 const (
@@ -142,7 +143,7 @@ func parseCommand(cmdArgs []string) *kube.Command {
 }
 
 // runUI starts the UI program.
-func runUI(cfg ui.Config, cr *kube.CommandRunner) error {
+func runUI(cfg uiconfig.Config, cr *kube.CommandRunner) error {
 	p := ui.NewProgram(cfg, cr)
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("tea: %w", err)

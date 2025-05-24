@@ -8,17 +8,17 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/MacroPower/kat/pkg/kube"
-	"github.com/MacroPower/kat/pkg/ui"
+	uiconfig "github.com/MacroPower/kat/pkg/ui/config"
 )
 
 type Config struct {
-	Kube kube.Config `embed:"" prefix:"kube-" yaml:"kube"`
-	UI   ui.Config   `embed:"" prefix:"ui-"   yaml:"ui"`
+	Kube kube.Config     `embed:"" prefix:"kube-" yaml:"kube"`
+	UI   uiconfig.Config `embed:"" prefix:"ui-"   yaml:"ui"`
 }
 
 func NewConfig() *Config {
 	return &Config{
-		UI:   ui.DefaultConfig,
+		UI:   uiconfig.DefaultConfig,
 		Kube: kube.DefaultConfig,
 	}
 }
