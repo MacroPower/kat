@@ -68,8 +68,7 @@ func (h *StashKeyHandler) handleSectionNavigation(m *StashModel, key string) {
 func (h *StashKeyHandler) handleSpecialActions(m *StashModel, key string) {
 	switch key {
 	case "?":
-		m.showFullHelp = !m.showFullHelp
-		m.updatePagination()
+		m.toggleHelp()
 
 	case "!":
 		if m.err != nil && m.ViewState == StashStateReady {

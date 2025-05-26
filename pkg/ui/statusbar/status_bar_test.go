@@ -1,12 +1,11 @@
-package pager_test
+package statusbar_test
 
 import (
 	"testing"
 
+	"github.com/MacroPower/kat/pkg/ui/statusbar"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/MacroPower/kat/pkg/ui/pager"
 )
 
 func TestNewStatusBarRenderer(t *testing.T) {
@@ -34,10 +33,10 @@ func TestNewStatusBarRenderer(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := pager.NewStatusBarRenderer(tc.width)
+			renderer := statusbar.NewStatusBarRenderer(tc.width)
 			require.NotNil(t, renderer)
 
-			statusBar := renderer.RenderStatusBar("test", "", 0)
+			statusBar := renderer.RenderWithScroll("test", "", 0)
 			assert.Len(t, statusBar, tc.expected)
 		})
 	}
@@ -101,9 +100,9 @@ func TestRenderStatusBar(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := pager.NewStatusBarRenderer(tc.width)
+			renderer := statusbar.NewStatusBarRenderer(tc.width)
 
-			result := renderer.RenderStatusBar(tc.title, tc.statusMessage, tc.scrollPercent)
+			result := renderer.RenderWithScroll(tc.title, tc.statusMessage, tc.scrollPercent)
 			tc.checkFunc(t, result)
 
 			// Verify the result is properly structured

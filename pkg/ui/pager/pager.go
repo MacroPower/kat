@@ -13,8 +13,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/MacroPower/kat/pkg/ui/common"
-	"github.com/MacroPower/kat/pkg/ui/config"
+	"github.com/MacroPower/kat/pkg/ui/keys"
 	"github.com/MacroPower/kat/pkg/ui/stash"
+	"github.com/MacroPower/kat/pkg/ui/statusbar"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
 
@@ -33,6 +34,7 @@ const (
 type PagerModel struct {
 	common             *common.CommonModel
 	statusMessageTimer *time.Timer
+	helpRenderer       *statusbar.HelpRenderer
 
 	// Current document being rendered, sans-glamour rendering. We cache
 	// it here so we can re-render it on resize.
@@ -50,10 +52,29 @@ func NewPagerModel(cm *common.CommonModel) PagerModel {
 	vp := viewport.New(0, 0)
 	vp.YPosition = 0
 
+	kb := cm.Config.KeyBinds
+	kbr := &keys.KeyBindRenderer{}
+	kbr.AddColumn(
+		*kb.Common.Up,
+		*kb.Common.Down,
+		*kb.Pager.PageUp,
+		*kb.Pager.PageDown,
+		*kb.Pager.HalfPageUp,
+		*kb.Pager.HalfPageDown,
+	)
+	kbr.AddColumn(
+		*kb.Pager.Home,
+		*kb.Pager.End,
+		*kb.Pager.Copy,
+		*kb.Common.Reload,
+		*kb.Common.Escape,
+		*kb.Common.Quit,
+	)
 	m := PagerModel{
-		common:   cm,
-		state:    pagerStateBrowse,
-		viewport: vp,
+		common:       cm,
+		helpRenderer: statusbar.NewHelpRenderer(kbr),
+		state:        pagerStateBrowse,
+		viewport:     vp,
 	}
 
 	return m
@@ -65,8 +86,7 @@ func (m *PagerModel) SetSize(w, h int) {
 
 	// Calculate help height if needed.
 	if m.ShowHelp && m.helpHeight == 0 {
-		helpRenderer := NewHelpRenderer(w, config.DefaultConfig.KeyBinds)
-		m.helpHeight = helpRenderer.CalculateHelpHeight()
+		m.helpHeight = m.helpRenderer.CalculateHelpHeight()
 	}
 
 	// Calculate viewport dimensions.
@@ -210,22 +230,20 @@ func (m PagerModel) View() string {
 
 	// Add help view if needed.
 	if m.ShowHelp {
-		helpRenderer := NewHelpRenderer(m.common.Width, config.DefaultConfig.KeyBinds)
-		builder.AddHelp(helpRenderer.RenderHelpView())
+		builder.AddHelp(m.helpRenderer.Render(m.common.Width))
 	}
 
 	return builder.Build()
 }
 
 func (m PagerModel) statusBarView(b *strings.Builder) {
-	// Use the new StatusBarRenderer utility.
-	renderer := NewStatusBarRenderer(m.common.Width)
+	renderer := statusbar.NewStatusBarRenderer(m.common.Width)
 
 	statusMessage := ""
 	if m.state == pagerStateStatusMessage {
 		statusMessage = m.statusMessage
 	}
-	statusBar := renderer.RenderStatusBar(
+	statusBar := renderer.RenderWithScroll(
 		m.CurrentDocument.Title,
 		statusMessage,
 		m.viewport.ScrollPercent(),

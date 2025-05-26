@@ -1,4 +1,4 @@
-package pager
+package statusbar
 
 import (
 	"fmt"
@@ -63,8 +63,8 @@ func NewStatusBarRenderer(width int) *StatusBarRenderer {
 	return &StatusBarRenderer{width: width}
 }
 
-// RenderStatusBar renders the complete status bar for the pager.
-func (r *StatusBarRenderer) RenderStatusBar(title, msg string, scrollPercent float64) string {
+// RenderWithScroll renders the complete status bar for the pager.
+func (r *StatusBarRenderer) RenderWithScroll(title, msg string, scrollPercent float64) string {
 	showStatusMessage := msg != ""
 
 	// Generate individual components.

@@ -28,7 +28,22 @@ func NewViewBuilder() *ViewBuilder {
 
 // AddSection adds a section to the view.
 func (vb *ViewBuilder) AddSection(content string, style ...lipgloss.Style) *ViewBuilder {
+	if content == "" {
+		return vb
+	}
+
 	vb.sections = append(vb.sections, content)
+	if len(style) > 0 {
+		vb.styles = append(vb.styles, style[0])
+	} else {
+		vb.styles = append(vb.styles, lipgloss.Style{})
+	}
+
+	return vb
+}
+
+func (vb *ViewBuilder) AddEmptySection(style ...lipgloss.Style) *ViewBuilder {
+	vb.sections = append(vb.sections, "")
 	if len(style) > 0 {
 		vb.styles = append(vb.styles, style[0])
 	} else {

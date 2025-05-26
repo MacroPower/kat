@@ -16,6 +16,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/MacroPower/kat/pkg/ui/common"
+	"github.com/MacroPower/kat/pkg/ui/keys"
+	"github.com/MacroPower/kat/pkg/ui/statusbar"
 	"github.com/MacroPower/kat/pkg/ui/styles"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
@@ -24,7 +26,7 @@ const (
 	stashIndent                = 1
 	stashViewItemHeight        = 3 // Height of stash entry, including gap.
 	stashViewTopPadding        = 5 // Logo, status bar, gaps.
-	stashViewBottomPadding     = 3 // Pagination and gaps, but not help.
+	stashViewBottomPadding     = 5 // Pagination and gaps, but not help.
 	stashViewHorizontalPadding = 6
 )
 
@@ -133,6 +135,8 @@ type StashModel struct {
 	statusMessageTimer *time.Timer
 	common             *common.CommonModel
 	statusMessage      StatusMessage
+	helpRenderer       *statusbar.HelpRenderer
+	statusBarRenderer  *statusbar.StatusBarRenderer
 
 	// The master set of yaml documents we're working with.
 	YAMLs []*yamldoc.YAMLDocument
@@ -162,8 +166,9 @@ type StashModel struct {
 	showStatusMessage bool
 
 	// Tracks if files were loaded.
-	loaded       bool
-	showFullHelp bool
+	loaded     bool
+	ShowHelp   bool
+	helpHeight int
 }
 
 func (m StashModel) loadingDone() bool {
@@ -202,11 +207,24 @@ func (m *StashModel) SetSize(width, height int) {
 	m.common.Width = width
 	m.common.Height = height
 
+	// Update status bar renderer width
+	m.statusBarRenderer = statusbar.NewStatusBarRenderer(width)
+
+	// Calculate help height if needed
+	if m.ShowHelp && m.helpHeight == 0 {
+		m.helpHeight = m.helpRenderer.CalculateHelpHeight()
+	}
+
 	m.filterInput.Width = width - stashViewHorizontalPadding*2 - ansi.PrintableRuneWidth(
 		m.filterInput.Prompt,
 	)
 
 	m.updatePagination()
+}
+
+func (m *StashModel) toggleHelp() {
+	m.ShowHelp = !m.ShowHelp
+	m.SetSize(m.common.Width, m.common.Height)
 }
 
 func (m *StashModel) resetFiltering() {
@@ -247,7 +265,10 @@ func (m StashModel) ShouldUpdateFilter() bool {
 // Update pagination according to the amount of yamls for the current
 // state.
 func (m *StashModel) updatePagination() {
-	_, helpHeight := m.helpView()
+	helpHeight := 0
+	if m.ShowHelp {
+		helpHeight = m.helpHeight
+	}
 
 	availableHeight := m.common.Height -
 		stashViewTopPadding -
@@ -387,12 +408,31 @@ func NewStashModel(cm *common.CommonModel) StashModel {
 		sections[documentsSection],
 	}
 
+	// Initialize help renderer with key bindings like pager does
+	kb := cm.Config.KeyBinds
+	kbr := &keys.KeyBindRenderer{}
+	kbr.AddColumn(
+		*kb.Common.Up,
+		*kb.Common.Down,
+		*kb.Stash.Find,
+		*kb.Common.Escape,
+	)
+	kbr.AddColumn(
+		*kb.Stash.Home,
+		*kb.Stash.End,
+		*kb.Stash.Open,
+		*kb.Common.Reload,
+		*kb.Common.Quit,
+	)
+
 	m := StashModel{
-		common:      cm,
-		Spinner:     sp,
-		filterInput: si,
-		serverPage:  1,
-		sections:    s,
+		common:            cm,
+		Spinner:           sp,
+		filterInput:       si,
+		serverPage:        1,
+		sections:          s,
+		helpRenderer:      statusbar.NewHelpRenderer(kbr),
+		statusBarRenderer: statusbar.NewStatusBarRenderer(cm.Width),
 	}
 
 	return m
@@ -524,12 +564,21 @@ func (m StashModel) View() string {
 		// Get regular header content.
 		header := m.headerView()
 
-		help, helpHeight := m.helpView()
+		// Add status bar using statusbar renderer
+		statusBar := m.statusBarView()
+
+		// Get help content using statusbar renderer like pager does
+		var help string
+		var helpHeight int
+		if m.ShowHelp {
+			help = m.helpRenderer.Render(m.common.Width)
+			helpHeight = m.helpRenderer.CalculateHelpHeight() + 1
+		}
 
 		// Use DocumentListRenderer for the populated view.
 		listRenderer := NewDocumentListRenderer(m.common.Width, m.common.Height)
 		populatedView := listRenderer.RenderDocumentList(m.getVisibleYAMLs(), m)
-		populatedViewHeight := strings.Count(populatedView, "\n") + 2
+		populatedViewHeight := strings.Count(populatedView, "\n")
 
 		// Calculate layout using LayoutCalculator.
 		calc := NewLayoutCalculator(m.common.Width, m.common.Height)
@@ -546,19 +595,19 @@ func (m StashModel) View() string {
 		// Build the final view using ViewBuilder.
 		s = vb.
 			AddSection(loadingIndicator + logoOrFilter).
-			AddSection("").
+			AddEmptySection().
 			AddSection(padHorizontal(header, 2, 0)).
-			AddSection("").
-			AddSection(populatedView).
-			AddSection("").
+			AddEmptySection().
+			AddSection(common.Indent(populatedView, stashIndent)).
 			AddSection(blankLines).
 			AddSection(padHorizontal(pagination, 2, 0)).
-			AddSection("").
+			AddEmptySection().
+			AddSection(statusBar).
 			AddSection(help).
 			Build()
 	}
 
-	return "\n" + common.Indent(s, stashIndent)
+	return "\n" + s
 }
 
 func (m StashModel) headerView() string {
@@ -602,6 +651,39 @@ func (m StashModel) headerView() string {
 	}
 
 	return strings.Join(sections, dividerBar.String())
+}
+
+func (m StashModel) statusBarView() string {
+	// Determine what to show as the title/message
+	var title string
+	var statusMsg string
+
+	if m.showStatusMessage {
+		statusMsg = m.statusMessage.String()
+		// When showing status message, use current section as title
+		switch m.currentSection().key {
+		case documentsSection:
+			title = fmt.Sprintf("%d documents", len(m.YAMLs))
+		case filterSection:
+			title = fmt.Sprintf("%d \"%s\"", len(m.filteredYAMLs), m.filterInput.Value())
+		}
+	} else {
+		// When no status message, show current section info as title
+		switch m.currentSection().key {
+		case documentsSection:
+			title = fmt.Sprintf("%d documents", len(m.YAMLs))
+		case filterSection:
+			title = fmt.Sprintf("%d \"%s\"", len(m.filteredYAMLs), m.filterInput.Value())
+		}
+	}
+
+	// Calculate progress percentage based on pagination
+	var progressPercent float64
+	if m.paginator().TotalPages > 1 {
+		progressPercent = float64(m.paginator().Page) / float64(m.paginator().TotalPages-1)
+	}
+
+	return m.statusBarRenderer.RenderWithScroll(title, statusMsg, progressPercent)
 }
 
 // COMMANDS.
