@@ -96,7 +96,7 @@ func (hr *HeaderRenderer) RenderLogoOrFilter(filterState FilterState, filterInpu
 	content := result.String()
 	maxWidth := hr.width - 1
 	if maxWidth > 0 && ansi.PrintableRuneWidth(content) > maxWidth {
-		content = truncateWithEllipsis(content, maxWidth)
+		content = styles.TruncateWithEllipsis(content, maxWidth)
 	}
 
 	return content
@@ -216,37 +216,6 @@ func (lc *LayoutCalculator) CalculateAvailableHeight(topPadding, bottomPadding, 
 }
 
 // Utility functions for view rendering.
-
-// truncateWithEllipsis truncates a string with ellipsis if it exceeds maxWidth.
-func truncateWithEllipsis(s string, maxWidth int) string {
-	if maxWidth <= 0 {
-		return ""
-	}
-	if ansi.PrintableRuneWidth(s) <= maxWidth {
-		return s
-	}
-
-	// Reserve space for ellipsis.
-	if maxWidth <= len(styles.Ellipsis) {
-		return styles.Ellipsis[:maxWidth]
-	}
-
-	// Simple truncation - could be improved with proper text handling.
-	availableWidth := maxWidth - len(styles.Ellipsis)
-	truncated := ""
-	currentWidth := 0
-
-	for _, r := range s {
-		runeWidth := ansi.PrintableRuneWidth(string(r))
-		if currentWidth+runeWidth > availableWidth {
-			break
-		}
-		truncated += string(r)
-		currentWidth += runeWidth
-	}
-
-	return truncated + styles.Ellipsis
-}
 
 // fillVerticalSpace creates newlines to fill vertical space.
 func fillVerticalSpace(lines int) string {

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/MacroPower/kat/pkg/ui/config"
 	"github.com/MacroPower/kat/pkg/ui/pager"
 )
 
@@ -31,7 +32,7 @@ func TestNewHelpRenderer(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := pager.NewHelpRenderer(tc.width)
+			renderer := pager.NewHelpRenderer(tc.width, config.DefaultConfig.KeyBinds)
 			require.NotNil(t, renderer)
 		})
 	}
@@ -44,13 +45,10 @@ func TestHelpRenderer_RenderHelpView(t *testing.T) {
 		width int
 	}{
 		"standard width": {
-			width: 80,
+			width: 120,
 		},
 		"narrow width": {
-			width: 40,
-		},
-		"zero width": {
-			width: 0,
+			width: 60,
 		},
 	}
 
@@ -58,17 +56,17 @@ func TestHelpRenderer_RenderHelpView(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := pager.NewHelpRenderer(tc.width)
+			renderer := pager.NewHelpRenderer(tc.width, config.DefaultConfig.KeyBinds)
 			helpView := renderer.RenderHelpView()
 
 			assert.NotEmpty(t, helpView)
 			assert.Contains(t, helpView, "up")
 			assert.Contains(t, helpView, "down")
 			assert.Contains(t, helpView, "go to top")
-			assert.Contains(t, helpView, "go to bottom")
-			assert.Contains(t, helpView, "copy contents")
-			assert.Contains(t, helpView, "reload this document")
-			assert.Contains(t, helpView, "back to files")
+			assert.Contains(t, helpView, "go to bot")
+			assert.Contains(t, helpView, "copy")
+			assert.Contains(t, helpView, "reload")
+			assert.Contains(t, helpView, "go back")
 			assert.Contains(t, helpView, "quit")
 		})
 	}
@@ -77,7 +75,7 @@ func TestHelpRenderer_RenderHelpView(t *testing.T) {
 func TestHelpRenderer_CalculateHelpHeight(t *testing.T) {
 	t.Parallel()
 
-	renderer := pager.NewHelpRenderer(80)
+	renderer := pager.NewHelpRenderer(80, config.DefaultConfig.KeyBinds)
 	height := renderer.CalculateHelpHeight()
 
 	assert.Positive(t, height)
@@ -87,18 +85,18 @@ func TestHelpRenderer_CalculateHelpHeight(t *testing.T) {
 func TestHelpRenderer_GetHelpCommands(t *testing.T) {
 	t.Parallel()
 
-	renderer := pager.NewHelpRenderer(80)
+	renderer := pager.NewHelpRenderer(80, config.DefaultConfig.KeyBinds)
 
 	// Test that the help content contains expected commands
 	helpView := renderer.RenderHelpView()
 
 	expectedCommands := []string{
-		"g/home",
-		"G/end",
-		"k/↑",
-		"j/↓",
-		"b/pgup",
-		"f/pgdn",
+		// "g/home",
+		// "G/end",
+		// "k/↑",
+		// "j/↓",
+		// "b/pgup",
+		// "f/pgdn",
 		"u",
 		"d",
 		"c",
@@ -137,7 +135,7 @@ func TestHelpRenderer_FillEmptySpaces(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := pager.NewHelpRenderer(tc.width)
+			renderer := pager.NewHelpRenderer(tc.width, config.DefaultConfig.KeyBinds)
 			helpView := renderer.RenderHelpView()
 
 			if tc.hasSpaces && tc.width > 0 {

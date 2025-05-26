@@ -1,11 +1,12 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"gopkg.in/yaml.v3"
+	yaml "sigs.k8s.io/yaml/goyaml.v3"
 
 	"github.com/MacroPower/kat/pkg/kube"
 	uiconfig "github.com/MacroPower/kat/pkg/ui/config"
@@ -40,12 +41,16 @@ func (c *Config) Write(path string) error {
 		return fmt.Errorf("create directories: %w", err)
 	}
 
-	data, err := yaml.Marshal(c) //nolint:musttag // Tagged.
+	b := &bytes.Buffer{}
+	enc := yaml.NewEncoder(b)
+	enc.SetIndent(2)
+
+	err = enc.Encode(c) //nolint:musttag // Tagged.
 	if err != nil {
 		return fmt.Errorf("marshal yaml: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0o600); err != nil {
+	if err := os.WriteFile(path, b.Bytes(), 0o600); err != nil {
 		return fmt.Errorf("write file: %w", err)
 	}
 

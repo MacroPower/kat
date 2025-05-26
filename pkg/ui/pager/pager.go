@@ -13,6 +13,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/MacroPower/kat/pkg/ui/common"
+	"github.com/MacroPower/kat/pkg/ui/config"
 	"github.com/MacroPower/kat/pkg/ui/stash"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
@@ -64,7 +65,7 @@ func (m *PagerModel) SetSize(w, h int) {
 
 	// Calculate help height if needed.
 	if m.ShowHelp && m.helpHeight == 0 {
-		helpRenderer := NewHelpRenderer(w)
+		helpRenderer := NewHelpRenderer(w, config.DefaultConfig.KeyBinds)
 		m.helpHeight = helpRenderer.CalculateHelpHeight()
 	}
 
@@ -129,27 +130,47 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// Use the new PagerKeyHandler for navigation keys.
-		keyHandler := NewPagerKeyHandler()
+		kb := m.common.Config.KeyBinds
 		key := msg.String()
-		if newModel, handled := keyHandler.HandlePagerKeys(m, key); handled {
-			m = newModel
-		} else {
-			// Handle keys that weren't processed by the handler.
-			switch key {
-			case "q", "esc":
-				if m.state != pagerStateBrowse {
-					m.state = pagerStateBrowse
+		switch {
+		case kb.Pager.Home.Match(key):
+			m.viewport.GotoTop()
 
-					return m, nil
-				}
-			case "c":
-				// Copy using OSC 52.
-				termenv.Copy(m.CurrentDocument.Body)
-				// Copy using native system clipboard.
-				_ = clipboard.WriteAll(m.CurrentDocument.Body) //nolint:errcheck // Can be ignored.
-				cmds = append(cmds, m.showStatusMessage(pagerStatusMessage{"Copied contents", false}))
+			return m, nil
+
+		case kb.Pager.End.Match(key):
+			m.viewport.GotoBottom()
+
+			return m, nil
+
+		case kb.Pager.HalfPageDown.Match(key):
+			m.viewport.HalfPageDown()
+
+			return m, nil
+
+		case kb.Pager.HalfPageUp.Match(key):
+			m.viewport.HalfPageUp()
+
+			return m, nil
+
+		case kb.Common.Help.Match(key):
+			m.toggleHelp()
+
+			return m, nil
+
+		case kb.Common.Escape.Match(key):
+			if m.state != pagerStateBrowse {
+				m.state = pagerStateBrowse
+
+				return m, nil
 			}
+
+		case kb.Pager.Copy.Match(key):
+			// Copy using OSC 52.
+			termenv.Copy(m.CurrentDocument.Body)
+			// Copy using native system clipboard.
+			_ = clipboard.WriteAll(m.CurrentDocument.Body) //nolint:errcheck // Can be ignored.
+			cmds = append(cmds, m.showStatusMessage(pagerStatusMessage{"Copied contents", false}))
 		}
 
 	// App has rendered the content.
@@ -189,7 +210,7 @@ func (m PagerModel) View() string {
 
 	// Add help view if needed.
 	if m.ShowHelp {
-		helpRenderer := NewHelpRenderer(m.common.Width)
+		helpRenderer := NewHelpRenderer(m.common.Width, config.DefaultConfig.KeyBinds)
 		builder.AddHelp(helpRenderer.RenderHelpView())
 	}
 

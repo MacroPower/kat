@@ -65,6 +65,17 @@ func main() {
 	}
 	slog.SetDefault(slog.New(logHandler))
 
+	if cli.Config.UI.KeyBinds == nil {
+		slog.Debug("using default key binds")
+		cli.Config.UI.KeyBinds = uiconfig.NewKeyBinds()
+	}
+
+	err = cli.Config.UI.KeyBinds.Validate()
+	if err != nil {
+		slog.Error("validate key binds", slog.Any("err", err))
+		cliCtx.Fatalf("initialization failed")
+	}
+
 	path, err := resolvePath(cli.Path)
 	if err != nil {
 		slog.Error("resolve paths", slog.Any("err", err))

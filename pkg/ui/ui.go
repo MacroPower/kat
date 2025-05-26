@@ -13,7 +13,6 @@ import (
 	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/ui/common"
 	"github.com/MacroPower/kat/pkg/ui/config"
-	"github.com/MacroPower/kat/pkg/ui/keys"
 	"github.com/MacroPower/kat/pkg/ui/pager"
 	"github.com/MacroPower/kat/pkg/ui/stash"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
@@ -128,12 +127,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		kb := m.common.Config.KeyBinds
+
 		// Handle global key events that should work anywhere in the app.
 		if newModel, cmd, handled := m.handleGlobalKeys(msg); handled {
 			return newModel, cmd
 		}
 
-		if keys.KeyMatches(msg.String(), keys.DefaultKeyBindings.Navigate.Left) {
+		if kb.Common.Left.Match(msg.String()) {
 			if m.state == stateShowDocument {
 				cmds := m.unloadDocument()
 
@@ -198,9 +199,10 @@ func (m model) View() string {
 // handleGlobalKeys handles keys that work across all contexts.
 func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	key := msg.String()
+	kb := m.common.Config.KeyBinds
 
 	switch {
-	case keys.KeyMatches(key, keys.DefaultKeyBindings.Quit):
+	case kb.Common.Quit.Match(key):
 		if m.state == stateShowStash && m.stash.FilterState == stash.Filtering {
 			// Pass through to filter handler.
 			return m, nil, false
@@ -208,15 +210,15 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 
 		return m, tea.Quit, true
 
-	case keys.KeyMatches(key, keys.DefaultKeyBindings.Suspend):
+	case kb.Common.Suspend.Match(key):
 		return m, tea.Suspend, true
 
-	case keys.KeyMatches(key, keys.DefaultKeyBindings.Escape):
+	case kb.Common.Escape.Match(key):
 		model, cmd := m.handleEscapeKey()
 
 		return model, cmd, true
 
-	case keys.KeyMatches(key, keys.DefaultKeyBindings.Refresh):
+	case kb.Common.Reload.Match(key):
 		return m.handleRefreshKey(msg)
 	}
 

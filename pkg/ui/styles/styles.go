@@ -1,6 +1,9 @@
 package styles
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/reflow/ansi"
+)
 
 // Icons.
 const (
@@ -52,3 +55,40 @@ var (
 			Background(Fuchsia).
 			Bold(true)
 )
+
+// TruncateWithEllipsis truncates a string with ellipsis if it exceeds maxWidth.
+func TruncateWithEllipsis(s string, maxWidth int) string {
+	if maxWidth <= 0 {
+		if s == "" {
+			return ""
+		}
+
+		return Ellipsis
+	}
+	if ansi.PrintableRuneWidth(s) <= maxWidth {
+		return s
+	}
+
+	lenEllipsis := ansi.PrintableRuneWidth(Ellipsis)
+
+	// Reserve space for ellipsis.
+	if maxWidth <= lenEllipsis {
+		return Ellipsis[:maxWidth]
+	}
+
+	// Simple truncation - could be improved with proper text handling.
+	availableWidth := maxWidth - lenEllipsis
+	truncated := ""
+	currentWidth := 0
+
+	for _, r := range s {
+		runeWidth := ansi.PrintableRuneWidth(string(r))
+		if currentWidth+runeWidth > availableWidth {
+			break
+		}
+		truncated += string(r)
+		currentWidth += runeWidth
+	}
+
+	return truncated + Ellipsis
+}

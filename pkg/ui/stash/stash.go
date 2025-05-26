@@ -16,7 +16,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/MacroPower/kat/pkg/ui/common"
-	"github.com/MacroPower/kat/pkg/ui/keys"
 	"github.com/MacroPower/kat/pkg/ui/styles"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
@@ -610,16 +609,17 @@ func (m StashModel) headerView() string {
 // handleNavigationKeys handles navigation keys for document browsing.
 func (m *StashModel) handleNavigationKeys(key string) {
 	numDocs := len(m.getVisibleYAMLs())
+	kb := m.common.Config.KeyBinds
 
 	switch {
-	case keys.KeyMatches(key, keys.DefaultKeyBindings.Navigate.Up):
+	case kb.Common.Up.Match(key):
 		m.moveCursorUp()
-	case keys.KeyMatches(key, keys.DefaultKeyBindings.Navigate.Down):
+	case kb.Common.Down.Match(key):
 		m.moveCursorDown()
-	case keys.KeyMatches(key, keys.DefaultKeyBindings.Navigate.Home):
+	case kb.Stash.Home.Match(key):
 		m.paginator().Page = 0
 		m.setCursor(0)
-	case keys.KeyMatches(key, keys.DefaultKeyBindings.Navigate.End):
+	case kb.Stash.End.Match(key):
 		m.paginator().Page = m.paginator().TotalPages - 1
 		m.setCursor(m.paginator().ItemsOnPage(numDocs) - 1)
 	}
@@ -628,8 +628,9 @@ func (m *StashModel) handleNavigationKeys(key string) {
 // handleDocumentKeys handles document-specific keys.
 func (m *StashModel) handleDocumentKeys(key string) tea.Cmd {
 	numDocs := len(m.getVisibleYAMLs())
+	kb := m.common.Config.KeyBinds
 
-	if keys.KeyMatches(key, keys.DefaultKeyBindings.Document.Open) {
+	if kb.Stash.Open.Match(key) {
 		m.hideStatusMessage()
 		if numDocs == 0 {
 			return nil
@@ -644,7 +645,9 @@ func (m *StashModel) handleDocumentKeys(key string) tea.Cmd {
 
 // handleFilterKeys handles filter-specific keys.
 func (m *StashModel) handleFilterKeys(key string) tea.Cmd {
-	if keys.KeyMatches(key, keys.DefaultKeyBindings.Filter.Start) {
+	kb := m.common.Config.KeyBinds
+
+	if kb.Stash.Find.Match(key) {
 		m.hideStatusMessage()
 
 		return m.startFiltering()
