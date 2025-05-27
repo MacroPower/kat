@@ -3,8 +3,9 @@ package statusbar
 import (
 	"strings"
 
-	"github.com/MacroPower/kat/pkg/ui/common"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/MacroPower/kat/pkg/ui/common"
 )
 
 type KeyBindRenderer interface {

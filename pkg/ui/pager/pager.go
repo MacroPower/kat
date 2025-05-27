@@ -1,8 +1,6 @@
 package pager
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/atotto/clipboard"
@@ -16,6 +14,7 @@ import (
 	"github.com/MacroPower/kat/pkg/ui/keys"
 	"github.com/MacroPower/kat/pkg/ui/stash"
 	"github.com/MacroPower/kat/pkg/ui/statusbar"
+	"github.com/MacroPower/kat/pkg/ui/view"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
 
@@ -219,36 +218,35 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 }
 
 func (m PagerModel) View() string {
-	// Use the new PagerViewBuilder utility.
-	builder := NewPagerViewBuilder()
-	builder.AddViewport(m.viewport.View())
-
-	// Create status bar using our builder approach.
-	var statusBar strings.Builder
-	m.statusBarView(&statusBar)
-	builder.AddStatusBar(statusBar.String())
-
-	// Add help view if needed.
-	if m.ShowHelp {
-		builder.AddHelp(m.helpRenderer.Render(m.common.Width))
-	}
-
-	return builder.Build()
+	return view.NewViewBuilder().
+		AddSection(m.viewport.View()).
+		AddSection(m.statusBarView()).
+		AddSection(m.helpView()).
+		Build()
 }
 
-func (m PagerModel) statusBarView(b *strings.Builder) {
+func (m PagerModel) statusBarView() string {
 	renderer := statusbar.NewStatusBarRenderer(m.common.Width)
 
 	statusMessage := ""
 	if m.state == pagerStateStatusMessage {
 		statusMessage = m.statusMessage
 	}
-	statusBar := renderer.RenderWithScroll(
+
+	return renderer.RenderWithScroll(
 		m.CurrentDocument.Title,
 		statusMessage,
 		m.viewport.ScrollPercent(),
 	)
-	fmt.Fprint(b, statusBar)
+}
+
+func (m PagerModel) helpView() string {
+	var help string
+	if m.ShowHelp {
+		help = m.helpRenderer.Render(m.common.Width)
+	}
+
+	return help
 }
 
 // This is where the magic happens.

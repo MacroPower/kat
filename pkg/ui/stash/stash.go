@@ -19,6 +19,7 @@ import (
 	"github.com/MacroPower/kat/pkg/ui/keys"
 	"github.com/MacroPower/kat/pkg/ui/statusbar"
 	"github.com/MacroPower/kat/pkg/ui/styles"
+	"github.com/MacroPower/kat/pkg/ui/view"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
 
@@ -207,10 +208,10 @@ func (m *StashModel) SetSize(width, height int) {
 	m.common.Width = width
 	m.common.Height = height
 
-	// Update status bar renderer width
+	// Update status bar renderer width.
 	m.statusBarRenderer = statusbar.NewStatusBarRenderer(width)
 
-	// Calculate help height if needed
+	// Calculate help height if needed.
 	if m.ShowHelp && m.helpHeight == 0 {
 		m.helpHeight = m.helpRenderer.CalculateHelpHeight()
 	}
@@ -408,7 +409,7 @@ func NewStashModel(cm *common.CommonModel) StashModel {
 		sections[documentsSection],
 	}
 
-	// Initialize help renderer with key bindings like pager does
+	// Initialize help renderer with key bindings like pager does.
 	kb := cm.Config.KeyBinds
 	kbr := &keys.KeyBindRenderer{}
 	kbr.AddColumn(
@@ -538,8 +539,7 @@ func (m StashModel) View() string {
 	case StashStateLoadingDocument:
 		s += " " + m.Spinner.View() + " Loading document..."
 	case StashStateReady:
-		// Use ViewBuilder for composable view construction.
-		vb := NewViewBuilder()
+		vb := view.NewViewBuilder()
 
 		// Build the main sections using the rendering utilities.
 		loadingIndicator := " "
@@ -561,17 +561,9 @@ func (m StashModel) View() string {
 			}(),
 		)
 
-		// Get regular header content.
-		header := m.headerView()
-
-		// Add status bar using statusbar renderer
-		statusBar := m.statusBarView()
-
-		// Get help content using statusbar renderer like pager does
-		var help string
+		// Get help content using statusbar renderer like pager does.
 		var helpHeight int
 		if m.ShowHelp {
-			help = m.helpRenderer.Render(m.common.Width)
 			helpHeight = m.helpRenderer.CalculateHelpHeight() + 1
 		}
 
@@ -583,7 +575,7 @@ func (m StashModel) View() string {
 		// Calculate layout using LayoutCalculator.
 		calc := NewLayoutCalculator(m.common.Width, m.common.Height)
 		availHeight := calc.CalculateAvailableHeight(stashViewTopPadding, stashViewBottomPadding, helpHeight, populatedViewHeight)
-		blankLines := fillVerticalSpace(availHeight)
+		blankLines := view.FillVerticalSpace(availHeight)
 
 		// Use PaginationRenderer for pagination controls.
 		var pagination string
@@ -596,18 +588,27 @@ func (m StashModel) View() string {
 		s = vb.
 			AddSection(loadingIndicator + logoOrFilter).
 			AddEmptySection().
-			AddSection(padHorizontal(header, 2, 0)).
+			AddSection(view.PadHorizontal(m.headerView(), 2, 0)).
 			AddEmptySection().
 			AddSection(common.Indent(populatedView, stashIndent)).
 			AddSection(blankLines).
-			AddSection(padHorizontal(pagination, 2, 0)).
+			AddSection(view.PadHorizontal(pagination, 2, 0)).
 			AddEmptySection().
-			AddSection(statusBar).
-			AddSection(help).
+			AddSection(m.statusBarView()).
+			AddSection(m.helpView()).
 			Build()
 	}
 
 	return "\n" + s
+}
+
+func (m StashModel) helpView() string {
+	var help string
+	if m.ShowHelp {
+		help = m.helpRenderer.Render(m.common.Width)
+	}
+
+	return help
 }
 
 func (m StashModel) headerView() string {
@@ -654,30 +655,30 @@ func (m StashModel) headerView() string {
 }
 
 func (m StashModel) statusBarView() string {
-	// Determine what to show as the title/message
+	// Determine what to show as the title/message.
 	var title string
 	var statusMsg string
 
 	if m.showStatusMessage {
 		statusMsg = m.statusMessage.String()
-		// When showing status message, use current section as title
+		// When showing status message, use current section as title.
 		switch m.currentSection().key {
 		case documentsSection:
 			title = fmt.Sprintf("%d documents", len(m.YAMLs))
 		case filterSection:
-			title = fmt.Sprintf("%d \"%s\"", len(m.filteredYAMLs), m.filterInput.Value())
+			title = fmt.Sprintf("%d %q", len(m.filteredYAMLs), m.filterInput.Value())
 		}
 	} else {
-		// When no status message, show current section info as title
+		// When no status message, show current section info as title.
 		switch m.currentSection().key {
 		case documentsSection:
 			title = fmt.Sprintf("%d documents", len(m.YAMLs))
 		case filterSection:
-			title = fmt.Sprintf("%d \"%s\"", len(m.filteredYAMLs), m.filterInput.Value())
+			title = fmt.Sprintf("%d %q", len(m.filteredYAMLs), m.filterInput.Value())
 		}
 	}
 
-	// Calculate progress percentage based on pagination
+	// Calculate progress percentage based on pagination.
 	var progressPercent float64
 	if m.paginator().TotalPages > 1 {
 		progressPercent = float64(m.paginator().Page) / float64(m.paginator().TotalPages-1)
