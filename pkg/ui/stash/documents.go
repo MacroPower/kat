@@ -31,9 +31,9 @@ func (dlr *DocumentListRenderer) RenderDocumentList(docs []*yamldoc.YAMLDocument
 		switch m.currentSection().key {
 		case documentsSection:
 			if m.loadingDone() {
-				f("No files found.")
+				f("No documents.")
 			} else {
-				f("Looking for local files...")
+				f("Rendering documents...")
 			}
 		case filterSection:
 			return ""

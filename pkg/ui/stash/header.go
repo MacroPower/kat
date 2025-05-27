@@ -37,7 +37,6 @@ func (hr *HeaderRenderer) RenderLogoOrFilter(filterState FilterState, filterInpu
 			result.WriteString(filterInput)
 		}
 	} else {
-		result.WriteString(hr.RenderLogo())
 		if statusMsg != "" {
 			result.WriteString("  " + statusMsg)
 		}

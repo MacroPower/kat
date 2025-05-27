@@ -13,6 +13,7 @@ import (
 
 type Commander interface {
 	Run() (kube.CommandOutput, error)
+	String() string
 }
 
 type CommonModel struct {
@@ -41,6 +42,9 @@ type RunOutput struct {
 type (
 	StatusMessageTimeoutMsg ApplicationContext
 
+	CommandRunStarted struct {
+		Ch chan RunOutput
+	}
 	CommandRunFinished RunOutput
 )
 

@@ -71,10 +71,24 @@ func (r *StatusBarRenderer) RenderWithScroll(title, msg string, scrollPercent fl
 	logo := r.renderLogo()
 	scrollPercentText := r.renderScrollPercent(scrollPercent, showStatusMessage)
 	helpNote := r.renderHelpNote(showStatusMessage)
-	note := r.renderNote(title, msg, scrollPercent)
+	note := r.renderNote(title, msg, scrollPercentText)
 	emptySpace := r.renderEmptySpace(logo, note, scrollPercentText, helpNote, showStatusMessage)
 
 	return fmt.Sprintf("%s%s%s%s%s", logo, note, emptySpace, scrollPercentText, helpNote)
+}
+
+func (r *StatusBarRenderer) RenderWithNote(title, msg, progress string) string {
+	// This method is a simplified version of RenderWithScroll without scroll percentage.
+	showStatusMessage := msg != ""
+
+	// Generate individual components.
+	logo := r.renderLogo()
+	helpNote := r.renderHelpNote(showStatusMessage)
+	progressNote := r.renderProgressNote(progress, showStatusMessage)
+	note := r.renderNote(title, msg, progressNote)
+	emptySpace := r.renderEmptySpace(logo, note, progressNote, helpNote, showStatusMessage)
+
+	return fmt.Sprintf("%s%s%s%s%s", logo, note, emptySpace, progressNote, helpNote)
 }
 
 // renderLogo renders the logo component.
@@ -85,13 +99,18 @@ func (r *StatusBarRenderer) renderLogo() string {
 // renderScrollPercent renders the scroll percentage component.
 func (r *StatusBarRenderer) renderScrollPercent(scrollPercent float64, showStatusMessage bool) string {
 	percent := math.Max(0.0, math.Min(1.0, scrollPercent))
-	scrollPercentStr := fmt.Sprintf(" %3.f%% ", percent*100.0)
+	scrollPercentStr := fmt.Sprintf("%3.f%%", percent*100.0)
 
+	return r.renderProgressNote(scrollPercentStr, showStatusMessage)
+}
+
+func (r *StatusBarRenderer) renderProgressNote(note string, showStatusMessage bool) string {
+	note = " " + note + " "
 	if showStatusMessage {
-		return statusBarMessageScrollPosStyle(scrollPercentStr)
+		return statusBarMessageScrollPosStyle(note)
 	}
 
-	return statusBarScrollPosStyle(scrollPercentStr)
+	return statusBarScrollPosStyle(note)
 }
 
 // renderHelpNote renders the help note component.
@@ -104,7 +123,7 @@ func (r *StatusBarRenderer) renderHelpNote(showStatusMessage bool) string {
 }
 
 // renderNote renders the main note/message component.
-func (r *StatusBarRenderer) renderNote(title, msg string, scrollPercent float64) string {
+func (r *StatusBarRenderer) renderNote(title, msg, progress string) string {
 	showStatusMessage := msg != ""
 
 	var note string
@@ -116,12 +135,11 @@ func (r *StatusBarRenderer) renderNote(title, msg string, scrollPercent float64)
 
 	// Calculate available width for the note.
 	logo := r.renderLogo()
-	scrollPercentText := r.renderScrollPercent(scrollPercent, showStatusMessage)
 	helpNote := r.renderHelpNote(showStatusMessage)
 
 	availableWidth := max(0, r.width-
 		ansi.PrintableRuneWidth(logo)-
-		ansi.PrintableRuneWidth(scrollPercentText)-
+		ansi.PrintableRuneWidth(progress)-
 		ansi.PrintableRuneWidth(helpNote))
 
 	note = truncate.StringWithTail(" "+note+" ", uint(availableWidth), styles.Ellipsis) //nolint:gosec // Uses max.
@@ -134,11 +152,11 @@ func (r *StatusBarRenderer) renderNote(title, msg string, scrollPercent float64)
 }
 
 // renderEmptySpace calculates and renders the empty space between components.
-func (r *StatusBarRenderer) renderEmptySpace(logo, note, scrollPercent, helpNote string, showStatusMessage bool) string {
+func (r *StatusBarRenderer) renderEmptySpace(logo, note, progress, helpNote string, showStatusMessage bool) string {
 	padding := max(0, r.width-
 		ansi.PrintableRuneWidth(logo)-
 		ansi.PrintableRuneWidth(note)-
-		ansi.PrintableRuneWidth(scrollPercent)-
+		ansi.PrintableRuneWidth(progress)-
 		ansi.PrintableRuneWidth(helpNote))
 
 	emptySpace := strings.Repeat(" ", padding)

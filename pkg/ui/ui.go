@@ -35,12 +35,6 @@ func NewProgram(cfg config.Config, cmd common.Commander) *tea.Program {
 	return tea.NewProgram(m, opts...)
 }
 
-type (
-	initCommandRunMsg struct {
-		ch chan common.RunOutput
-	}
-)
-
 // State is the top-level application State.
 type State int
 
@@ -146,8 +140,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.handleWindowResize(msg)
 
-	case initCommandRunMsg:
-		m.resources = msg.ch
+	case common.CommandRunStarted:
+		m.resources = msg.Ch
 		cmds = append(cmds, getKubeResources(m))
 
 	case stash.FetchedYAMLMsg:
@@ -313,7 +307,7 @@ func runCommand(m common.CommonModel) tea.Cmd {
 			ch <- common.RunOutput{Out: out, Err: err}
 		}()
 
-		return initCommandRunMsg{ch: ch}
+		return common.CommandRunStarted{Ch: ch}
 	}
 }
 

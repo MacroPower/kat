@@ -117,6 +117,14 @@ type CommandOutput struct {
 	Resources []*Resource
 }
 
+func (cr *CommandRunner) String() string {
+	if cr.command != nil {
+		return cr.command.Command
+	}
+
+	return "auto"
+}
+
 // RunFirstMatch executes the first matching command for the given path.
 // If path is a file, it checks for direct matches.
 // If path is a directory, it checks all files in the directory for matches.

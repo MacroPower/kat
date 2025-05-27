@@ -26,7 +26,7 @@ import (
 const (
 	stashIndent                = 1
 	stashViewItemHeight        = 3 // Height of stash entry, including gap.
-	stashViewTopPadding        = 5 // Logo, status bar, gaps.
+	stashViewTopPadding        = 4 // Logo, status bar, gaps.
 	stashViewBottomPadding     = 5 // Pagination and gaps, but not help.
 	stashViewHorizontalPadding = 6
 )
@@ -271,8 +271,8 @@ func (m *StashModel) updatePagination() {
 		helpHeight = m.helpHeight
 	}
 
+	// TODO: Why does this need to be set this way?
 	availableHeight := m.common.Height -
-		stashViewTopPadding -
 		helpHeight -
 		stashViewBottomPadding
 
@@ -442,8 +442,8 @@ func NewStashModel(cm *common.CommonModel) StashModel {
 func newStashPaginator() paginator.Model {
 	p := paginator.New()
 	p.Type = paginator.Dots
-	p.ActiveDot = styles.BrightGrayFg("•")
-	p.InactiveDot = styles.DarkGrayFg.Render("•")
+	p.ActiveDot = styles.FuchsiaFg("•")
+	p.InactiveDot = styles.GrayFg("◦")
 
 	return p
 }
@@ -456,6 +456,10 @@ func (m StashModel) Update(msg tea.Msg) (StashModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case common.ErrMsg:
 		m.err = msg
+
+	case common.CommandRunStarted:
+		// We're starting to search for local files.
+		m.loaded = false
 
 	case common.CommandRunFinished:
 		// We're finished searching for local files.
@@ -547,20 +551,6 @@ func (m StashModel) View() string {
 			loadingIndicator = m.Spinner.View()
 		}
 
-		// Create header renderer for logo/filter section.
-		headerRenderer := NewHeaderRenderer(m.common.Width, m.common.Height)
-		logoOrFilter := headerRenderer.RenderLogoOrFilter(
-			m.FilterState,
-			m.filterInput.View(),
-			func() string {
-				if m.showStatusMessage {
-					return m.statusMessage.String()
-				}
-
-				return ""
-			}(),
-		)
-
 		// Get help content using statusbar renderer like pager does.
 		var helpHeight int
 		if m.ShowHelp {
@@ -572,23 +562,24 @@ func (m StashModel) View() string {
 		populatedView := listRenderer.RenderDocumentList(m.getVisibleYAMLs(), m)
 		populatedViewHeight := strings.Count(populatedView, "\n")
 
-		// Calculate layout using LayoutCalculator.
-		calc := NewLayoutCalculator(m.common.Width, m.common.Height)
-		availHeight := calc.CalculateAvailableHeight(stashViewTopPadding, stashViewBottomPadding, helpHeight, populatedViewHeight)
-		blankLines := view.FillVerticalSpace(availHeight)
-
 		// Use PaginationRenderer for pagination controls.
 		var pagination string
+		var paginationHeight int
 		if m.paginator().TotalPages > 1 {
 			pagRenderer := NewPaginationRenderer(m.common.Width)
 			pagination = pagRenderer.RenderPagination(m.paginator(), m.paginator().TotalPages)
+			paginationHeight = strings.Count(pagination, "\n")
 		}
+
+		// Calculate layout using LayoutCalculator.
+		calc := NewLayoutCalculator(m.common.Width, m.common.Height)
+		availHeight := calc.CalculateAvailableHeight(stashViewTopPadding, stashViewBottomPadding, helpHeight, populatedViewHeight, paginationHeight)
+		blankLines := view.FillVerticalSpace(availHeight)
 
 		// Build the final view using ViewBuilder.
 		s = vb.
-			AddSection(loadingIndicator + logoOrFilter).
 			AddEmptySection().
-			AddSection(view.PadHorizontal(m.headerView(), 2, 0)).
+			AddSection(loadingIndicator + view.PadHorizontal(m.headerView(), 1, 0)).
 			AddEmptySection().
 			AddSection(common.Indent(populatedView, stashIndent)).
 			AddSection(blankLines).
@@ -617,12 +608,7 @@ func (m StashModel) headerView() string {
 
 	// Filter results.
 	if m.FilterState == Filtering {
-		if localCount == 0 {
-			return styles.GrayFg("Nothing found.")
-		}
-		if localCount > 0 {
-			sections = append(sections, fmt.Sprintf("%d local", localCount))
-		}
+		sections = append(sections, m.filterInput.View())
 
 		for i := range sections {
 			sections[i] = styles.GrayFg(sections[i])
@@ -661,30 +647,15 @@ func (m StashModel) statusBarView() string {
 
 	if m.showStatusMessage {
 		statusMsg = m.statusMessage.String()
-		// When showing status message, use current section as title.
-		switch m.currentSection().key {
-		case documentsSection:
-			title = fmt.Sprintf("%d documents", len(m.YAMLs))
-		case filterSection:
-			title = fmt.Sprintf("%d %q", len(m.filteredYAMLs), m.filterInput.Value())
-		}
 	} else {
-		// When no status message, show current section info as title.
-		switch m.currentSection().key {
-		case documentsSection:
-			title = fmt.Sprintf("%d documents", len(m.YAMLs))
-		case filterSection:
-			title = fmt.Sprintf("%d %q", len(m.filteredYAMLs), m.filterInput.Value())
-		}
+		// When no status message, show current command context as title.
+		title = m.common.Cmd.String()
 	}
 
-	// Calculate progress percentage based on pagination.
-	var progressPercent float64
-	if m.paginator().TotalPages > 1 {
-		progressPercent = float64(m.paginator().Page) / float64(m.paginator().TotalPages-1)
-	}
+	// Show progress based on pagination.
+	progress := fmt.Sprintf("%d/%d", m.paginator().Page+1, m.paginator().TotalPages)
 
-	return m.statusBarRenderer.RenderWithScroll(title, statusMsg, progressPercent)
+	return m.statusBarRenderer.RenderWithNote(title, statusMsg, progress)
 }
 
 // COMMANDS.
