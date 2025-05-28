@@ -48,7 +48,7 @@ var (
 	SelectedTabStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#979797"})
 	ErrorTitleStyle  = lipgloss.NewStyle().Foreground(Cream).Background(Red).Padding(0, 1)
 	SubtleStyle      = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"})
-	PaginationStyle  = SubtleStyle
+	PaginationStyle  = SubtleStyle.PaddingLeft(2).PaddingBottom(1)
 
 	LogoStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#ECFD65")).

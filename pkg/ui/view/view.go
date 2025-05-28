@@ -37,14 +37,6 @@ func (vb *ViewBuilder) AddSection(content string, style ...lipgloss.Style) *View
 	return vb
 }
 
-// AddEmptySection adds an empty section for spacing.
-func (vb *ViewBuilder) AddEmptySection() *ViewBuilder {
-	vb.sections = append(vb.sections, "")
-	vb.styles = append(vb.styles, lipgloss.Style{})
-
-	return vb
-}
-
 // Build constructs the final view string.
 func (vb *ViewBuilder) Build() string {
 	if len(vb.sections) == 0 {
@@ -72,26 +64,4 @@ func FillVerticalSpace(lines int) string {
 	}
 
 	return strings.Repeat("\n", lines)
-}
-
-// PadHorizontal adds horizontal padding to content.
-func PadHorizontal(content string, leftPad, rightPad int) string {
-	if leftPad <= 0 && rightPad <= 0 {
-		return content
-	}
-
-	lines := strings.Split(content, "\n")
-	var result strings.Builder
-
-	leftPadding := strings.Repeat(" ", leftPad)
-	rightPadding := strings.Repeat(" ", rightPad)
-
-	for i, line := range lines {
-		result.WriteString(leftPadding + line + rightPadding)
-		if i < len(lines)-1 {
-			result.WriteString("\n")
-		}
-	}
-
-	return result.String()
 }

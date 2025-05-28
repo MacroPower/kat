@@ -53,17 +53,5 @@ func (dlr *DocumentListRenderer) RenderDocumentList(docs []*yamldoc.YAMLDocument
 		}
 	}
 
-	// Fill remaining space on page.
-	itemsOnPage := m.paginator().ItemsOnPage(len(docs))
-	if itemsOnPage < m.paginator().PerPage {
-		n := (m.paginator().PerPage - itemsOnPage) * stashViewItemHeight
-		if len(docs) == 0 {
-			n -= stashViewItemHeight - 1
-		}
-		for range n {
-			b.WriteString("\n")
-		}
-	}
-
 	return b.String()
 }

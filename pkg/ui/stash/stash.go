@@ -26,8 +26,7 @@ import (
 const (
 	stashIndent                = 1
 	stashViewItemHeight        = 3 // Height of stash entry, including gap.
-	stashViewTopPadding        = 4 // Logo, status bar, gaps.
-	stashViewBottomPadding     = 5 // Pagination and gaps, but not help.
+	stashViewBottomPadding     = 6 // Pagination and gaps, but not help.
 	stashViewHorizontalPadding = 6
 )
 
@@ -550,47 +549,47 @@ func (m StashModel) View() string {
 		if m.ShouldSpin() {
 			loadingIndicator = m.Spinner.View()
 		}
-
-		// Get help content using statusbar renderer like pager does.
-		var helpHeight int
-		if m.ShowHelp {
-			helpHeight = m.helpRenderer.CalculateHelpHeight() + 1
-		}
+		header := lipgloss.NewStyle().
+			Padding(2, 2, 1, 1).
+			Render(loadingIndicator + " " + m.headerView())
 
 		// Use DocumentListRenderer for the populated view.
 		listRenderer := NewDocumentListRenderer(m.common.Width, m.common.Height)
 		populatedView := listRenderer.RenderDocumentList(m.getVisibleYAMLs(), m)
-		populatedViewHeight := strings.Count(populatedView, "\n")
+		populatedView = common.Indent(populatedView, stashIndent)
 
 		// Use PaginationRenderer for pagination controls.
-		var pagination string
-		var paginationHeight int
+		pagination := "\n"
 		if m.paginator().TotalPages > 1 {
 			pagRenderer := NewPaginationRenderer(m.common.Width)
 			pagination = pagRenderer.RenderPagination(m.paginator(), m.paginator().TotalPages)
-			paginationHeight = strings.Count(pagination, "\n")
 		}
 
-		// Calculate layout using LayoutCalculator.
-		calc := NewLayoutCalculator(m.common.Width, m.common.Height)
-		availHeight := calc.CalculateAvailableHeight(stashViewTopPadding, stashViewBottomPadding, helpHeight, populatedViewHeight, paginationHeight)
-		blankLines := view.FillVerticalSpace(availHeight)
+		statusBar := m.statusBarView()
+		help := m.helpView()
+
+		availableLines := m.availableLines(header, populatedView, pagination, statusBar)
+		if m.ShowHelp {
+			availableLines -= lipgloss.Height(help)
+		}
+		blankLines := view.FillVerticalSpace(availableLines)
 
 		// Build the final view using ViewBuilder.
 		s = vb.
-			AddEmptySection().
-			AddSection(loadingIndicator + view.PadHorizontal(m.headerView(), 1, 0)).
-			AddEmptySection().
-			AddSection(common.Indent(populatedView, stashIndent)).
+			AddSection(header).
+			AddSection(populatedView).
 			AddSection(blankLines).
-			AddSection(view.PadHorizontal(pagination, 2, 0)).
-			AddEmptySection().
-			AddSection(m.statusBarView()).
-			AddSection(m.helpView()).
+			AddSection(pagination).
+			AddSection(statusBar).
+			AddSection(help).
 			Build()
 	}
 
-	return "\n" + s
+	return s
+}
+
+func (m StashModel) availableLines(components ...string) int {
+	return m.common.Height - lipgloss.Height(strings.Join(components, "\n"))
 }
 
 func (m StashModel) helpView() string {
