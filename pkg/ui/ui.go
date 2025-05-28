@@ -3,6 +3,7 @@ package ui
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/charmbracelet/log"
 
@@ -59,6 +60,9 @@ type model struct {
 
 	stash stash.StashModel
 	state State
+
+	// Prevent concurrent command runs / resource updates.
+	resourceMu sync.Mutex
 }
 
 // unloadDocument unloads a document from the pager. Title that while this
@@ -91,7 +95,7 @@ func newModel(cfg config.Config, cmd common.Commander) tea.Model {
 		Cmd:    cmd,
 	}
 
-	m := model{
+	m := &model{
 		common: &cm,
 		state:  stateShowStash,
 		pager:  pager.NewPagerModel(&cm),
@@ -101,15 +105,15 @@ func newModel(cfg config.Config, cmd common.Commander) tea.Model {
 	return m
 }
 
-func (m model) Init() tea.Cmd {
+func (m *model) Init() tea.Cmd {
 	cmds := []tea.Cmd{m.stash.Spinner.Tick}
 
-	cmds = append(cmds, runCommand(*m.common))
+	cmds = append(cmds, m.runCommand())
 
 	return tea.Batch(cmds...)
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// If there's been an error, any key exits.
 	if m.fatalErr != nil {
 		if _, ok := msg.(tea.KeyMsg); ok {
@@ -142,7 +146,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case common.CommandRunStarted:
 		m.resources = msg.Ch
-		cmds = append(cmds, getKubeResources(m))
+		cmds = append(cmds, m.getKubeResources())
 
 	case stash.FetchedYAMLMsg:
 		// We've loaded a YAML file's contents for rendering.
@@ -177,7 +181,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m model) View() string {
+func (m *model) View() string {
 	if m.fatalErr != nil {
 		return common.ErrorView(m.fatalErr, true)
 	}
@@ -238,8 +242,9 @@ func (m *model) handleRefreshKey(_ tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	}
 
 	m.stash.YAMLs = nil
+	initCmds := m.Init()
 
-	return m, m.Init(), true
+	return m, initCmds, true
 }
 
 // handleResourceUpdate processes kubernetes resource updates.
@@ -295,15 +300,22 @@ func (m *model) handleWindowResize(msg tea.WindowSizeMsg) {
 
 // COMMANDS.
 
-func runCommand(m common.CommonModel) tea.Cmd {
+func (m *model) runCommand() tea.Cmd {
 	return func() tea.Msg {
-		log.Debug("runCommand")
+		locked := m.resourceMu.TryLock()
+		if !locked {
+			log.Debug("command already running, skipping new run")
 
+			return struct{}{}
+		}
+
+		log.Debug("runCommand")
 		ch := make(chan common.RunOutput)
 		go func() {
 			defer close(ch)
+			defer m.resourceMu.Unlock()
 
-			out, err := m.Cmd.Run()
+			out, err := m.common.Cmd.Run()
 			ch <- common.RunOutput{Out: out, Err: err}
 		}()
 
@@ -311,7 +323,7 @@ func runCommand(m common.CommonModel) tea.Cmd {
 	}
 }
 
-func getKubeResources(m model) tea.Cmd {
+func (m *model) getKubeResources() tea.Cmd {
 	return func() tea.Msg {
 		res := <-m.resources
 
