@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 
 	yaml "sigs.k8s.io/yaml/goyaml.v3"
@@ -55,4 +56,16 @@ func (c *Config) Write(path string) error {
 	}
 
 	return nil
+}
+
+func GetPath() string {
+	if xdgHome, ok := os.LookupEnv("XDG_CONFIG_HOME"); ok && xdgHome != "" {
+		return filepath.Join(xdgHome, "kat", "config.yaml")
+	}
+
+	if usr, err := user.Current(); err != nil {
+		return filepath.Join(usr.HomeDir, ".config", "kat", "config.yaml")
+	}
+
+	return filepath.Join(os.TempDir(), "kat", "config.yaml")
 }

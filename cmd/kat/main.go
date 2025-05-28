@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -32,8 +31,6 @@ Examples:
 	# kat with command passthrough.
 	kat ./example/kustomize -- kustomize build .
 `
-
-	configPath = "$XDG_CONFIG_HOME/kat/config.yaml"
 )
 
 var cli struct {
@@ -41,13 +38,13 @@ var cli struct {
 		Level  string `default:"info" help:"Log level."`
 		Format string `default:"text" help:"Log format. One of: [text, logfmt, json]"`
 	} `embed:"" prefix:"log-"`
-	Path    string        `arg:""   help:"File or directory path, default is $PWD."                          optional:"" type:"path"`
-	Command []string      `arg:""   help:"Command to run, defaults set in $XDG_CONFIG_HOME/kat/config.yaml." optional:""`
+	Path    string        `arg:""   help:"File or directory path, default is $PWD."                   optional:"" type:"path"`
+	Command []string      `arg:""   help:"Command to run, defaults set in ~/.config/kat/config.yaml." optional:""`
 	Config  config.Config `embed:""`
 }
 
 func main() {
-	configPathExp, err := initializeConfig()
+	configPath, err := initializeConfig()
 	if err != nil {
 		panic(err)
 	}
@@ -56,7 +53,7 @@ func main() {
 		kong.Name(cmdName),
 		kong.Description(cmdDesc+"\n"+cmdExamples),
 		kong.DefaultEnvars(strings.ToUpper(cmdName)),
-		kong.Configuration(kongyaml.Loader, configPathExp),
+		kong.Configuration(kongyaml.Loader, configPath),
 	)
 
 	logHandler, err := log.CreateHandlerWithStrings(cliCtx.Stderr, cli.Log.Level, cli.Log.Format)
@@ -99,12 +96,12 @@ func main() {
 
 // initializeConfig initializes the configuration file.
 func initializeConfig() (string, error) {
-	configPathExp := os.ExpandEnv(configPath)
-	if err := config.NewConfig().Write(configPathExp); err != nil {
+	configPath := config.GetPath()
+	if err := config.NewConfig().Write(configPath); err != nil {
 		return "", fmt.Errorf("failed to write config: %w", err)
 	}
 
-	return configPathExp, nil
+	return configPath, nil
 }
 
 // resolvePath resolves the input path.
