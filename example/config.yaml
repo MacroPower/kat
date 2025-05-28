@@ -1,9 +1,3 @@
-ui:
-  glamour-style: auto
-  glamour-max-width: 0
-  glamour-disabled: false
-  show-line-numbers: true
-  enable-mouse: true
 kube:
   commands:
     - match: .*/Chart\.ya?ml
@@ -18,3 +12,124 @@ kube:
       args:
         - build
         - .
+ui:
+  keybinds:
+    common:
+      quit:
+        description: quit
+        keys:
+          - code: q
+          - code: ctrl+c
+            alias: ⌃c
+            hidden: true
+      suspend:
+        description: suspend
+        keys:
+          - code: ctrl+z
+            alias: ⌃z
+            hidden: true
+      reload:
+        description: reload
+        keys:
+          - code: r
+      help:
+        description: help
+        keys:
+          - code: "?"
+      escape:
+        description: go back
+        keys:
+          - code: esc
+      up:
+        description: move up
+        keys:
+          - code: up
+            alias: ↑
+          - code: k
+      down:
+        description: move down
+        keys:
+          - code: down
+            alias: ↓
+          - code: j
+      left:
+        description: move left
+        keys:
+          - code: left
+            alias: ←
+          - code: h
+      right:
+        description: move right
+        keys:
+          - code: right
+            alias: →
+          - code: l
+      prev:
+        description: previous page
+        keys:
+          - code: shift+tab
+            alias: ⇧+tab
+          - code: H
+      next:
+        description: next page
+        keys:
+          - code: tab
+          - code: L
+    stash:
+      open:
+        description: open
+        keys:
+          - code: enter
+            alias: ↵
+      find:
+        description: find
+        keys:
+          - code: /
+      home:
+        description: go to start
+        keys:
+          - code: home
+          - code: g
+      end:
+        description: go to end
+        keys:
+          - code: end
+          - code: G
+    pager:
+      copy:
+        description: copy contents
+        keys:
+          - code: c
+      home:
+        description: go to top
+        keys:
+          - code: home
+          - code: g
+      end:
+        description: go to bottom
+        keys:
+          - code: end
+          - code: G
+      page-up:
+        description: page up
+        keys:
+          - code: pgup
+          - code: b
+      page-down:
+        description: page down
+        keys:
+          - code: pgdn
+          - code: f
+      half-page-up:
+        description: ½ page up
+        keys:
+          - code: u
+      half-page-down:
+        description: ½ page down
+        keys:
+          - code: d
+  glamour-style: auto
+  glamour-max-width: 0
+  glamour-disabled: false
+  show-line-numbers: true
+  enable-mouse: true

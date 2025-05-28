@@ -58,14 +58,16 @@
 Output demo.gif
 
 Set Shell "bash"
-Set FontSize 32
-Set Width 1600
-Set Height 1200
+Set Padding 20
+Set FontSize 24
+Set Width 930
+Set Height 620
 
 Hide
 Type `go build -o dist/kat -ldflags="-X github.com/MacroPower/kat/pkg/version.Version=v0" cmd/kat/main.go`  Enter
 Type "alias kat=./dist/kat"  Enter
 Type "clear"  Enter
+Sleep 500ms
 Show
 
 Sleep 100ms
@@ -74,31 +76,39 @@ Type "kat example/helm" Sleep 500ms  Enter
 
 Sleep 1s
 
-Down@250ms 2
+Right
 Sleep 1s
-Enter
-Sleep 1s
-Type "?"
-Sleep 1s
-Type "?"
+Left
 Sleep 1s
 
-Down@50ms 20
+Enter
+Sleep 1s
+Down@50ms 30
 Sleep 1s
 
 Left
 Sleep 500ms
 
+Type "/"
+Sleep 500ms
+Type "test-connection"
+Sleep 500ms
+
 Down@500ms
 Enter@500ms
 
-Sleep 1s
+Down@50ms 10
+
+Sleep 500ms
 Type "r"
-Sleep 1s
+Sleep 500ms
 Type "r"
-Sleep 1s
+Sleep 500ms
 Type "r"
-Sleep 1s
+Sleep 500ms
+Type "r"
+Sleep 500ms
 
 Left
 Sleep 1s
+Type "q"

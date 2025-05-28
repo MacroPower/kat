@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "example.fullname" . }}
+  name: {{ include "example.fullname" . }}-ingress
   labels:
     {{- include "example.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
