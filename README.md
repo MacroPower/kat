@@ -55,6 +55,8 @@ Flags:
       --ui-enable-mouse            ($KAT_UI_ENABLE_MOUSE)
 ```
 
+Also see the [default configuration file](example/config.yaml).
+
 ## Installation
 
 ### Homebrew
