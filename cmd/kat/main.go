@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log/slog"
-	"path/filepath"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -31,6 +30,9 @@ Examples:
 
 	# kat with command passthrough.
 	kat ./example/kustomize -- kustomize build .
+
+	# kat a file or stdin directly (no reload support).
+	cat ./example/kustomize/resources.yaml | kat -f -
 `
 )
 
@@ -40,9 +42,10 @@ var cli struct {
 		Format string `default:"text" enum:"text,logfmt,json" help:"Log format."`
 	} `embed:"" prefix:"log-"`
 
-	File []byte `help:"File content to read." optional:"" short:"f" type:"filecontent"`
+	File []byte `env:"-" help:"File content to read." short:"f" type:"filecontent"`
 
-	Path    string   `arg:"" help:"File or directory path, default is $PWD."                   optional:"" type:"path"`
+	Path string `arg:"" default:"." help:"File or directory path, default is $PWD." type:"path"`
+
 	Command []string `arg:"" help:"Command to run, defaults set in ~/.config/kat/config.yaml." optional:""`
 
 	Config config.Config `embed:""`
@@ -92,13 +95,7 @@ func main() {
 			cliCtx.Fatalf("initialization failed")
 		}
 	} else {
-		path, err := resolvePath(cli.Path)
-		if err != nil {
-			slog.Error("resolve paths", slog.Any("err", err))
-			cliCtx.Fatalf("initialization failed")
-		}
-
-		cr, err = setupCommandRunner(path)
+		cr, err = setupCommandRunner(cli.Path)
 		if err != nil {
 			slog.Error("setup command runner", slog.Any("err", err))
 			cliCtx.Fatalf("initialization failed")
@@ -118,16 +115,6 @@ func initializeConfig() (string, error) {
 	}
 
 	return configPath, nil
-}
-
-// resolvePath resolves the input path.
-func resolvePath(path string) (string, error) {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return "", fmt.Errorf("failed to resolve absolute path: %w", err)
-	}
-
-	return absPath, nil
 }
 
 // setupCommandRunner creates and configures the command runner.
