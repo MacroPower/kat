@@ -192,3 +192,32 @@ func (cr *CommandRunner) findMatchInDirectory(dirPath string) (*Command, error) 
 
 	return matchedCommand, nil
 }
+
+type ResourceGetter struct {
+	Resources []*Resource
+}
+
+func NewResourceGetter(input string) (*ResourceGetter, error) {
+	if input == "" {
+		return nil, errors.New("input cannot be empty")
+	}
+
+	resources, err := SplitYAML([]byte(input))
+	if err != nil {
+		return nil, fmt.Errorf("split yaml: %w", err)
+	}
+
+	return &ResourceGetter{Resources: resources}, nil
+}
+
+func (rg *ResourceGetter) String() string {
+	return "static"
+}
+
+func (rg *ResourceGetter) Run() (CommandOutput, error) {
+	if rg.Resources == nil {
+		return CommandOutput{}, errors.New("no resources available")
+	}
+
+	return CommandOutput{Resources: rg.Resources}, nil
+}

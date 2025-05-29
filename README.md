@@ -27,6 +27,9 @@ kat ./example/kustomize
 
 # kat with command passthrough.
 kat ./example/helm -- helm template foobar .
+
+# kat a file or stdin directly (no reload support).
+cat ./example/kustomize/resources.yaml | kat -f -
 ```
 
 ## Installation

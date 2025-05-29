@@ -14,6 +14,7 @@ import (
 	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/log"
 	"github.com/MacroPower/kat/pkg/ui"
+	"github.com/MacroPower/kat/pkg/ui/common"
 	uiconfig "github.com/MacroPower/kat/pkg/ui/config"
 )
 
@@ -36,11 +37,15 @@ Examples:
 var cli struct {
 	Log struct {
 		Level  string `default:"info" help:"Log level."`
-		Format string `default:"text" help:"Log format. One of: [text, logfmt, json]"`
+		Format string `default:"text" enum:"text,logfmt,json" help:"Log format."`
 	} `embed:"" prefix:"log-"`
-	Path    string        `arg:""   help:"File or directory path, default is $PWD."                   optional:"" type:"path"`
-	Command []string      `arg:""   help:"Command to run, defaults set in ~/.config/kat/config.yaml." optional:""`
-	Config  config.Config `embed:""`
+
+	File []byte `help:"File content to read." optional:"" short:"f" type:"filecontent"`
+
+	Path    string   `arg:"" help:"File or directory path, default is $PWD."                   optional:"" type:"path"`
+	Command []string `arg:"" help:"Command to run, defaults set in ~/.config/kat/config.yaml." optional:""`
+
+	Config config.Config `embed:""`
 }
 
 func main() {
@@ -73,20 +78,31 @@ func main() {
 		cliCtx.Fatalf("initialization failed")
 	}
 
-	path, err := resolvePath(cli.Path)
-	if err != nil {
-		slog.Error("resolve paths", slog.Any("err", err))
-		cliCtx.Fatalf("initialization failed")
-	}
 	slog.Debug("parsed args",
-		slog.String("path", path),
+		slog.String("path", cli.Path),
 		slog.Any("command", cli.Command),
 	)
 
-	cr, err := setupCommandRunner(path)
-	if err != nil {
-		slog.Error("setup command runner", slog.Any("err", err))
-		cliCtx.Fatalf("initialization failed")
+	var cr common.Commander
+
+	if len(cli.File) > 0 {
+		cr, err = kube.NewResourceGetter(string(cli.File))
+		if err != nil {
+			slog.Error("create resource getter", slog.Any("err", err))
+			cliCtx.Fatalf("initialization failed")
+		}
+	} else {
+		path, err := resolvePath(cli.Path)
+		if err != nil {
+			slog.Error("resolve paths", slog.Any("err", err))
+			cliCtx.Fatalf("initialization failed")
+		}
+
+		cr, err = setupCommandRunner(path)
+		if err != nil {
+			slog.Error("setup command runner", slog.Any("err", err))
+			cliCtx.Fatalf("initialization failed")
+		}
 	}
 
 	if err := runUI(cli.Config.UI, cr); err != nil {
@@ -151,7 +167,7 @@ func parseCommand(cmdArgs []string) *kube.Command {
 }
 
 // runUI starts the UI program.
-func runUI(cfg uiconfig.Config, cr *kube.CommandRunner) error {
+func runUI(cfg uiconfig.Config, cr common.Commander) error {
 	p := ui.NewProgram(cfg, cr)
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("tea: %w", err)
