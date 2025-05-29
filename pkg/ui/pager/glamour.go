@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/glamour/styles"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/muesli/termenv"
 	"golang.org/x/term"
 
