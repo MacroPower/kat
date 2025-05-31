@@ -439,6 +439,10 @@ func newStashPaginator() paginator.Model {
 func (m StashModel) Update(msg tea.Msg) (StashModel, tea.Cmd) {
 	var cmds []tea.Cmd
 
+	if m.FilterState == Filtering {
+		cmds = append(cmds, m.handleFiltering(msg))
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if m.ViewState == StashStateShowingError {
@@ -480,12 +484,6 @@ func (m StashModel) Update(msg tea.Msg) (StashModel, tea.Cmd) {
 		if m.ViewState == StashStateShowingStatusMessage {
 			m.ViewState = StashStateReady
 		}
-	}
-
-	if m.FilterState == Filtering {
-		cmds = append(cmds, m.handleFiltering(msg))
-
-		return m, tea.Batch(cmds...)
 	}
 
 	return m, tea.Batch(cmds...)
