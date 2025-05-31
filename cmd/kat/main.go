@@ -95,11 +95,7 @@ func main() {
 			cliCtx.Fatalf("initialization failed")
 		}
 	} else {
-		cr, err = setupCommandRunner(cli.Path)
-		if err != nil {
-			slog.Error("setup command runner", slog.Any("err", err))
-			cliCtx.Fatalf("initialization failed")
-		}
+		cr = setupCommandRunner(cli.Path)
 	}
 
 	if err := runUI(cli.Config.UI, cr); err != nil {
@@ -118,7 +114,7 @@ func initializeConfig() (string, error) {
 }
 
 // setupCommandRunner creates and configures the command runner.
-func setupCommandRunner(path string) (*kube.CommandRunner, error) {
+func setupCommandRunner(path string) *kube.CommandRunner {
 	cr := kube.NewCommandRunner(path)
 
 	if len(cli.Command) > 0 {
@@ -129,13 +125,7 @@ func setupCommandRunner(path string) (*kube.CommandRunner, error) {
 		cr.SetCommands(cli.Config.Kube.Commands)
 	}
 
-	// Hack: make sure that we can run the command.
-	// TODO: implement proper error handling in the UI.
-	if _, err := cr.Run(); err != nil {
-		return nil, fmt.Errorf("failed to run command: %w", err)
-	}
-
-	return cr, nil
+	return cr
 }
 
 // parseCommand parses the CLI command arguments into a [kube.Command].

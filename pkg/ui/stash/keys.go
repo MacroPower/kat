@@ -11,75 +11,81 @@ func NewStashKeyHandler() *StashKeyHandler {
 }
 
 // HandleDocumentBrowsing handles key events for document browsing in stash view.
-func (h *StashKeyHandler) HandleDocumentBrowsing(m *StashModel, msg tea.KeyMsg) []tea.Cmd {
-	var cmds []tea.Cmd
+func (h *StashKeyHandler) HandleDocumentBrowsing(m StashModel, msg tea.KeyMsg) (StashModel, tea.Cmd) {
 	key := msg.String()
 
 	// Handle navigation keys.
-	m.handleNavigationKeys(key)
+	numDocs := len(m.getVisibleYAMLs())
+	kb := m.common.Config.KeyBinds
 
-	// Handle document-specific keys.
-	docCmd := m.handleDocumentKeys(key)
-	if docCmd != nil {
-		cmds = append(cmds, docCmd)
-	}
+	switch {
+	case kb.Common.Up.Match(key):
+		m.moveCursorUp()
 
-	// Handle filter keys.
-	filterCmd := m.handleFilterKeys(key)
-	if filterCmd != nil {
-		cmds = append(cmds, filterCmd)
-	}
+	case kb.Common.Down.Match(key):
+		m.moveCursorDown()
 
-	// Handle section navigation.
-	h.handleSectionNavigation(m, key)
-
-	// Handle special actions.
-	h.handleSpecialActions(m, key)
-
-	return cmds
-}
-
-// handleSectionNavigation handles tab navigation between sections.
-func (h *StashKeyHandler) handleSectionNavigation(m *StashModel, key string) {
-	switch key {
-	case "tab", "L":
+	case kb.Common.Left.Match(key), kb.Common.Prev.Match(key):
 		if len(m.sections) == 0 || m.FilterState == Filtering {
-			return
+			return m, nil
 		}
-		m.sectionIndex++
-		if m.sectionIndex >= len(m.sections) {
-			m.sectionIndex = 0
-		}
-		m.updatePagination()
+		newPaginatorModel, cmd := m.paginator().Update(msg)
+		m.setPaginator(newPaginatorModel)
+		m.paginator().PrevPage()
+		m.enforcePaginationBounds()
 
-	case "shift+tab", "H":
+		return m, cmd
+
+	case kb.Common.Right.Match(key), kb.Common.Next.Match(key):
 		if len(m.sections) == 0 || m.FilterState == Filtering {
-			return
+			return m, nil
 		}
-		m.sectionIndex--
-		if m.sectionIndex < 0 {
-			m.sectionIndex = len(m.sections) - 1
-		}
-		m.updatePagination()
-	}
-}
+		newPaginatorModel, cmd := m.paginator().Update(msg)
+		m.setPaginator(newPaginatorModel)
+		m.paginator().NextPage()
+		m.enforcePaginationBounds()
 
-// handleSpecialActions handles special action keys like refresh, help, etc.
-func (h *StashKeyHandler) handleSpecialActions(m *StashModel, key string) {
-	switch key {
-	case "?":
+		return m, cmd
+
+	case kb.Stash.Home.Match(key):
+		m.paginator().Page = 0
+		m.setCursor(0)
+
+	case kb.Stash.End.Match(key):
+		m.paginator().Page = m.paginator().TotalPages - 1
+		m.setCursor(m.paginator().ItemsOnPage(numDocs) - 1)
+
+	// Document actions.
+	case kb.Stash.Open.Match(key):
+		if numDocs != 0 {
+			md := m.selectedYAML()
+			cmd := m.openYAML(md)
+
+			return m, cmd
+		}
+
+	// Filtering actions.
+	case kb.Stash.Find.Match(key):
+		cmd := m.startFiltering()
+
+		return m, cmd
+
+	// Other actions.
+	case kb.Common.Help.Match(key):
 		m.toggleHelp()
 
-	case "!":
-		if m.err != nil && m.ViewState == StashStateReady {
+	case kb.Common.Error.Match(key):
+		if m.ViewState != StashStateShowingError {
 			m.ViewState = StashStateShowingError
 		}
 
-	case "esc":
+	case kb.Common.Escape.Match(key):
 		if m.FilterApplied() {
 			m.resetFiltering()
 		}
 	}
+
+	return m, nil
 }
 
 // FilterHandler provides filter-specific event handling.
@@ -119,8 +125,6 @@ func (h *FilterHandler) handleFilterKeys(m *StashModel, key string) tea.Cmd {
 		m.resetFiltering()
 
 	case "enter", "tab", "shift+tab", "ctrl+k", "up", "ctrl+j", "down":
-		m.hideStatusMessage()
-
 		if len(m.YAMLs) == 0 {
 			return nil
 		}
@@ -175,45 +179,4 @@ func (h *FilterHandler) updateFilterInput(m *StashModel, msg tea.Msg) []tea.Cmd 
 	}
 
 	return cmds
-}
-
-// PaginationKeyHandler handles pagination-specific key events.
-type PaginationKeyHandler struct{}
-
-// NewPaginationKeyHandler creates a new PaginationKeyHandler.
-func NewPaginationKeyHandler() *PaginationKeyHandler {
-	return &PaginationKeyHandler{}
-}
-
-// HandlePaginationKeys handles pagination key events.
-func (h *PaginationKeyHandler) HandlePaginationKeys(m *StashModel, msg tea.Msg) []tea.Cmd {
-	var cmds []tea.Cmd
-
-	// Update the standard paginator.
-	newPaginatorModel, cmd := m.paginator().Update(msg)
-	m.setPaginator(newPaginatorModel)
-	cmds = append(cmds, cmd)
-
-	// Handle extra pagination keystrokes.
-	if key, ok := msg.(tea.KeyMsg); ok {
-		switch key.String() {
-		case "b", "u":
-			m.paginator().PrevPage()
-		case "f", "d":
-			m.paginator().NextPage()
-		}
-	}
-
-	// Keep the index in bounds when paginating.
-	h.enforcePaginationBounds(m)
-
-	return cmds
-}
-
-// enforcePaginationBounds ensures cursor stays within page bounds.
-func (h *PaginationKeyHandler) enforcePaginationBounds(m *StashModel) {
-	itemsOnPage := m.paginator().ItemsOnPage(len(m.getVisibleYAMLs()))
-	if m.cursor() > itemsOnPage-1 {
-		m.setCursor(max(0, itemsOnPage-1))
-	}
 }

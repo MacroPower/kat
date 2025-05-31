@@ -69,6 +69,7 @@ type CommonKeyBinds struct {
 	Suspend *keys.KeyBind
 	Reload  *keys.KeyBind
 	Help    *keys.KeyBind
+	Error   *keys.KeyBind
 	Escape  *keys.KeyBind
 
 	// Navigation.
@@ -98,8 +99,12 @@ func (kb *CommonKeyBinds) EnsureDefaults() {
 			keys.New("esc"),
 		))
 	keys.SetDefaultBind(&kb.Help,
-		keys.NewBind("help",
+		keys.NewBind("toggle help",
 			keys.New("?"),
+		))
+	keys.SetDefaultBind(&kb.Error,
+		keys.NewBind("toggle error",
+			keys.New("!"),
 		))
 
 	keys.SetDefaultBind(&kb.Up,
@@ -141,6 +146,7 @@ func (kb *CommonKeyBinds) GetKeyBinds() []keys.KeyBind {
 		*kb.Reload,
 		*kb.Escape,
 		*kb.Help,
+		*kb.Error,
 		*kb.Up,
 		*kb.Down,
 		*kb.Left,

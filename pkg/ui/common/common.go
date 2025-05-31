@@ -5,10 +5,12 @@ import (
 	"strings"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/ui/config"
+	"github.com/MacroPower/kat/pkg/ui/statusbar"
 	"github.com/MacroPower/kat/pkg/ui/styles"
-	"github.com/MacroPower/kat/pkg/version"
 )
 
 type Commander interface {
@@ -17,10 +19,12 @@ type Commander interface {
 }
 
 type CommonModel struct {
-	Cmd    Commander
-	Config config.Config
-	Width  int
-	Height int
+	Cmd                Commander
+	StatusMessageTimer *time.Timer
+	StatusMessage      StatusMessage
+	Config             config.Config
+	Width              int
+	Height             int
 }
 
 // ApplicationContext indicates the area of the application something applies
@@ -40,6 +44,10 @@ type RunOutput struct {
 }
 
 type (
+	StatusMessage struct {
+		Message string
+		IsError bool
+	}
 	StatusMessageTimeoutMsg ApplicationContext
 
 	CommandRunStarted struct {
@@ -47,6 +55,18 @@ type (
 	}
 	CommandRunFinished RunOutput
 )
+
+func (m *CommonModel) GetStatusBar(showMessage bool) *statusbar.StatusBarRenderer {
+	if showMessage && m.StatusMessage.IsError {
+		return statusbar.NewStatusBarRenderer(m.Width, statusbar.WithError(m.StatusMessage.Message))
+	}
+
+	if showMessage && m.StatusMessage.Message != "" {
+		return statusbar.NewStatusBarRenderer(m.Width, statusbar.WithMessage(m.StatusMessage.Message))
+	}
+
+	return statusbar.NewStatusBarRenderer(m.Width)
+}
 
 // Lightweight version of reflow's indent function.
 func Indent(s string, n int) string {
@@ -67,14 +87,14 @@ type ErrMsg struct{ Err error } //nolint:errname // Tea message.
 
 func (e ErrMsg) Error() string { return e.Err.Error() }
 
-func ErrorView(err error, fatal bool) string {
+func ErrorView(err string, fatal bool) string {
 	exitMsg := "press any key to "
 	if fatal {
 		exitMsg += "exit"
 	} else {
 		exitMsg += "return"
 	}
-	s := fmt.Sprintf("%s\n\n%v\n\n%s",
+	s := fmt.Sprintf("%s\n\n%s\n\n%s",
 		styles.ErrorTitleStyle.Render("ERROR"),
 		err,
 		styles.SubtleStyle.Render(exitMsg),
@@ -83,6 +103,10 @@ func ErrorView(err error, fatal bool) string {
 	return "\n" + Indent(s, 3)
 }
 
-func KatLogoView() string {
-	return styles.LogoStyle.Render(fmt.Sprintf(" kat %s ", version.GetVersion()))
+func WaitForStatusMessageTimeout(appCtx ApplicationContext, t *time.Timer) tea.Cmd {
+	return func() tea.Msg {
+		<-t.C
+
+		return StatusMessageTimeoutMsg(appCtx)
+	}
 }

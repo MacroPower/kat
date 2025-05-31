@@ -39,35 +39,20 @@ func stashItemView(b *strings.Builder, m StashModel, index int, y *yamldoc.YAMLD
 	// highlight that first item since pressing return will open it.
 	if isSelected && !isFiltering || singleFilteredItem {
 		// Selected item.
-		if m.statusMessage == stashingStatusMessage {
-			gutter = styles.GreenFg(verticalLine)
-			icon = styles.DimGreenFg(icon)
-			title = styles.GreenFg(title)
-			desc = styles.SemiDimGreenFg(desc)
-			editedBy = styles.SemiDimGreenFg(editedBy)
-			separator = styles.SemiDimGreenFg(separator)
+		gutter = styles.DullFuchsiaFg(verticalLine)
+		if m.currentSection().key == filterSection && m.FilterState == FilterApplied || singleFilteredItem {
+			s := lipgloss.NewStyle().Foreground(styles.Fuchsia)
+			title = styleFilteredText(title, m.filterInput.Value(), s, s.Underline(true))
 		} else {
-			gutter = styles.DullFuchsiaFg(verticalLine)
-			if m.currentSection().key == filterSection && m.FilterState == FilterApplied || singleFilteredItem {
-				s := lipgloss.NewStyle().Foreground(styles.Fuchsia)
-				title = styleFilteredText(title, m.filterInput.Value(), s, s.Underline(true))
-			} else {
-				title = styles.FuchsiaFg(title)
-				icon = styles.FuchsiaFg(icon)
-			}
-			desc = styles.DimFuchsiaFg(desc)
-			editedBy = styles.DimDullFuchsiaFg(editedBy)
-			separator = styles.DullFuchsiaFg(separator)
+			title = styles.FuchsiaFg(title)
+			icon = styles.FuchsiaFg(icon)
 		}
+		desc = styles.DimFuchsiaFg(desc)
+		editedBy = styles.DimDullFuchsiaFg(editedBy)
+		separator = styles.DullFuchsiaFg(separator)
 	} else {
 		gutter = " "
-		if m.statusMessage == stashingStatusMessage { //nolint:gocritic // TODO: Refactor.
-			icon = styles.DimGreenFg(icon)
-			title = styles.GreenFg(title)
-			desc = styles.SemiDimGreenFg(desc)
-			editedBy = styles.SemiDimGreenFg(editedBy)
-			separator = styles.SemiDimGreenFg(separator)
-		} else if isFiltering && m.filterInput.Value() == "" {
+		if isFiltering && m.filterInput.Value() == "" {
 			icon = styles.DimGreenFg(icon)
 			title = styles.DimNormalFg(title)
 			desc = styles.DimBrightGrayFg(desc)

@@ -183,7 +183,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) View() string {
 	if m.fatalErr != nil {
-		return common.ErrorView(m.fatalErr, true)
+		return common.ErrorView(m.fatalErr.Error(), true)
 	}
 
 	switch m.state {
@@ -250,6 +250,12 @@ func (m *model) handleRefreshKey(_ tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 // handleResourceUpdate processes kubernetes resource updates.
 func (m *model) handleResourceUpdate(msg common.CommandRunFinished) []tea.Cmd {
 	var cmds []tea.Cmd
+
+	if msg.Err != nil {
+		cmds = append(cmds, func() tea.Msg {
+			return common.ErrMsg{Err: msg.Err}
+		})
+	}
 
 	for _, yml := range msg.Out.Resources {
 		newYaml := kubeResourceToYAML(yml)

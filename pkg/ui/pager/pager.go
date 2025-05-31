@@ -31,19 +31,17 @@ const (
 )
 
 type PagerModel struct {
-	common             *common.CommonModel
-	statusMessageTimer *time.Timer
-	helpRenderer       *statusbar.HelpRenderer
+	common       *common.CommonModel
+	helpRenderer *statusbar.HelpRenderer
 
 	// Current document being rendered, sans-glamour rendering. We cache
 	// it here so we can re-render it on resize.
 	CurrentDocument yamldoc.YAMLDocument
 
-	statusMessage string
-	viewport      viewport.Model
-	helpHeight    int
-	state         pagerState
-	ShowHelp      bool
+	viewport   viewport.Model
+	helpHeight int
+	state      pagerState
+	ShowHelp   bool
 }
 
 func NewPagerModel(cm *common.CommonModel) PagerModel {
@@ -108,24 +106,19 @@ func (m *PagerModel) toggleHelp() {
 	calc.ValidateScrollPosition(m.viewport.PastBottom(), m.viewport.GotoBottom)
 }
 
-type pagerStatusMessage struct {
-	message string
-	isError bool
-}
-
 // Perform stuff that needs to happen after a successful markdown stash. Note
 // that the the returned command should be sent back the through the pager
 // update function.
-func (m *PagerModel) showStatusMessage(msg pagerStatusMessage) tea.Cmd {
+func (m *PagerModel) showStatusMessage(msg common.StatusMessage) tea.Cmd {
 	// Show a success message to the user.
 	m.state = pagerStateStatusMessage
-	m.statusMessage = msg.message
-	if m.statusMessageTimer != nil {
-		m.statusMessageTimer.Stop()
+	m.common.StatusMessage = msg
+	if m.common.StatusMessageTimer != nil {
+		m.common.StatusMessageTimer.Stop()
 	}
-	m.statusMessageTimer = time.NewTimer(common.StatusMessageTimeout)
+	m.common.StatusMessageTimer = time.NewTimer(common.StatusMessageTimeout)
 
-	return waitForStatusMessageTimeout(common.PagerContext, m.statusMessageTimer)
+	return common.WaitForStatusMessageTimeout(common.PagerContext, m.common.StatusMessageTimer)
 }
 
 func (m *PagerModel) Unload() {
@@ -133,8 +126,8 @@ func (m *PagerModel) Unload() {
 	if m.ShowHelp {
 		m.toggleHelp()
 	}
-	if m.statusMessageTimer != nil {
-		m.statusMessageTimer.Stop()
+	if m.common.StatusMessageTimer != nil {
+		m.common.StatusMessageTimer.Stop()
 	}
 	m.state = pagerStateBrowse
 	m.viewport.SetContent("")
@@ -189,7 +182,7 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 			termenv.Copy(m.CurrentDocument.Body)
 			// Copy using native system clipboard.
 			_ = clipboard.WriteAll(m.CurrentDocument.Body) //nolint:errcheck // Can be ignored.
-			cmds = append(cmds, m.showStatusMessage(pagerStatusMessage{"Copied contents", false}))
+			cmds = append(cmds, m.showStatusMessage(common.StatusMessage{Message: "Copied contents", IsError: false}))
 		}
 
 	// App has rendered the content.
@@ -197,6 +190,9 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 		log.Debug("content rendered", "state", m.state)
 
 		m.setContent(string(msg))
+
+	case common.ErrMsg:
+		cmds = append(cmds, m.showStatusMessage(common.StatusMessage{Message: msg.Err.Error(), IsError: true}))
 
 	// The file was changed and we're reloading it.
 	case reloadMsg:
@@ -226,18 +222,8 @@ func (m PagerModel) View() string {
 }
 
 func (m PagerModel) statusBarView() string {
-	renderer := statusbar.NewStatusBarRenderer(m.common.Width)
-
-	statusMessage := ""
-	if m.state == pagerStateStatusMessage {
-		statusMessage = m.statusMessage
-	}
-
-	return renderer.RenderWithScroll(
-		m.CurrentDocument.Title,
-		statusMessage,
-		m.viewport.ScrollPercent(),
-	)
+	return m.common.GetStatusBar(m.state == pagerStateStatusMessage).
+		RenderWithScroll(m.CurrentDocument.Title, m.viewport.ScrollPercent())
 }
 
 func (m PagerModel) helpView() string {
@@ -254,19 +240,11 @@ func (m PagerModel) RenderWithGlamour(yaml string) tea.Cmd {
 	return func() tea.Msg {
 		s, err := NewGlamourRenderer(m).RenderContent(yaml)
 		if err != nil {
-			log.Error("error rendering with Glamour", "error", err)
+			log.Debug("error rendering with Glamour", "error", err)
 
 			return common.ErrMsg{Err: err}
 		}
 
 		return ContentRenderedMsg(s)
-	}
-}
-
-func waitForStatusMessageTimeout(appCtx common.ApplicationContext, t *time.Timer) tea.Cmd {
-	return func() tea.Msg {
-		<-t.C
-
-		return common.StatusMessageTimeoutMsg(appCtx)
 	}
 }

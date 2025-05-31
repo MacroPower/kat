@@ -31,8 +31,6 @@ const (
 )
 
 var (
-	stashingStatusMessage = StatusMessage{"Stashing...", NormalStatusMessage}
-
 	dividerDot = styles.DarkGrayFg.SetString(" • ")
 	dividerBar = styles.DarkGrayFg.SetString(" │ ")
 
@@ -62,6 +60,7 @@ const (
 	StashStateReady StashViewState = iota
 	StashStateLoadingDocument
 	StashStateShowingError
+	StashStateShowingStatusMessage
 )
 
 // The types of documents we are currently showing to the user.
@@ -131,12 +130,8 @@ func (s StatusMessage) String() string {
 }
 
 type StashModel struct {
-	err                error
-	statusMessageTimer *time.Timer
-	common             *common.CommonModel
-	statusMessage      StatusMessage
-	helpRenderer       *statusbar.HelpRenderer
-	statusBarRenderer  *statusbar.StatusBarRenderer
+	common       *common.CommonModel
+	helpRenderer *statusbar.HelpRenderer
 
 	// The master set of yaml documents we're working with.
 	YAMLs []*yamldoc.YAMLDocument
@@ -162,8 +157,6 @@ type StashModel struct {
 	// than we can display at a time so we can paginate locally without having
 	// to fetch every time.
 	serverPage int64
-
-	showStatusMessage bool
 
 	// Tracks if files were loaded.
 	loaded     bool
@@ -206,9 +199,6 @@ func (m StashModel) ShouldSpin() bool {
 func (m *StashModel) SetSize(width, height int) {
 	m.common.Width = width
 	m.common.Height = height
-
-	// Update status bar renderer width.
-	m.statusBarRenderer = statusbar.NewStatusBarRenderer(width)
 
 	// Calculate help height if needed.
 	if m.ShowHelp && m.helpHeight == 0 {
@@ -338,14 +328,6 @@ func (m *StashModel) openYAML(md *yamldoc.YAMLDocument) tea.Cmd {
 	return tea.Batch(cmd, m.Spinner.Tick)
 }
 
-func (m *StashModel) hideStatusMessage() {
-	m.showStatusMessage = false
-	m.statusMessage = StatusMessage{}
-	if m.statusMessageTimer != nil {
-		m.statusMessageTimer.Stop()
-	}
-}
-
 func (m *StashModel) moveCursorUp() {
 	m.setCursor(m.cursor() - 1)
 	if m.cursor() < 0 && m.paginator().Page == 0 {
@@ -414,25 +396,30 @@ func NewStashModel(cm *common.CommonModel) StashModel {
 	kbr.AddColumn(
 		*kb.Common.Up,
 		*kb.Common.Down,
-		*kb.Stash.Find,
-		*kb.Common.Escape,
-	)
-	kbr.AddColumn(
+		*kb.Common.Left,
+		*kb.Common.Right,
 		*kb.Stash.Home,
 		*kb.Stash.End,
-		*kb.Stash.Open,
+	)
+	kbr.AddColumn(
 		*kb.Common.Reload,
+		*kb.Stash.Open,
+		*kb.Stash.Find,
+	)
+	kbr.AddColumn(
+		*kb.Common.Escape,
+		*kb.Common.Error,
+		*kb.Common.Help,
 		*kb.Common.Quit,
 	)
 
 	m := StashModel{
-		common:            cm,
-		Spinner:           sp,
-		filterInput:       si,
-		serverPage:        1,
-		sections:          s,
-		helpRenderer:      statusbar.NewHelpRenderer(kbr),
-		statusBarRenderer: statusbar.NewStatusBarRenderer(cm.Width),
+		common:       cm,
+		Spinner:      sp,
+		filterInput:  si,
+		serverPage:   1,
+		sections:     s,
+		helpRenderer: statusbar.NewHelpRenderer(kbr),
 	}
 
 	return m
@@ -453,15 +440,27 @@ func (m StashModel) Update(msg tea.Msg) (StashModel, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if m.ViewState == StashStateShowingError {
+			// If we're showing an error, any key exits the error view.
+			m.ViewState = StashStateReady
+
+			return m, nil
+		}
+		var cmd tea.Cmd
+		stashHandler := NewStashKeyHandler()
+		m, cmd = stashHandler.HandleDocumentBrowsing(m, msg)
+		cmds = append(cmds, cmd)
+
 	case common.ErrMsg:
-		m.err = msg
+		cmds = append(cmds, m.showStatusMessage(common.StatusMessage{Message: msg.Err.Error(), IsError: true}))
 
 	case common.CommandRunStarted:
-		// We're starting to search for local files.
+		// Starting to render documents.
 		m.loaded = false
 
 	case common.CommandRunFinished:
-		// We're finished searching for local files.
+		// Finished rendering documents.
 		m.loaded = true
 
 	case FilteredYAMLMsg:
@@ -478,8 +477,8 @@ func (m StashModel) Update(msg tea.Msg) (StashModel, tea.Cmd) {
 		}
 
 	case common.StatusMessageTimeoutMsg:
-		if common.ApplicationContext(msg) == common.StashContext {
-			m.hideStatusMessage()
+		if m.ViewState == StashStateShowingStatusMessage {
+			m.ViewState = StashStateReady
 		}
 	}
 
@@ -489,38 +488,14 @@ func (m StashModel) Update(msg tea.Msg) (StashModel, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 	}
 
-	// Updates per the current state.
-	switch m.ViewState {
-	case StashStateReady:
-		cmds = append(cmds, m.handleDocumentBrowsing(msg))
-	case StashStateShowingError:
-		// Any key exists the error view.
-		if _, ok := msg.(tea.KeyMsg); ok {
-			m.ViewState = StashStateReady
-		}
-	}
-
 	return m, tea.Batch(cmds...)
 }
 
-// Updates for when a user is browsing the yaml listing.
-func (m *StashModel) handleDocumentBrowsing(msg tea.Msg) tea.Cmd {
-	var cmds []tea.Cmd
-
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		// Use the new stash key handler for document browsing.
-		stashHandler := NewStashKeyHandler()
-		browseCmds := stashHandler.HandleDocumentBrowsing(m, msg)
-		cmds = append(cmds, browseCmds...)
+func (m *StashModel) enforcePaginationBounds() {
+	itemsOnPage := m.paginator().ItemsOnPage(len(m.getVisibleYAMLs()))
+	if m.cursor() > itemsOnPage-1 {
+		m.setCursor(max(0, itemsOnPage-1))
 	}
-
-	// Handle pagination using the new pagination handler.
-	paginationHandler := NewPaginationKeyHandler()
-	paginationCmds := paginationHandler.HandlePaginationKeys(m, msg)
-	cmds = append(cmds, paginationCmds...)
-
-	return tea.Batch(cmds...)
 }
 
 // Updates for when a user is in the filter editing interface.
@@ -538,10 +513,10 @@ func (m StashModel) View() string {
 	var s string
 	switch m.ViewState {
 	case StashStateShowingError:
-		return common.ErrorView(m.err, false)
+		return common.ErrorView(m.common.StatusMessage.Message, false)
 	case StashStateLoadingDocument:
 		s += " " + m.Spinner.View() + " Loading document..."
-	case StashStateReady:
+	case StashStateReady, StashStateShowingStatusMessage:
 		vb := view.NewViewBuilder()
 
 		// Build the main sections using the rendering utilities.
@@ -641,72 +616,25 @@ func (m StashModel) headerView() string {
 
 func (m StashModel) statusBarView() string {
 	// Determine what to show as the title/message.
-	var title string
-	var statusMsg string
-
-	if m.showStatusMessage {
-		statusMsg = m.statusMessage.String()
-	} else {
-		// When no status message, show current command context as title.
-		title = m.common.Cmd.String()
-	}
+	title := m.common.Cmd.String()
 
 	// Show progress based on pagination.
 	progress := fmt.Sprintf("%d/%d", m.paginator().Page+1, m.paginator().TotalPages)
 
-	return m.statusBarRenderer.RenderWithNote(title, statusMsg, progress)
+	return m.common.GetStatusBar(m.ViewState == StashStateShowingStatusMessage).
+		RenderWithNote(title, progress)
 }
 
-// COMMANDS.
-
-// handleNavigationKeys handles navigation keys for document browsing.
-func (m *StashModel) handleNavigationKeys(key string) {
-	numDocs := len(m.getVisibleYAMLs())
-	kb := m.common.Config.KeyBinds
-
-	switch {
-	case kb.Common.Up.Match(key):
-		m.moveCursorUp()
-	case kb.Common.Down.Match(key):
-		m.moveCursorDown()
-	case kb.Stash.Home.Match(key):
-		m.paginator().Page = 0
-		m.setCursor(0)
-	case kb.Stash.End.Match(key):
-		m.paginator().Page = m.paginator().TotalPages - 1
-		m.setCursor(m.paginator().ItemsOnPage(numDocs) - 1)
+func (m *StashModel) showStatusMessage(msg common.StatusMessage) tea.Cmd {
+	// Show a success message to the user.
+	m.ViewState = StashStateShowingStatusMessage
+	m.common.StatusMessage = msg
+	if m.common.StatusMessageTimer != nil {
+		m.common.StatusMessageTimer.Stop()
 	}
-}
+	m.common.StatusMessageTimer = time.NewTimer(common.StatusMessageTimeout)
 
-// handleDocumentKeys handles document-specific keys.
-func (m *StashModel) handleDocumentKeys(key string) tea.Cmd {
-	numDocs := len(m.getVisibleYAMLs())
-	kb := m.common.Config.KeyBinds
-
-	if kb.Stash.Open.Match(key) {
-		m.hideStatusMessage()
-		if numDocs == 0 {
-			return nil
-		}
-		md := m.selectedYAML()
-
-		return m.openYAML(md)
-	}
-
-	return nil
-}
-
-// handleFilterKeys handles filter-specific keys.
-func (m *StashModel) handleFilterKeys(key string) tea.Cmd {
-	kb := m.common.Config.KeyBinds
-
-	if kb.Stash.Find.Match(key) {
-		m.hideStatusMessage()
-
-		return m.startFiltering()
-	}
-
-	return nil
+	return common.WaitForStatusMessageTimeout(common.StashContext, m.common.StatusMessageTimer)
 }
 
 // startFiltering initializes the filtering mode.

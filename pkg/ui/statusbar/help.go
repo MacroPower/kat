@@ -1,11 +1,10 @@
 package statusbar
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-
-	"github.com/MacroPower/kat/pkg/ui/common"
 )
 
 type KeyBindRenderer interface {
@@ -32,7 +31,7 @@ func (r *HelpRenderer) Render(width int) string {
 	content := "\n" + r.keyBinds.Render(width)
 
 	// Apply indentation.
-	content = common.Indent(content, 1)
+	content = r.indent(content, 1)
 
 	// Apply styling.
 	return helpViewStyle(content)
@@ -43,4 +42,19 @@ func (r *HelpRenderer) CalculateHelpHeight() int {
 	helpContent := r.Render(0)
 
 	return strings.Count(helpContent, "\n")
+}
+
+// Lightweight version of reflow's indent function.
+func (r *HelpRenderer) indent(s string, n int) string {
+	if n <= 0 || s == "" {
+		return s
+	}
+	l := strings.Split(s, "\n")
+	b := strings.Builder{}
+	i := strings.Repeat(" ", n)
+	for _, v := range l {
+		fmt.Fprintf(&b, "%s%s\n", i, v)
+	}
+
+	return b.String()
 }

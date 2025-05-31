@@ -37,7 +37,7 @@ func TestNewStatusBarRenderer(t *testing.T) {
 			renderer := statusbar.NewStatusBarRenderer(tc.width)
 			require.NotNil(t, renderer)
 
-			statusBar := renderer.RenderWithScroll("test", "", 0)
+			statusBar := renderer.RenderWithScroll("test", 0)
 			assert.Len(t, statusBar, tc.expected)
 		})
 	}
@@ -101,9 +101,9 @@ func TestRenderStatusBar(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := statusbar.NewStatusBarRenderer(tc.width)
+			renderer := statusbar.NewStatusBarRenderer(tc.width, statusbar.WithMessage(tc.statusMessage))
 
-			result := renderer.RenderWithScroll(tc.title, tc.statusMessage, tc.scrollPercent)
+			result := renderer.RenderWithScroll(tc.title, tc.scrollPercent)
 			tc.checkFunc(t, result)
 
 			// Verify the result is properly structured
