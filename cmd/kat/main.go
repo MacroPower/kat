@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
+	"sigs.k8s.io/yaml"
 
 	kongyaml "github.com/alecthomas/kong-yaml"
 
@@ -49,6 +50,8 @@ var cli struct {
 	Command []string `arg:"" help:"Command to run, defaults set in ~/.config/kat/config.yaml." optional:""`
 
 	Config config.Config `embed:""`
+
+	ShowConfig bool `env:"-" help:"Print the active configuration and exit."`
 }
 
 func main() {
@@ -70,6 +73,12 @@ func main() {
 	}
 	slog.SetDefault(slog.New(logHandler))
 
+	// Load more complex structured configuration that is ignored by kong.
+	if err := cli.Config.Load(configPath); err != nil {
+		slog.Error("load config", slog.Any("err", err))
+		cliCtx.Fatalf("initialization failed")
+	}
+
 	if cli.Config.UI.KeyBinds == nil {
 		slog.Debug("using default key binds")
 		cli.Config.UI.KeyBinds = uiconfig.NewKeyBinds()
@@ -87,6 +96,18 @@ func main() {
 		slog.String("path", cli.Path),
 		slog.Any("command", cli.Command),
 	)
+
+	if cli.ShowConfig {
+		// Print the active configuration and exit.
+		yamlConfig, err := yaml.Marshal(cli.Config)
+		if err != nil {
+			slog.Error("marshal config yaml", slog.Any("err", err))
+			cliCtx.Fatalf("initialization failed")
+		}
+		cliCtx.Printf("active configuration: %s\n", configPath)
+		fmt.Printf("%s", yamlConfig)
+		cliCtx.Exit(0)
+	}
 
 	var cr common.Commander
 
