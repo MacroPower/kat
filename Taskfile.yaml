@@ -65,7 +65,7 @@ tasks:
   go-lint:
     desc: Lints Go code
     cmds:
-      - golangci-lint run --exclude-use-default=false
+      - golangci-lint run
 
   go-test:
     desc: Run Go tests
