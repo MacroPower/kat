@@ -1,22 +1,47 @@
 <p align="center">
-  <a href="#"><img src="docs/assets/logo.svg" width="250px"></a>
+  <a href="#"><img src="docs/assets/logo.svg" width="200px"></a>
   <h1 align="center">kat</h1>
 </p>
 
-<p align="center"><i><code>cat</code> for Kubernetes manifests</i></p>
+<p align="center">
+  <code>kat</code> is like <code>cat</code> for projects that render Kubernetes manifests. It provides a pretty terminal UI to quickly view, filter, and reload manifests in your shell.
+</p>
 
-## Overview
+<p align="center">
+  It is primarily designed to reduce inner loop time for Developers and Platform Engineers working on <code>helm</code> and <code>kustomize</code> projects, and is highly extensible via config.
+</p>
 
-- Easily filter and view hundreds of manifests in your shell
-- Quickly iterate over changes to a single manifest (press `r` to reload)
-- Automatically detect and render `helm` and `kustomize` projects
-- Define your own rules and keybinds in `~/.config/kat/config.yaml`
+<p align="center">
+  <br>
+  <img src="./docs/assets/demo.gif">
+</p>
 
-![demo](docs/assets/demo.gif)
+<p align="center">
+  ❤️ Made with <a href="https://github.com/charmbracelet/bubbletea">bubble tea</a> and <a href="https://github.com/charmbracelet/glow">glow</a>.
+</p>
 
-Uses [bubbletea](https://github.com/charmbracelet/bubbletea) and code from [glow](https://github.com/charmbracelet/glow).
+## ✨ Features
 
-## Usage
+- 🚀 Render and view hundreds of manifests without leaving your shell.
+- 🔄 Reload from any context to quickly diff individual manifests.
+- 🐛 Immediately view any errors from rendering, and re-reload!
+- 🎨 Customize keybinds, styles, and more to match your preferences.
+- 🪄 Define your own commands and rules to detect different project types.
+
+## 📦 Installation
+
+### Homebrew
+
+```sh
+brew tap macropower/tap
+brew install kat
+```
+
+### Releases
+
+Archives are posted in [releases](https://github.com/MacroPower/kat/releases).
+
+## ⚡️ Usage
 
 ```console
 $ kat --help
@@ -53,24 +78,14 @@ Flags:
       --ui-glamour-disabled        ($KAT_UI_GLAMOUR_DISABLED)
       --ui-show-line-numbers       ($KAT_UI_SHOW_LINE_NUMBERS)
       --ui-enable-mouse            ($KAT_UI_ENABLE_MOUSE)
+      --show-config                Print the active configuration and exit.
 ```
 
-Also see the [default configuration file](example/config.yaml).
+## ⚙️ Configuration
 
-## Installation
+See the [default configuration file](example/config.yaml).
 
-### Homebrew
-
-```sh
-brew tap macropower/tap
-brew install kat
-```
-
-### Releases
-
-Archives are posted in [releases](https://github.com/MacroPower/kat/releases).
-
-## Similar Tools
+## 🔍️ Similar Tools
 
 - [bat](https://github.com/sharkdp/bat)
 - [glow](https://github.com/charmbracelet/glow)

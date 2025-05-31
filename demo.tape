@@ -55,17 +55,19 @@
 #   Hide                            Hide the subsequent commands from the output
 #   Show                            Show the subsequent commands in the output
 
-Output demo.gif
+Output docs/assets/demo.gif
 
 Set Shell "bash"
+Set WindowBar Colorful
 Set Padding 20
-Set FontSize 24
-Set Width 930
-Set Height 620
+Set FontSize 22
+Set Width 900
+Set Height 600
 
 Hide
-Type `go build -o dist/kat -ldflags="-X github.com/MacroPower/kat/pkg/version.Version=v0" cmd/kat/main.go`  Enter
+Type `go build -o dist/kat -ldflags="-X github.com/MacroPower/kat/pkg/version.Version=0.x" cmd/kat/main.go`  Enter
 Type "alias kat=./dist/kat"  Enter
+Type "export KAT_UI_GLAMOUR_STYLE=dark"  Enter
 Type "clear"  Enter
 Sleep 500ms
 Show
@@ -82,8 +84,6 @@ Left
 Sleep 1s
 
 Enter
-Sleep 1s
-Down@50ms 30
 Sleep 1s
 
 Left
@@ -111,4 +111,3 @@ Sleep 500ms
 
 Left
 Sleep 1s
-Type "q"
