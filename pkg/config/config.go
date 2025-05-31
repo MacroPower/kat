@@ -14,8 +14,8 @@ import (
 )
 
 type Config struct {
-	Kube kube.Config     `embed:"" prefix:"kube-" yaml:"kube"`
-	UI   uiconfig.Config `embed:"" prefix:"ui-"   yaml:"ui"`
+	Kube kube.Config     `embed:"" json:"kube" prefix:"kube-" yaml:"kube"`
+	UI   uiconfig.Config `embed:"" json:"ui"   prefix:"ui-"   yaml:"ui"`
 }
 
 func NewConfig() *Config {
@@ -23,6 +23,32 @@ func NewConfig() *Config {
 		UI:   uiconfig.DefaultConfig,
 		Kube: kube.DefaultConfig,
 	}
+}
+
+func (c *Config) Load(path string) error {
+	pathInfo, err := os.Stat(path)
+	if pathInfo != nil {
+		if err == nil && !pathInfo.Mode().IsRegular() {
+			return fmt.Errorf("%s: unknown file state", path)
+		}
+		if pathInfo.IsDir() {
+			return fmt.Errorf("%s: path is a directory", path)
+		}
+	}
+	if err != nil {
+		return fmt.Errorf("stat file: %w", err)
+	}
+
+	data, err := os.ReadFile(path) //nolint:gosec // G304: Potential file inclusion via variable.
+	if err != nil {
+		return fmt.Errorf("read file: %w", err)
+	}
+
+	if err := yaml.Unmarshal(data, c); err != nil {
+		return fmt.Errorf("unmarshal yaml: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Config) Write(path string) error {

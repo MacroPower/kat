@@ -8,18 +8,18 @@ import (
 
 // Config contains TUI-specific configuration.
 type Config struct {
-	KeyBinds        *KeyBinds `hidden:""                yaml:"keybinds"`
-	GlamourStyle    string    `yaml:"glamour-style"`
-	GlamourMaxWidth int       `yaml:"glamour-max-width"`
-	GlamourDisabled bool      `yaml:"glamour-disabled"`
-	ShowLineNumbers bool      `yaml:"show-line-numbers"`
-	EnableMouse     bool      `yaml:"enable-mouse"`
+	KeyBinds        *KeyBinds `json:"keybinds"          kong:"-"                 yaml:"keybinds"`
+	GlamourStyle    string    `json:"glamour-style"     yaml:"glamour-style"`
+	GlamourMaxWidth int       `json:"glamour-max-width" yaml:"glamour-max-width"`
+	GlamourDisabled bool      `json:"glamour-disabled"  yaml:"glamour-disabled"`
+	ShowLineNumbers bool      `json:"show-line-numbers" yaml:"show-line-numbers"`
+	EnableMouse     bool      `json:"enable-mouse"      yaml:"enable-mouse"`
 }
 
 type KeyBinds struct {
-	Common *CommonKeyBinds `yaml:"common"`
-	Stash  *StashKeyBinds  `yaml:"stash"`
-	Pager  *PagerKeyBinds  `yaml:"pager"`
+	Common *CommonKeyBinds `json:"common" yaml:"common"`
+	Stash  *StashKeyBinds  `json:"stash"  yaml:"stash"`
+	Pager  *PagerKeyBinds  `json:"pager"  yaml:"pager"`
 }
 
 func NewKeyBinds() *KeyBinds {
@@ -65,20 +65,20 @@ func (kb *KeyBinds) Validate() error {
 }
 
 type CommonKeyBinds struct {
-	Quit    *keys.KeyBind
-	Suspend *keys.KeyBind
-	Reload  *keys.KeyBind
-	Help    *keys.KeyBind
-	Error   *keys.KeyBind
-	Escape  *keys.KeyBind
+	Quit    *keys.KeyBind `json:"quit"    yaml:"quit"`
+	Suspend *keys.KeyBind `json:"suspend" yaml:"suspend"`
+	Reload  *keys.KeyBind `json:"reload"  yaml:"reload"`
+	Help    *keys.KeyBind `json:"help"    yaml:"help"`
+	Error   *keys.KeyBind `json:"error"   yaml:"error"`
+	Escape  *keys.KeyBind `json:"escape"  yaml:"escape"`
 
 	// Navigation.
-	Up    *keys.KeyBind
-	Down  *keys.KeyBind
-	Left  *keys.KeyBind
-	Right *keys.KeyBind
-	Prev  *keys.KeyBind
-	Next  *keys.KeyBind
+	Up    *keys.KeyBind `json:"up"    yaml:"up"`
+	Down  *keys.KeyBind `json:"down"  yaml:"down"`
+	Left  *keys.KeyBind `json:"left"  yaml:"left"`
+	Right *keys.KeyBind `json:"right" yaml:"right"`
+	Prev  *keys.KeyBind `json:"prev"  yaml:"prev"`
+	Next  *keys.KeyBind `json:"next"  yaml:"next"`
 }
 
 func (kb *CommonKeyBinds) EnsureDefaults() {
@@ -157,10 +157,10 @@ func (kb *CommonKeyBinds) GetKeyBinds() []keys.KeyBind {
 }
 
 type StashKeyBinds struct {
-	Open *keys.KeyBind
-	Find *keys.KeyBind
-	Home *keys.KeyBind
-	End  *keys.KeyBind
+	Open *keys.KeyBind `json:"open" yaml:"open"`
+	Find *keys.KeyBind `json:"find" yaml:"find"`
+	Home *keys.KeyBind `json:"home" yaml:"home"`
+	End  *keys.KeyBind `json:"end"  yaml:"end"`
 }
 
 func (kb *StashKeyBinds) EnsureDefaults() {
@@ -195,12 +195,12 @@ type PagerKeyBinds struct {
 	Copy *keys.KeyBind
 
 	// Navigation.
-	Home         *keys.KeyBind
-	End          *keys.KeyBind
-	PageUp       *keys.KeyBind `yaml:"page-up"`
-	PageDown     *keys.KeyBind `yaml:"page-down"`
-	HalfPageUp   *keys.KeyBind `yaml:"half-page-up"`
-	HalfPageDown *keys.KeyBind `yaml:"half-page-down"`
+	Home         *keys.KeyBind `json:"home"         yaml:"home"`
+	End          *keys.KeyBind `json:"end"          yaml:"end"`
+	PageUp       *keys.KeyBind `json:"pageUp"       yaml:"pageUp"`
+	PageDown     *keys.KeyBind `json:"pageDown"     yaml:"pageDown"`
+	HalfPageUp   *keys.KeyBind `json:"halfPageUp"   yaml:"halfPageUp"`
+	HalfPageDown *keys.KeyBind `json:"halfPageDown" yaml:"halfPageDown"`
 }
 
 func (kb *PagerKeyBinds) EnsureDefaults() {

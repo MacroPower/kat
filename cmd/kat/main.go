@@ -73,6 +73,8 @@ func main() {
 	if cli.Config.UI.KeyBinds == nil {
 		slog.Debug("using default key binds")
 		cli.Config.UI.KeyBinds = uiconfig.NewKeyBinds()
+	} else {
+		cli.Config.UI.KeyBinds.EnsureDefaults()
 	}
 
 	err = cli.Config.UI.KeyBinds.Validate()

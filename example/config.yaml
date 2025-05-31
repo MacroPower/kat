@@ -33,9 +33,13 @@ ui:
         keys:
           - code: r
       help:
-        description: help
+        description: toggle help
         keys:
           - code: "?"
+      error:
+        description: toggle error
+        keys:
+          - code: "!"
       escape:
         description: go back
         keys:
@@ -110,21 +114,21 @@ ui:
         keys:
           - code: end
           - code: G
-      page-up:
+      pageUp:
         description: page up
         keys:
           - code: pgup
           - code: b
-      page-down:
+      pageDown:
         description: page down
         keys:
           - code: pgdn
           - code: f
-      half-page-up:
+      halfPageUp:
         description: ½ page up
         keys:
           - code: u
-      half-page-down:
+      halfPageDown:
         description: ½ page down
         keys:
           - code: d

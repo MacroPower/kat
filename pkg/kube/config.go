@@ -1,7 +1,7 @@
 package kube
 
 type Config struct {
-	Commands []*Command `hidden:""`
+	Commands []*Command `json:"commands" kong:"-" yaml:"commands"`
 }
 
 var DefaultConfig = Config{

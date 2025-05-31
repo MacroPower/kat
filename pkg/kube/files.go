@@ -21,9 +21,9 @@ var (
 )
 
 type Command struct {
-	Match   *regexp.Regexp
-	Command string
-	Args    []string
+	Match   *regexp.Regexp `json:"match"   yaml:"match"` // Regex to match file paths.
+	Command string         `json:"command" yaml:"command"`
+	Args    []string       `json:"args"    yaml:"args"`
 }
 
 func NewCommand(match, cmd string, args ...string) (*Command, error) {

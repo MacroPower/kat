@@ -10,9 +10,9 @@ import (
 )
 
 type Key struct {
-	Code   string `yaml:"code"`
-	Alias  string `yaml:"alias,omitempty"`
-	Hidden bool   `yaml:"hidden,omitempty"`
+	Code   string `json:"code"             yaml:"code"`
+	Alias  string `json:"alias,omitempty"  yaml:"alias,omitempty"`
+	Hidden bool   `json:"hidden,omitempty" yaml:"hidden,omitempty"`
 }
 
 type KeyOpt func(k *Key)
