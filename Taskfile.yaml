@@ -60,7 +60,7 @@ tasks:
   go-format:
     desc: Formats Go code including imports
     cmds:
-      - golangci-lint run --fix --exclude-use-default=false
+      - golangci-lint run --fix
 
   go-lint:
     desc: Lints Go code
