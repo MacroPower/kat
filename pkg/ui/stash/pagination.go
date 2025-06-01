@@ -7,6 +7,15 @@ import (
 	"github.com/MacroPower/kat/pkg/ui/styles"
 )
 
+func newStashPaginator() paginator.Model {
+	p := paginator.New()
+	p.Type = paginator.Dots
+	p.ActiveDot = styles.FuchsiaFg("•")
+	p.InactiveDot = styles.GrayFg("◦")
+
+	return p
+}
+
 // PaginationRenderer handles pagination display.
 type PaginationRenderer struct {
 	width int

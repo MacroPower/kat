@@ -40,7 +40,7 @@ func stashItemView(b *strings.Builder, m StashModel, index int, y *yamldoc.YAMLD
 	if isSelected && !isFiltering || singleFilteredItem {
 		// Selected item.
 		gutter = styles.DullFuchsiaFg(verticalLine)
-		if m.currentSection().key == filterSection && m.FilterState == FilterApplied || singleFilteredItem {
+		if m.currentSection().key == SectionFilter && m.FilterState == FilterApplied || singleFilteredItem {
 			s := lipgloss.NewStyle().Foreground(styles.Fuchsia)
 			title = styleFilteredText(title, m.filterInput.Value(), s, s.Underline(true))
 		} else {

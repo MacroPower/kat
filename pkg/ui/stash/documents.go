@@ -3,6 +3,7 @@ package stash
 import (
 	"strings"
 
+	"github.com/MacroPower/kat/pkg/ui/common"
 	"github.com/MacroPower/kat/pkg/ui/styles"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
@@ -11,11 +12,12 @@ import (
 type DocumentListRenderer struct {
 	width  int
 	height int
+	indent int
 }
 
 // NewDocumentListRenderer creates a new document list renderer.
-func NewDocumentListRenderer(width, height int) *DocumentListRenderer {
-	return &DocumentListRenderer{width: width, height: height}
+func NewDocumentListRenderer(width, height, indent int) *DocumentListRenderer {
+	return &DocumentListRenderer{width: width, height: height, indent: indent}
 }
 
 // RenderDocumentList renders a list of documents with pagination and empty states.
@@ -29,13 +31,13 @@ func (dlr *DocumentListRenderer) RenderDocumentList(docs []*yamldoc.YAMLDocument
 		}
 
 		switch m.currentSection().key {
-		case documentsSection:
-			if m.loadingDone() {
+		case SectionDocuments:
+			if m.loaded {
 				f("No documents.")
 			} else {
 				f("Rendering documents...")
 			}
-		case filterSection:
+		case SectionFilter:
 			return ""
 		}
 	}
@@ -53,5 +55,5 @@ func (dlr *DocumentListRenderer) RenderDocumentList(docs []*yamldoc.YAMLDocument
 		}
 	}
 
-	return b.String()
+	return common.Indent(b.String(), dlr.indent)
 }

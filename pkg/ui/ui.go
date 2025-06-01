@@ -69,12 +69,12 @@ type model struct {
 // method alters the model we also need to send along any commands returned.
 func (m *model) unloadDocument() []tea.Cmd {
 	m.state = stateShowStash
-	m.stash.ViewState = stash.StashStateReady
+	m.stash.ViewState = stash.StateReady
 	m.pager.Unload()
 	m.pager.ShowHelp = false
 
 	var batch []tea.Cmd
-	if !m.stash.ShouldSpin() {
+	if !m.stash.IsLoading() {
 		batch = append(batch, m.stash.Spinner.Tick)
 	}
 
@@ -225,7 +225,7 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 
 // handleEscapeKey handles the escape key based on current state.
 func (m *model) handleEscapeKey() (tea.Model, tea.Cmd) {
-	if m.state == stateShowDocument || m.stash.ViewState == stash.StashStateLoadingDocument {
+	if m.state == stateShowDocument || m.stash.ViewState == stash.StateLoadingDocument {
 		batch := m.unloadDocument()
 
 		return m, tea.Batch(batch...)
@@ -270,7 +270,7 @@ func (m *model) handleResourceUpdate(msg common.CommandRunFinished) []tea.Cmd {
 		}
 	}
 
-	if m.stash.ShouldUpdateFilter() {
+	if m.stash.FilterApplied() {
 		cmds = append(cmds, stash.FilterYAMLs(m.stash))
 	}
 
