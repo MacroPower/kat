@@ -6,7 +6,6 @@ kube:
         - template
         - .
         - --generate-name
-        - --debug
     - match: .*/kustomization\.ya?ml
       command: kustomize
       args:

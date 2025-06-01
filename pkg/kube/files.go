@@ -71,7 +71,7 @@ func (c *Command) Exec(dir string) (CommandOutput, error) {
 
 	if err != nil {
 		if stderr.Len() > 0 {
-			return output, fmt.Errorf("%w: %s: %w", ErrCommandExecution, stderr.String(), err)
+			return output, fmt.Errorf("%s\n%w: %w", stderr.String(), ErrCommandExecution, err)
 		}
 
 		return output, fmt.Errorf("%w: %w", ErrCommandExecution, err)
