@@ -18,16 +18,20 @@ import (
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
 
+const statusBarHeight = 1
+
 type (
 	ContentRenderedMsg string
 	reloadMsg          struct{}
 )
 
-type pagerState int
+type ViewState int
 
 const (
-	pagerStateBrowse pagerState = iota
-	pagerStateStatusMessage
+	StateReady ViewState = iota
+	StateLoadingDocument
+	StateShowingError
+	StateShowingStatusMessage
 )
 
 type PagerModel struct {
@@ -40,7 +44,7 @@ type PagerModel struct {
 
 	viewport   viewport.Model
 	helpHeight int
-	state      pagerState
+	ViewState  ViewState
 	ShowHelp   bool
 }
 
@@ -70,80 +74,28 @@ func NewPagerModel(cm *common.CommonModel) PagerModel {
 	m := PagerModel{
 		common:       cm,
 		helpRenderer: statusbar.NewHelpRenderer(kbr),
-		state:        pagerStateBrowse,
+		ViewState:    StateReady,
 		viewport:     vp,
 	}
 
 	return m
 }
 
-func (m *PagerModel) SetSize(w, h int) {
-	// Use the new PagerLayoutCalculator utility.
-	calc := NewPagerLayoutCalculator(w, h)
-
-	// Calculate help height if needed.
-	if m.ShowHelp && m.helpHeight == 0 {
-		m.helpHeight = m.helpRenderer.CalculateHelpHeight()
-	}
-
-	// Calculate viewport dimensions.
-	viewportHeight := calc.CalculateViewportHeight(m.ShowHelp, m.helpHeight)
-
-	m.viewport.Width = w
-	m.viewport.Height = viewportHeight
-}
-
-func (m *PagerModel) setContent(s string) {
-	m.viewport.SetContent(s)
-}
-
-func (m *PagerModel) toggleHelp() {
-	m.ShowHelp = !m.ShowHelp
-	m.SetSize(m.common.Width, m.common.Height)
-
-	// Use the layout calculator to validate scroll position.
-	calc := NewPagerLayoutCalculator(m.common.Width, m.common.Height)
-	calc.ValidateScrollPosition(m.viewport.PastBottom(), m.viewport.GotoBottom)
-}
-
-// Perform stuff that needs to happen after a successful markdown stash. Note
-// that the the returned command should be sent back the through the pager
-// update function.
-func (m *PagerModel) showStatusMessage(msg common.StatusMessage) tea.Cmd {
-	// Show a success message to the user.
-	m.state = pagerStateStatusMessage
-	m.common.StatusMessage = msg
-	if m.common.StatusMessageTimer != nil {
-		m.common.StatusMessageTimer.Stop()
-	}
-	m.common.StatusMessageTimer = time.NewTimer(common.StatusMessageTimeout)
-
-	return common.WaitForStatusMessageTimeout(common.PagerContext, m.common.StatusMessageTimer)
-}
-
-func (m *PagerModel) Unload() {
-	log.Debug("unload")
-	if m.ShowHelp {
-		m.toggleHelp()
-	}
-	if m.common.StatusMessageTimer != nil {
-		m.common.StatusMessageTimer.Stop()
-	}
-	m.state = pagerStateBrowse
-	m.viewport.SetContent("")
-	m.viewport.YOffset = 0
-}
-
 func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		kb := m.common.Config.KeyBinds
 		key := msg.String()
+
+		if m.ViewState == StateShowingError {
+			// If we're showing an error, any key exits the error view.
+			m.ViewState = StateReady
+
+			return m, nil
+		}
+
 		switch {
 		case kb.Pager.Home.Match(key):
 			m.viewport.GotoTop()
@@ -171,8 +123,15 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 			return m, nil
 
 		case kb.Common.Escape.Match(key):
-			if m.state != pagerStateBrowse {
-				m.state = pagerStateBrowse
+			if m.ViewState != StateReady {
+				m.ViewState = StateReady
+
+				return m, nil
+			}
+
+		case kb.Common.Error.Match(key):
+			if m.ViewState != StateShowingError {
+				m.ViewState = StateShowingError
 
 				return m, nil
 			}
@@ -187,7 +146,7 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 
 	// App has rendered the content.
 	case ContentRenderedMsg:
-		log.Debug("content rendered", "state", m.state)
+		log.Debug("content rendered", "state", m.ViewState)
 
 		m.setContent(string(msg))
 
@@ -204,9 +163,12 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 		return m, m.RenderWithGlamour(m.CurrentDocument.Body)
 
 	case common.StatusMessageTimeoutMsg:
-		m.state = pagerStateBrowse
+		if m.ViewState == StateShowingStatusMessage {
+			m.ViewState = StateReady
+		}
 	}
 
+	var cmd tea.Cmd
 	m.viewport, cmd = m.viewport.Update(msg)
 	cmds = append(cmds, cmd)
 
@@ -214,25 +176,33 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 }
 
 func (m PagerModel) View() string {
-	return view.NewViewBuilder().
-		AddSection(m.viewport.View()).
-		AddSection(m.statusBarView()).
-		AddSection(m.helpView()).
-		Build()
-}
+	switch m.ViewState {
+	case StateShowingError:
+		return common.ErrorView(m.common.StatusMessage.Message, false)
 
-func (m PagerModel) statusBarView() string {
-	return m.common.GetStatusBar(m.state == pagerStateStatusMessage).
-		RenderWithScroll(m.CurrentDocument.Title, m.viewport.ScrollPercent())
-}
-
-func (m PagerModel) helpView() string {
-	var help string
-	if m.ShowHelp {
-		help = m.helpRenderer.Render(m.common.Width)
+	case StateLoadingDocument, StateReady, StateShowingStatusMessage:
+		return view.NewViewBuilder().
+			AddSection(m.viewport.View()).
+			AddSection(m.statusBarView()).
+			AddSection(m.helpView()).
+			Build()
 	}
 
-	return help
+	return common.ErrorView("unknown application state", true)
+}
+
+func (m *PagerModel) SetSize(w, h int) {
+	// Calculate viewport dimensions.
+	viewportHeight := h - statusBarHeight
+
+	// Calculate help height if needed.
+	if m.ShowHelp {
+		m.helpHeight = m.helpRenderer.CalculateHelpHeight()
+		viewportHeight -= (statusBarHeight + m.helpHeight)
+	}
+
+	m.viewport.Width = w
+	m.viewport.Height = viewportHeight
 }
 
 // This is where the magic happens.
@@ -247,4 +217,59 @@ func (m PagerModel) RenderWithGlamour(yaml string) tea.Cmd {
 
 		return ContentRenderedMsg(s)
 	}
+}
+
+func (m *PagerModel) Unload() {
+	log.Debug("unload")
+	if m.ShowHelp {
+		m.toggleHelp()
+	}
+	if m.common.StatusMessageTimer != nil {
+		m.common.StatusMessageTimer.Stop()
+	}
+	m.ViewState = StateReady
+	m.viewport.SetContent("")
+	m.viewport.YOffset = 0
+}
+
+func (m *PagerModel) setContent(s string) {
+	m.viewport.SetContent(s)
+}
+
+func (m *PagerModel) toggleHelp() {
+	m.ShowHelp = !m.ShowHelp
+	m.SetSize(m.common.Width, m.common.Height)
+
+	if m.viewport.PastBottom() {
+		m.viewport.GotoBottom()
+	}
+}
+
+// Perform stuff that needs to happen after a successful markdown stash. Note
+// that the the returned command should be sent back the through the pager
+// update function.
+func (m *PagerModel) showStatusMessage(msg common.StatusMessage) tea.Cmd {
+	// Show a success message to the user.
+	m.ViewState = StateShowingStatusMessage
+	m.common.StatusMessage = msg
+	if m.common.StatusMessageTimer != nil {
+		m.common.StatusMessageTimer.Stop()
+	}
+	m.common.StatusMessageTimer = time.NewTimer(common.StatusMessageTimeout)
+
+	return common.WaitForStatusMessageTimeout(common.PagerContext, m.common.StatusMessageTimer)
+}
+
+func (m PagerModel) statusBarView() string {
+	return m.common.GetStatusBar(m.ViewState == StateShowingStatusMessage).
+		RenderWithScroll(m.CurrentDocument.Title, m.viewport.ScrollPercent())
+}
+
+func (m PagerModel) helpView() string {
+	var help string
+	if m.ShowHelp {
+		help = m.helpRenderer.Render(m.common.Width)
+	}
+
+	return help
 }
