@@ -4,11 +4,11 @@
 </p>
 
 <p align="center">
-  <code>kat</code> is like <code>cat</code> for projects that render Kubernetes manifests. It provides a pretty terminal UI to quickly view, filter, and reload manifests in your shell.
+  <code>kat</code> is like <code>cat</code> for projects that render Kubernetes manifests. It provides a pretty terminal UI to quickly <b>find</b>, <b>debug</b>, and <b>reload</b> manifests, without ever leaving your shell.
 </p>
 
 <p align="center">
-  It is primarily designed to reduce inner loop time for Developers and Platform Engineers working on <code>helm</code> and <code>kustomize</code> projects, and is highly extensible via config.
+  <code>kat</code> is designed to reduce inner loop time for <b>developers</b> and <b>platform engineers</b> working on things like <code>helm</code> charts and <code>kustomize</code> projects. By defining custom rules in the config, you can make <code>kat</code> work with anything that generates Kubernetes manifests!
 </p>
 
 <p align="center">
@@ -22,7 +22,7 @@
 
 ## ✨ Features
 
-- 🚀 Render and view hundreds of manifests without leaving your shell.
+- 🚀 List and filter hundreds of manifests without leaving your shell.
 - 🔄 Reload from any context to quickly diff individual manifests.
 - 🐛 Immediately view any errors from rendering, and re-reload!
 - 🎨 Customize keybinds, styles, and more to match your preferences.
