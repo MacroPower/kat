@@ -216,6 +216,7 @@ func (m StashModel) Update(msg tea.Msg) (StashModel, tea.Cmd) {
 	case common.CommandRunFinished:
 		// Finished rendering documents.
 		m.loaded = true
+		cmds = append(cmds, m.showStatusMessage(common.StatusMessage{Message: "Loaded YAML", IsError: false}))
 
 	case FilteredYAMLMsg:
 		m.filteredYAMLs = msg

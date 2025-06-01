@@ -12,7 +12,6 @@ import (
 
 	"github.com/MacroPower/kat/pkg/ui/common"
 	"github.com/MacroPower/kat/pkg/ui/keys"
-	"github.com/MacroPower/kat/pkg/ui/stash"
 	"github.com/MacroPower/kat/pkg/ui/statusbar"
 	"github.com/MacroPower/kat/pkg/ui/view"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
@@ -22,7 +21,6 @@ const statusBarHeight = 1
 
 type (
 	ContentRenderedMsg string
-	reloadMsg          struct{}
 )
 
 type ViewState int
@@ -144,18 +142,12 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 			cmds = append(cmds, m.showStatusMessage(common.StatusMessage{Message: "Copied contents", IsError: false}))
 		}
 
-	// App has rendered the content.
 	case ContentRenderedMsg:
-		log.Debug("content rendered", "state", m.ViewState)
-
 		m.setContent(string(msg))
+		cmds = append(cmds, m.showStatusMessage(common.StatusMessage{Message: "Loaded YAML", IsError: false}))
 
 	case common.ErrMsg:
 		cmds = append(cmds, m.showStatusMessage(common.StatusMessage{Message: msg.Err.Error(), IsError: true}))
-
-	// The file was changed and we're reloading it.
-	case reloadMsg:
-		return m, stash.LoadYAML(&m.CurrentDocument)
 
 	// We've received terminal dimensions, either for the first time or
 	// after a resize.
