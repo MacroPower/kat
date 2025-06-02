@@ -5,6 +5,7 @@ import (
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/viewport"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/muesli/termenv"
 
@@ -173,11 +174,14 @@ func (m PagerModel) View() string {
 		return common.ErrorView(m.common.StatusMessage.Message, false)
 
 	case StateLoadingDocument, StateReady, StateShowingStatusMessage:
-		return view.NewViewBuilder().
-			AddSection(m.viewport.View()).
-			AddSection(m.statusBarView()).
-			AddSection(m.helpView()).
-			Build()
+		return view.AlwaysPlaceBottom(
+			lipgloss.JoinVertical(
+				lipgloss.Bottom,
+				m.viewport.View(),
+				m.statusBarView(),
+				m.helpView(),
+			),
+		)
 	}
 
 	return common.ErrorView("unknown application state", true)

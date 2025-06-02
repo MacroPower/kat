@@ -249,26 +249,29 @@ func (m StashModel) View() string {
 		return " " + m.Spinner.View() + " Loading document..."
 
 	case StateReady, StateShowingStatusMessage:
-		header := m.headerView()
-		documentList := m.documentListView()
-		pagination := m.paginationView()
-		statusBar := m.statusBarView()
-		help := m.helpView()
+		top := lipgloss.JoinVertical(
+			lipgloss.Top,
+			m.headerView(),
+			m.documentListView(),
+		)
+		availableHeight := m.common.Height - lipgloss.Height(top) + 1
+		bottom := lipgloss.PlaceVertical(
+			availableHeight,
+			lipgloss.Bottom,
+			lipgloss.JoinVertical(
+				lipgloss.Top,
+				lipgloss.PlaceHorizontal(
+					m.common.Width,
+					lipgloss.Left,
+					m.paginationView(),
+				),
+				m.statusBarView(),
+				m.helpView(),
+			),
+		)
+		bottom = view.AlwaysPlaceBottom(bottom)
 
-		availableLines := m.availableLines(header, documentList, pagination, statusBar)
-		if m.ShowHelp {
-			availableLines -= lipgloss.Height(help)
-		}
-		blankLines := view.FillVerticalSpace(availableLines)
-
-		return view.NewViewBuilder().
-			AddSection(header).
-			AddSection(documentList).
-			AddSection(blankLines).
-			AddSection(pagination).
-			AddSection(statusBar).
-			AddSection(help).
-			Build()
+		return lipgloss.JoinVertical(lipgloss.Top, top, bottom)
 	}
 
 	return common.ErrorView("unknown application state", true)
@@ -478,10 +481,6 @@ func (m *StashModel) enforcePaginationBounds() {
 	if m.cursor() > itemsOnPage-1 {
 		m.setCursor(max(0, itemsOnPage-1))
 	}
-}
-
-func (m StashModel) availableLines(components ...string) int {
-	return m.common.Height - lipgloss.Height(strings.Join(components, "\n"))
 }
 
 func (m StashModel) documentListView() string {
