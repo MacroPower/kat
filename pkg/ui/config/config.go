@@ -13,7 +13,6 @@ type Config struct {
 	GlamourMaxWidth int       `json:"glamour-max-width" yaml:"glamour-max-width"`
 	GlamourDisabled bool      `json:"glamour-disabled"  yaml:"glamour-disabled"`
 	ShowLineNumbers bool      `json:"show-line-numbers" yaml:"show-line-numbers"`
-	EnableMouse     bool      `json:"enable-mouse"      yaml:"enable-mouse"`
 }
 
 type KeyBinds struct {
@@ -253,6 +252,5 @@ func (kb *PagerKeyBinds) GetKeyBinds() []keys.KeyBind {
 var DefaultConfig = Config{
 	GlamourStyle:    "auto",
 	ShowLineNumbers: true,
-	EnableMouse:     true,
 	KeyBinds:        NewKeyBinds(),
 }

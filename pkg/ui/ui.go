@@ -28,9 +28,6 @@ func NewProgram(cfg config.Config, cmd common.Commander) *tea.Program {
 	)
 
 	opts := []tea.ProgramOption{tea.WithAltScreen()}
-	if cfg.EnableMouse {
-		opts = append(opts, tea.WithMouseCellMotion())
-	}
 	m := newModel(cfg, cmd)
 
 	return tea.NewProgram(m, opts...)
