@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/muesli/reflow/ansi"
 
 	tea "github.com/charmbracelet/bubbletea"

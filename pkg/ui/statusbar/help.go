@@ -3,7 +3,7 @@ package statusbar
 import (
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 )
 
 type KeyBindRenderer interface {
