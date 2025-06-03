@@ -14,6 +14,7 @@ import (
 	"github.com/MacroPower/kat/pkg/ui/common"
 	"github.com/MacroPower/kat/pkg/ui/keys"
 	"github.com/MacroPower/kat/pkg/ui/statusbar"
+	"github.com/MacroPower/kat/pkg/ui/styles"
 	"github.com/MacroPower/kat/pkg/ui/view"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
@@ -145,6 +146,8 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 
 	case ContentRenderedMsg:
 		m.setContent(string(msg))
+
+	case common.CommandRunFinished:
 		cmds = append(cmds, m.showStatusMessage(common.StatusMessage{Message: "Loaded YAML", IsError: false}))
 
 	case common.ErrMsg:
@@ -171,20 +174,46 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 func (m PagerModel) View() string {
 	switch m.ViewState {
 	case StateShowingError:
-		return common.ErrorView(m.common.StatusMessage.Message, false)
+		return m.errorView()
 
 	case StateLoadingDocument, StateReady, StateShowingStatusMessage:
-		return view.AlwaysPlaceBottom(
-			lipgloss.JoinVertical(
-				lipgloss.Bottom,
-				m.viewport.View(),
-				m.statusBarView(),
-				m.helpView(),
-			),
-		)
+		return m.readyView()
 	}
 
 	return common.ErrorView("unknown application state", true)
+}
+
+func (m PagerModel) errorView() string {
+	errMsg := "<nil>"
+	if m.common.StatusMessage.IsError {
+		errMsg = m.common.StatusMessage.Message
+	}
+
+	errWidth := (m.common.Width / 3) * 2
+	errView := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(styles.Red).
+		Width(errWidth).
+		Align(lipgloss.Left).
+		Padding(1).
+		Render(common.ErrorView(errMsg, false))
+
+	// Place the error view in the center of the screen.
+	leftPos := (m.common.Width - lipgloss.Width(errView)) / 2
+	topPos := (m.common.Height - lipgloss.Height(errView)) / 2
+
+	return view.PlaceOverlay(leftPos, topPos, errView, m.readyView())
+}
+
+func (m PagerModel) readyView() string {
+	return view.AlwaysPlaceBottom(
+		lipgloss.JoinVertical(
+			lipgloss.Top,
+			m.viewport.View(),
+			m.statusBarView(),
+			m.helpView(),
+		),
+	)
 }
 
 func (m *PagerModel) SetSize(w, h int) {

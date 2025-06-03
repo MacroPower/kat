@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/ui/config"
@@ -94,13 +95,14 @@ func ErrorView(err string, fatal bool) string {
 	} else {
 		exitMsg += "return"
 	}
-	s := fmt.Sprintf("%s\n\n%s\n\n%s",
+
+	s := lipgloss.JoinVertical(lipgloss.Top,
 		styles.ErrorTitleStyle.Render("ERROR"),
-		err,
+		lipgloss.NewStyle().Padding(1, 0).Render(err),
 		styles.SubtleStyle.Render(exitMsg),
 	)
 
-	return "\n" + Indent(s, 3)
+	return s
 }
 
 func WaitForStatusMessageTimeout(appCtx ApplicationContext, t *time.Timer) tea.Cmd {

@@ -243,38 +243,64 @@ func (m StashModel) Update(msg tea.Msg) (StashModel, tea.Cmd) {
 func (m StashModel) View() string {
 	switch m.ViewState {
 	case StateShowingError:
-		return common.ErrorView(m.common.StatusMessage.Message, false)
+		return m.errorView()
 
 	case StateLoadingDocument:
 		return " " + m.Spinner.View() + " Loading document..."
 
 	case StateReady, StateShowingStatusMessage:
-		top := lipgloss.JoinVertical(
-			lipgloss.Top,
-			m.headerView(),
-			m.documentListView(),
-		)
-		availableHeight := m.common.Height - lipgloss.Height(top) + 1
-		bottom := lipgloss.PlaceVertical(
-			availableHeight,
-			lipgloss.Bottom,
-			lipgloss.JoinVertical(
-				lipgloss.Top,
-				lipgloss.PlaceHorizontal(
-					m.common.Width,
-					lipgloss.Left,
-					m.paginationView(),
-				),
-				m.statusBarView(),
-				m.helpView(),
-			),
-		)
-		bottom = view.AlwaysPlaceBottom(bottom)
-
-		return lipgloss.JoinVertical(lipgloss.Top, top, bottom)
+		return m.readyView()
 	}
 
 	return common.ErrorView("unknown application state", true)
+}
+
+func (m StashModel) errorView() string {
+	errMsg := "<nil>"
+	if m.common.StatusMessage.IsError {
+		errMsg = m.common.StatusMessage.Message
+	}
+
+	errWidth := (m.common.Width / 3) * 2
+	errView := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(styles.Red).
+		Width(errWidth).
+		Align(lipgloss.Left).
+		Padding(1).
+		Render(common.ErrorView(errMsg, false))
+
+	// Place the error view in the center of the screen.
+	leftPos := (m.common.Width - lipgloss.Width(errView)) / 2
+	topPos := (m.common.Height - lipgloss.Height(errView)) / 2
+
+	return view.PlaceOverlay(leftPos, topPos, errView, m.readyView())
+}
+
+func (m StashModel) readyView() string {
+	top := lipgloss.JoinVertical(
+		lipgloss.Top,
+		m.headerView(),
+		m.documentListView(),
+	)
+	availableHeight := m.common.Height - lipgloss.Height(top) + 1
+	bottom := lipgloss.PlaceVertical(
+		availableHeight,
+		lipgloss.Bottom,
+		lipgloss.JoinVertical(
+			lipgloss.Top,
+			lipgloss.PlaceHorizontal(
+				m.common.Width,
+				lipgloss.Left,
+				m.paginationView(),
+			),
+			m.statusBarView(),
+			m.helpView(),
+		),
+	)
+	bottom = view.AlwaysPlaceBottom(bottom)
+
+	return lipgloss.JoinVertical(lipgloss.Top, top, bottom)
 }
 
 // Adds yaml documents to the model.
