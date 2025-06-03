@@ -194,8 +194,6 @@ func (m StashModel) Update(msg tea.Msg) (StashModel, tea.Cmd) {
 		if m.ViewState == StateShowingError {
 			// If we're showing an error, any key exits the error view.
 			m.ViewState = StateReady
-
-			return m, nil
 		}
 		if isFiltering {
 			// Don't re-handle filter keys.
@@ -208,6 +206,7 @@ func (m StashModel) Update(msg tea.Msg) (StashModel, tea.Cmd) {
 
 	case common.ErrMsg:
 		cmds = append(cmds, m.showStatusMessage(common.StatusMessage{Message: msg.Err.Error(), IsError: true}))
+		m.ViewState = StateShowingError
 
 	case common.CommandRunStarted:
 		// Starting to render documents.
@@ -600,7 +599,9 @@ func (m StashModel) statusBarView() string {
 
 func (m *StashModel) showStatusMessage(msg common.StatusMessage) tea.Cmd {
 	// Show a success message to the user.
-	m.ViewState = StateShowingStatusMessage
+	if m.ViewState == StateReady || !msg.IsError {
+		m.ViewState = StateShowingStatusMessage
+	}
 	m.common.StatusMessage = msg
 	if m.common.StatusMessageTimer != nil {
 		m.common.StatusMessageTimer.Stop()

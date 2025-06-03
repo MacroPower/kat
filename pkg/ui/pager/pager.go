@@ -92,8 +92,6 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 		if m.ViewState == StateShowingError {
 			// If we're showing an error, any key exits the error view.
 			m.ViewState = StateReady
-
-			return m, nil
 		}
 
 		switch {
@@ -152,6 +150,7 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 
 	case common.ErrMsg:
 		cmds = append(cmds, m.showStatusMessage(common.StatusMessage{Message: msg.Err.Error(), IsError: true}))
+		m.ViewState = StateShowingError
 
 	// We've received terminal dimensions, either for the first time or
 	// after a resize.
@@ -270,12 +269,10 @@ func (m *PagerModel) toggleHelp() {
 	}
 }
 
-// Perform stuff that needs to happen after a successful markdown stash. Note
-// that the the returned command should be sent back the through the pager
-// update function.
 func (m *PagerModel) showStatusMessage(msg common.StatusMessage) tea.Cmd {
-	// Show a success message to the user.
-	m.ViewState = StateShowingStatusMessage
+	if m.ViewState == StateReady || !msg.IsError {
+		m.ViewState = StateShowingStatusMessage
+	}
 	m.common.StatusMessage = msg
 	if m.common.StatusMessageTimer != nil {
 		m.common.StatusMessageTimer.Stop()
