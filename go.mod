@@ -21,7 +21,7 @@ require (
 	github.com/sahilm/fuzzy v0.1.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/term v0.32.0
-	golang.org/x/text v0.25.0
+	golang.org/x/text v0.26.0
 	k8s.io/apimachinery v0.33.1
 	sigs.k8s.io/yaml v1.4.0
 )
@@ -62,7 +62,7 @@ require (
 	github.com/yuin/goldmark-emoji v1.0.5 // indirect
 	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8 // indirect
 	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sync v0.14.0 // indirect
+	golang.org/x/sync v0.15.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
