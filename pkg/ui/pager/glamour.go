@@ -100,7 +100,7 @@ func (gr *GlamourRenderer) postProcessContent(content string) string {
 	var result strings.Builder
 
 	for i, line := range lines {
-		if gr.model.cm.Config.ShowLineNumbers {
+		if !gr.model.cm.Config.LineNumbersDisabled {
 			result.WriteString(gr.formatLineWithNumber(line, i+1))
 		} else {
 			result.WriteString(line)

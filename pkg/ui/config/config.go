@@ -10,13 +10,13 @@ import (
 
 // Config contains TUI-specific configuration.
 type Config struct {
-	KeyBinds        *KeyBinds      `json:"keybinds"          kong:"-"                 yaml:"keybinds"`
-	MinimumDelay    *time.Duration `json:"minimum-delay"     yaml:"minimum-delay"`
-	GlamourStyle    string         `json:"glamour-style"     yaml:"glamour-style"`
-	GlamourMaxWidth int            `json:"glamour-max-width" yaml:"glamour-max-width"`
-	GlamourDisabled bool           `json:"glamour-disabled"  yaml:"glamour-disabled"`
-	ShowLineNumbers bool           `json:"show-line-numbers" yaml:"show-line-numbers"`
-	Compact         bool           `json:"compact"           yaml:"compact"`
+	KeyBinds            *KeyBinds      `json:"keybinds" kong:"-"                                    yaml:"keybinds"`
+	MinimumDelay        *time.Duration `default:"500ms" help:"Minimum delay for UI updates."        json:"minimum-delay"         yaml:"minimum-delay"`
+	GlamourStyle        string         `default:"auto"  help:"Glamour style for rendering."         json:"glamour-style"         yaml:"glamour-style"`
+	GlamourMaxWidth     int            `default:"0"     help:"Maximum width for glamour rendering." json:"glamour-max-width"     yaml:"glamour-max-width"`
+	GlamourDisabled     bool           `default:"false" help:"Disable glamour rendering."           json:"glamour-disabled"      yaml:"glamour-disabled"`
+	LineNumbersDisabled bool           `default:"false" help:"Disable line numbers in the UI."      json:"line-numbers-disabled" yaml:"line-numbers-disabled"`
+	Compact             bool           `default:"false" help:"Enable compact mode for the UI."      json:"compact"               yaml:"compact"`
 }
 
 func (c *Config) EnsureDefaults() {
@@ -266,7 +266,6 @@ func (kb *PagerKeyBinds) GetKeyBinds() []keys.KeyBind {
 }
 
 var DefaultConfig = Config{
-	GlamourStyle:    "auto",
-	ShowLineNumbers: true,
-	KeyBinds:        NewKeyBinds(),
+	GlamourStyle: "auto",
+	KeyBinds:     NewKeyBinds(),
 }

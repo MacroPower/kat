@@ -70,16 +70,18 @@ Arguments:
   [<command> ...]    Command to run, defaults set in ~/.config/kat/config.yaml.
 
 Flags:
-  -h, --help                       Show context-sensitive help.
-      --log-level="info"           Log level ($KAT_LOG_LEVEL).
-      --log-format="text"          Log format ($KAT_LOG_FORMAT).
-  -f, --file=FILE                  File content to read.
-      --ui-glamour-style=STRING    ($KAT_UI_GLAMOUR_STYLE)
-      --ui-glamour-max-width=INT   ($KAT_UI_GLAMOUR_MAX_WIDTH)
-      --ui-glamour-disabled        ($KAT_UI_GLAMOUR_DISABLED)
-      --ui-show-line-numbers       ($KAT_UI_SHOW_LINE_NUMBERS)
-      --ui-enable-mouse            ($KAT_UI_ENABLE_MOUSE)
-      --show-config                Print the active configuration and exit.
+  -h, --help                        Show context-sensitive help.
+      --ui-minimum-delay=500ms      Minimum delay for UI updates ($KAT_UI_MINIMUM_DELAY).
+      --ui-glamour-style="auto"     Glamour style for rendering ($KAT_UI_GLAMOUR_STYLE).
+      --ui-glamour-max-width=0      Maximum width for glamour rendering ($KAT_UI_GLAMOUR_MAX_WIDTH).
+      --ui-glamour-disabled         Disable glamour rendering ($KAT_UI_GLAMOUR_DISABLED).
+      --ui-line-numbers-disabled    Disable line numbers in the UI ($KAT_UI_LINE_NUMBERS_DISABLED).
+      --ui-compact                  Enable compact mode for the UI ($KAT_UI_COMPACT).
+      --log-level="info"            Log level ($KAT_LOG_LEVEL).
+      --log-format="text"           Log format ($KAT_LOG_FORMAT).
+  -f, --file=FILE                   File content to read.
+      --write-config                Write the configuration file to the default path.
+      --show-config                 Print the active configuration and exit.
 ```
 
 ## ⚙️ Configuration
