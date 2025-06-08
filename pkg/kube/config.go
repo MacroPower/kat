@@ -4,6 +4,12 @@ type Config struct {
 	Commands []*Command `json:"commands" kong:"-" yaml:"commands"`
 }
 
+func (c *Config) EnsureDefaults() {
+	if c.Commands == nil {
+		c.Commands = DefaultConfig.Commands
+	}
+}
+
 var DefaultConfig = Config{
 	Commands: []*Command{
 		MustNewCommand(nil, ".*/Chart\\.ya?ml", "helm", "template", ".", "--generate-name"),

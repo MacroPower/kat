@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
-	"sigs.k8s.io/yaml"
 
 	kongyaml "github.com/alecthomas/kong-yaml"
 
@@ -51,14 +50,12 @@ var cli struct {
 
 	Config config.Config `embed:""`
 
-	ShowConfig bool `env:"-" help:"Print the active configuration and exit."`
+	WriteConfig bool `env:"-" help:"Write the configuration file to the default path."`
+	ShowConfig  bool `env:"-" help:"Print the active configuration and exit."`
 }
 
 func main() {
-	configPath, err := initializeConfig()
-	if err != nil {
-		panic(err)
-	}
+	configPath := config.GetPath()
 
 	cliCtx := kong.Parse(&cli,
 		kong.Name(cmdName),
@@ -73,12 +70,18 @@ func main() {
 	}
 	slog.SetDefault(slog.New(logHandler))
 
+	if cli.WriteConfig {
+		if err := config.NewConfig().Write(configPath); err != nil {
+			slog.Error("write config", slog.Any("err", err))
+			cliCtx.Fatalf("initialization failed")
+		}
+	}
+
 	// Load more complex structured configuration that is ignored by kong.
 	if err := cli.Config.Load(configPath); err != nil {
-		slog.Error("load config", slog.Any("err", err))
-		cliCtx.Fatalf("initialization failed")
+		slog.Warn("load config", slog.Any("err", err))
 	}
-	cli.Config.UI.EnsureDefaults()
+	cli.Config.EnsureDefaults()
 
 	err = cli.Config.UI.KeyBinds.Validate()
 	if err != nil {
@@ -93,12 +96,12 @@ func main() {
 
 	if cli.ShowConfig {
 		// Print the active configuration and exit.
-		yamlConfig, err := yaml.Marshal(cli.Config)
+		yamlConfig, err := cli.Config.MarshalYAML()
 		if err != nil {
 			slog.Error("marshal config yaml", slog.Any("err", err))
 			cliCtx.Fatalf("initialization failed")
 		}
-		cliCtx.Printf("active configuration: %s\n", configPath)
+		slog.Info("active configuration", slog.String("path", configPath))
 		fmt.Printf("%s", yamlConfig)
 		cliCtx.Exit(0)
 	}
@@ -115,19 +118,9 @@ func main() {
 		cr = setupCommandRunner(cli.Path)
 	}
 
-	if err := runUI(cli.Config.UI, cr); err != nil {
+	if err := runUI(*cli.Config.UI, cr); err != nil {
 		cliCtx.FatalIfErrorf(err)
 	}
-}
-
-// initializeConfig initializes the configuration file.
-func initializeConfig() (string, error) {
-	configPath := config.GetPath()
-	if err := config.NewConfig().Write(configPath); err != nil {
-		return "", fmt.Errorf("failed to write config: %w", err)
-	}
-
-	return configPath, nil
 }
 
 // setupCommandRunner creates and configures the command runner.

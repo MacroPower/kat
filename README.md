@@ -84,7 +84,11 @@ Flags:
 
 ## ⚙️ Configuration
 
-See the [default configuration file](example/config.yaml).
+You can use `kat --write-config` to generate a default configuration file at `~/.config/kat/config.yaml`. This file allows you to customize the behavior of `kat`, such as the UI style, keybindings, and commands.
+
+Alternatively, you can use `kat --show-config` to print the active configuration and redirect the output to a file.
+
+You can also find an example configuration file in [example/config.yaml](example/config.yaml).
 
 ### Custom Commands
 

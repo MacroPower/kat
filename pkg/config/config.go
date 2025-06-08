@@ -14,14 +14,28 @@ import (
 )
 
 type Config struct {
-	Kube kube.Config     `embed:"" json:"kube" prefix:"kube-" yaml:"kube"`
-	UI   uiconfig.Config `embed:"" json:"ui"   prefix:"ui-"   yaml:"ui"`
+	Kube *kube.Config     `embed:"" json:"kube" prefix:"kube-" yaml:"kube"`
+	UI   *uiconfig.Config `embed:"" json:"ui"   prefix:"ui-"   yaml:"ui"`
 }
 
 func NewConfig() *Config {
 	return &Config{
-		UI:   uiconfig.DefaultConfig,
-		Kube: kube.DefaultConfig,
+		UI:   &uiconfig.DefaultConfig,
+		Kube: &kube.DefaultConfig,
+	}
+}
+
+func (c *Config) EnsureDefaults() {
+	if c.UI == nil {
+		c.UI = &uiconfig.DefaultConfig
+	} else {
+		c.UI.EnsureDefaults()
+	}
+
+	if c.Kube == nil {
+		c.Kube = &kube.DefaultConfig
+	} else {
+		c.Kube.EnsureDefaults()
 	}
 }
 
@@ -68,20 +82,28 @@ func (c *Config) Write(path string) error {
 		return fmt.Errorf("create directories: %w", err)
 	}
 
-	b := &bytes.Buffer{}
-	enc := yaml.NewEncoder(b)
-	enc.SetIndent(2)
-
-	err = enc.Encode(c) //nolint:musttag // Tagged.
+	b, err := c.MarshalYAML()
 	if err != nil {
-		return fmt.Errorf("marshal yaml: %w", err)
+		return err
 	}
 
-	if err := os.WriteFile(path, b.Bytes(), 0o600); err != nil {
+	if err := os.WriteFile(path, b, 0o600); err != nil {
 		return fmt.Errorf("write file: %w", err)
 	}
 
 	return nil
+}
+
+func (c *Config) MarshalYAML() ([]byte, error) {
+	b := &bytes.Buffer{}
+	enc := yaml.NewEncoder(b)
+	enc.SetIndent(2)
+
+	if err := enc.Encode(c); err != nil {
+		return nil, fmt.Errorf("marshal yaml: %w", err)
+	}
+
+	return b.Bytes(), nil
 }
 
 func GetPath() string {
