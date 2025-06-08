@@ -37,6 +37,8 @@ Examples:
 )
 
 var cli struct {
+	Config config.Config `embed:""`
+
 	Log struct {
 		Level  string `default:"info" help:"Log level."`
 		Format string `default:"text" enum:"text,logfmt,json" help:"Log format."`
@@ -47,8 +49,6 @@ var cli struct {
 	Path string `arg:"" default:"." help:"File or directory path, default is $PWD." type:"path"`
 
 	Command []string `arg:"" help:"Command to run, defaults set in ~/.config/kat/config.yaml." optional:""`
-
-	Config config.Config `embed:""`
 
 	WriteConfig bool `env:"-" help:"Write the configuration file to the default path."`
 	ShowConfig  bool `env:"-" help:"Print the active configuration and exit."`
