@@ -26,13 +26,23 @@ type YAMLDocument struct {
 
 // Generate the value we're doing to filter against.
 func (m *YAMLDocument) BuildFilterValue() {
+	m.FilterValue = ""
+
 	title, err := Normalize(m.Title)
-	if err != nil {
+	if err == nil {
+		m.FilterValue += title
+	} else {
 		log.Error("error normalizing", "title", m.Title, "error", err)
-		m.FilterValue = m.Title
+		m.FilterValue += m.Title
 	}
 
-	m.FilterValue = title
+	desc, err := Normalize(m.Desc)
+	if err == nil {
+		m.FilterValue += desc
+	} else {
+		log.Error("error normalizing", "desc", m.Desc, "error", err)
+		m.FilterValue += m.Desc
+	}
 }
 
 // Normalize text to aid in the filtering process. In particular, we remove

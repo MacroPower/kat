@@ -18,62 +18,111 @@ const (
 	fileListingStashIcon = "• "
 )
 
+// stashItemDisplayState represents the visual state of a stash item.
+type stashItemDisplayState struct {
+	gutter    string
+	title     string
+	desc      string
+	editedBy  string
+	icon      string
+	separator string
+}
+
 func stashItemView(b *strings.Builder, m StashModel, index int, y *yamldoc.YAMLDocument) {
 	var (
-		truncateTo  = uint(max(0, m.cm.Width-stashViewHorizontalPadding*2)) //nolint:gosec // Uses max.
-		gutter      string
-		title       = truncate.StringWithTail(y.Title, truncateTo, styles.Ellipsis)
-		desc        = truncate.StringWithTail(y.Desc, truncateTo, styles.Ellipsis)
-		editedBy    = ""
-		hasEditedBy = false
-		icon        = ""
-		separator   = ""
+		// Calculate truncation width based on available space.
+		truncateTo = uint(max(0, m.cm.Width-stashViewHorizontalPadding*2)) //nolint:gosec // Uses max.
+
+		// Prepare content.
+		title = truncate.StringWithTail(y.Title, truncateTo, styles.Ellipsis)
+		desc  = truncate.StringWithTail(y.Desc, truncateTo, styles.Ellipsis)
+
+		// Determine item state.
+		isSelected         = index == m.cursor()
+		isFiltering        = m.FilterState == Filtering
+		isFilterApplied    = m.FilterState == FilterApplied
+		isFilterSelected   = m.currentSection().key == SectionFilter
+		singleFilteredItem = isFiltering && len(m.getVisibleYAMLs()) == 1
+		filterValue        = m.filterInput.Value()
+
+		// If there are multiple items being filtered don't highlight a selected
+		// item in the results. If we've filtered down to one item, however,
+		// highlight that first item since pressing return will open it.
+		shouldHighlight  = (isSelected && !isFiltering) || singleFilteredItem
+		shouldShowFilter = (isFilterSelected && isFilterApplied) || singleFilteredItem
 	)
 
-	isSelected := index == m.cursor()
-	isFiltering := m.FilterState == Filtering
-	singleFilteredItem := isFiltering && len(m.getVisibleYAMLs()) == 1
-
-	// If there are multiple items being filtered don't highlight a selected
-	// item in the results. If we've filtered down to one item, however,
-	// highlight that first item since pressing return will open it.
-	if isSelected && !isFiltering || singleFilteredItem {
-		// Selected item.
-		gutter = styles.DullFuchsiaFg(verticalLine)
-		if m.currentSection().key == SectionFilter && m.FilterState == FilterApplied || singleFilteredItem {
-			s := lipgloss.NewStyle().Foreground(styles.Fuchsia)
-			title = styleFilteredText(title, m.filterInput.Value(), s, s.Underline(true))
-		} else {
-			title = styles.FuchsiaFg(title)
-			icon = styles.FuchsiaFg(icon)
-		}
-		desc = styles.DimFuchsiaFg(desc)
-		editedBy = styles.DimDullFuchsiaFg(editedBy)
-		separator = styles.DullFuchsiaFg(separator)
+	// Apply appropriate styling based on state.
+	var displayState stashItemDisplayState
+	if shouldHighlight {
+		displayState = applySelectedStyling(title, desc, shouldShowFilter, filterValue)
 	} else {
-		gutter = " "
-		if isFiltering && m.filterInput.Value() == "" {
-			icon = styles.DimGreenFg(icon)
-			title = styles.DimNormalFg(title)
-			desc = styles.DimBrightGrayFg(desc)
-			editedBy = styles.DimBrightGrayFg(editedBy)
-			separator = styles.DimBrightGrayFg(separator)
-		} else {
-			icon = styles.GreenFg(icon)
-
-			s := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#dddddd"})
-			title = styleFilteredText(title, m.filterInput.Value(), s, s.Underline(true))
-			desc = styles.GrayFg(desc)
-			editedBy = styles.MidGrayFg(editedBy)
-			separator = styles.BrightGrayFg(separator)
-		}
+		displayState = applyUnselectedStyling(title, desc, isFiltering, filterValue)
 	}
 
-	fmt.Fprintf(b, "%s %s%s%s%s\n", gutter, icon, separator, separator, title)
-	fmt.Fprintf(b, "%s %s", gutter, desc)
-	if hasEditedBy {
-		fmt.Fprintf(b, " %s", editedBy)
+	// Render the item.
+	renderStashItem(b, displayState)
+}
+
+// applySelectedStyling applies styling for selected/highlighted items.
+func applySelectedStyling(title, desc string, showFilter bool, filterValue string) stashItemDisplayState {
+	result := stashItemDisplayState{
+		gutter:    styles.DullFuchsiaFg(verticalLine),
+		desc:      styles.DimFuchsiaFg(desc),
+		editedBy:  styles.DimDullFuchsiaFg(""),
+		separator: styles.DullFuchsiaFg(""),
 	}
+
+	if showFilter {
+		// Apply filtered text styling with fuchsia theme.
+		fuchsiaStyle := lipgloss.NewStyle().Foreground(styles.Fuchsia)
+		result.title = styleFilteredText(title, filterValue, fuchsiaStyle, fuchsiaStyle.Underline(true))
+	} else {
+		// Apply standard selected styling.
+		result.title = styles.FuchsiaFg(title)
+		result.icon = styles.FuchsiaFg("")
+	}
+
+	return result
+}
+
+// applyUnselectedStyling applies styling for unselected items.
+func applyUnselectedStyling(title, desc string, isFiltering bool, filterValue string) stashItemDisplayState {
+	hasEmptyFilter := isFiltering && filterValue == ""
+
+	result := stashItemDisplayState{
+		gutter: " ",
+	}
+
+	if hasEmptyFilter {
+		// Dimmed styling when filtering with empty input.
+		result.icon = styles.DimGreenFg("")
+		result.title = styles.DimNormalFg(title)
+		result.desc = styles.DimBrightGrayFg(desc)
+		result.editedBy = styles.DimBrightGrayFg("")
+		result.separator = styles.DimBrightGrayFg("")
+	} else {
+		// Normal unselected styling.
+		result.icon = styles.GreenFg("")
+		result.desc = styles.GrayFg(desc)
+		result.editedBy = styles.MidGrayFg("")
+		result.separator = styles.BrightGrayFg("")
+
+		// Apply filtered text styling with adaptive colors.
+		titleStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#dddddd"})
+		result.title = styleFilteredText(title, filterValue, titleStyle, titleStyle.Underline(true))
+
+		descStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#4d4d4d", Dark: "#b3b3b3"})
+		result.desc = styleFilteredText(desc, filterValue, descStyle, descStyle.Underline(true))
+	}
+
+	return result
+}
+
+// renderStashItem renders the final output for a stash item.
+func renderStashItem(b *strings.Builder, state stashItemDisplayState) {
+	fmt.Fprintf(b, "%s %s%s%s%s\n", state.gutter, state.icon, state.separator, state.separator, state.title)
+	fmt.Fprintf(b, "%s %s", state.gutter, state.desc)
 }
 
 func styleFilteredText(haystack, needles string, defaultStyle, matchedStyle lipgloss.Style) string {
