@@ -65,6 +65,9 @@ func (dlr *DocumentListRenderer) RenderDocumentList(docs []*yamldoc.YAMLDocument
 			stashItemView(&b, m, i, dlr.compact, md)
 			if i != len(pageItems)-1 {
 				b.WriteString("\n")
+				if !dlr.compact {
+					b.WriteString("\n")
+				}
 			}
 		}
 	}
