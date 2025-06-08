@@ -18,15 +18,62 @@ var (
 
 	// ErrCommandExecution is returned when command execution fails.
 	ErrCommandExecution = errors.New("command execution")
+
+	// ErrHookExecution is returned when hook execution fails.
+	ErrHookExecution = errors.New("hook execution")
 )
 
-type Command struct {
-	Match   *regexp.Regexp `json:"match"   yaml:"match"` // Regex to match file paths.
-	Command string         `json:"command" yaml:"command"`
-	Args    []string       `json:"args"    yaml:"args"`
+// HookCommand represents a single hook command to execute.
+type HookCommand struct {
+	Command string   `json:"command" yaml:"command"`
+	Args    []string `json:"args"    yaml:"args"`
 }
 
-func NewCommand(match, cmd string, args ...string) (*Command, error) {
+func (hc *HookCommand) Exec(dir string, stdin []byte) error {
+	if hc.Command == "" {
+		return fmt.Errorf("%w: empty hook command", ErrHookExecution)
+	}
+
+	cmd := exec.Command(hc.Command, hc.Args...) //nolint:gosec // G204: Subprocess launched with a potential tainted input or cmd arguments.
+	cmd.Dir = dir
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	// If stdin is provided, pass it to the hook command.
+	if len(stdin) > 0 {
+		cmd.Stdin = bytes.NewReader(stdin)
+	}
+
+	if err := cmd.Run(); err != nil {
+		var errMsg string
+		if stderr.Len() > 0 {
+			errMsg += stderr.String() + "\n"
+		}
+		if stdout.Len() > 0 {
+			errMsg += stdout.String() + "\n"
+		}
+
+		return fmt.Errorf("%s%w: %w", errMsg, ErrHookExecution, err)
+	}
+
+	return nil
+}
+
+// Hooks represents the different types of hooks that can be executed.
+type Hooks struct {
+	PostRender []*HookCommand `json:"postRender,omitempty" yaml:"postRender,omitempty"`
+}
+
+type Command struct {
+	Match   *regexp.Regexp `json:"match"           yaml:"match"` // Regex to match file paths.
+	Hooks   *Hooks         `json:"hooks,omitempty" yaml:"hooks,omitempty"`
+	Command string         `json:"command"         yaml:"command"`
+	Args    []string       `json:"args"            yaml:"args"`
+}
+
+func NewCommand(hooks *Hooks, match, cmd string, args ...string) (*Command, error) {
 	re, err := regexp.Compile(match)
 	if err != nil {
 		return nil, fmt.Errorf("compile regex: %w", err)
@@ -36,11 +83,12 @@ func NewCommand(match, cmd string, args ...string) (*Command, error) {
 		Match:   re,
 		Command: cmd,
 		Args:    args,
+		Hooks:   hooks,
 	}, nil
 }
 
-func MustNewCommand(match, cmd string, args ...string) *Command {
-	c, err := NewCommand(match, cmd, args...)
+func MustNewCommand(hooks *Hooks, match, cmd string, args ...string) *Command {
+	c, err := NewCommand(hooks, match, cmd, args...)
 	if err != nil {
 		panic(err)
 	}
@@ -50,12 +98,11 @@ func MustNewCommand(match, cmd string, args ...string) *Command {
 
 // Exec runs the command with the given arguments in the specified directory.
 func (c *Command) Exec(dir string) (CommandOutput, error) {
-	slog.Debug("exec", slog.Any("cmd", *c))
-
 	if c.Command == "" {
 		return CommandOutput{}, fmt.Errorf("%w: empty command", ErrCommandExecution)
 	}
 
+	// Execute main command.
 	cmd := exec.Command(c.Command, c.Args...) //nolint:gosec // G204: Subprocess launched with a potential tainted input or cmd arguments.
 	cmd.Dir = dir
 
@@ -67,6 +114,9 @@ func (c *Command) Exec(dir string) (CommandOutput, error) {
 	output := CommandOutput{
 		Stdout: stdout.String(),
 		Stderr: stderr.String(),
+	}
+	if c.Hooks != nil {
+		output.Hooks = c.Hooks.PostRender
 	}
 
 	if err != nil {
@@ -83,6 +133,15 @@ func (c *Command) Exec(dir string) (CommandOutput, error) {
 	}
 
 	output.Resources = objects
+
+	// Execute postRender hooks, passing the main command's output as stdin.
+	if c.Hooks != nil {
+		for _, hook := range c.Hooks.PostRender {
+			if err := hook.Exec(dir, stdout.Bytes()); err != nil {
+				return output, err
+			}
+		}
+	}
 
 	slog.Debug("returning objects", slog.Int("count", len(objects)))
 
@@ -115,6 +174,7 @@ type CommandOutput struct {
 	Stdout    string
 	Stderr    string
 	Resources []*Resource
+	Hooks     []*HookCommand
 }
 
 func (cr *CommandRunner) String() string {

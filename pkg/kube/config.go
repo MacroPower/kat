@@ -6,7 +6,7 @@ type Config struct {
 
 var DefaultConfig = Config{
 	Commands: []*Command{
-		MustNewCommand(".*/Chart\\.ya?ml", "helm", "template", ".", "--generate-name"),
-		MustNewCommand(".*/kustomization\\.ya?ml", "kustomize", "build", "."),
+		MustNewCommand(nil, ".*/Chart\\.ya?ml", "helm", "template", ".", "--generate-name"),
+		MustNewCommand(nil, ".*/kustomization\\.ya?ml", "kustomize", "build", "."),
 	},
 }

@@ -26,7 +26,8 @@
 - 🔄 Reload from any context to quickly diff individual manifests.
 - 🐛 Immediately view any errors from rendering, and re-reload!
 - 🎨 Customize keybinds, styles, and more to match your preferences.
-- 🪄 Define your own commands and rules to detect different project types.
+- 🪄 Add your own commands and rules to detect different project types.
+- 🚨 Define custom hooks to automatically validate rendered manifests.
 
 ## 📦 Installation
 
@@ -84,6 +85,34 @@ Flags:
 ## ⚙️ Configuration
 
 See the [default configuration file](example/config.yaml).
+
+### Custom Commands
+
+You can customize the commands that `kat` runs in the configuration file. These rules match files or directories and specify the command to run when `kat` is invoked.
+
+Additionally, you can define hooks that run after the command is executed. These hooks can be used to pipe the output to other tools, such as `kubeconform` for validation. If the command exits with a non-zero status, `kat` will display the error message. You can dismiss the error message and return to the main view, or make edits and press `r` to re-run the command.
+
+```yaml
+kube:
+  commands:
+    # Run `helm template . --generate-name` when kat targets a directory
+    # containing a `Chart.yaml` file.
+    - match: .*/Chart\.ya?ml
+      command: helm
+      args: [template, ".", --generate-name]
+      hooks: &hooks
+        postRender:
+          # Pass the rendered manifests via stdin to `kubeconform`.
+          - command: kubeconform
+            args: [-strict, -summary]
+
+    # Run `kustomize build --enable-helm .` when kat targets a directory
+    # containing a `kustomization.yaml` file.
+    - match: .*/kustomization\.ya?ml
+      command: kustomize
+      args: [build, --enable-helm, "."]
+      hooks: *hooks # Re-use the hooks from above.
+```
 
 ## 🔍️ Similar Tools
 

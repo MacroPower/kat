@@ -1,21 +1,8 @@
-// Copyright 2024-2025 Jacob Colvin
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package kube_test
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -106,7 +93,7 @@ func TestCommandRunner_WithCommand(t *testing.T) {
 	t.Parallel()
 
 	runner := kube.NewCommandRunner("")
-	runner.SetCommand(kube.MustNewCommand("", "echo", "{apiVersion: v1, kind: Resource}"))
+	runner.SetCommand(kube.MustNewCommand(nil, "", "echo", "{apiVersion: v1, kind: Resource}"))
 	customRunner, err := runner.Run()
 	require.NoError(t, err)
 
@@ -114,4 +101,145 @@ func TestCommandRunner_WithCommand(t *testing.T) {
 	assert.Equal(t, "{apiVersion: v1, kind: Resource}\n", customRunner.Stdout)
 	assert.Equal(t, "v1", customRunner.Resources[0].Object.GetAPIVersion())
 	assert.Equal(t, "Resource", customRunner.Resources[0].Object.GetKind())
+}
+
+func TestCommand_WithPostRenderHooks(t *testing.T) {
+	t.Parallel()
+
+	// Create a command with postRender hooks that use stdin
+	cmd := &kube.Command{
+		Command: "echo",
+		Args:    []string{"{apiVersion: v1, kind: Service, metadata: {name: test}}"},
+		Hooks: &kube.Hooks{
+			PostRender: []*kube.HookCommand{
+				{Command: "grep", Args: []string{"Service"}}, // This should succeed since output contains "Service"
+			},
+		},
+	}
+
+	output, err := cmd.Exec(".")
+	require.NoError(t, err)
+
+	assert.NotEmpty(t, output.Stdout)
+	assert.Empty(t, output.Stderr)
+	assert.Len(t, output.Resources, 1)
+	assert.Equal(t, "Service", output.Resources[0].Object.GetKind())
+}
+
+func TestCommand_FailingPostRenderHook(t *testing.T) {
+	t.Parallel()
+
+	// Create a command with a failing postRender hook
+	cmd := &kube.Command{
+		Command: "echo",
+		Args:    []string{"{apiVersion: v1, kind: Pod, metadata: {name: test}}"},
+		Hooks: &kube.Hooks{
+			PostRender: []*kube.HookCommand{
+				{Command: "false"}, // This command always fails
+			},
+		},
+	}
+
+	_, err := cmd.Exec(".")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exit status 1")
+}
+
+func TestCommand_EmptyHookCommand(t *testing.T) {
+	t.Parallel()
+
+	// Create a command with an empty hook command
+	cmd := &kube.Command{
+		Command: "echo",
+		Args:    []string{"{apiVersion: v1, kind: Pod, metadata: {name: test}}"},
+		Hooks: &kube.Hooks{
+			PostRender: []*kube.HookCommand{
+				{Command: ""}, // Empty command should fail
+			},
+		},
+	}
+
+	_, err := cmd.Exec(".")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "empty hook command")
+}
+
+func TestNewCommandWithHooks(t *testing.T) {
+	t.Parallel()
+
+	hooks := &kube.Hooks{
+		PostRender: []*kube.HookCommand{
+			{Command: "echo", Args: []string{"post-render"}},
+		},
+	}
+
+	cmd, err := kube.NewCommand(hooks, ".*\\.yaml", "echo", "test")
+	require.NoError(t, err)
+	assert.NotNil(t, cmd.Hooks)
+	assert.Len(t, cmd.Hooks.PostRender, 1)
+}
+
+func TestCommand_IntegrationWithRealCommands(t *testing.T) {
+	t.Parallel()
+
+	// Skip if helm is not available
+	if _, err := exec.LookPath("helm"); err != nil {
+		t.Skip("helm not found in PATH, skipping integration test")
+	}
+
+	tempDir := t.TempDir()
+
+	// Create a minimal Chart.yaml
+	chartContent := `apiVersion: v2
+name: test-chart
+description: A test Helm chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"`
+
+	chartFile := filepath.Join(tempDir, "Chart.yaml")
+	require.NoError(t, os.WriteFile(chartFile, []byte(chartContent), 0o644))
+
+	// Create a simple template
+	templatesDir := filepath.Join(tempDir, "templates")
+	require.NoError(t, os.MkdirAll(templatesDir, 0o755))
+
+	templateContent := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-config
+data:
+  app: {{ .Chart.Name }}`
+
+	templateFile := filepath.Join(templatesDir, "configmap.yaml")
+	require.NoError(t, os.WriteFile(templateFile, []byte(templateContent), 0o644))
+
+	// Create command with hooks
+	cmd := &kube.Command{
+		Command: "helm",
+		Args:    []string{"template", ".", "--generate-name"},
+		Hooks: &kube.Hooks{
+			PostRender: []*kube.HookCommand{
+				{Command: "grep", Args: []string{"ConfigMap"}}, // Verify ConfigMap is in output
+			},
+		},
+	}
+
+	output, err := cmd.Exec(tempDir)
+	require.NoError(t, err)
+
+	assert.NotEmpty(t, output.Stdout)
+	assert.Empty(t, output.Stderr)
+	assert.NotEmpty(t, output.Resources)
+
+	// Check that we have a ConfigMap resource
+	found := false
+	for _, resource := range output.Resources {
+		if resource.Object.GetKind() == "ConfigMap" {
+			found = true
+
+			break
+		}
+	}
+	assert.True(t, found, "Expected to find a ConfigMap in the rendered resources")
 }
