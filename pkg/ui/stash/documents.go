@@ -10,14 +10,28 @@ import (
 
 // DocumentListRenderer handles rendering of document lists.
 type DocumentListRenderer struct {
-	width  int
-	height int
-	indent int
+	width   int
+	height  int
+	indent  int
+	compact bool
 }
 
 // NewDocumentListRenderer creates a new document list renderer.
-func NewDocumentListRenderer(width, height, indent int) *DocumentListRenderer {
-	return &DocumentListRenderer{width: width, height: height, indent: indent}
+func NewDocumentListRenderer(indent int, compact bool) *DocumentListRenderer {
+	return &DocumentListRenderer{indent: indent, compact: compact}
+}
+
+func (dlr *DocumentListRenderer) SetSize(width, height int) {
+	dlr.width = width
+	dlr.height = height
+}
+
+func (dlr *DocumentListRenderer) GetItemHeight() int {
+	if dlr.compact {
+		return 1 // Compact mode uses a single line per document.
+	}
+
+	return 3
 }
 
 // RenderDocumentList renders a list of documents with pagination and empty states.
@@ -48,9 +62,9 @@ func (dlr *DocumentListRenderer) RenderDocumentList(docs []*yamldoc.YAMLDocument
 		pageItems := docs[start:end]
 
 		for i, md := range pageItems {
-			stashItemView(&b, m, i, md)
+			stashItemView(&b, m, i, dlr.compact, md)
 			if i != len(pageItems)-1 {
-				b.WriteString("\n\n")
+				b.WriteString("\n")
 			}
 		}
 	}

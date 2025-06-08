@@ -425,11 +425,17 @@ func kubeResourceToYAML(res *kube.Resource) *yamldoc.YAMLDocument {
 		title = fmt.Sprintf("%s/%s", res.Object.GetNamespace(), res.Object.GetName())
 	}
 
+	gvk := res.Object.GetObjectKind().GroupVersionKind()
+	desc := gvk.Kind
+	if gvk.Group != "" {
+		desc = fmt.Sprintf("%s/%s", gvk.Group, gvk.Kind)
+	}
+
 	return &yamldoc.YAMLDocument{
 		Object: res.Object,
 		Body:   res.YAML,
 		Title:  title,
-		Desc:   fmt.Sprintf("%s/%s", res.Object.GetAPIVersion(), res.Object.GetKind()),
+		Desc:   desc,
 	}
 }
 

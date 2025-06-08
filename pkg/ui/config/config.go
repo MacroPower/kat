@@ -16,6 +16,7 @@ type Config struct {
 	GlamourMaxWidth int            `json:"glamour-max-width" yaml:"glamour-max-width"`
 	GlamourDisabled bool           `json:"glamour-disabled"  yaml:"glamour-disabled"`
 	ShowLineNumbers bool           `json:"show-line-numbers" yaml:"show-line-numbers"`
+	Compact         bool           `json:"compact"           yaml:"compact"`
 }
 
 func (c *Config) EnsureDefaults() {

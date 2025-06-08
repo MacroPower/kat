@@ -28,7 +28,7 @@ type stashItemDisplayState struct {
 	separator string
 }
 
-func stashItemView(b *strings.Builder, m StashModel, index int, y *yamldoc.YAMLDocument) {
+func stashItemView(b *strings.Builder, m StashModel, index int, compact bool, y *yamldoc.YAMLDocument) {
 	var (
 		// Calculate truncation width based on available space.
 		truncateTo = uint(max(0, m.cm.Width-stashViewHorizontalPadding*2)) //nolint:gosec // Uses max.
@@ -61,7 +61,11 @@ func stashItemView(b *strings.Builder, m StashModel, index int, y *yamldoc.YAMLD
 	}
 
 	// Render the item.
-	renderStashItem(b, displayState)
+	if compact {
+		renderStashItemCompact(b, displayState)
+	} else {
+		renderStashItem(b, displayState)
+	}
 }
 
 // applySelectedStyling applies styling for selected/highlighted items.
@@ -117,6 +121,11 @@ func applyUnselectedStyling(title, desc string, isFiltering bool, filterValue st
 	}
 
 	return result
+}
+
+// renderStashItemCompact renders the final output for a stash item.
+func renderStashItemCompact(b *strings.Builder, state stashItemDisplayState) {
+	fmt.Fprintf(b, "%s %s%s%s%s%s%s", state.gutter, state.icon, state.separator, state.separator, state.desc, styles.DimDullFuchsiaFg("/"), state.title)
 }
 
 // renderStashItem renders the final output for a stash item.

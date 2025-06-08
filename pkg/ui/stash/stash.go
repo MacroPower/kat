@@ -20,7 +20,7 @@ import (
 
 const (
 	stashIndent                = 1
-	stashViewItemHeight        = 3 // Height of stash entry, including gap.
+	stashViewItemHeight        = 2 // Height of stash entry, including gap.
 	stashViewTopPadding        = 2 // Padding at the top of the stash view.
 	stashViewBottomPadding     = 6 // Pagination and gaps, but not help.
 	stashViewHorizontalPadding = 6
@@ -84,6 +84,7 @@ const (
 type StashModel struct {
 	cm           *common.CommonModel
 	helpRenderer *statusbar.HelpRenderer
+	docRenderer  *DocumentListRenderer
 
 	// The master set of yaml documents we're working with.
 	YAMLs []*yamldoc.YAMLDocument
@@ -158,6 +159,7 @@ func NewStashModel(cm *common.CommonModel) StashModel {
 		serverPage:   1,
 		sections:     s,
 		helpRenderer: statusbar.NewHelpRenderer(kbr),
+		docRenderer:  NewDocumentListRenderer(stashIndent, cm.Config.Compact),
 	}
 
 	return m
@@ -253,6 +255,8 @@ func (m *StashModel) SetSize(width, height int) {
 		m.helpHeight = m.helpRenderer.CalculateHelpHeight()
 	}
 
+	m.docRenderer.SetSize(width, height)
+
 	m.filterInput.Width = width - stashViewHorizontalPadding*2 - ansi.PrintableRuneWidth(
 		m.filterInput.Prompt,
 	)
@@ -322,7 +326,7 @@ func (m *StashModel) updatePagination() {
 		helpHeight -
 		stashViewBottomPadding
 
-	m.paginator().PerPage = max(1, availableHeight/stashViewItemHeight)
+	m.paginator().PerPage = max(1, availableHeight/m.docRenderer.GetItemHeight())
 
 	if pages := len(m.getVisibleYAMLs()); pages < 1 {
 		m.paginator().SetTotalPages(1)
@@ -423,8 +427,7 @@ func (m *StashModel) enforcePaginationBounds() {
 }
 
 func (m StashModel) documentListView() string {
-	return NewDocumentListRenderer(m.cm.Width, m.cm.Height, stashIndent).
-		RenderDocumentList(m.getVisibleYAMLs(), m)
+	return m.docRenderer.RenderDocumentList(m.getVisibleYAMLs(), m)
 }
 
 func (m StashModel) paginationView() string {
