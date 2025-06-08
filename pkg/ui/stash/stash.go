@@ -3,10 +3,8 @@ package stash
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/paginator"
-	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/ansi"
@@ -17,7 +15,6 @@ import (
 	"github.com/MacroPower/kat/pkg/ui/keys"
 	"github.com/MacroPower/kat/pkg/ui/statusbar"
 	"github.com/MacroPower/kat/pkg/ui/styles"
-	"github.com/MacroPower/kat/pkg/ui/view"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
 
@@ -33,8 +30,6 @@ var (
 	dividerDot = styles.DarkGrayFg.SetString(" • ")
 	dividerBar = styles.DarkGrayFg.SetString(" │ ")
 
-	stashSpinnerStyle = lipgloss.NewStyle().
-				Foreground(styles.Gray)
 	stashInputPromptStyle = lipgloss.NewStyle().
 				Foreground(styles.YellowGreen).
 				MarginRight(1)
@@ -59,9 +54,6 @@ type ViewState int
 
 const (
 	StateReady ViewState = iota
-	StateLoadingDocument
-	StateShowingError
-	StateShowingStatusMessage
 )
 
 // The types of documents we are currently showing to the user.
@@ -90,7 +82,7 @@ const (
 )
 
 type StashModel struct {
-	common       *common.CommonModel
+	cm           *common.CommonModel
 	helpRenderer *statusbar.HelpRenderer
 
 	// The master set of yaml documents we're working with.
@@ -105,7 +97,6 @@ type StashModel struct {
 	// than a map, because order is important.
 	sections    []Section
 	filterInput textinput.Model
-	Spinner     spinner.Model
 	ViewState   ViewState
 
 	// Index of the section we're currently looking at.
@@ -125,10 +116,6 @@ type StashModel struct {
 }
 
 func NewStashModel(cm *common.CommonModel) StashModel {
-	sp := spinner.New()
-	sp.Spinner = spinner.Line
-	sp.Style = stashSpinnerStyle
-
 	si := textinput.New()
 	si.Prompt = "Find:"
 	si.PromptStyle = stashInputPromptStyle
@@ -166,8 +153,7 @@ func NewStashModel(cm *common.CommonModel) StashModel {
 	)
 
 	m := StashModel{
-		common:       cm,
-		Spinner:      sp,
+		cm:           cm,
 		filterInput:  si,
 		serverPage:   1,
 		sections:     s,
@@ -191,10 +177,6 @@ func (m StashModel) Update(msg tea.Msg) (StashModel, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if m.ViewState == StateShowingError {
-			// If we're showing an error, any key exits the error view.
-			m.ViewState = StateReady
-		}
 		if isFiltering {
 			// Don't re-handle filter keys.
 			break
@@ -204,92 +186,30 @@ func (m StashModel) Update(msg tea.Msg) (StashModel, tea.Cmd) {
 		m, cmd = stashHandler.HandleDocumentBrowsing(m, msg)
 		cmds = append(cmds, cmd)
 
-	case common.ErrMsg:
-		cmds = append(cmds, m.showStatusMessage(common.StatusMessage{Message: msg.Err.Error(), IsError: true}))
-		m.ViewState = StateShowingError
-
-	case common.CommandRunStarted:
-		// Starting to render documents.
-		m.loaded = false
-
-	case common.CommandRunFinished:
-		// Finished rendering documents.
-		m.loaded = true
-		cmds = append(cmds, m.showStatusMessage(common.StatusMessage{Message: "Loaded YAML", IsError: false}))
-
 	case FilteredYAMLMsg:
 		m.filteredYAMLs = msg
 		m.setCursor(0)
 
 		return m, nil
-
-	case spinner.TickMsg:
-		if m.IsLoading() {
-			var cmd tea.Cmd
-			m.Spinner, cmd = m.Spinner.Update(msg)
-			cmds = append(cmds, cmd)
-		}
-
-	case common.StatusMessageTimeoutMsg:
-		if m.ViewState == StateShowingStatusMessage {
-			m.ViewState = StateReady
-		}
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
 func (m StashModel) View() string {
-	switch m.ViewState {
-	case StateShowingError:
-		return m.errorView()
-
-	case StateLoadingDocument:
-		return " " + m.Spinner.View() + " Loading document..."
-
-	case StateReady, StateShowingStatusMessage:
-		return m.readyView()
-	}
-
-	return common.ErrorView("unknown application state", true)
-}
-
-func (m StashModel) errorView() string {
-	errMsg := "<nil>"
-	if m.common.StatusMessage.IsError {
-		errMsg = m.common.StatusMessage.Message
-	}
-
-	errWidth := (m.common.Width / 3) * 2
-	errView := lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder()).
-		BorderForeground(styles.Red).
-		Width(errWidth).
-		Align(lipgloss.Left).
-		Padding(1).
-		Render(common.ErrorView(errMsg, false))
-
-	// Place the error view in the center of the screen.
-	leftPos := (m.common.Width - lipgloss.Width(errView)) / 2
-	topPos := (m.common.Height - lipgloss.Height(errView)) / 2
-
-	return view.PlaceOverlay(leftPos, topPos, errView, m.readyView())
-}
-
-func (m StashModel) readyView() string {
 	top := lipgloss.JoinVertical(
 		lipgloss.Top,
 		m.headerView(),
 		m.documentListView(),
 	)
-	availableHeight := m.common.Height - lipgloss.Height(top) + 1
+	availableHeight := m.cm.Height - lipgloss.Height(top) + 1
 	bottom := lipgloss.PlaceVertical(
 		availableHeight,
 		lipgloss.Bottom,
 		lipgloss.JoinVertical(
 			lipgloss.Top,
 			lipgloss.PlaceHorizontal(
-				m.common.Width,
+				m.cm.Width,
 				lipgloss.Left,
 				m.paginationView(),
 			),
@@ -297,7 +217,6 @@ func (m StashModel) readyView() string {
 			m.helpView(),
 		),
 	)
-	bottom = view.AlwaysPlaceBottom(bottom)
 
 	return lipgloss.JoinVertical(lipgloss.Top, top, bottom)
 }
@@ -318,11 +237,7 @@ func (m *StashModel) AddYAMLs(mds ...*yamldoc.YAMLDocument) {
 
 // Whether or not the spinner should be spinning.
 func (m StashModel) IsLoading() bool {
-	if !m.loaded {
-		return true
-	}
-
-	return m.ViewState == StateLoadingDocument
+	return !m.cm.Loaded
 }
 
 func (m StashModel) FilterApplied() bool {
@@ -330,8 +245,8 @@ func (m StashModel) FilterApplied() bool {
 }
 
 func (m *StashModel) SetSize(width, height int) {
-	m.common.Width = width
-	m.common.Height = height
+	m.cm.Width = width
+	m.cm.Height = height
 
 	// Calculate help height if needed.
 	if m.ShowHelp && m.helpHeight == 0 {
@@ -367,7 +282,7 @@ func (m *StashModel) setCursor(i int) {
 
 func (m *StashModel) toggleHelp() {
 	m.ShowHelp = !m.ShowHelp
-	m.SetSize(m.common.Width, m.common.Height)
+	m.SetSize(m.cm.Width, m.cm.Height)
 }
 
 func (m *StashModel) resetFiltering() {
@@ -403,7 +318,7 @@ func (m *StashModel) updatePagination() {
 	}
 
 	// TODO: Why does this need to be set this way?
-	availableHeight := m.common.Height -
+	availableHeight := m.cm.Height -
 		helpHeight -
 		stashViewBottomPadding
 
@@ -450,10 +365,9 @@ func (m StashModel) getVisibleYAMLs() []*yamldoc.YAMLDocument {
 // Command for opening a yaml document in the pager. Note that this also
 // alters the model.
 func (m *StashModel) openYAML(md *yamldoc.YAMLDocument) tea.Cmd {
-	m.ViewState = StateLoadingDocument
 	cmd := LoadYAML(md)
 
-	return tea.Batch(cmd, m.Spinner.Tick)
+	return cmd
 }
 
 func (m *StashModel) moveCursorUp() {
@@ -509,14 +423,14 @@ func (m *StashModel) enforcePaginationBounds() {
 }
 
 func (m StashModel) documentListView() string {
-	return NewDocumentListRenderer(m.common.Width, m.common.Height, stashIndent).
+	return NewDocumentListRenderer(m.cm.Width, m.cm.Height, stashIndent).
 		RenderDocumentList(m.getVisibleYAMLs(), m)
 }
 
 func (m StashModel) paginationView() string {
 	pagination := "\n"
 	if m.paginator().TotalPages > 1 {
-		pagination = NewPaginationRenderer(m.common.Width).
+		pagination = NewPaginationRenderer(m.cm.Width).
 			RenderPagination(m.paginator(), m.paginator().TotalPages)
 	}
 
@@ -526,24 +440,19 @@ func (m StashModel) paginationView() string {
 func (m StashModel) helpView() string {
 	var help string
 	if m.ShowHelp {
-		help = m.helpRenderer.Render(m.common.Width)
+		help = m.helpRenderer.Render(m.cm.Width)
 	}
 
 	return help
 }
 
 func (m StashModel) headerView() string {
-	loadingIndicator := " "
-	if m.IsLoading() {
-		loadingIndicator = m.Spinner.View()
-	}
-
 	sections, divider := m.getHeaderSections()
 	header := strings.Join(sections, divider.String())
 
 	header = lipgloss.NewStyle().
-		Padding(stashViewTopPadding, stashIndent, 1).
-		Render(loadingIndicator + " " + header)
+		Padding(stashViewTopPadding, stashIndent+2, 1).
+		Render(header)
 
 	return header
 }
@@ -569,7 +478,7 @@ func (m StashModel) getHeaderSections() ([]string, lipgloss.Style) {
 
 		switch m.sections[i].key {
 		case SectionDocuments:
-			s = fmt.Sprintf("%d documents", localCount)
+			s = fmt.Sprintf("%d manifests", localCount)
 
 		case SectionFilter:
 			s = fmt.Sprintf("%d “%s”", len(m.filteredYAMLs), m.filterInput.Value())
@@ -588,27 +497,12 @@ func (m StashModel) getHeaderSections() ([]string, lipgloss.Style) {
 
 func (m StashModel) statusBarView() string {
 	// Determine what to show as the title/message.
-	title := m.common.Cmd.String()
+	title := m.cm.Cmd.String()
 
 	// Show progress based on pagination.
 	progress := fmt.Sprintf("%d/%d", m.paginator().Page+1, m.paginator().TotalPages)
 
-	return m.common.GetStatusBar(m.ViewState == StateShowingStatusMessage).
-		RenderWithNote(title, progress)
-}
-
-func (m *StashModel) showStatusMessage(msg common.StatusMessage) tea.Cmd {
-	// Show a success message to the user.
-	if m.ViewState == StateReady || !msg.IsError {
-		m.ViewState = StateShowingStatusMessage
-	}
-	m.common.StatusMessage = msg
-	if m.common.StatusMessageTimer != nil {
-		m.common.StatusMessageTimer.Stop()
-	}
-	m.common.StatusMessageTimer = time.NewTimer(common.StatusMessageTimeout)
-
-	return common.WaitForStatusMessageTimeout(common.StashContext, m.common.StatusMessageTimer)
+	return m.cm.GetStatusBar().RenderWithNote(title, progress)
 }
 
 // startFiltering initializes the filtering mode.

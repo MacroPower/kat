@@ -1,18 +1,13 @@
 package common
 
 import (
-	"fmt"
-	"strings"
 	"time"
-
-	"github.com/charmbracelet/lipgloss"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/ui/config"
 	"github.com/MacroPower/kat/pkg/ui/statusbar"
-	"github.com/MacroPower/kat/pkg/ui/styles"
 )
 
 type Commander interface {
@@ -27,6 +22,8 @@ type CommonModel struct {
 	Config             config.Config
 	Width              int
 	Height             int
+	Loaded             bool
+	ShowStatusMessage  bool // Whether to show the status message in the status bar.
 }
 
 // ApplicationContext indicates the area of the application something applies
@@ -48,7 +45,7 @@ type RunOutput struct {
 type (
 	StatusMessage struct {
 		Message string
-		IsError bool
+		Style   statusbar.Style
 	}
 	StatusMessageTimeoutMsg ApplicationContext
 
@@ -58,53 +55,33 @@ type (
 	CommandRunFinished RunOutput
 )
 
-func (m *CommonModel) GetStatusBar(showMessage bool) *statusbar.StatusBarRenderer {
-	if showMessage && m.StatusMessage.IsError {
-		return statusbar.NewStatusBarRenderer(m.Width, statusbar.WithError(m.StatusMessage.Message))
-	}
-
-	if showMessage && m.StatusMessage.Message != "" {
-		return statusbar.NewStatusBarRenderer(m.Width, statusbar.WithMessage(m.StatusMessage.Message))
+func (m *CommonModel) GetStatusBar() *statusbar.StatusBarRenderer {
+	if m.ShowStatusMessage && m.StatusMessage.Message != "" {
+		return statusbar.NewStatusBarRenderer(m.Width,
+			statusbar.WithMessage(m.StatusMessage.Message, m.StatusMessage.Style))
 	}
 
 	return statusbar.NewStatusBarRenderer(m.Width)
 }
 
-// Lightweight version of reflow's indent function.
-func Indent(s string, n int) string {
-	if n <= 0 || s == "" {
-		return s
+// Show a status (success) message to the user.
+func (m *CommonModel) SendStatusMessage(msg string, style statusbar.Style) tea.Cmd {
+	m.ShowStatusMessage = true
+	m.StatusMessage = StatusMessage{
+		Message: msg,
+		Style:   style,
 	}
-	l := strings.Split(s, "\n")
-	b := strings.Builder{}
-	i := strings.Repeat(" ", n)
-	for _, v := range l {
-		fmt.Fprintf(&b, "%s%s\n", i, v)
+	if m.StatusMessageTimer != nil {
+		m.StatusMessageTimer.Stop()
 	}
+	m.StatusMessageTimer = time.NewTimer(StatusMessageTimeout)
 
-	return b.String()
+	return WaitForStatusMessageTimeout(StashContext, m.StatusMessageTimer)
 }
 
 type ErrMsg struct{ Err error } //nolint:errname // Tea message.
 
 func (e ErrMsg) Error() string { return e.Err.Error() }
-
-func ErrorView(err string, fatal bool) string {
-	exitMsg := "press any key to "
-	if fatal {
-		exitMsg += "exit"
-	} else {
-		exitMsg += "return"
-	}
-
-	s := lipgloss.JoinVertical(lipgloss.Top,
-		styles.ErrorTitleStyle.Render("ERROR"),
-		lipgloss.NewStyle().Padding(1, 0).Render(err),
-		styles.SubtleStyle.Render(exitMsg),
-	)
-
-	return s
-}
 
 func WaitForStatusMessageTimeout(appCtx ApplicationContext, t *time.Timer) tea.Cmd {
 	return func() tea.Msg {

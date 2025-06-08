@@ -18,10 +18,10 @@ const (
 	errorText = " ! Error "
 )
 
-type StatusBarStyle int
+type Style int
 
 const (
-	StyleNormal StatusBarStyle = iota
+	StyleNormal Style = iota
 	StyleSuccess
 	StyleError
 )
@@ -86,7 +86,7 @@ var (
 type StatusBarRenderer struct {
 	message string
 	width   int
-	style   StatusBarStyle
+	style   Style
 }
 
 // NewStatusBarRenderer creates a new StatusBarRenderer.
@@ -101,16 +101,9 @@ func NewStatusBarRenderer(width int, opts ...StatusBarOpt) *StatusBarRenderer {
 
 type StatusBarOpt func(*StatusBarRenderer)
 
-func WithMessage(message string) StatusBarOpt {
+func WithMessage(message string, style Style) StatusBarOpt {
 	return func(r *StatusBarRenderer) {
-		r.style = StyleSuccess
-		r.message = message
-	}
-}
-
-func WithError(message string) StatusBarOpt {
-	return func(r *StatusBarRenderer) {
-		r.style = StyleError
+		r.style = style
 		r.message = message
 	}
 }

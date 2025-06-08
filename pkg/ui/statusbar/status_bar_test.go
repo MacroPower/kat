@@ -101,7 +101,7 @@ func TestRenderStatusBar(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := statusbar.NewStatusBarRenderer(tc.width, statusbar.WithMessage(tc.statusMessage))
+			renderer := statusbar.NewStatusBarRenderer(tc.width, statusbar.WithMessage(tc.statusMessage, statusbar.StyleSuccess))
 
 			result := renderer.RenderWithScroll(tc.title, tc.scrollPercent)
 			tc.checkFunc(t, result)

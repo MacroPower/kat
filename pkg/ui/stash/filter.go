@@ -42,7 +42,7 @@ func (h *FilterHandler) HandleFilteringMode(m StashModel, msg tea.Msg) (StashMod
 
 // handleFilterKeys handles key events specific to filtering mode.
 func (h *FilterHandler) handleFilterKeys(m StashModel, key string) (StashModel, tea.Cmd) {
-	kb := m.common.Config.KeyBinds
+	kb := m.cm.Config.KeyBinds
 	switch {
 	case kb.Common.Escape.Match(key):
 		// Cancel filtering.

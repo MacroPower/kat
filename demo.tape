@@ -76,7 +76,7 @@ Sleep 100ms
 
 Type "kat example/helm" Sleep 500ms  Enter
 
-Sleep 1s
+Sleep 2s
 
 Right
 Sleep 1s
@@ -101,13 +101,9 @@ Down@50ms 10
 
 Sleep 500ms
 Type "r"
-Sleep 500ms
+Sleep 1s
 Type "r"
-Sleep 500ms
-Type "r"
-Sleep 500ms
-Type "r"
-Sleep 500ms
+Sleep 2s
 
 Left
 Sleep 1s

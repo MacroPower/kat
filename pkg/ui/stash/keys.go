@@ -18,7 +18,7 @@ func (h *StashKeyHandler) HandleDocumentBrowsing(m StashModel, msg tea.KeyMsg) (
 
 	// Handle navigation keys.
 	numDocs := len(m.getVisibleYAMLs())
-	kb := m.common.Config.KeyBinds
+	kb := m.cm.Config.KeyBinds
 
 	switch {
 	case kb.Common.Up.Match(key):
@@ -75,11 +75,6 @@ func (h *StashKeyHandler) HandleDocumentBrowsing(m StashModel, msg tea.KeyMsg) (
 	// Other actions.
 	case kb.Common.Help.Match(key):
 		m.toggleHelp()
-
-	case kb.Common.Error.Match(key):
-		if m.ViewState != StateShowingError {
-			m.ViewState = StateShowingError
-		}
 	}
 
 	return m, nil

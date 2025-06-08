@@ -1,8 +1,6 @@
 package pager
 
 import (
-	"time"
-
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
@@ -14,8 +12,6 @@ import (
 	"github.com/MacroPower/kat/pkg/ui/common"
 	"github.com/MacroPower/kat/pkg/ui/keys"
 	"github.com/MacroPower/kat/pkg/ui/statusbar"
-	"github.com/MacroPower/kat/pkg/ui/styles"
-	"github.com/MacroPower/kat/pkg/ui/view"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
 
@@ -35,7 +31,7 @@ const (
 )
 
 type PagerModel struct {
-	common       *common.CommonModel
+	cm           *common.CommonModel
 	helpRenderer *statusbar.HelpRenderer
 
 	// Current document being rendered, sans-glamour rendering. We cache
@@ -72,7 +68,7 @@ func NewPagerModel(cm *common.CommonModel) PagerModel {
 		*kb.Common.Quit,
 	)
 	m := PagerModel{
-		common:       cm,
+		cm:           cm,
 		helpRenderer: statusbar.NewHelpRenderer(kbr),
 		ViewState:    StateReady,
 		viewport:     vp,
@@ -86,13 +82,8 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		kb := m.common.Config.KeyBinds
+		kb := m.cm.Config.KeyBinds
 		key := msg.String()
-
-		if m.ViewState == StateShowingError {
-			// If we're showing an error, any key exits the error view.
-			m.ViewState = StateReady
-		}
 
 		switch {
 		case kb.Pager.Home.Match(key):
@@ -120,47 +111,21 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 
 			return m, nil
 
-		case kb.Common.Escape.Match(key):
-			if m.ViewState != StateReady {
-				m.ViewState = StateReady
-
-				return m, nil
-			}
-
-		case kb.Common.Error.Match(key):
-			if m.ViewState != StateShowingError {
-				m.ViewState = StateShowingError
-
-				return m, nil
-			}
-
 		case kb.Pager.Copy.Match(key):
 			// Copy using OSC 52.
 			termenv.Copy(m.CurrentDocument.Body)
 			// Copy using native system clipboard.
 			_ = clipboard.WriteAll(m.CurrentDocument.Body) //nolint:errcheck // Can be ignored.
-			cmds = append(cmds, m.showStatusMessage(common.StatusMessage{Message: "Copied contents", IsError: false}))
+			cmds = append(cmds, m.cm.SendStatusMessage("copied contents", statusbar.StyleSuccess))
 		}
 
 	case ContentRenderedMsg:
 		m.setContent(string(msg))
 
-	case common.CommandRunFinished:
-		cmds = append(cmds, m.showStatusMessage(common.StatusMessage{Message: "Loaded YAML", IsError: false}))
-
-	case common.ErrMsg:
-		cmds = append(cmds, m.showStatusMessage(common.StatusMessage{Message: msg.Err.Error(), IsError: true}))
-		m.ViewState = StateShowingError
-
 	// We've received terminal dimensions, either for the first time or
 	// after a resize.
 	case tea.WindowSizeMsg:
 		return m, m.RenderWithGlamour(m.CurrentDocument.Body)
-
-	case common.StatusMessageTimeoutMsg:
-		if m.ViewState == StateShowingStatusMessage {
-			m.ViewState = StateReady
-		}
 	}
 
 	var cmd tea.Cmd
@@ -171,47 +136,11 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 }
 
 func (m PagerModel) View() string {
-	switch m.ViewState {
-	case StateShowingError:
-		return m.errorView()
-
-	case StateLoadingDocument, StateReady, StateShowingStatusMessage:
-		return m.readyView()
-	}
-
-	return common.ErrorView("unknown application state", true)
-}
-
-func (m PagerModel) errorView() string {
-	errMsg := "<nil>"
-	if m.common.StatusMessage.IsError {
-		errMsg = m.common.StatusMessage.Message
-	}
-
-	errWidth := (m.common.Width / 3) * 2
-	errView := lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder()).
-		BorderForeground(styles.Red).
-		Width(errWidth).
-		Align(lipgloss.Left).
-		Padding(1).
-		Render(common.ErrorView(errMsg, false))
-
-	// Place the error view in the center of the screen.
-	leftPos := (m.common.Width - lipgloss.Width(errView)) / 2
-	topPos := (m.common.Height - lipgloss.Height(errView)) / 2
-
-	return view.PlaceOverlay(leftPos, topPos, errView, m.readyView())
-}
-
-func (m PagerModel) readyView() string {
-	return view.AlwaysPlaceBottom(
-		lipgloss.JoinVertical(
-			lipgloss.Top,
-			m.viewport.View(),
-			m.statusBarView(),
-			m.helpView(),
-		),
+	return lipgloss.JoinVertical(
+		lipgloss.Top,
+		m.viewport.View(),
+		m.statusBarView(),
+		m.helpView(),
 	)
 }
 
@@ -248,9 +177,6 @@ func (m *PagerModel) Unload() {
 	if m.ShowHelp {
 		m.toggleHelp()
 	}
-	if m.common.StatusMessageTimer != nil {
-		m.common.StatusMessageTimer.Stop()
-	}
 	m.ViewState = StateReady
 	m.viewport.SetContent("")
 	m.viewport.YOffset = 0
@@ -262,35 +188,21 @@ func (m *PagerModel) setContent(s string) {
 
 func (m *PagerModel) toggleHelp() {
 	m.ShowHelp = !m.ShowHelp
-	m.SetSize(m.common.Width, m.common.Height)
+	m.SetSize(m.cm.Width, m.cm.Height)
 
 	if m.viewport.PastBottom() {
 		m.viewport.GotoBottom()
 	}
 }
 
-func (m *PagerModel) showStatusMessage(msg common.StatusMessage) tea.Cmd {
-	if m.ViewState == StateReady || !msg.IsError {
-		m.ViewState = StateShowingStatusMessage
-	}
-	m.common.StatusMessage = msg
-	if m.common.StatusMessageTimer != nil {
-		m.common.StatusMessageTimer.Stop()
-	}
-	m.common.StatusMessageTimer = time.NewTimer(common.StatusMessageTimeout)
-
-	return common.WaitForStatusMessageTimeout(common.PagerContext, m.common.StatusMessageTimer)
-}
-
 func (m PagerModel) statusBarView() string {
-	return m.common.GetStatusBar(m.ViewState == StateShowingStatusMessage).
-		RenderWithScroll(m.CurrentDocument.Title, m.viewport.ScrollPercent())
+	return m.cm.GetStatusBar().RenderWithScroll(m.CurrentDocument.Title, m.viewport.ScrollPercent())
 }
 
 func (m PagerModel) helpView() string {
 	var help string
 	if m.ShowHelp {
-		help = m.helpRenderer.Render(m.common.Width)
+		help = m.helpRenderer.Render(m.cm.Width)
 	}
 
 	return help

@@ -3,8 +3,12 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 	"sync"
+	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -14,9 +18,30 @@ import (
 	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/ui/common"
 	"github.com/MacroPower/kat/pkg/ui/config"
+	"github.com/MacroPower/kat/pkg/ui/overlay"
 	"github.com/MacroPower/kat/pkg/ui/pager"
 	"github.com/MacroPower/kat/pkg/ui/stash"
+	"github.com/MacroPower/kat/pkg/ui/statusbar"
+	"github.com/MacroPower/kat/pkg/ui/styles"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
+)
+
+var (
+	spinnerStyle = lipgloss.NewStyle().
+			Foreground(styles.Gray)
+
+	errorOverlayStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(styles.Red).
+				Align(lipgloss.Left).
+				Padding(1)
+
+	loadingOverlayStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(styles.Gray).
+				Foreground(styles.Gray).
+				Align(lipgloss.Center).
+				Padding(1)
 )
 
 // NewProgram returns a new Tea program.
@@ -41,6 +66,14 @@ const (
 	stateShowDocument
 )
 
+type OverlayState int
+
+const (
+	overlayStateNone OverlayState = iota
+	overlayStateError
+	overlayStateLoading
+)
+
 func (s State) String() string {
 	return map[State]string{
 		stateShowStash:    "showing file listing",
@@ -49,14 +82,15 @@ func (s State) String() string {
 }
 
 type model struct {
-	pager    pager.PagerModel
-	fatalErr error
-	common   *common.CommonModel
-
-	resources chan common.RunOutput
-
-	stash stash.StashModel
-	state State
+	err          error
+	cm           *common.CommonModel
+	overlay      *overlay.Overlay
+	resources    chan common.RunOutput
+	spinner      spinner.Model
+	pager        pager.PagerModel
+	stash        stash.StashModel
+	state        State
+	overlayState OverlayState
 
 	// Prevent concurrent command runs / resource updates.
 	resourceMu sync.Mutex
@@ -64,18 +98,11 @@ type model struct {
 
 // unloadDocument unloads a document from the pager. Title that while this
 // method alters the model we also need to send along any commands returned.
-func (m *model) unloadDocument() []tea.Cmd {
+func (m *model) unloadDocument() {
 	m.state = stateShowStash
 	m.stash.ViewState = stash.StateReady
 	m.pager.Unload()
 	m.pager.ShowHelp = false
-
-	var batch []tea.Cmd
-	if !m.stash.IsLoading() {
-		batch = append(batch, m.stash.Spinner.Tick)
-	}
-
-	return batch
 }
 
 func newModel(cfg config.Config, cmd common.Commander) tea.Model {
@@ -87,42 +114,47 @@ func newModel(cfg config.Config, cmd common.Commander) tea.Model {
 		}
 	}
 
+	sp := spinner.New()
+	sp.Spinner = spinner.Line
+	sp.Style = spinnerStyle
+
 	cm := common.CommonModel{
 		Config: cfg,
 		Cmd:    cmd,
 	}
 
 	m := &model{
-		common: &cm,
-		state:  stateShowStash,
-		pager:  pager.NewPagerModel(&cm),
-		stash:  stash.NewStashModel(&cm),
+		cm:      &cm,
+		spinner: sp,
+		state:   stateShowStash,
+		pager:   pager.NewPagerModel(&cm),
+		stash:   stash.NewStashModel(&cm),
+		overlay: overlay.New(),
 	}
 
 	return m
 }
 
 func (m *model) Init() tea.Cmd {
-	cmds := []tea.Cmd{m.stash.Spinner.Tick}
-
-	cmds = append(cmds, m.runCommand())
-
-	return tea.Batch(cmds...)
+	return tea.Sequence(
+		m.runCommand(),
+		m.spinner.Tick,
+	)
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// If there's been an error, any key exits.
-	if m.fatalErr != nil {
-		if _, ok := msg.(tea.KeyMsg); ok {
-			return m, tea.Quit
-		}
-	}
-
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		kb := m.common.Config.KeyBinds
+		kb := m.cm.Config.KeyBinds
+
+		if m.overlayState == overlayStateError {
+			// If we're showing an error, any key exits the error view.
+			m.overlayState = overlayStateNone
+		} else if m.cm.Config.KeyBinds.Common.Error.Match(msg.String()) {
+			m.overlayState = overlayStateError
+		}
 
 		// Handle global key events that should work anywhere in the app.
 		if newModel, cmd, handled := m.handleGlobalKeys(msg); handled {
@@ -131,9 +163,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if kb.Common.Left.Match(msg.String()) {
 			if m.state == stateShowDocument {
-				cmds := m.unloadDocument()
-
-				return m, tea.Batch(cmds...)
+				m.unloadDocument()
 			}
 		}
 
@@ -143,6 +173,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case common.CommandRunStarted:
 		m.resources = msg.Ch
+		m.cm.Loaded = false
+		m.cm.ShowStatusMessage = false
+		if m.cm.StatusMessageTimer != nil {
+			m.cm.StatusMessageTimer.Stop()
+		}
+		m.overlayState = overlayStateLoading
+
 		cmds = append(cmds, m.getKubeResources())
 
 	case stash.FetchedYAMLMsg:
@@ -158,43 +195,83 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Use the new handler utility for resource updates.
 		cmds = append(cmds, m.handleResourceUpdate(msg)...)
 
-		// Always pass these messages to the other models so we can keep them
-		// updated, even if the user isn't currently viewing them.
-		stashModel, cmd := m.stash.Update(msg)
-		m.stash = stashModel
-		cmds = append(cmds, cmd)
+		m.cm.Loaded = true
+		if m.overlayState == overlayStateLoading {
+			m.overlayState = overlayStateNone
+		}
 
-	case stash.FilteredYAMLMsg:
-		if m.state == stateShowDocument {
-			newStashModel, cmd := m.stash.Update(msg)
-			m.stash = newStashModel
+		statusMsg := fmt.Sprintf("rendered %d manifests", len(msg.Out.Resources))
+		cmds = append(cmds, m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess))
+
+	case common.StatusMessageTimeoutMsg:
+		m.cm.ShowStatusMessage = false
+
+	case common.ErrMsg:
+		m.err = msg.Err
+		m.overlayState = overlayStateError
+
+	case spinner.TickMsg:
+		if !m.cm.Loaded {
+			var cmd tea.Cmd
+			m.spinner, cmd = m.spinner.Update(msg)
 			cmds = append(cmds, cmd)
 		}
 	}
 
-	// Process child models using the new utility.
+	// Always pass messages to the other models so we can keep them
+	// updated, even if the user isn't currently viewing them.
 	cmds = append(cmds, m.updateChildModels(msg)...)
 
 	return m, tea.Batch(cmds...)
 }
 
 func (m *model) View() string {
-	if m.fatalErr != nil {
-		return common.ErrorView(m.fatalErr.Error(), true)
-	}
+	var (
+		s                   string
+		overlaySizeFraction float64
+	)
 
 	switch m.state {
 	case stateShowDocument:
-		return m.pager.View()
+		s = m.pager.View()
 	default:
-		return m.stash.View()
+		s = m.stash.View()
 	}
+
+	switch m.overlayState {
+	case overlayStateError:
+		overlaySizeFraction = 2.0 / 3.0
+		s = m.overlay.Place(s, m.errorView(), overlaySizeFraction, errorOverlayStyle)
+
+	case overlayStateLoading:
+		overlaySizeFraction = 1.0 / 4.0
+		s = m.overlay.Place(s, m.loadingView(), overlaySizeFraction, loadingOverlayStyle)
+	}
+
+	return strings.TrimRight(s, " \n")
+}
+
+func (m *model) errorView() string {
+	errMsg := "<nil>"
+	if m.err != nil {
+		errMsg = m.err.Error()
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Top,
+		styles.ErrorTitleStyle.Render("ERROR"),
+		lipgloss.NewStyle().Padding(1, 0).Render(errMsg),
+		styles.SubtleStyle.Render("press any key to close"),
+	)
+}
+
+func (m *model) loadingView() string {
+	return m.spinner.View() + " Rendering..."
 }
 
 // handleGlobalKeys handles keys that work across all contexts.
 func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	key := msg.String()
-	kb := m.common.Config.KeyBinds
+	kb := m.cm.Config.KeyBinds
 
 	switch {
 	case kb.Common.Quit.Match(key):
@@ -209,26 +286,17 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		return m, tea.Suspend, true
 
 	case kb.Common.Escape.Match(key):
-		model, cmd := m.handleEscapeKey()
+		if m.state == stateShowDocument || !m.cm.Loaded {
+			m.unloadDocument()
+		}
 
-		return model, cmd, true
+		return m, nil, true
 
 	case kb.Common.Reload.Match(key):
 		return m.handleRefreshKey(msg)
 	}
 
 	return m, nil, false
-}
-
-// handleEscapeKey handles the escape key based on current state.
-func (m *model) handleEscapeKey() (tea.Model, tea.Cmd) {
-	if m.state == stateShowDocument || m.stash.ViewState == stash.StateLoadingDocument {
-		batch := m.unloadDocument()
-
-		return m, tea.Batch(batch...)
-	}
-
-	return m, nil
 }
 
 // handleRefreshKey handles the refresh key based on current state.
@@ -295,10 +363,11 @@ func (m *model) updateChildModels(msg tea.Msg) []tea.Cmd {
 
 // handleWindowResize handles terminal window resize events.
 func (m *model) handleWindowResize(msg tea.WindowSizeMsg) {
-	m.common.Width = msg.Width
-	m.common.Height = msg.Height
+	m.cm.Width = msg.Width
+	m.cm.Height = msg.Height
 	m.stash.SetSize(msg.Width, msg.Height)
 	m.pager.SetSize(msg.Width, msg.Height)
+	m.overlay.SetSize(msg.Width, msg.Height)
 }
 
 // COMMANDS.
@@ -318,7 +387,17 @@ func (m *model) runCommand() tea.Cmd {
 			defer close(ch)
 			defer m.resourceMu.Unlock()
 
-			out, err := m.common.Cmd.Run()
+			startTime := time.Now()
+			out, err := m.cm.Cmd.Run()
+			endTime := time.Now()
+
+			runTime := endTime.Sub(startTime)
+			if runTime < *m.cm.Config.MinimumDelay {
+				// Add a delay if the command ran faster than MinimumDelay.
+				// This prevents the status from flickering in the UI.
+				time.Sleep(*m.cm.Config.MinimumDelay - runTime)
+			}
+
 			ch <- common.RunOutput{Out: out, Err: err}
 		}()
 

@@ -60,7 +60,7 @@ func (gr *GlamourRenderer) RenderContent(yaml string) (string, error) {
 func (gr *GlamourRenderer) buildRenderConfig() (*glamourRenderConfig, error) {
 	const width = 0
 
-	style, err := glamourStyle(gr.model.common.Config.GlamourStyle)
+	style, err := glamourStyle(gr.model.cm.Config.GlamourStyle)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func (gr *GlamourRenderer) postProcessContent(content string) string {
 	var result strings.Builder
 
 	for i, line := range lines {
-		if gr.model.common.Config.ShowLineNumbers {
+		if gr.model.cm.Config.ShowLineNumbers {
 			result.WriteString(gr.formatLineWithNumber(line, i+1))
 		} else {
 			result.WriteString(line)

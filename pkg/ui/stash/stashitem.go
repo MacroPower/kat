@@ -20,7 +20,7 @@ const (
 
 func stashItemView(b *strings.Builder, m StashModel, index int, y *yamldoc.YAMLDocument) {
 	var (
-		truncateTo  = uint(max(0, m.common.Width-stashViewHorizontalPadding*2)) //nolint:gosec // Uses max.
+		truncateTo  = uint(max(0, m.cm.Width-stashViewHorizontalPadding*2)) //nolint:gosec // Uses max.
 		gutter      string
 		title       = truncate.StringWithTail(y.Title, truncateTo, styles.Ellipsis)
 		desc        = truncate.StringWithTail(y.Desc, truncateTo, styles.Ellipsis)

@@ -1,6 +1,8 @@
 package config
 
 import (
+	"time"
+
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/MacroPower/kat/pkg/ui/keys"
@@ -8,11 +10,24 @@ import (
 
 // Config contains TUI-specific configuration.
 type Config struct {
-	KeyBinds        *KeyBinds `json:"keybinds"          kong:"-"                 yaml:"keybinds"`
-	GlamourStyle    string    `json:"glamour-style"     yaml:"glamour-style"`
-	GlamourMaxWidth int       `json:"glamour-max-width" yaml:"glamour-max-width"`
-	GlamourDisabled bool      `json:"glamour-disabled"  yaml:"glamour-disabled"`
-	ShowLineNumbers bool      `json:"show-line-numbers" yaml:"show-line-numbers"`
+	KeyBinds        *KeyBinds      `json:"keybinds"          kong:"-"                 yaml:"keybinds"`
+	MinimumDelay    *time.Duration `json:"minimum-delay"     yaml:"minimum-delay"`
+	GlamourStyle    string         `json:"glamour-style"     yaml:"glamour-style"`
+	GlamourMaxWidth int            `json:"glamour-max-width" yaml:"glamour-max-width"`
+	GlamourDisabled bool           `json:"glamour-disabled"  yaml:"glamour-disabled"`
+	ShowLineNumbers bool           `json:"show-line-numbers" yaml:"show-line-numbers"`
+}
+
+func (c *Config) EnsureDefaults() {
+	if c.KeyBinds == nil {
+		c.KeyBinds = NewKeyBinds()
+	} else {
+		c.KeyBinds.EnsureDefaults()
+	}
+	if c.MinimumDelay == nil {
+		defaultDelay := 500 * time.Millisecond
+		c.MinimumDelay = &defaultDelay
+	}
 }
 
 type KeyBinds struct {

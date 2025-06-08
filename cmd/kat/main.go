@@ -78,13 +78,7 @@ func main() {
 		slog.Error("load config", slog.Any("err", err))
 		cliCtx.Fatalf("initialization failed")
 	}
-
-	if cli.Config.UI.KeyBinds == nil {
-		slog.Debug("using default key binds")
-		cli.Config.UI.KeyBinds = uiconfig.NewKeyBinds()
-	} else {
-		cli.Config.UI.KeyBinds.EnsureDefaults()
-	}
+	cli.Config.UI.EnsureDefaults()
 
 	err = cli.Config.UI.KeyBinds.Validate()
 	if err != nil {
