@@ -131,8 +131,9 @@ ui:
         description: ½ page down
         keys:
           - code: d
+  minimum-delay: 500ms
   glamour-style: auto
   glamour-max-width: 0
   glamour-disabled: false
   show-line-numbers: true
-  enable-mouse: true
+  compact: false
