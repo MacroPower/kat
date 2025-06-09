@@ -125,7 +125,7 @@ func applyUnselectedStyling(title, desc string, isFiltering bool, filterValue st
 
 // renderStashItemCompact renders the final output for a stash item.
 func renderStashItemCompact(b *strings.Builder, state stashItemDisplayState) {
-	fmt.Fprintf(b, "%s %s%s%s%s%s%s", state.gutter, state.icon, state.separator, state.separator, state.desc, styles.DimDullFuchsiaFg("/"), state.title)
+	fmt.Fprintf(b, "%s %s%s%s%s %s", state.gutter, state.icon, state.separator, state.separator, state.desc, state.title)
 }
 
 // renderStashItem renders the final output for a stash item.
