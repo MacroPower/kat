@@ -12,6 +12,7 @@ func newStashPaginator() paginator.Model {
 	p.Type = paginator.Dots
 	p.ActiveDot = styles.FuchsiaFg("•")
 	p.InactiveDot = styles.GrayFg("◦")
+	p.KeyMap = paginator.KeyMap{}
 
 	return p
 }
