@@ -200,8 +200,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.overlayState = overlayStateNone
 		}
 
-		statusMsg := fmt.Sprintf("rendered %d manifests", len(msg.Out.Resources))
-		cmds = append(cmds, m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess))
+		if msg.Err == nil {
+			statusMsg := fmt.Sprintf("rendered %d manifests", len(msg.Out.Resources))
+			cmds = append(cmds, m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess))
+		}
 
 	case common.StatusMessageTimeoutMsg:
 		m.cm.ShowStatusMessage = false

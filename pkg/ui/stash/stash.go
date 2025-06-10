@@ -104,14 +104,7 @@ type StashModel struct {
 	sectionIndex int
 	FilterState  FilterState
 
-	// Page we're fetching stash items from on the server, which is different
-	// from the local pagination. Generally, the server will return more items
-	// than we can display at a time so we can paginate locally without having
-	// to fetch every time.
-	serverPage int64
-
 	// Tracks if files were loaded.
-	loaded     bool
 	ShowHelp   bool
 	helpHeight int
 }
@@ -156,7 +149,6 @@ func NewStashModel(cm *common.CommonModel) StashModel {
 	m := StashModel{
 		cm:           cm,
 		filterInput:  si,
-		serverPage:   1,
 		sections:     s,
 		helpRenderer: statusbar.NewHelpRenderer(kbr),
 		docRenderer:  NewDocumentListRenderer(stashIndent, cm.Config.Compact),

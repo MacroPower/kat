@@ -46,10 +46,13 @@ func (dlr *DocumentListRenderer) RenderDocumentList(docs []*yamldoc.YAMLDocument
 
 		switch m.currentSection().key {
 		case SectionDocuments:
-			if m.loaded {
-				f("No manifests.")
-			} else {
-				f("Rendering manifests...")
+			switch {
+			case m.FilterState == Filtering:
+				f("No results.")
+			case m.cm.Loaded:
+				f("Nothing to see here.")
+			default:
+				f("Loading documents...")
 			}
 		case SectionFilter:
 			return ""
