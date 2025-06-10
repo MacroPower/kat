@@ -289,6 +289,9 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		if m.state == stateShowDocument || !m.cm.Loaded {
 			m.unloadDocument()
 		}
+		if m.state == stateShowStash {
+			m.stash.ResetFiltering()
+		}
 
 		return m, nil, true
 

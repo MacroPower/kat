@@ -289,7 +289,7 @@ func (m *StashModel) toggleHelp() {
 	m.SetSize(m.cm.Width, m.cm.Height)
 }
 
-func (m *StashModel) resetFiltering() {
+func (m *StashModel) ResetFiltering() {
 	m.FilterState = Unfiltered
 	m.filterInput.Reset()
 	m.filteredYAMLs = nil

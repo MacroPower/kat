@@ -44,12 +44,6 @@ func (h *FilterHandler) HandleFilteringMode(m StashModel, msg tea.Msg) (StashMod
 func (h *FilterHandler) handleFilterKeys(m StashModel, key string) (StashModel, tea.Cmd) {
 	kb := m.cm.Config.KeyBinds
 	switch {
-	case kb.Common.Escape.Match(key):
-		// Cancel filtering.
-		m.resetFiltering()
-
-		return m, nil
-
 	case kb.Common.Up.Match(key),
 		kb.Common.Down.Match(key),
 		kb.Common.Next.Match(key),
@@ -64,16 +58,14 @@ func (h *FilterHandler) handleFilterKeys(m StashModel, key string) (StashModel, 
 
 		// If we've filtered down to nothing, clear the filter.
 		if len(visibleYAMLs) == 0 {
-			m.ViewState = StateReady
-			m.resetFiltering()
+			m.ResetFiltering()
 
 			return m, nil
 		}
 
 		// When there's only one filtered yaml left we can just "open" it directly.
 		if len(visibleYAMLs) == 1 {
-			m.ViewState = StateReady
-			m.resetFiltering()
+			m.ResetFiltering()
 			cmd := m.openYAML(visibleYAMLs[0])
 
 			return m, cmd
@@ -91,7 +83,7 @@ func (h *FilterHandler) handleFilterKeys(m StashModel, key string) (StashModel, 
 		m.filterInput.Blur()
 		m.FilterState = FilterApplied
 		if m.filterInput.Value() == "" {
-			m.resetFiltering()
+			m.ResetFiltering()
 		}
 	}
 
