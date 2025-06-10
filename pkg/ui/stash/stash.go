@@ -20,8 +20,7 @@ import (
 
 const (
 	stashIndent                = 1
-	stashViewItemHeight        = 2 // Height of stash entry, including gap.
-	stashViewTopPadding        = 2 // Padding at the top of the stash view.
+	stashViewTopPadding        = 1 // Padding at the top of the stash view.
 	stashViewBottomPadding     = 6 // Pagination and gaps, but not help.
 	stashViewHorizontalPadding = 6
 )
@@ -196,7 +195,10 @@ func (m StashModel) View() string {
 		m.headerView(),
 		m.documentListView(),
 	)
-	availableHeight := m.cm.Height - lipgloss.Height(top) + 1
+	availableHeight := m.cm.Height - lipgloss.Height(top)
+	if !m.ShowHelp {
+		availableHeight++
+	}
 	bottom := lipgloss.PlaceVertical(
 		availableHeight,
 		lipgloss.Bottom,
@@ -310,13 +312,18 @@ func (m *StashModel) ResetFiltering() {
 func (m *StashModel) updatePagination() {
 	helpHeight := 0
 	if m.ShowHelp {
-		helpHeight = m.helpHeight
+		helpHeight = m.helpHeight + 1
 	}
 
 	// TODO: Why does this need to be set this way?
 	availableHeight := m.cm.Height -
 		helpHeight -
+		stashViewTopPadding -
 		stashViewBottomPadding
+
+	if !m.cm.Config.Compact {
+		availableHeight++
+	}
 
 	m.paginator().PerPage = max(1, availableHeight/m.docRenderer.GetItemHeight())
 
