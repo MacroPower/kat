@@ -130,13 +130,15 @@ func NewStashModel(cm *common.CommonModel) StashModel {
 		*kb.Common.Down,
 		*kb.Common.Left,
 		*kb.Common.Right,
-		*kb.Stash.Home,
-		*kb.Stash.End,
+		*kb.Stash.PageUp,
+		*kb.Stash.PageDown,
 	)
 	kbr.AddColumn(
 		*kb.Common.Reload,
 		*kb.Stash.Open,
 		*kb.Stash.Find,
+		*kb.Stash.Home,
+		*kb.Stash.End,
 	)
 	kbr.AddColumn(
 		*kb.Common.Escape,

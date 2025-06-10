@@ -27,6 +27,12 @@ func (h *StashKeyHandler) HandleDocumentBrowsing(m StashModel, msg tea.KeyMsg) (
 	case kb.Common.Down.Match(key):
 		m.moveCursorDown()
 
+	case kb.Stash.PageUp.Match(key):
+		m.setCursor(0)
+
+	case kb.Stash.PageDown.Match(key):
+		m.setCursor(m.paginator().ItemsOnPage(numDocs) - 1)
+
 	case kb.Common.Left.Match(key), kb.Common.Prev.Match(key):
 		if len(m.sections) == 0 || m.FilterState == Filtering {
 			return m, nil

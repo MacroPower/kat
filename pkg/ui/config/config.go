@@ -172,10 +172,12 @@ func (kb *CommonKeyBinds) GetKeyBinds() []keys.KeyBind {
 }
 
 type StashKeyBinds struct {
-	Open *keys.KeyBind `json:"open" yaml:"open"`
-	Find *keys.KeyBind `json:"find" yaml:"find"`
-	Home *keys.KeyBind `json:"home" yaml:"home"`
-	End  *keys.KeyBind `json:"end"  yaml:"end"`
+	Open     *keys.KeyBind `json:"open"     yaml:"open"`
+	Find     *keys.KeyBind `json:"find"     yaml:"find"`
+	Home     *keys.KeyBind `json:"home"     yaml:"home"`
+	End      *keys.KeyBind `json:"end"      yaml:"end"`
+	PageUp   *keys.KeyBind `json:"pageUp"   yaml:"pageUp"`
+	PageDown *keys.KeyBind `json:"pageDown" yaml:"pageDown"`
 }
 
 func (kb *StashKeyBinds) EnsureDefaults() {
@@ -197,12 +199,28 @@ func (kb *StashKeyBinds) EnsureDefaults() {
 			keys.New("end"),
 			keys.New("G"),
 		))
+	keys.SetDefaultBind(&kb.PageUp,
+		keys.NewBind("page up",
+			keys.New("pgup"),
+			keys.New("b"),
+			keys.New("u"),
+		))
+	keys.SetDefaultBind(&kb.PageDown,
+		keys.NewBind("page down",
+			keys.New("pgdown", keys.WithAlias("pgdn")),
+			keys.New("f"),
+			keys.New("d"),
+		))
 }
 
 func (kb *StashKeyBinds) GetKeyBinds() []keys.KeyBind {
 	return []keys.KeyBind{
 		*kb.Open,
 		*kb.Find,
+		*kb.Home,
+		*kb.End,
+		*kb.PageUp,
+		*kb.PageDown,
 	}
 }
 
@@ -240,7 +258,7 @@ func (kb *PagerKeyBinds) EnsureDefaults() {
 		))
 	keys.SetDefaultBind(&kb.PageDown,
 		keys.NewBind("page down",
-			keys.New("pgdn"),
+			keys.New("pgdown", keys.WithAlias("pgdn")),
 			keys.New("f"),
 		))
 	keys.SetDefaultBind(&kb.HalfPageUp,
