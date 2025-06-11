@@ -98,6 +98,19 @@ ui:
         keys:
           - code: end
           - code: G
+      pageUp:
+        description: page up
+        keys:
+          - code: pgup
+          - code: b
+          - code: u
+      pageDown:
+        description: page down
+        keys:
+          - code: pgdown
+            alias: pgdn
+          - code: f
+          - code: d
     pager:
       copy:
         description: copy contents
@@ -121,7 +134,8 @@ ui:
       pageDown:
         description: page down
         keys:
-          - code: pgdn
+          - code: pgdown
+            alias: pgdn
           - code: f
       halfPageUp:
         description: ½ page up
@@ -135,5 +149,5 @@ ui:
   glamour-style: auto
   glamour-max-width: 0
   glamour-disabled: false
-  show-line-numbers: true
+  line-numbers-disabled: false
   compact: false
