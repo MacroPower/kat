@@ -220,12 +220,12 @@ func (m StashModel) View() string {
 }
 
 // Adds yaml documents to the model.
-func (m *StashModel) AddYAMLs(mds ...*yamldoc.YAMLDocument) {
-	if len(mds) == 0 {
+func (m *StashModel) AddYAMLs(yamls ...*yamldoc.YAMLDocument) {
+	if len(yamls) == 0 {
 		return
 	}
 
-	m.YAMLs = append(m.YAMLs, mds...)
+	m.YAMLs = append(m.YAMLs, yamls...)
 	if !m.FilterApplied() {
 		sortYAMLs(m.YAMLs)
 	}
