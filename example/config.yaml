@@ -6,6 +6,12 @@ kube:
         - template
         - .
         - --generate-name
+      hooks:
+        preRender:
+          - command: helm
+            args:
+              - dependency
+              - build
     - match: .*/kustomization\.ya?ml
       command: kustomize
       args:

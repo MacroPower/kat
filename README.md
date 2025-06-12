@@ -96,7 +96,12 @@ You can also find an example configuration file in [example/config.yaml](example
 
 You can customize the commands that `kat` runs in the configuration file. These rules match files or directories and specify the command to run when `kat` is invoked.
 
-Additionally, you can define hooks that run after the command is executed. These hooks can be used to pipe the output to other tools, such as `kubeconform` for validation. If the command exits with a non-zero status, `kat` will display the error message. You can dismiss the error message and return to the main view, or make edits and press `r` to re-run the command.
+Additionally, you can define hooks:
+
+- `preRender` hooks are executed before the main command is run, allowing you to prepare the environment (e.g., running `helm dependency build`).
+- `postRender` hooks are executed after the main command has run, allowing you to process the rendered manifests (e.g., validating them with `kubeconform`).
+
+If any hooks exit with a non-zero status, `kat` will display the error message. You can dismiss the error message and return to the main view, or make edits and press `r` to re-run the command.
 
 ```yaml
 kube:
@@ -106,10 +111,14 @@ kube:
     - match: .*/Chart\.ya?ml
       command: helm
       args: [template, ".", --generate-name]
-      hooks: &hooks
+      hooks:
+        preRender:
+          - command: helm
+            args: [dependency, build]
         postRender:
           # Pass the rendered manifests via stdin to `kubeconform`.
-          - command: kubeconform
+          - &kubeconform
+            command: kubeconform
             args: [-strict, -summary]
 
     # Run `kustomize build --enable-helm .` when kat targets a directory
@@ -117,7 +126,9 @@ kube:
     - match: .*/kustomization\.ya?ml
       command: kustomize
       args: [build, --enable-helm, "."]
-      hooks: *hooks # Re-use the hooks from above.
+      hooks:
+        postRender:
+          - *kubeconform
 ```
 
 ## 🔍️ Similar Tools

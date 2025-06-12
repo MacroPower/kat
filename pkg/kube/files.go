@@ -29,6 +29,13 @@ type HookCommand struct {
 	Args    []string `json:"args"    yaml:"args"`
 }
 
+func NewHookCommand(command string, args ...string) *HookCommand {
+	return &HookCommand{
+		Command: command,
+		Args:    args,
+	}
+}
+
 func (hc *HookCommand) Exec(dir string, stdin []byte) error {
 	if hc.Command == "" {
 		return fmt.Errorf("%w: empty hook command", ErrHookExecution)
@@ -63,7 +70,31 @@ func (hc *HookCommand) Exec(dir string, stdin []byte) error {
 
 // Hooks represents the different types of hooks that can be executed.
 type Hooks struct {
+	PreRender  []*HookCommand `json:"preRender,omitempty"  yaml:"preRender,omitempty"`
 	PostRender []*HookCommand `json:"postRender,omitempty" yaml:"postRender,omitempty"`
+}
+
+func NewHooks(opts ...HookOpts) *Hooks {
+	h := &Hooks{}
+	for _, opt := range opts {
+		opt(h)
+	}
+
+	return h
+}
+
+type HookOpts func(*Hooks)
+
+func WithPreRender(hooks ...*HookCommand) HookOpts {
+	return func(h *Hooks) {
+		h.PreRender = append(h.PreRender, hooks...)
+	}
+}
+
+func WithPostRender(hooks ...*HookCommand) HookOpts {
+	return func(h *Hooks) {
+		h.PostRender = append(h.PostRender, hooks...)
+	}
 }
 
 type Command struct {
@@ -100,6 +131,15 @@ func MustNewCommand(hooks *Hooks, match, cmd string, args ...string) *Command {
 func (c *Command) Exec(dir string) (CommandOutput, error) {
 	if c.Command == "" {
 		return CommandOutput{}, fmt.Errorf("%w: empty command", ErrCommandExecution)
+	}
+
+	// Execute preRender hooks, if any.
+	if c.Hooks != nil {
+		for _, hook := range c.Hooks.PreRender {
+			if err := hook.Exec(dir, nil); err != nil {
+				return CommandOutput{}, fmt.Errorf("%w: %w", ErrHookExecution, err)
+			}
+		}
 	}
 
 	// Execute main command.

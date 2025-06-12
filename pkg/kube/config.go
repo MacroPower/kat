@@ -12,7 +12,19 @@ func (c *Config) EnsureDefaults() {
 
 var DefaultConfig = Config{
 	Commands: []*Command{
-		MustNewCommand(nil, ".*/Chart\\.ya?ml", "helm", "template", ".", "--generate-name"),
-		MustNewCommand(nil, ".*/kustomization\\.ya?ml", "kustomize", "build", "."),
+		MustNewCommand(
+			NewHooks(
+				WithPreRender(
+					NewHookCommand("helm", "dependency", "build"),
+				),
+			),
+			".*/Chart\\.ya?ml",
+			"helm", "template", ".", "--generate-name",
+		),
+		MustNewCommand(
+			nil,
+			".*/kustomization\\.ya?ml",
+			"kustomize", "build", ".",
+		),
 	},
 }
