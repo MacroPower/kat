@@ -7,7 +7,7 @@
     "go": "1.24.3",
     "git": "2.49.0",
     "nodePackages.prettier": "3.5.3",
-    "zizmor": "1.8.0",
+    "zizmor": "1.9.0",
     "conform": "0.1.0-alpha.29",
     "vhs": "0.9.0",
     "bashInteractive": "5.2p37"
