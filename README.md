@@ -24,6 +24,7 @@
 
 - 🚀 List and filter hundreds of manifests without leaving your shell.
 - 🔄 Reload from any context to quickly diff individual manifests.
+- 👀 Use `--watch` to trigger reloads on changes to source files.
 - 🐛 Immediately view any errors from rendering, and re-reload!
 - 🎨 Customize keybinds, styles, and more to match your preferences.
 - 🪄 Add your own commands and rules to detect different project types.
@@ -80,6 +81,7 @@ Flags:
       --log-level="info"            Log level ($KAT_LOG_LEVEL).
       --log-format="text"           Log format ($KAT_LOG_FORMAT).
   -f, --file=FILE                   File content to read.
+  -w, --watch                       Watch for changes and trigger reloading.
       --write-config                Write the configuration file to the default path.
       --show-config                 Print the active configuration and exit.
 ```
@@ -109,6 +111,7 @@ kube:
     # Run `helm template . --generate-name` when kat targets a directory
     # containing a `Chart.yaml` file.
     - match: .*/Chart\.ya?ml
+      source: .*\.(ya?ml|tpl) # Used for `--watch`.
       command: helm
       args: [template, ".", --generate-name]
       hooks:
@@ -124,6 +127,7 @@ kube:
     # Run `kustomize build --enable-helm .` when kat targets a directory
     # containing a `kustomization.yaml` file.
     - match: .*/kustomization\.ya?ml
+      source: .*\.ya?ml # Used for `--watch`.
       command: kustomize
       args: [build, --enable-helm, "."]
       hooks:

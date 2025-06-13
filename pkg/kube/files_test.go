@@ -35,39 +35,40 @@ func TestCommandRunner_RunForPath(t *testing.T) {
 	require.NoError(t, os.WriteFile(nestedChartFile, []byte("name: nested-chart"), 0o644))
 
 	tcs := map[string]struct {
-		expectedError error
-		path          string
-		checkOutput   bool
+		initError   error
+		runError    error
+		path        string
+		checkOutput bool
 	}{
 		"file not found": {
-			path:          filepath.Join(tempDir, "nonexistent.yaml"),
-			expectedError: os.ErrNotExist,
-			checkOutput:   false,
+			path:        filepath.Join(tempDir, "nonexistent.yaml"),
+			initError:   os.ErrNotExist,
+			checkOutput: false,
 		},
 		"no command for path": {
-			path:          unknownFile,
-			expectedError: kube.ErrNoCommandForPath,
-			checkOutput:   false,
+			path:        unknownFile,
+			initError:   kube.ErrNoCommandForPath,
+			checkOutput: false,
 		},
 		"directory with no matching files": {
-			path:          t.TempDir(), // Empty temp directory
-			expectedError: kube.ErrNoCommandForPath,
-			checkOutput:   false,
+			path:        t.TempDir(), // Empty temp directory
+			initError:   kube.ErrNoCommandForPath,
+			checkOutput: false,
 		},
 		"match Chart.yaml file": {
-			path:          chartFile,
-			expectedError: nil, // Command execution will fail in test environment, but path matching should succeed
-			checkOutput:   false,
+			path:        chartFile,
+			runError:    nil, // Command execution will fail in test environment, but path matching should succeed
+			checkOutput: false,
 		},
 		"match kustomization.yaml file": {
-			path:          kustomizationFile,
-			expectedError: nil, // Command execution will fail in test environment, but path matching should succeed
-			checkOutput:   false,
+			path:        kustomizationFile,
+			runError:    nil, // Command execution will fail in test environment, but path matching should succeed
+			checkOutput: false,
 		},
 		"directory with matching file": {
-			path:          tempDir,
-			expectedError: nil, // Command execution will fail in test environment, but path matching should succeed
-			checkOutput:   false,
+			path:        tempDir,
+			runError:    nil, // Command execution will fail in test environment, but path matching should succeed
+			checkOutput: false,
 		},
 	}
 
@@ -75,11 +76,19 @@ func TestCommandRunner_RunForPath(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			runner := kube.NewCommandRunner(tc.path)
-			output, err := runner.Run()
+			runner, err := kube.NewCommandRunner(tc.path, kube.WithCommands(kube.DefaultConfig.Commands))
+			if tc.initError != nil {
+				require.ErrorIs(t, err, tc.initError)
 
-			if tc.expectedError != nil {
-				require.ErrorIs(t, err, tc.expectedError)
+				return
+			}
+
+			require.NoError(t, err)
+
+			output := runner.Run()
+
+			if tc.runError != nil {
+				require.ErrorIs(t, output.Error, tc.runError)
 			}
 
 			if tc.checkOutput {
@@ -92,15 +101,18 @@ func TestCommandRunner_RunForPath(t *testing.T) {
 func TestCommandRunner_WithCommand(t *testing.T) {
 	t.Parallel()
 
-	runner := kube.NewCommandRunner("")
-	runner.SetCommand(kube.MustNewCommand(nil, "", "echo", "{apiVersion: v1, kind: Resource}"))
-	customRunner, err := runner.Run()
+	runner, err := kube.NewCommandRunner(t.TempDir(), kube.WithCommand(
+		kube.MustNewCommand(nil, "", "", "echo", "{apiVersion: v1, kind: Resource}"),
+	))
 	require.NoError(t, err)
 
-	assert.Empty(t, customRunner.Stderr)
-	assert.Equal(t, "{apiVersion: v1, kind: Resource}\n", customRunner.Stdout)
-	assert.Equal(t, "v1", customRunner.Resources[0].Object.GetAPIVersion())
-	assert.Equal(t, "Resource", customRunner.Resources[0].Object.GetKind())
+	output := runner.Run()
+	require.NoError(t, output.Error)
+
+	assert.Empty(t, output.Stderr)
+	assert.Equal(t, "{apiVersion: v1, kind: Resource}\n", output.Stdout)
+	assert.Equal(t, "v1", output.Resources[0].Object.GetAPIVersion())
+	assert.Equal(t, "Resource", output.Resources[0].Object.GetKind())
 }
 
 func TestCommand_WithPostRenderHooks(t *testing.T) {
@@ -117,8 +129,8 @@ func TestCommand_WithPostRenderHooks(t *testing.T) {
 		},
 	}
 
-	output, err := cmd.Exec(".")
-	require.NoError(t, err)
+	output := cmd.Exec(".")
+	require.NoError(t, output.Error)
 
 	assert.NotEmpty(t, output.Stdout)
 	assert.Empty(t, output.Stderr)
@@ -140,9 +152,9 @@ func TestCommand_FailingPostRenderHook(t *testing.T) {
 		},
 	}
 
-	_, err := cmd.Exec(".")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "exit status 1")
+	output := cmd.Exec(".")
+	require.Error(t, output.Error)
+	assert.Contains(t, output.Error.Error(), "exit status 1")
 }
 
 func TestCommand_EmptyHookCommand(t *testing.T) {
@@ -159,9 +171,9 @@ func TestCommand_EmptyHookCommand(t *testing.T) {
 		},
 	}
 
-	_, err := cmd.Exec(".")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "empty hook command")
+	output := cmd.Exec(".")
+	require.Error(t, output.Error)
+	assert.Contains(t, output.Error.Error(), "empty hook command")
 }
 
 func TestNewCommandWithHooks(t *testing.T) {
@@ -225,8 +237,8 @@ data:
 		},
 	}
 
-	output, err := cmd.Exec(tempDir)
-	require.NoError(t, err)
+	output := cmd.Exec(tempDir)
+	require.NoError(t, output.Error)
 
 	assert.NotEmpty(t, output.Stdout)
 	assert.Empty(t, output.Stderr)
@@ -304,15 +316,15 @@ func TestCommand_WithPreRenderHooks(t *testing.T) {
 				},
 			}
 
-			output, err := cmd.Exec(".")
+			output := cmd.Exec(".")
 
 			if tc.expectedError != nil {
-				require.ErrorIs(t, err, tc.expectedError)
+				require.ErrorIs(t, output.Error, tc.expectedError)
 
 				return
 			}
 
-			require.NoError(t, err)
+			require.NoError(t, output.Error)
 
 			if tc.checkOutput {
 				assert.NotEmpty(t, output.Stdout)
@@ -339,8 +351,8 @@ func TestCommand_PreRenderHookFailurePreventsMainCommand(t *testing.T) {
 		},
 	}
 
-	output, err := cmd.Exec(".")
-	require.ErrorIs(t, err, kube.ErrHookExecution)
+	output := cmd.Exec(".")
+	require.ErrorIs(t, output.Error, kube.ErrHookExecution)
 
 	// Since preRender failed, main command should not have executed
 	// so output should be empty
@@ -365,8 +377,8 @@ func TestCommand_WithBothPreAndPostRenderHooks(t *testing.T) {
 		},
 	}
 
-	output, err := cmd.Exec(".")
-	require.NoError(t, err)
+	output := cmd.Exec(".")
+	require.NoError(t, output.Error)
 
 	assert.NotEmpty(t, output.Stdout)
 	assert.Empty(t, output.Stderr)

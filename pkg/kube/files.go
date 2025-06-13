@@ -10,6 +10,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sync"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 var (
@@ -98,28 +101,39 @@ func WithPostRender(hooks ...*HookCommand) HookOpts {
 }
 
 type Command struct {
-	Match   *regexp.Regexp `json:"match"           yaml:"match"` // Regex to match file paths.
-	Hooks   *Hooks         `json:"hooks,omitempty" yaml:"hooks,omitempty"`
-	Command string         `json:"command"         yaml:"command"`
-	Args    []string       `json:"args"            yaml:"args"`
+	Match   *regexp.Regexp `json:"match"            yaml:"match"` // Regex to match file paths.
+	Source  *regexp.Regexp `json:"source,omitempty" yaml:"source,omitempty"`
+	Hooks   *Hooks         `json:"hooks,omitempty"  yaml:"hooks,omitempty"`
+	Command string         `json:"command"          yaml:"command"`
+	Args    []string       `json:"args"             yaml:"args"`
 }
 
-func NewCommand(hooks *Hooks, match, cmd string, args ...string) (*Command, error) {
-	re, err := regexp.Compile(match)
-	if err != nil {
-		return nil, fmt.Errorf("compile regex: %w", err)
-	}
-
-	return &Command{
-		Match:   re,
+func NewCommand(hooks *Hooks, match, source, cmd string, args ...string) (*Command, error) {
+	c := &Command{
 		Command: cmd,
 		Args:    args,
 		Hooks:   hooks,
-	}, nil
+	}
+
+	rem, err := regexp.Compile(match)
+	if err != nil {
+		return nil, fmt.Errorf("compile regex: %w", err)
+	}
+	c.Match = rem
+
+	if source != "" {
+		res, err := regexp.Compile(source)
+		if err != nil {
+			return nil, fmt.Errorf("compile regex: %w", err)
+		}
+		c.Source = res
+	}
+
+	return c, nil
 }
 
-func MustNewCommand(hooks *Hooks, match, cmd string, args ...string) *Command {
-	c, err := NewCommand(hooks, match, cmd, args...)
+func MustNewCommand(hooks *Hooks, match, source, cmd string, args ...string) *Command {
+	c, err := NewCommand(hooks, match, source, cmd, args...)
 	if err != nil {
 		panic(err)
 	}
@@ -128,16 +142,16 @@ func MustNewCommand(hooks *Hooks, match, cmd string, args ...string) *Command {
 }
 
 // Exec runs the command with the given arguments in the specified directory.
-func (c *Command) Exec(dir string) (CommandOutput, error) {
+func (c *Command) Exec(dir string) CommandOutput {
 	if c.Command == "" {
-		return CommandOutput{}, fmt.Errorf("%w: empty command", ErrCommandExecution)
+		return CommandOutput{Error: fmt.Errorf("%w: empty command", ErrCommandExecution)}
 	}
 
 	// Execute preRender hooks, if any.
 	if c.Hooks != nil {
 		for _, hook := range c.Hooks.PreRender {
 			if err := hook.Exec(dir, nil); err != nil {
-				return CommandOutput{}, fmt.Errorf("%w: %w", ErrHookExecution, err)
+				return CommandOutput{Error: fmt.Errorf("%w: %w", ErrHookExecution, err)}
 			}
 		}
 	}
@@ -161,15 +175,21 @@ func (c *Command) Exec(dir string) (CommandOutput, error) {
 
 	if err != nil {
 		if stderr.Len() > 0 {
-			return output, fmt.Errorf("%s\n%w: %w", stderr.String(), ErrCommandExecution, err)
+			output.Error = fmt.Errorf("%s\n%w: %w", stderr.String(), ErrCommandExecution, err)
+
+			return output
 		}
 
-		return output, fmt.Errorf("%w: %w", ErrCommandExecution, err)
+		output.Error = fmt.Errorf("%w: %w", ErrCommandExecution, err)
+
+		return output
 	}
 
 	objects, err := SplitYAML(stdout.Bytes())
 	if err != nil {
-		return output, err
+		output.Error = err
+
+		return output
 	}
 
 	output.Resources = objects
@@ -178,39 +198,148 @@ func (c *Command) Exec(dir string) (CommandOutput, error) {
 	if c.Hooks != nil {
 		for _, hook := range c.Hooks.PostRender {
 			if err := hook.Exec(dir, stdout.Bytes()); err != nil {
-				return output, err
+				output.Error = err
+
+				return output
 			}
 		}
 	}
 
 	slog.Debug("returning objects", slog.Int("count", len(objects)))
 
-	return output, nil
+	return output
 }
 
 // CommandRunner manages file-to-command mappings and executes commands based on
 // file paths.
 type CommandRunner struct {
-	path     string
-	command  *Command
-	commands []*Command
+	command *Command
+	watcher *fsnotify.Watcher
+	path    string
+	mu      sync.Mutex
 }
 
 // NewCommandRunner creates a new CommandRunner with default command mappings.
-func NewCommandRunner(path string) *CommandRunner {
-	return &CommandRunner{path, nil, DefaultConfig.Commands}
+func NewCommandRunner(path string, opts ...CommandRunnerOpt) (*CommandRunner, error) {
+	cr := &CommandRunner{
+		path: path,
+	}
+
+	var err error
+	cr.watcher, err = fsnotify.NewWatcher()
+	if err != nil {
+		return nil, fmt.Errorf("create fsnotify watcher: %w", err)
+	}
+
+	for _, opt := range opts {
+		if err := opt(cr); err != nil {
+			return nil, fmt.Errorf("command option: %w", err)
+		}
+	}
+
+	if cr.command == nil {
+		return nil, fmt.Errorf("%w: %s", ErrNoCommandForPath, cr.path)
+	}
+
+	return cr, nil
 }
 
-func (cr *CommandRunner) SetCommand(cmd *Command) {
-	cr.command = cmd
+type CommandRunnerOpt func(cr *CommandRunner) error
+
+// WithCommand sets a specific command to run.
+func WithCommand(cmd *Command) CommandRunnerOpt {
+	return func(cr *CommandRunner) error {
+		cr.command = cmd
+
+		return nil
+	}
 }
 
-func (cr *CommandRunner) SetCommands(cmds []*Command) {
-	cr.commands = cmds
+// WithCommands sets multiple commands to run.
+func WithCommands(cmds []*Command) CommandRunnerOpt {
+	return func(cr *CommandRunner) error {
+		fileInfo, err := os.Stat(cr.path)
+		if err != nil {
+			return fmt.Errorf("stat path: %w", err)
+		}
+
+		if fileInfo.IsDir() {
+			// Path is a directory, find matching files inside.
+			cmd, err := findMatchInDirectory(cr.path, cmds)
+			if err != nil {
+				return err
+			}
+
+			cr.command = cmd
+		}
+
+		// Path is a file, check for direct match.
+		for _, cmd := range cmds {
+			if cmd.Match.MatchString(cr.path) {
+				cr.command = cmd
+			}
+		}
+
+		return nil
+	}
+}
+
+func (cr *CommandRunner) Watch() error {
+	err := filepath.Walk(cr.path, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("walk %q: %w", path, err)
+		}
+		if info.IsDir() {
+			// Skip directories, we only want to watch files.
+			return nil
+		}
+		if cr.command.Source == nil || cr.command.Source.MatchString(path) {
+			// If the file matches the command's regex, add it to the watcher.
+			if err := cr.watcher.Add(path); err != nil {
+				return fmt.Errorf("add path to watcher: %w", err)
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("walk %q: %w", cr.path, err)
+	}
+
+	return nil
+}
+
+func (cr *CommandRunner) RunOnUpdate(ch chan<- CommandOutput) {
+	for {
+		select {
+		case evt, ok := <-cr.watcher.Events:
+			if !ok {
+				return
+			}
+			if evt.Has(fsnotify.Create | fsnotify.Remove | fsnotify.Write | fsnotify.Rename) {
+				ch <- cr.Run()
+			}
+		case err, ok := <-cr.watcher.Errors:
+			if !ok {
+				return
+			}
+			ch <- CommandOutput{
+				Error: err,
+			}
+		}
+	}
+}
+
+func (cr *CommandRunner) Close() {
+	err := cr.watcher.Close()
+	if err != nil {
+		slog.Error("close watcher", slog.Any("err", err))
+	}
 }
 
 // CommandOutput represents the output of a command execution.
 type CommandOutput struct {
+	Error     error
 	Stdout    string
 	Stderr    string
 	Resources []*Resource
@@ -228,41 +357,26 @@ func (cr *CommandRunner) String() string {
 // RunFirstMatch executes the first matching command for the given path.
 // If path is a file, it checks for direct matches.
 // If path is a directory, it checks all files in the directory for matches.
-func (cr *CommandRunner) Run() (CommandOutput, error) {
-	slog.Debug("run command", slog.Any("cmd", *cr))
+func (cr *CommandRunner) Run() CommandOutput {
+	cr.mu.Lock()
+	defer cr.mu.Unlock()
 
-	if cr.command != nil {
-		// Custom command provided.
-		return cr.command.Exec(cr.path)
-	}
+	slog.Debug("run",
+		slog.String("path", cr.path),
+		slog.Any("command", cr.command.Command),
+		slog.Any("args", cr.command.Args),
+	)
 
-	fileInfo, err := os.Stat(cr.path)
+	_, err := os.Stat(cr.path)
 	if err != nil {
-		return CommandOutput{}, fmt.Errorf("stat path: %w", err)
+		return CommandOutput{Error: fmt.Errorf("stat path: %w", err)}
 	}
 
-	if fileInfo.IsDir() {
-		// Path is a directory, find matching files inside.
-		cmd, err := cr.findMatchInDirectory(cr.path)
-		if err != nil {
-			return CommandOutput{}, err
-		}
-
-		return cmd.Exec(cr.path)
-	}
-
-	// Path is a file, check for direct match.
-	for _, cmd := range cr.commands {
-		if cmd.Match.MatchString(cr.path) {
-			return cmd.Exec(filepath.Dir(cr.path))
-		}
-	}
-
-	return CommandOutput{}, fmt.Errorf("%w: %s", ErrNoCommandForPath, cr.path)
+	return cr.command.Exec(cr.path)
 }
 
 // findMatchInDirectory looks for matching files in a directory.
-func (cr *CommandRunner) findMatchInDirectory(dirPath string) (*Command, error) {
+func findMatchInDirectory(dirPath string, cmds []*Command) (*Command, error) {
 	var matchedCommand *Command
 	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -272,7 +386,7 @@ func (cr *CommandRunner) findMatchInDirectory(dirPath string) (*Command, error) 
 			return filepath.SkipDir // Skip subdirectories.
 		}
 		if !d.IsDir() {
-			for _, cmd := range cr.commands {
+			for _, cmd := range cmds {
 				if cmd.Match.MatchString(path) {
 					matchedCommand = cmd
 
@@ -314,10 +428,15 @@ func (rg *ResourceGetter) String() string {
 	return "static"
 }
 
-func (rg *ResourceGetter) Run() (CommandOutput, error) {
+func (rg *ResourceGetter) Run() CommandOutput {
+	out := CommandOutput{Resources: rg.Resources}
 	if rg.Resources == nil {
-		return CommandOutput{}, errors.New("no resources available")
+		out.Error = errors.New("no resources available")
 	}
 
-	return CommandOutput{Resources: rg.Resources}, nil
+	return out
+}
+
+func (rg *ResourceGetter) RunOnUpdate(ch chan<- CommandOutput) {
+	ch <- rg.Run()
 }

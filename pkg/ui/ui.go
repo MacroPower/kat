@@ -85,7 +85,7 @@ type model struct {
 	err          error
 	cm           *common.CommonModel
 	overlay      *overlay.Overlay
-	resources    chan common.RunOutput
+	resources    chan kube.CommandOutput
 	spinner      spinner.Model
 	pager        pager.PagerModel
 	stash        stash.StashModel
@@ -123,13 +123,17 @@ func newModel(cfg config.Config, cmd common.Commander) tea.Model {
 		Cmd:    cmd,
 	}
 
+	ch := make(chan kube.CommandOutput)
+	go cm.Cmd.RunOnUpdate(ch)
+
 	m := &model{
-		cm:      &cm,
-		spinner: sp,
-		state:   stateShowStash,
-		pager:   pager.NewPagerModel(&cm),
-		stash:   stash.NewStashModel(&cm),
-		overlay: overlay.New(),
+		cm:        &cm,
+		spinner:   sp,
+		state:     stateShowStash,
+		pager:     pager.NewPagerModel(&cm),
+		stash:     stash.NewStashModel(&cm),
+		overlay:   overlay.New(),
+		resources: ch,
 	}
 
 	return m
@@ -144,6 +148,8 @@ func (m *model) Init() tea.Cmd {
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
+
+	cmds = append(cmds, m.getKubeResources())
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -172,15 +178,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.handleWindowResize(msg)
 
 	case common.CommandRunStarted:
-		m.resources = msg.Ch
 		m.cm.Loaded = false
 		m.cm.ShowStatusMessage = false
 		if m.cm.StatusMessageTimer != nil {
 			m.cm.StatusMessageTimer.Stop()
 		}
 		m.overlayState = overlayStateLoading
-
-		cmds = append(cmds, m.getKubeResources())
 
 	case stash.FetchedYAMLMsg:
 		// We've loaded a YAML file's contents for rendering.
@@ -192,16 +195,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = stateShowDocument
 
 	case common.CommandRunFinished:
-		// Use the new handler utility for resource updates.
 		cmds = append(cmds, m.handleResourceUpdate(msg)...)
 
 		m.cm.Loaded = true
-		if m.overlayState == overlayStateLoading {
-			m.overlayState = overlayStateNone
-		}
+		m.overlayState = overlayStateNone
 
-		if msg.Err == nil {
-			statusMsg := fmt.Sprintf("rendered %d manifests", len(msg.Out.Resources))
+		if msg.Error == nil {
+			statusMsg := fmt.Sprintf("rendered %d manifests", len(msg.Resources))
 			cmds = append(cmds, m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess))
 		}
 
@@ -311,7 +311,6 @@ func (m *model) handleRefreshKey(_ tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		return m, nil, false
 	}
 
-	m.stash.YAMLs = nil
 	initCmds := m.Init()
 
 	return m, initCmds, true
@@ -321,13 +320,17 @@ func (m *model) handleRefreshKey(_ tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 func (m *model) handleResourceUpdate(msg common.CommandRunFinished) []tea.Cmd {
 	var cmds []tea.Cmd
 
-	if msg.Err != nil {
+	if msg.Error != nil {
 		cmds = append(cmds, func() tea.Msg {
-			return common.ErrMsg{Err: msg.Err}
+			return common.ErrMsg{Err: msg.Error}
 		})
+
+		return cmds
 	}
 
-	for _, yml := range msg.Out.Resources {
+	m.stash.YAMLs = nil
+
+	for _, yml := range msg.Resources {
 		newYaml := kubeResourceToYAML(yml)
 		m.stash.AddYAMLs(newYaml)
 
@@ -387,13 +390,11 @@ func (m *model) runCommand() tea.Cmd {
 		}
 
 		log.Debug("runCommand")
-		ch := make(chan common.RunOutput)
 		go func() {
-			defer close(ch)
 			defer m.resourceMu.Unlock()
 
 			startTime := time.Now()
-			out, err := m.cm.Cmd.Run()
+			out := m.cm.Cmd.Run()
 			endTime := time.Now()
 
 			runTime := endTime.Sub(startTime)
@@ -403,10 +404,10 @@ func (m *model) runCommand() tea.Cmd {
 				time.Sleep(*m.cm.Config.MinimumDelay - runTime)
 			}
 
-			ch <- common.RunOutput{Out: out, Err: err}
+			m.resources <- out
 		}()
 
-		return common.CommandRunStarted{Ch: ch}
+		return common.CommandRunStarted{}
 	}
 }
 

@@ -11,7 +11,8 @@ import (
 )
 
 type Commander interface {
-	Run() (kube.CommandOutput, error)
+	Run() kube.CommandOutput
+	RunOnUpdate(ch chan<- kube.CommandOutput)
 	String() string
 }
 
@@ -37,11 +38,6 @@ const (
 	StatusMessageTimeout = time.Second * 3 // How long to show status messages.
 )
 
-type RunOutput struct {
-	Err error
-	Out kube.CommandOutput
-}
-
 type (
 	StatusMessage struct {
 		Message string
@@ -49,10 +45,8 @@ type (
 	}
 	StatusMessageTimeoutMsg ApplicationContext
 
-	CommandRunStarted struct {
-		Ch chan RunOutput
-	}
-	CommandRunFinished RunOutput
+	CommandRunStarted  struct{}
+	CommandRunFinished kube.CommandOutput
 )
 
 func (m *CommonModel) GetStatusBar() *statusbar.StatusBarRenderer {

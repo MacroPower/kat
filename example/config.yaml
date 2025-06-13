@@ -1,18 +1,20 @@
 kube:
   commands:
     - match: .*/Chart\.ya?ml
-      command: helm
-      args:
-        - template
-        - .
-        - --generate-name
+      source: .*\.(ya?ml|tpl)
       hooks:
         preRender:
           - command: helm
             args:
               - dependency
               - build
+      command: helm
+      args:
+        - template
+        - .
+        - --generate-name
     - match: .*/kustomization\.ya?ml
+      source: .*\.ya?ml
       command: kustomize
       args:
         - build

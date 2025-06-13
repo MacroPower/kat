@@ -20,6 +20,7 @@ import (
 const (
 	cmdName     = "kat"
 	cmdDesc     = `cat for Kubernetes manifests.`
+	cmdInitErr  = "initialization failed"
 	cmdExamples = `
 Examples:
 	# kat the current directory.
@@ -50,6 +51,7 @@ var cli struct {
 
 	Command []string `arg:"" help:"Command to run, defaults set in ~/.config/kat/config.yaml." optional:""`
 
+	Watch       bool `env:"-" help:"Watch for changes and trigger reloading."          short:"w"`
 	WriteConfig bool `env:"-" help:"Write the configuration file to the default path."`
 	ShowConfig  bool `env:"-" help:"Print the active configuration and exit."`
 }
@@ -73,7 +75,7 @@ func main() {
 	if cli.WriteConfig {
 		if err := config.NewConfig().Write(configPath); err != nil {
 			slog.Error("write config", slog.Any("err", err))
-			cliCtx.Fatalf("initialization failed")
+			cliCtx.Fatalf(cmdInitErr)
 		}
 	}
 
@@ -86,7 +88,7 @@ func main() {
 	err = cli.Config.UI.KeyBinds.Validate()
 	if err != nil {
 		slog.Error("validate key binds", slog.Any("err", err))
-		cliCtx.Fatalf("initialization failed")
+		cliCtx.Fatalf(cmdInitErr)
 	}
 
 	slog.Debug("parsed args",
@@ -99,7 +101,7 @@ func main() {
 		yamlConfig, err := cli.Config.MarshalYAML()
 		if err != nil {
 			slog.Error("marshal config yaml", slog.Any("err", err))
-			cliCtx.Fatalf("initialization failed")
+			cliCtx.Fatalf(cmdInitErr)
 		}
 		slog.Info("active configuration", slog.String("path", configPath))
 		fmt.Printf("%s", yamlConfig)
@@ -112,10 +114,14 @@ func main() {
 		cr, err = kube.NewResourceGetter(string(cli.File))
 		if err != nil {
 			slog.Error("create resource getter", slog.Any("err", err))
-			cliCtx.Fatalf("initialization failed")
+			cliCtx.Fatalf(cmdInitErr)
 		}
 	} else {
-		cr = setupCommandRunner(cli.Path)
+		cr, err = setupCommandRunner(cli.Path)
+		if err != nil {
+			slog.Error("create command runner", slog.Any("err", err))
+			cliCtx.Fatalf(cmdInitErr)
+		}
 	}
 
 	if err := runUI(*cli.Config.UI, cr); err != nil {
@@ -124,18 +130,34 @@ func main() {
 }
 
 // setupCommandRunner creates and configures the command runner.
-func setupCommandRunner(path string) *kube.CommandRunner {
-	cr := kube.NewCommandRunner(path)
+func setupCommandRunner(path string) (*kube.CommandRunner, error) {
+	var (
+		cr  *kube.CommandRunner
+		err error
+	)
 
 	if len(cli.Command) > 0 {
 		cmd := parseCommand(cli.Command)
-		cr.SetCommand(cmd)
+
+		cr, err = kube.NewCommandRunner(path, kube.WithCommand(cmd))
+		if err != nil {
+			return nil, err
+		}
 	} else {
-		// No specific command, so use the config file.
-		cr.SetCommands(cli.Config.Kube.Commands)
+		cr, err = kube.NewCommandRunner(path, kube.WithCommands(cli.Config.Kube.Commands))
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return cr
+	if cli.Watch {
+		err := cr.Watch()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return cr, nil
 }
 
 // parseCommand parses the CLI command arguments into a [kube.Command].

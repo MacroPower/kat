@@ -230,3 +230,6 @@ linters:
       - text: "\\*github\\.com/hashicorp/go-multierror\\.Error"
         linters:
           - wrapcheck
+      - path: cmd/
+        linters:
+          - wrapcheck
