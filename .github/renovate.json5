@@ -5,6 +5,7 @@
     ":disableRateLimiting",
     ":separateMajorReleases",
     ":semanticCommits",
+    ":automergeMinor",
   ],
   ignorePaths: [
     "**/testdata/**",
