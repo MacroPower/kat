@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/alecthomas/kong"
 
@@ -178,6 +179,33 @@ func parseCommand(cmdArgs []string) *kube.Command {
 // runUI starts the UI program.
 func runUI(cfg uiconfig.Config, cr common.Commander) error {
 	p := ui.NewProgram(cfg, cr)
+
+	ch := make(chan kube.CommandEvent)
+	cr.Subscribe(ch)
+
+	go func() {
+		lastEventTime := time.Now()
+		for event := range ch {
+			switch e := event.(type) {
+			case kube.CommandEventStart:
+				p.Send(common.CommandRunStarted{})
+
+			case kube.CommandEventEnd:
+				if time.Since(lastEventTime) < *cli.Config.UI.MinimumDelay {
+					// Add a delay if the command ran faster than MinimumDelay.
+					// This prevents the status from flickering in the UI.
+					time.Sleep(*cli.Config.UI.MinimumDelay - time.Since(lastEventTime))
+				}
+				p.Send(common.CommandRunFinished(e))
+
+			case kube.CommandEventCancel:
+				continue
+			}
+			lastEventTime = time.Now()
+		}
+	}()
+	go cr.RunOnEvent()
+
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("tea: %w", err)
 	}

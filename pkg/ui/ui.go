@@ -4,8 +4,6 @@ package ui
 import (
 	"fmt"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/lipgloss"
@@ -85,15 +83,11 @@ type model struct {
 	err          error
 	cm           *common.CommonModel
 	overlay      *overlay.Overlay
-	resources    chan kube.CommandOutput
 	spinner      spinner.Model
 	pager        pager.PagerModel
 	stash        stash.StashModel
 	state        State
 	overlayState OverlayState
-
-	// Prevent concurrent command runs / resource updates.
-	resourceMu sync.Mutex
 }
 
 // unloadDocument unloads a document from the pager. Title that while this
@@ -123,33 +117,24 @@ func newModel(cfg config.Config, cmd common.Commander) tea.Model {
 		Cmd:    cmd,
 	}
 
-	ch := make(chan kube.CommandOutput)
-	go cm.Cmd.RunOnUpdate(ch)
-
 	m := &model{
-		cm:        &cm,
-		spinner:   sp,
-		state:     stateShowStash,
-		pager:     pager.NewPagerModel(&cm),
-		stash:     stash.NewStashModel(&cm),
-		overlay:   overlay.New(),
-		resources: ch,
+		cm:      &cm,
+		spinner: sp,
+		state:   stateShowStash,
+		pager:   pager.NewPagerModel(&cm),
+		stash:   stash.NewStashModel(&cm),
+		overlay: overlay.New(),
 	}
 
 	return m
 }
 
 func (m *model) Init() tea.Cmd {
-	return tea.Sequence(
-		m.runCommand(),
-		m.spinner.Tick,
-	)
+	return m.runCommand()
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
-
-	cmds = append(cmds, m.getKubeResources())
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -184,6 +169,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cm.StatusMessageTimer.Stop()
 		}
 		m.overlayState = overlayStateLoading
+		cmds = append(cmds, m.spinner.Tick)
 
 	case stash.FetchedYAMLMsg:
 		// We've loaded a YAML file's contents for rendering.
@@ -378,51 +364,13 @@ func (m *model) handleWindowResize(msg tea.WindowSizeMsg) {
 	m.overlay.SetSize(msg.Width, msg.Height)
 }
 
-// COMMANDS.
-
 func (m *model) runCommand() tea.Cmd {
 	return func() tea.Msg {
-		locked := m.resourceMu.TryLock()
-		if !locked {
-			log.Debug("command already running, skipping new run")
+		go m.cm.Cmd.Run()
 
-			return struct{}{}
-		}
-
-		log.Debug("runCommand")
-		go func() {
-			defer m.resourceMu.Unlock()
-
-			startTime := time.Now()
-			out := m.cm.Cmd.Run()
-			endTime := time.Now()
-
-			runTime := endTime.Sub(startTime)
-			if runTime < *m.cm.Config.MinimumDelay {
-				// Add a delay if the command ran faster than MinimumDelay.
-				// This prevents the status from flickering in the UI.
-				time.Sleep(*m.cm.Config.MinimumDelay - runTime)
-			}
-
-			m.resources <- out
-		}()
-
-		return common.CommandRunStarted{}
+		return nil
 	}
 }
-
-func (m *model) getKubeResources() tea.Cmd {
-	return func() tea.Msg {
-		res := <-m.resources
-
-		// We're done.
-		log.Debug("command run finished")
-
-		return common.CommandRunFinished(res)
-	}
-}
-
-// ETC.
 
 // Convert a [kube.Resource] to an internal representation of a YAML document.
 func kubeResourceToYAML(res *kube.Resource) *yamldoc.YAMLDocument {

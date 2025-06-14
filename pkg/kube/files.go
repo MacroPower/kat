@@ -2,6 +2,7 @@ package kube
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -22,6 +23,9 @@ var (
 	// ErrCommandExecution is returned when command execution fails.
 	ErrCommandExecution = errors.New("command execution")
 
+	// ErrEmptyCommand is returned when a command is empty.
+	ErrEmptyCommand = errors.New("empty command")
+
 	// ErrHookExecution is returned when hook execution fails.
 	ErrHookExecution = errors.New("hook execution")
 )
@@ -39,12 +43,12 @@ func NewHookCommand(command string, args ...string) *HookCommand {
 	}
 }
 
-func (hc *HookCommand) Exec(dir string, stdin []byte) error {
+func (hc *HookCommand) Exec(ctx context.Context, dir string, stdin []byte) error {
 	if hc.Command == "" {
-		return fmt.Errorf("%w: empty hook command", ErrHookExecution)
+		return ErrEmptyCommand
 	}
 
-	cmd := exec.Command(hc.Command, hc.Args...) //nolint:gosec // G204: Subprocess launched with a potential tainted input or cmd arguments.
+	cmd := exec.CommandContext(ctx, hc.Command, hc.Args...) //nolint:gosec // G204: Subprocess launched with a potential tainted input or cmd arguments.
 	cmd.Dir = dir
 
 	var stdout, stderr bytes.Buffer
@@ -65,7 +69,11 @@ func (hc *HookCommand) Exec(dir string, stdin []byte) error {
 			errMsg += stdout.String() + "\n"
 		}
 
-		return fmt.Errorf("%s%w: %w", errMsg, ErrHookExecution, err)
+		if errMsg != "" {
+			return fmt.Errorf("%s: %w:\n%s", hc.Command, err, errMsg)
+		}
+
+		return fmt.Errorf("%s: %w", hc.Command, err)
 	}
 
 	return nil
@@ -142,22 +150,22 @@ func MustNewCommand(hooks *Hooks, match, source, cmd string, args ...string) *Co
 }
 
 // Exec runs the command with the given arguments in the specified directory.
-func (c *Command) Exec(dir string) CommandOutput {
+func (c *Command) Exec(ctx context.Context, dir string) CommandOutput {
 	if c.Command == "" {
-		return CommandOutput{Error: fmt.Errorf("%w: empty command", ErrCommandExecution)}
+		return CommandOutput{Error: fmt.Errorf("%w: %w", ErrCommandExecution, ErrEmptyCommand)}
 	}
 
 	// Execute preRender hooks, if any.
 	if c.Hooks != nil {
 		for _, hook := range c.Hooks.PreRender {
-			if err := hook.Exec(dir, nil); err != nil {
+			if err := hook.Exec(ctx, dir, nil); err != nil {
 				return CommandOutput{Error: fmt.Errorf("%w: %w", ErrHookExecution, err)}
 			}
 		}
 	}
 
 	// Execute main command.
-	cmd := exec.Command(c.Command, c.Args...) //nolint:gosec // G204: Subprocess launched with a potential tainted input or cmd arguments.
+	cmd := exec.CommandContext(ctx, c.Command, c.Args...) //nolint:gosec // G204: Subprocess launched with a potential tainted input or cmd arguments.
 	cmd.Dir = dir
 
 	var stdout, stderr bytes.Buffer
@@ -197,7 +205,7 @@ func (c *Command) Exec(dir string) CommandOutput {
 	// Execute postRender hooks, passing the main command's output as stdin.
 	if c.Hooks != nil {
 		for _, hook := range c.Hooks.PostRender {
-			if err := hook.Exec(dir, stdout.Bytes()); err != nil {
+			if err := hook.Exec(ctx, dir, stdout.Bytes()); err != nil {
 				output.Error = err
 
 				return output
@@ -205,21 +213,41 @@ func (c *Command) Exec(dir string) CommandOutput {
 		}
 	}
 
-	slog.Debug("returning objects", slog.Int("count", len(objects)))
+	slog.DebugContext(ctx, "returning objects", slog.Int("count", len(objects)))
 
 	return output
 }
 
-// CommandRunner manages file-to-command mappings and executes commands based on
-// file paths.
+// CommandEvent represents an event related to command execution.
+type CommandEvent any
+
+type (
+	// CommandEventStart indicates that a command execution has started.
+	CommandEventStart struct{}
+
+	// CommandEventEnd indicates that a command execution has ended.
+	// This event carries the output of the command execution, which could be
+	// an error if the command failed.
+	CommandEventEnd CommandOutput
+
+	// CommandEventCancel indicates that a command execution has been canceled.
+	CommandEventCancel struct{}
+)
+
+// CommandRunner wraps one or more [Command] objects. It manages:
+//   - File-to-command mappings.
+//   - Filesystem notifications / watching.
+//   - Concurrent command execution.
 type CommandRunner struct {
-	command *Command
-	watcher *fsnotify.Watcher
-	path    string
-	mu      sync.Mutex
+	command    *Command
+	watcher    *fsnotify.Watcher
+	cancelFunc context.CancelFunc
+	path       string
+	listeners  []chan<- CommandEvent
+	mu         sync.Mutex
 }
 
-// NewCommandRunner creates a new CommandRunner with default command mappings.
+// NewCommandRunner creates a new [CommandRunner].
 func NewCommandRunner(path string, opts ...CommandRunnerOpt) (*CommandRunner, error) {
 	cr := &CommandRunner{
 		path: path,
@@ -229,6 +257,11 @@ func NewCommandRunner(path string, opts ...CommandRunnerOpt) (*CommandRunner, er
 	cr.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("create fsnotify watcher: %w", err)
+	}
+
+	if len(opts) == 0 {
+		// Defaults if no options are provided.
+		opts = append(opts, WithCommands(DefaultConfig.Commands))
 	}
 
 	for _, opt := range opts {
@@ -309,7 +342,21 @@ func (cr *CommandRunner) Watch() error {
 	return nil
 }
 
-func (cr *CommandRunner) RunOnUpdate(ch chan<- CommandOutput) {
+// Subscribe allows other components to listen for command events.
+func (cr *CommandRunner) Subscribe(ch chan<- CommandEvent) {
+	cr.listeners = append(cr.listeners, ch)
+}
+
+func (cr *CommandRunner) broadcast(evt CommandEvent) {
+	// Send the event to all listeners.
+	for _, ch := range cr.listeners {
+		ch <- evt
+	}
+}
+
+// RunOnEvent listens for file system events and runs the command in response.
+// The output should be collected via [CommandRunner.Subscribe].
+func (cr *CommandRunner) RunOnEvent() {
 	for {
 		select {
 		case evt, ok := <-cr.watcher.Events:
@@ -317,15 +364,21 @@ func (cr *CommandRunner) RunOnUpdate(ch chan<- CommandOutput) {
 				return
 			}
 			if evt.Has(fsnotify.Create | fsnotify.Remove | fsnotify.Write | fsnotify.Rename) {
-				ch <- cr.Run()
+				// Create a new context for this command execution.
+				ctx := context.Background()
+
+				// Run the command in a goroutine so we can handle cancellation properly.
+				go func() {
+					cr.RunContext(ctx)
+				}()
 			}
 		case err, ok := <-cr.watcher.Errors:
 			if !ok {
 				return
 			}
-			ch <- CommandOutput{
+			cr.broadcast(CommandEventEnd(CommandOutput{
 				Error: err,
-			}
+			}))
 		}
 	}
 }
@@ -358,21 +411,53 @@ func (cr *CommandRunner) String() string {
 // If path is a file, it checks for direct matches.
 // If path is a directory, it checks all files in the directory for matches.
 func (cr *CommandRunner) Run() CommandOutput {
-	cr.mu.Lock()
-	defer cr.mu.Unlock()
+	return cr.RunContext(context.Background())
+}
 
-	slog.Debug("run",
-		slog.String("path", cr.path),
-		slog.Any("command", cr.command.Command),
-		slog.Any("args", cr.command.Args),
+// RunContext executes the first matching command for the given path with the provided context.
+// If path is a file, it checks for direct matches.
+// If path is a directory, it checks all files in the directory for matches.
+// The context can be used for cancellation, timeouts, and tracing.
+func (cr *CommandRunner) RunContext(ctx context.Context) CommandOutput {
+	cr.mu.Lock()
+
+	var (
+		path = cr.path
+		cmd  = cr.command.Command
+		args = cr.command.Args
 	)
 
-	_, err := os.Stat(cr.path)
-	if err != nil {
-		return CommandOutput{Error: fmt.Errorf("stat path: %w", err)}
+	// Cancel any currently running command.
+	if cr.cancelFunc != nil {
+		cr.broadcast(CommandEventCancel{})
+		cr.cancelFunc()
 	}
 
-	return cr.command.Exec(cr.path)
+	// Create a new context for this command.
+	ctx, cr.cancelFunc = context.WithCancel(ctx)
+
+	cr.mu.Unlock()
+
+	cr.broadcast(CommandEventStart{})
+
+	slog.DebugContext(ctx, "run",
+		slog.String("path", path),
+		slog.Any("command", cmd),
+		slog.Any("args", args),
+	)
+
+	_, err := os.Stat(path)
+	if err != nil {
+		co := CommandOutput{Error: fmt.Errorf("stat path: %w", err)}
+		cr.broadcast(CommandEventEnd(co))
+
+		return co
+	}
+
+	co := cr.command.Exec(ctx, path)
+	cr.broadcast(CommandEventEnd(co))
+
+	return co
 }
 
 // findMatchInDirectory looks for matching files in a directory.
@@ -409,6 +494,7 @@ func findMatchInDirectory(dirPath string, cmds []*Command) (*Command, error) {
 
 type ResourceGetter struct {
 	Resources []*Resource
+	listeners []chan<- CommandEvent
 }
 
 func NewResourceGetter(input string) (*ResourceGetter, error) {
@@ -429,14 +515,33 @@ func (rg *ResourceGetter) String() string {
 }
 
 func (rg *ResourceGetter) Run() CommandOutput {
+	rg.broadcast(CommandEventStart{})
+
 	out := CommandOutput{Resources: rg.Resources}
 	if rg.Resources == nil {
 		out.Error = errors.New("no resources available")
 	}
 
+	rg.broadcast(CommandEventEnd(out))
+
 	return out
 }
 
-func (rg *ResourceGetter) RunOnUpdate(ch chan<- CommandOutput) {
-	ch <- rg.Run()
+func (rg *ResourceGetter) RunOnEvent() {
+	// No events to watch for in static resources.
+}
+
+func (rg *ResourceGetter) Close() {
+	// No resources to close.
+}
+
+func (rg *ResourceGetter) Subscribe(ch chan<- CommandEvent) {
+	rg.listeners = append(rg.listeners, ch)
+}
+
+func (rg *ResourceGetter) broadcast(evt CommandEvent) {
+	// Send the event to all listeners.
+	for _, ch := range rg.listeners {
+		ch <- evt
+	}
 }

@@ -12,8 +12,9 @@ import (
 
 type Commander interface {
 	Run() kube.CommandOutput
-	RunOnUpdate(ch chan<- kube.CommandOutput)
+	RunOnEvent()
 	String() string
+	Subscribe(ch chan<- kube.CommandEvent)
 }
 
 type CommonModel struct {
