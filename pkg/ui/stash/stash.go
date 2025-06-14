@@ -375,6 +375,10 @@ func (m *StashModel) openYAML(md *yamldoc.YAMLDocument) tea.Cmd {
 	return cmd
 }
 
+func (m *StashModel) itemsOnPage() int {
+	return m.paginator().ItemsOnPage(len(m.getVisibleYAMLs()))
+}
+
 func (m *StashModel) moveCursorUp() {
 	m.setCursor(m.cursor() - 1)
 	if m.cursor() < 0 && m.paginator().Page == 0 {
@@ -391,11 +395,11 @@ func (m *StashModel) moveCursorUp() {
 	// Go to previous page.
 	m.paginator().PrevPage()
 
-	m.setCursor(m.paginator().ItemsOnPage(len(m.getVisibleYAMLs())) - 1)
+	m.setCursor(m.itemsOnPage() - 1)
 }
 
 func (m *StashModel) moveCursorDown() {
-	itemsOnPage := m.paginator().ItemsOnPage(len(m.getVisibleYAMLs()))
+	itemsOnPage := m.itemsOnPage()
 
 	m.setCursor(m.cursor() + 1)
 	if m.cursor() < itemsOnPage {
@@ -421,7 +425,7 @@ func (m *StashModel) moveCursorDown() {
 }
 
 func (m *StashModel) enforcePaginationBounds() {
-	itemsOnPage := m.paginator().ItemsOnPage(len(m.getVisibleYAMLs()))
+	itemsOnPage := m.itemsOnPage()
 	if m.cursor() > itemsOnPage-1 {
 		m.setCursor(max(0, itemsOnPage-1))
 	}
