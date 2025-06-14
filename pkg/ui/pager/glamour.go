@@ -10,17 +10,20 @@ import (
 
 	"github.com/charmbracelet/glamour/styles"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/cellbuf"
 	"github.com/muesli/termenv"
 	"golang.org/x/term"
 
 	glamouransi "github.com/charmbracelet/glamour/ansi"
 )
 
-const lineNumberWidth = 4
+const (
+	lineNumberWidth = 4
+
+	wrapOnCharacters = " /-"
+)
 
 var (
-	GlamourDisabled = false
-
 	lineNumberFg    = lipgloss.AdaptiveColor{Light: "#656565", Dark: "#7D7D7D"}
 	lineNumberStyle = lipgloss.NewStyle().
 			Foreground(lineNumberFg).
@@ -39,16 +42,11 @@ func NewGlamourRenderer(model PagerModel) *GlamourRenderer {
 
 // RenderContent renders YAML content with glamour styling.
 func (gr *GlamourRenderer) RenderContent(yaml string) (string, error) {
-	if GlamourDisabled {
+	if gr.model.cm.Config.GlamourDisabled {
 		return yaml, nil
 	}
 
-	renderConfig, err := gr.buildRenderConfig()
-	if err != nil {
-		return "", err
-	}
-
-	content, err := gr.executeRendering(yaml, renderConfig)
+	content, err := gr.executeRendering(yaml)
 	if err != nil {
 		return "", err
 	}
@@ -56,32 +54,21 @@ func (gr *GlamourRenderer) RenderContent(yaml string) (string, error) {
 	return gr.postProcessContent(content), nil
 }
 
-// buildRenderConfig creates the rendering configuration.
-func (gr *GlamourRenderer) buildRenderConfig() (*glamourRenderConfig, error) {
-	const width = 0
-
+// executeRendering performs the actual glamour rendering.
+func (gr *GlamourRenderer) executeRendering(yaml string) (string, error) {
 	style, err := glamourStyle(gr.model.cm.Config.GlamourStyle)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return &glamourRenderConfig{
-		width: width,
-		style: style,
-	}, nil
-}
-
-// executeRendering performs the actual glamour rendering.
-func (gr *GlamourRenderer) executeRendering(yaml string, config *glamourRenderConfig) (string, error) {
 	r := glamouransi.CodeBlockElement{
 		Code:     yaml,
 		Language: "yaml",
 	}
 
 	buf := &bytes.Buffer{}
-	err := r.Render(buf, glamouransi.NewRenderContext(glamouransi.Options{
-		WordWrap:         config.width,
-		Styles:           config.style,
+	err = r.Render(buf, glamouransi.NewRenderContext(glamouransi.Options{
+		Styles:           style,
 		PreserveNewLines: true,
 	}))
 	if err != nil {
@@ -103,7 +90,7 @@ func (gr *GlamourRenderer) postProcessContent(content string) string {
 		if !gr.model.cm.Config.LineNumbersDisabled {
 			result.WriteString(gr.formatLineWithNumber(line, i+1))
 		} else {
-			result.WriteString(line)
+			result.WriteString(gr.formatLine(line))
 		}
 
 		// Don't add an artificial newline after the last split.
@@ -115,18 +102,39 @@ func (gr *GlamourRenderer) postProcessContent(content string) string {
 	return result.String()
 }
 
-// formatLineWithNumber formats a line with line number and truncation.
-func (gr *GlamourRenderer) formatLineWithNumber(line string, lineNum int) string {
-	trunc := lipgloss.NewStyle().MaxWidth(gr.model.viewport.Width - lineNumberWidth).Render
-	lineNumberText := fmt.Sprintf("%"+strconv.Itoa(lineNumberWidth)+"d", lineNum)
+func (gr *GlamourRenderer) formatLine(line string) string {
+	viewMaxWidth := max(0, gr.model.viewport.Width)
+	glamourMaxWidth := min(viewMaxWidth, max(0, gr.model.cm.Config.GlamourMaxWidth))
 
-	return lineNumberStyle(lineNumberText) + trunc(line)
+	trunc := lipgloss.NewStyle().MaxWidth(viewMaxWidth).Render
+	lines := cellbuf.Wrap(line, glamourMaxWidth, wrapOnCharacters)
+
+	return trunc(lines)
 }
 
-// glamourRenderConfig holds configuration for glamour rendering.
-type glamourRenderConfig struct {
-	style glamouransi.StyleConfig
-	width int
+// formatLineWithNumber formats a line with line number and truncation.
+func (gr *GlamourRenderer) formatLineWithNumber(line string, lineNum int) string {
+	viewMaxWidth := max(0, gr.model.viewport.Width-lineNumberWidth)
+	glamourMaxWidth := min(viewMaxWidth, max(0, gr.model.cm.Config.GlamourMaxWidth-lineNumberWidth))
+
+	trunc := lipgloss.NewStyle().MaxWidth(viewMaxWidth).Render
+	lineNumberText := fmt.Sprintf("%"+strconv.Itoa(lineNumberWidth)+"d", lineNum)
+
+	lines := cellbuf.Wrap(line, glamourMaxWidth, wrapOnCharacters)
+
+	fmtLines := []string{}
+	for i, ln := range strings.Split(lines, "\n") {
+		if i == 0 {
+			// Add line number only to the first line.
+			ln = lineNumberStyle(lineNumberText) + trunc(ln)
+		} else {
+			// For subsequent lines, just add spaces for alignment.
+			ln = strings.Repeat(" ", max(0, lineNumberWidth-2)) + lineNumberStyle(" -  ") + trunc(ln)
+		}
+		fmtLines = append(fmtLines, ln)
+	}
+
+	return strings.Join(fmtLines, "\n")
 }
 
 // glamourStyle returns ansi.StyleConfig based on the given style.
