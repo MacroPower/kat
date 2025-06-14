@@ -484,74 +484,121 @@ func TestCommandRunner_CancellationBehavior(t *testing.T) {
 func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 	t.Parallel()
 
-	// Create a temporary directory for testing
-	tempDir := t.TempDir()
-
-	// Create a test file to watch
-	testFile := filepath.Join(tempDir, "test.yaml")
-	require.NoError(t, os.WriteFile(testFile, []byte("test: data"), 0o644))
-
-	// Create a command that takes a bit of time to execute
-	runner, err := kube.NewCommandRunner(tempDir, kube.WithCommand(
-		kube.MustNewCommand(nil, ".*\\.yaml$", "", "sleep", "0.2"), // 200ms sleep
-	))
-	require.NoError(t, err)
-
-	// Start watching
-	require.NoError(t, runner.Watch())
-	defer runner.Close()
-
-	// Channel to collect command outputs
-	results := make(chan kube.CommandEvent, 10)
-
-	runner.Subscribe(results)
-
-	// Start RunOnEvent in a goroutine
-	go runner.RunOnEvent()
-
-	// Give it a moment to start watching
-	time.Sleep(50 * time.Millisecond)
-
-	// Trigger multiple rapid file events by writing to the file quickly
-	for i := range 5 {
-		content := fmt.Sprintf("test: data-%d", i)
-		require.NoError(t, os.WriteFile(testFile, []byte(content), 0o644))
-		time.Sleep(10 * time.Millisecond) // Small delay between writes
+	tcs := map[string]struct {
+		commandSleepTime  string
+		numFileEvents     int
+		collectDuration   time.Duration
+		expectedMinEvents int
+		expectedMaxEvents int
+	}{
+		"rapid file events with slow command": {
+			numFileEvents:     5,
+			commandSleepTime:  "0.2", // 200ms sleep
+			collectDuration:   3 * time.Second,
+			expectedMinEvents: 1, // At least one should complete
+			expectedMaxEvents: 5, // Could be up to 5 if no cancellation occurs
+		},
+		"fewer file events with faster command": {
+			numFileEvents:     3,
+			commandSleepTime:  "0.1", // 100ms sleep
+			collectDuration:   2 * time.Second,
+			expectedMinEvents: 1,
+			expectedMaxEvents: 3,
+		},
 	}
 
-	// Wait for commands to complete and collect results
-	var outputs []kube.CommandOutput
-	timeout := time.After(2 * time.Second)
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 
-	for {
-		select {
-		case output := <-results:
-			switch out := output.(type) {
-			case kube.CommandEventEnd:
-				outputs = append(outputs, kube.CommandOutput(out))
-				// We expect only the last command to complete successfully
-				// (previous ones should be canceled)
-				if len(outputs) >= 1 {
-					goto done
+			// Create a temporary directory for testing
+			tempDir := t.TempDir()
+
+			// Create a test file to watch
+			testFile := filepath.Join(tempDir, "test.yaml")
+			require.NoError(t, os.WriteFile(testFile, []byte("test: data"), 0o644))
+
+			// Create a command that takes a bit of time to execute
+			runner, err := kube.NewCommandRunner(tempDir, kube.WithCommand(
+				kube.MustNewCommand(nil, ".*\\.yaml$", "", "sleep", tc.commandSleepTime),
+			))
+			require.NoError(t, err)
+
+			// Start watching
+			require.NoError(t, runner.Watch())
+			defer runner.Close()
+
+			// Channel to collect command outputs
+			results := make(chan kube.CommandEvent, 20)
+			runner.Subscribe(results)
+
+			// Start RunOnEvent in a goroutine
+			go runner.RunOnEvent()
+
+			// Give it a moment to start watching
+			time.Sleep(50 * time.Millisecond)
+
+			// Trigger multiple rapid file events by writing to the file quickly
+			for i := range tc.numFileEvents {
+				content := fmt.Sprintf("test: data-%d", i)
+				require.NoError(t, os.WriteFile(testFile, []byte(content), 0o644))
+				time.Sleep(10 * time.Millisecond) // Small delay between writes
+			}
+
+			// Collect all events for a specified duration
+			var (
+				outputs        []kube.CommandOutput
+				startEvents    int
+				cancelEvents   int
+				collectionDone = make(chan struct{})
+			)
+
+			go func() {
+				defer close(collectionDone)
+				deadline := time.After(tc.collectDuration)
+
+				for {
+					select {
+					case event := <-results:
+						switch out := event.(type) {
+						case kube.CommandEventStart:
+							startEvents++
+						case kube.CommandEventEnd:
+							outputs = append(outputs, kube.CommandOutput(out))
+						case kube.CommandEventCancel:
+							cancelEvents++
+						}
+					case <-deadline:
+						return
+					}
+				}
+			}()
+
+			// Wait for collection to complete
+			<-collectionDone
+
+			// Validate results
+			assert.GreaterOrEqual(t, len(outputs), tc.expectedMinEvents,
+				"should get at least %d command result(s)", tc.expectedMinEvents)
+			assert.LessOrEqual(t, len(outputs), tc.expectedMaxEvents,
+				"should get at most %d command result(s)", tc.expectedMaxEvents)
+
+			// The final result should not have a cancellation error
+			if len(outputs) > 0 {
+				lastOutput := outputs[len(outputs)-1]
+				if lastOutput.Error != nil {
+					assert.NotContains(t, lastOutput.Error.Error(), "context canceled",
+						"final command should not be canceled")
 				}
 			}
-		case <-timeout:
-			goto done
-		}
+
+			// We should see start events for each file modification
+			assert.GreaterOrEqual(t, startEvents, tc.numFileEvents,
+				"should see start events for each file modification")
+
+			// Log the results for debugging
+			t.Logf("Events: %d starts, %d ends, %d cancels from %d file events",
+				startEvents, len(outputs), cancelEvents, tc.numFileEvents)
+		})
 	}
-
-done:
-	// We should get at least one result (the last command that wasn't canceled)
-	assert.GreaterOrEqual(t, len(outputs), 1, "should get at least one command result")
-
-	// The final result should not have a cancellation error
-	lastOutput := outputs[len(outputs)-1]
-	if lastOutput.Error != nil {
-		assert.NotContains(t, lastOutput.Error.Error(), "context canceled",
-			"final command should not be canceled")
-	}
-
-	// If we got multiple results, earlier ones might be canceled
-	// but this tests that the cancellation mechanism is working
-	t.Logf("Received %d command outputs from 5 file events", len(outputs))
 }
