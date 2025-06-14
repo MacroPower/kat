@@ -177,7 +177,7 @@ func TestCommand_EmptyHookCommand(t *testing.T) {
 
 	output := cmd.Exec(t.Context(), ".")
 	require.Error(t, output.Error)
-	assert.Contains(t, output.Error.Error(), "empty hook command")
+	assert.Contains(t, output.Error.Error(), "empty command")
 }
 
 func TestNewCommandWithHooks(t *testing.T) {
