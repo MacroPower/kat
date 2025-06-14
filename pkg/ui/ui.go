@@ -130,7 +130,7 @@ func newModel(cfg config.Config, cmd common.Commander) tea.Model {
 }
 
 func (m *model) Init() tea.Cmd {
-	return m.runCommand()
+	return tea.Batch(m.pager.Init(), m.runCommand())
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

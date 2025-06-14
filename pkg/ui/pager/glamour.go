@@ -32,43 +32,43 @@ var (
 
 // GlamourRenderer handles rendering content with glamour styling.
 type GlamourRenderer struct {
-	model PagerModel
+	style               glamouransi.StyleConfig
+	lineNumbersDisabled bool
 }
 
 // NewGlamourRenderer creates a new GlamourRenderer.
-func NewGlamourRenderer(model PagerModel) *GlamourRenderer {
-	return &GlamourRenderer{model: model}
+func NewGlamourRenderer(style string, lineNumbersDisabled bool) (*GlamourRenderer, error) {
+	styleConfig, err := glamourStyle(style)
+	if err != nil {
+		return nil, fmt.Errorf("glamour style: %w", err)
+	}
+
+	return &GlamourRenderer{
+		style:               styleConfig,
+		lineNumbersDisabled: lineNumbersDisabled,
+	}, nil
 }
 
 // RenderContent renders YAML content with glamour styling.
-func (gr *GlamourRenderer) RenderContent(yaml string) (string, error) {
-	if gr.model.cm.Config.GlamourDisabled {
-		return yaml, nil
-	}
-
+func (gr *GlamourRenderer) RenderContent(yaml string, width int) (string, error) {
 	content, err := gr.executeRendering(yaml)
 	if err != nil {
 		return "", err
 	}
 
-	return gr.postProcessContent(content), nil
+	return gr.postProcessContent(content, width), nil
 }
 
 // executeRendering performs the actual glamour rendering.
 func (gr *GlamourRenderer) executeRendering(yaml string) (string, error) {
-	style, err := glamourStyle(gr.model.cm.Config.GlamourStyle)
-	if err != nil {
-		return "", err
-	}
-
 	r := glamouransi.CodeBlockElement{
 		Code:     yaml,
 		Language: "yaml",
 	}
 
 	buf := &bytes.Buffer{}
-	err = r.Render(buf, glamouransi.NewRenderContext(glamouransi.Options{
-		Styles:           style,
+	err := r.Render(buf, glamouransi.NewRenderContext(glamouransi.Options{
+		Styles:           gr.style,
 		PreserveNewLines: true,
 	}))
 	if err != nil {
@@ -79,7 +79,7 @@ func (gr *GlamourRenderer) executeRendering(yaml string) (string, error) {
 }
 
 // postProcessContent handles post-processing of rendered content.
-func (gr *GlamourRenderer) postProcessContent(content string) string {
+func (gr *GlamourRenderer) postProcessContent(content string, width int) string {
 	content = strings.TrimSpace(content)
 
 	// Trim lines and add line numbers if needed.
@@ -87,10 +87,10 @@ func (gr *GlamourRenderer) postProcessContent(content string) string {
 	var result strings.Builder
 
 	for i, line := range lines {
-		if !gr.model.cm.Config.LineNumbersDisabled {
-			result.WriteString(gr.formatLineWithNumber(line, i+1))
+		if gr.lineNumbersDisabled {
+			result.WriteString(gr.formatLine(line, width))
 		} else {
-			result.WriteString(gr.formatLine(line))
+			result.WriteString(gr.formatLineWithNumber(line, i+1, width))
 		}
 
 		// Don't add an artificial newline after the last split.
@@ -102,25 +102,21 @@ func (gr *GlamourRenderer) postProcessContent(content string) string {
 	return result.String()
 }
 
-func (gr *GlamourRenderer) formatLine(line string) string {
-	viewMaxWidth := max(0, gr.model.viewport.Width)
-	glamourMaxWidth := min(viewMaxWidth, max(0, gr.model.cm.Config.GlamourMaxWidth))
-
-	trunc := lipgloss.NewStyle().MaxWidth(viewMaxWidth).Render
-	lines := cellbuf.Wrap(line, glamourMaxWidth, wrapOnCharacters)
+func (gr *GlamourRenderer) formatLine(line string, width int) string {
+	trunc := lipgloss.NewStyle().MaxWidth(width).Render
+	lines := cellbuf.Wrap(line, width, wrapOnCharacters)
 
 	return trunc(lines)
 }
 
 // formatLineWithNumber formats a line with line number and truncation.
-func (gr *GlamourRenderer) formatLineWithNumber(line string, lineNum int) string {
-	viewMaxWidth := max(0, gr.model.viewport.Width-lineNumberWidth)
-	glamourMaxWidth := min(viewMaxWidth, max(0, gr.model.cm.Config.GlamourMaxWidth-lineNumberWidth))
+func (gr *GlamourRenderer) formatLineWithNumber(line string, lineNum, width int) string {
+	width = max(0, width-lineNumberWidth-2) // Reserve space for line number and padding.
 
-	trunc := lipgloss.NewStyle().MaxWidth(viewMaxWidth).Render
+	trunc := lipgloss.NewStyle().MaxWidth(width).Render
 	lineNumberText := fmt.Sprintf("%"+strconv.Itoa(lineNumberWidth)+"d", lineNum)
 
-	lines := cellbuf.Wrap(line, glamourMaxWidth, wrapOnCharacters)
+	lines := cellbuf.Wrap(line, width, wrapOnCharacters)
 
 	fmtLines := []string{}
 	for i, ln := range strings.Split(lines, "\n") {
