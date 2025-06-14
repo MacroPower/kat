@@ -76,7 +76,6 @@ homebrew_casks:
         {{- else }}{{ .Arch }}{{ end -}}
         {{- if .Arm }}v{{ .Arm }}{{ end -}}
         .tar.gz
-      using: ":homebrew_curl"
     commit_msg_template: "chore: formula update for kat {{ .Tag }}"
     commit_author:
       name: botty-mcbottington
