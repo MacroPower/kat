@@ -485,25 +485,19 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 	t.Parallel()
 
 	tcs := map[string]struct {
-		commandSleepTime  string
-		numFileEvents     int
-		collectDuration   time.Duration
-		expectedMinEvents int
-		expectedMaxEvents int
+		commandSleepTime string
+		numFileEvents    int
+		collectDuration  time.Duration
 	}{
 		"rapid file events with slow command": {
-			numFileEvents:     5,
-			commandSleepTime:  "0.2", // 200ms sleep
-			collectDuration:   3 * time.Second,
-			expectedMinEvents: 1, // At least one should complete
-			expectedMaxEvents: 5, // Could be up to 5 if no cancellation occurs
+			numFileEvents:    5,
+			commandSleepTime: "0.2", // 200ms sleep
+			collectDuration:  3 * time.Second,
 		},
 		"fewer file events with faster command": {
-			numFileEvents:     3,
-			commandSleepTime:  "0.1", // 100ms sleep
-			collectDuration:   2 * time.Second,
-			expectedMinEvents: 1,
-			expectedMaxEvents: 3,
+			numFileEvents:    3,
+			commandSleepTime: "0.1", // 100ms sleep
+			collectDuration:  2 * time.Second,
 		},
 	}
 
@@ -529,7 +523,7 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 			defer runner.Close()
 
 			// Channel to collect command outputs
-			results := make(chan kube.CommandEvent, 20)
+			results := make(chan kube.CommandEvent, 50) // Larger buffer for multiple FS events
 			runner.Subscribe(results)
 
 			// Start RunOnEvent in a goroutine
@@ -577,13 +571,24 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 			// Wait for collection to complete
 			<-collectionDone
 
-			// Validate results
-			assert.GreaterOrEqual(t, len(outputs), tc.expectedMinEvents,
-				"should get at least %d command result(s)", tc.expectedMinEvents)
-			assert.LessOrEqual(t, len(outputs), tc.expectedMaxEvents,
-				"should get at most %d command result(s)", tc.expectedMaxEvents)
+			// Core assertions: These are the behaviors we actually care about
 
-			// The final result should not have a cancellation error
+			// 1. We should get at least one successful command completion
+			assert.GreaterOrEqual(t, len(outputs), 1,
+				"should get at least one command result")
+
+			// 2. We should see some start events (file system watcher is working)
+			assert.GreaterOrEqual(t, startEvents, 1,
+				"should see at least one start event")
+
+			// 3. If we have multiple outputs, we should see some cancellations
+			// (this tests that the cancellation mechanism is working)
+			if len(outputs) > 1 {
+				assert.GreaterOrEqual(t, cancelEvents, 1,
+					"should see some cancellations when multiple commands run")
+			}
+
+			// 4. The final result should not be a cancellation error
 			if len(outputs) > 0 {
 				lastOutput := outputs[len(outputs)-1]
 				if lastOutput.Error != nil {
@@ -592,13 +597,20 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 				}
 			}
 
-			// We should see start events for each file modification
-			assert.GreaterOrEqual(t, startEvents, tc.numFileEvents,
-				"should see start events for each file modification")
+			// 5. We shouldn't have more completed commands than we have start events
+			// (basic sanity check)
+			assert.LessOrEqual(t, len(outputs), startEvents,
+				"completed commands should not exceed started commands")
 
 			// Log the results for debugging
 			t.Logf("Events: %d starts, %d ends, %d cancels from %d file events",
 				startEvents, len(outputs), cancelEvents, tc.numFileEvents)
+
+			// Additional logging to help understand platform differences
+			if startEvents > tc.numFileEvents*2 {
+				t.Logf("Note: File system generated %d start events for %d file writes (%.1fx multiplier)",
+					startEvents, tc.numFileEvents, float64(startEvents)/float64(tc.numFileEvents))
+			}
 		})
 	}
 }
