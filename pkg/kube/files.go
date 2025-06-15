@@ -455,7 +455,13 @@ func (cr *CommandRunner) RunContext(ctx context.Context) CommandOutput {
 	}
 
 	co := cr.command.Exec(ctx, path)
-	cr.broadcast(CommandEventEnd(co))
+
+	// Check if the command was canceled.
+	if co.Error != nil && errors.Is(ctx.Err(), context.Canceled) {
+		cr.broadcast(CommandEventCancel{})
+	} else {
+		cr.broadcast(CommandEventEnd(co))
+	}
 
 	return co
 }
