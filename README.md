@@ -36,7 +36,7 @@
 
 ```sh
 brew tap macropower/tap
-brew install kat
+brew install kat --cask
 ```
 
 ### Releases
