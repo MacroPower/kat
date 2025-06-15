@@ -489,6 +489,74 @@
         }
       }
     },
+    "tmux@3.5": {
+      "last_modified": "2025-05-16T20:19:48Z",
+      "resolved": "github:NixOS/nixpkgs/12a55407652e04dcf2309436eb06fef0d3713ef3#tmux",
+      "source": "devbox-search",
+      "version": "3.5a",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/hj4r6y5nd1kh25c6xil1p4vxqvv5r7zk-tmux-3.5a",
+              "default": true
+            },
+            {
+              "name": "man",
+              "path": "/nix/store/sppflpqfis5pdqiqcnzryg0gad5g4sa3-tmux-3.5a-man",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/hj4r6y5nd1kh25c6xil1p4vxqvv5r7zk-tmux-3.5a"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/k8mrr2dyf16k92kapd49sdyhijs8ys33-tmux-3.5a",
+              "default": true
+            },
+            {
+              "name": "man",
+              "path": "/nix/store/gg38wzj54ss6k6057ydxil666d93zk54-tmux-3.5a-man",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/k8mrr2dyf16k92kapd49sdyhijs8ys33-tmux-3.5a"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/066kykwz7ys1bc19h53l5s4gs4crn181-tmux-3.5a",
+              "default": true
+            },
+            {
+              "name": "man",
+              "path": "/nix/store/nz1m26y533187msgv1331c2p0yyc6aja-tmux-3.5a-man",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/066kykwz7ys1bc19h53l5s4gs4crn181-tmux-3.5a"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/wx5b4j4xiir3pdccdnh6k2q13k3m8yhy-tmux-3.5a",
+              "default": true
+            },
+            {
+              "name": "man",
+              "path": "/nix/store/ygnjsj6pyi8ha8j945idvrj0a9ns8ici-tmux-3.5a-man",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/wx5b4j4xiir3pdccdnh6k2q13k3m8yhy-tmux-3.5a"
+        }
+      }
+    },
     "vhs@0.9.0": {
       "last_modified": "2025-05-24T21:46:02Z",
       "resolved": "github:NixOS/nixpkgs/edb3633f9100d9277d1c9af245a4e9337a980c07#vhs",

@@ -10,7 +10,8 @@
     "zizmor": "1.9.0",
     "conform": "0.1.0-alpha.29",
     "vhs": "0.9.0",
-    "bashInteractive": "5.2p37"
+    "bashInteractive": "5.2p37",
+    "tmux": "3.5"
   },
   "shell": {
     "init_hook": ["echo 'Welcome to devbox!' > /dev/null"]

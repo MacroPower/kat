@@ -58,52 +58,76 @@
 Output docs/assets/demo.gif
 
 Set Shell "bash"
-Set WindowBar Colorful
 Set Padding 20
 Set FontSize 22
-Set Width 900
+Set Width 1680
 Set Height 600
 
 Hide
-Type `go build -o dist/kat -ldflags="-X github.com/MacroPower/kat/pkg/version.Version=0.x" cmd/kat/main.go`  Enter
-Type "alias kat=./dist/kat"  Enter
-Type "export KAT_UI_GLAMOUR_STYLE=dark"  Enter
-Type "clear"  Enter
-Sleep 500ms
+
+  Type `go build -o dist/kat -ldflags="-X github.com/MacroPower/kat/pkg/version.Version=0.x" cmd/kat/main.go`  Enter
+  Type "alias kat=./dist/kat"  Enter
+  Type "export KAT_UI_GLAMOUR_STYLE=dark"  Enter
+
+  Sleep 500ms
+  Type "clear"  Enter
+  Sleep 500ms
+
+  Type "tmux -f /dev/null -L test new-session -- bash" Sleep 500ms Enter
+  Type "tmux split-window -d -h -- bash && \" Sleep 500ms Enter
+  Type "tmux set status && \" Sleep 500ms Enter
+  Type 'tmux setw pane-border-style "fg=0" && \' Sleep 500ms Enter
+  Type 'tmux setw pane-active-border-style "fg=0"' Sleep 500ms Enter
+  Sleep 500ms
+  Ctrl+L
+
+  Type "vim example/helm/values.yaml"  Enter
+  Sleep 500ms
+  Type ":set backupcopy=yes"  Enter
+  Type ":set nowrap"  Enter
+
+  Ctrl+B
+  Type o
+  Type "kat example/helm -w"  Enter
+  Sleep 4s
+
 Show
 
-Sleep 100ms
-
-Type "kat example/helm" Sleep 500ms  Enter
-
-Sleep 2s
-
-Right
-Sleep 1s
-Left
-Sleep 1s
-
-Enter
-Sleep 1s
-
-Left
 Sleep 500ms
 
 Type "/"
 Sleep 500ms
-Type "test-connection"
+Type "deployment" Sleep 500ms Enter
 Sleep 500ms
+PageDown@100ms 1
+Sleep 100ms
+Down@50ms 5
+Sleep 100ms
 
-Down@500ms
-Enter@500ms
+Ctrl+B
+Type o
 
-Down@50ms 10
+Type "/tag:" Sleep 500ms Enter
+Type 'f"' Sleep 250ms
+Type "a" Sleep 250ms
+Type 'latest"' Sleep 500ms
+Escape
+Type ":w" Sleep 500ms Enter
+Escape
 
-Sleep 500ms
-Type "r"
-Sleep 1s
-Type "r"
 Sleep 2s
 
-Left
-Sleep 1s
+Type "a" Sleep 500ms
+Delete Sleep 250ms
+Escape
+Type ":w" Sleep 500ms Enter
+Escape
+
+Sleep 3s
+
+Hide
+
+Type ':%s/tag: "latest"/tag: ""/' Sleep 500ms Enter
+Type ":wq!" Sleep 500ms Enter
+
+Sleep 2s
