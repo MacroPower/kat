@@ -110,12 +110,13 @@ kube:
   commands:
     # Run `helm template . --generate-name` when kat targets a directory
     # containing a `Chart.yaml` file.
-    - match: .*/Chart\.ya?ml
-      source: .*\.(ya?ml|tpl) # Used for `--watch`.
+    - match: .*/Chart\.ya?ml$
+      source: .*\.(ya?ml|tpl)$ # Used for `--watch`.
       command: helm
       args: [template, ".", --generate-name]
       hooks:
         preRender:
+          # Run `helm dependency build` before rendering the chart.
           - command: helm
             args: [dependency, build]
         postRender:
@@ -126,8 +127,8 @@ kube:
 
     # Run `kustomize build --enable-helm .` when kat targets a directory
     # containing a `kustomization.yaml` file.
-    - match: .*/kustomization\.ya?ml
-      source: .*\.ya?ml # Used for `--watch`.
+    - match: .*/kustomization\.ya?ml$
+      source: .*\.ya?ml$ # Used for `--watch`.
       command: kustomize
       args: [build, --enable-helm, "."]
       hooks:

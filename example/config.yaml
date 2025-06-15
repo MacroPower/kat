@@ -1,7 +1,7 @@
 kube:
   commands:
-    - match: .*/Chart\.ya?ml
-      source: .*\.(ya?ml|tpl)
+    - match: .*/Chart\.ya?ml$
+      source: .*\.(ya?ml|tpl)$
       hooks:
         preRender:
           - command: helm
@@ -13,8 +13,8 @@ kube:
         - template
         - .
         - --generate-name
-    - match: .*/kustomization\.ya?ml
-      source: .*\.ya?ml
+    - match: .*/kustomization\.ya?ml$
+      source: .*\.ya?ml$
       command: kustomize
       args:
         - build
