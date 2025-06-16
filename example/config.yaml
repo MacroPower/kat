@@ -154,8 +154,8 @@ ui:
         keys:
           - code: d
   minimum-delay: 500ms
-  glamour-style: auto
-  glamour-max-width: 0
-  glamour-disabled: false
+  theme: auto
+  word-wrap: false
+  chroma-disabled: false
   line-numbers-disabled: false
   compact: false

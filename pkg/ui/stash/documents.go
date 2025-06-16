@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/MacroPower/kat/pkg/ui/styles"
+	"github.com/MacroPower/kat/pkg/ui/themes"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
 
 // DocumentListRenderer handles rendering of document lists.
 type DocumentListRenderer struct {
+	theme   *themes.Theme
 	width   int
 	height  int
 	indent  int
@@ -17,8 +18,8 @@ type DocumentListRenderer struct {
 }
 
 // NewDocumentListRenderer creates a new document list renderer.
-func NewDocumentListRenderer(indent int, compact bool) *DocumentListRenderer {
-	return &DocumentListRenderer{indent: indent, compact: compact}
+func NewDocumentListRenderer(theme *themes.Theme, indent int, compact bool) *DocumentListRenderer {
+	return &DocumentListRenderer{theme: theme, indent: indent, compact: compact}
 }
 
 func (dlr *DocumentListRenderer) SetSize(width, height int) {
@@ -41,7 +42,7 @@ func (dlr *DocumentListRenderer) RenderDocumentList(docs []*yamldoc.YAMLDocument
 	// Handle empty states.
 	if len(docs) == 0 {
 		f := func(s string) {
-			b.WriteString("  " + styles.GrayFg(s))
+			b.WriteString("  " + dlr.theme.SubtleStyle.Render(s))
 		}
 
 		switch m.currentSection().key {

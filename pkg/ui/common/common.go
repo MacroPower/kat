@@ -8,6 +8,7 @@ import (
 	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/ui/config"
 	"github.com/MacroPower/kat/pkg/ui/statusbar"
+	"github.com/MacroPower/kat/pkg/ui/themes"
 )
 
 type Commander interface {
@@ -19,6 +20,7 @@ type Commander interface {
 
 type CommonModel struct {
 	Cmd                Commander
+	Theme              *themes.Theme
 	StatusMessageTimer *time.Timer
 	StatusMessage      StatusMessage
 	Config             config.Config
@@ -52,11 +54,11 @@ type (
 
 func (m *CommonModel) GetStatusBar() *statusbar.StatusBarRenderer {
 	if m.ShowStatusMessage && m.StatusMessage.Message != "" {
-		return statusbar.NewStatusBarRenderer(m.Width,
+		return statusbar.NewStatusBarRenderer(m.Theme, m.Width,
 			statusbar.WithMessage(m.StatusMessage.Message, m.StatusMessage.Style))
 	}
 
-	return statusbar.NewStatusBarRenderer(m.Width)
+	return statusbar.NewStatusBarRenderer(m.Theme, m.Width)
 }
 
 // Show a status (success) message to the user.

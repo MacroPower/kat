@@ -5,11 +5,10 @@ import (
 	"math"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/ansi"
 	"github.com/muesli/reflow/truncate"
 
-	"github.com/MacroPower/kat/pkg/ui/styles"
+	"github.com/MacroPower/kat/pkg/ui/themes"
 	"github.com/MacroPower/kat/pkg/version"
 )
 
@@ -26,72 +25,17 @@ const (
 	StyleError
 )
 
-var (
-	messageFg = lipgloss.AdaptiveColor{Light: "#89F0CB", Dark: "#89F0CB"}
-	messageBg = lipgloss.AdaptiveColor{Light: "#1C8760", Dark: "#1C8760"}
-
-	errorFg = styles.Gray
-	errorBg = styles.Red
-
-	statusBarNoteFg = lipgloss.AdaptiveColor{Light: "#656565", Dark: "#7D7D7D"}
-	statusBarBg     = lipgloss.AdaptiveColor{Light: "#E6E6E6", Dark: "#242424"}
-
-	statusBarScrollPosStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.AdaptiveColor{Light: "#949494", Dark: "#5A5A5A"}).
-				Background(statusBarBg).
-				Render
-
-	statusBarNoteStyle = lipgloss.NewStyle().
-				Foreground(statusBarNoteFg).
-				Background(statusBarBg).
-				Render
-
-	statusBarHelpStyle = lipgloss.NewStyle().
-				Foreground(statusBarNoteFg).
-				Background(lipgloss.AdaptiveColor{Light: "#DCDCDC", Dark: "#323232"}).
-				Render
-
-	statusBarMessageStyle = lipgloss.NewStyle().
-				Foreground(messageFg).
-				Background(messageBg).
-				Render
-
-	statusBarMessageScrollPosStyle = lipgloss.NewStyle().
-					Foreground(messageFg).
-					Background(messageBg).
-					Render
-
-	statusBarMessageHelpStyle = lipgloss.NewStyle().
-					Foreground(lipgloss.Color("#B6FFE4")).
-					Background(styles.Green).
-					Render
-
-	statusBarErrorStyle = lipgloss.NewStyle().
-				Foreground(errorFg).
-				Background(errorBg).
-				Render
-
-	statusBarErrorScrollPosStyle = lipgloss.NewStyle().
-					Foreground(errorFg).
-					Background(errorBg).
-					Render
-
-	statusBarErrorHelpStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#FFB6B6")).
-				Background(styles.Gray).
-				Render
-)
-
 // StatusBarRenderer handles status bar rendering for the pager.
 type StatusBarRenderer struct {
+	theme   *themes.Theme
 	message string
 	width   int
 	style   Style
 }
 
 // NewStatusBarRenderer creates a new StatusBarRenderer.
-func NewStatusBarRenderer(width int, opts ...StatusBarOpt) *StatusBarRenderer {
-	sb := &StatusBarRenderer{width: width, style: StyleNormal}
+func NewStatusBarRenderer(theme *themes.Theme, width int, opts ...StatusBarOpt) *StatusBarRenderer {
+	sb := &StatusBarRenderer{theme: theme, width: width, style: StyleNormal}
 	for _, opt := range opts {
 		opt(sb)
 	}
@@ -152,11 +96,11 @@ func (r *StatusBarRenderer) renderProgressNote(note string) string {
 
 	switch r.style {
 	case StyleError:
-		return statusBarErrorScrollPosStyle(note)
+		return r.theme.ErrorTitleStyle.Render(note)
 	case StyleSuccess:
-		return statusBarMessageScrollPosStyle(note)
+		return r.theme.StatusBarMessagePosStyle.Render(note)
 	default:
-		return statusBarScrollPosStyle(note)
+		return r.theme.StatusBarPosStyle.Render(note)
 	}
 }
 
@@ -164,11 +108,11 @@ func (r *StatusBarRenderer) renderProgressNote(note string) string {
 func (r *StatusBarRenderer) renderHelpNote() string {
 	switch r.style {
 	case StyleError:
-		return statusBarErrorHelpStyle(errorText)
+		return r.theme.ErrorTitleStyle.Render(errorText)
 	case StyleSuccess:
-		return statusBarMessageHelpStyle(helpText)
+		return r.theme.StatusBarMessageHelpStyle.Render(helpText)
 	default:
-		return statusBarHelpStyle(helpText)
+		return r.theme.StatusBarHelpStyle.Render(helpText)
 	}
 }
 
@@ -187,15 +131,15 @@ func (r *StatusBarRenderer) renderNote(msg, progress string) string {
 		ansi.PrintableRuneWidth(progress)-
 		ansi.PrintableRuneWidth(helpNote))
 
-	note = truncate.StringWithTail(" "+note+" ", uint(availableWidth), styles.Ellipsis) //nolint:gosec // Uses max.
+	note = truncate.StringWithTail(" "+note+" ", uint(availableWidth), r.theme.Ellipsis) //nolint:gosec // Uses max.
 
 	switch r.style {
 	case StyleError:
-		return statusBarErrorStyle(note)
+		return r.theme.ErrorTitleStyle.Render(note)
 	case StyleSuccess:
-		return statusBarMessageStyle(note)
+		return r.theme.StatusBarMessageStyle.Render(note)
 	default:
-		return statusBarNoteStyle(note)
+		return r.theme.StatusBarStyle.Render(note)
 	}
 }
 
@@ -211,14 +155,14 @@ func (r *StatusBarRenderer) renderEmptySpace(components ...string) string {
 
 	switch r.style {
 	case StyleError:
-		return statusBarErrorStyle(emptySpace)
+		return r.theme.ErrorTitleStyle.Render(emptySpace)
 	case StyleSuccess:
-		return statusBarMessageStyle(emptySpace)
+		return r.theme.StatusBarMessageStyle.Render(emptySpace)
 	default:
-		return statusBarNoteStyle(emptySpace)
+		return r.theme.StatusBarStyle.Render(emptySpace)
 	}
 }
 
 func (r *StatusBarRenderer) katLogoView() string {
-	return styles.LogoStyle.Render(fmt.Sprintf(" kat %s ", version.GetVersion()))
+	return r.theme.LogoStyle.Render(fmt.Sprintf(" kat %s ", version.GetVersion()))
 }

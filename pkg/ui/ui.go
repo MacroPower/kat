@@ -10,8 +10,6 @@ import (
 	"github.com/charmbracelet/log"
 
 	tea "github.com/charmbracelet/bubbletea"
-	glamourstyles "github.com/charmbracelet/glamour/styles"
-	te "github.com/muesli/termenv"
 
 	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/ui/common"
@@ -20,35 +18,13 @@ import (
 	"github.com/MacroPower/kat/pkg/ui/pager"
 	"github.com/MacroPower/kat/pkg/ui/stash"
 	"github.com/MacroPower/kat/pkg/ui/statusbar"
-	"github.com/MacroPower/kat/pkg/ui/styles"
+	"github.com/MacroPower/kat/pkg/ui/themes"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
-)
-
-var (
-	spinnerStyle = lipgloss.NewStyle().
-			Foreground(styles.Gray)
-
-	errorOverlayStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(styles.Red).
-				Align(lipgloss.Left).
-				Padding(1)
-
-	loadingOverlayStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(styles.Gray).
-				Foreground(styles.Gray).
-				Align(lipgloss.Center).
-				Padding(1)
 )
 
 // NewProgram returns a new Tea program.
 func NewProgram(cfg config.Config, cmd common.Commander) *tea.Program {
-	log.Debug(
-		"Starting kat",
-		"glamour",
-		!cfg.GlamourDisabled,
-	)
+	log.Debug("starting kat")
 
 	opts := []tea.ProgramOption{tea.WithAltScreen()}
 	m := newModel(cfg, cmd)
@@ -100,22 +76,15 @@ func (m *model) unloadDocument() {
 }
 
 func newModel(cfg config.Config, cmd common.Commander) tea.Model {
-	if cfg.GlamourStyle == glamourstyles.AutoStyle {
-		if te.HasDarkBackground() {
-			cfg.GlamourStyle = glamourstyles.DarkStyle
-		} else {
-			cfg.GlamourStyle = glamourstyles.LightStyle
-		}
+	cm := common.CommonModel{
+		Config: cfg,
+		Cmd:    cmd,
+		Theme:  themes.NewTheme(cfg.Theme),
 	}
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Line
-	sp.Style = spinnerStyle
-
-	cm := common.CommonModel{
-		Config: cfg,
-		Cmd:    cmd,
-	}
+	sp.Style = cm.Theme.GenericTextStyle
 
 	m := &model{
 		cm:      &cm,
@@ -130,7 +99,7 @@ func newModel(cfg config.Config, cmd common.Commander) tea.Model {
 }
 
 func (m *model) Init() tea.Cmd {
-	return tea.Batch(m.pager.Init(), m.runCommand())
+	return m.runCommand()
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -217,6 +186,14 @@ func (m *model) View() string {
 	var (
 		s                   string
 		overlaySizeFraction float64
+
+		errorOverlayStyle = m.cm.Theme.ErrorOverlayStyle.
+					Align(lipgloss.Left).
+					Padding(1)
+
+		loadingOverlayStyle = m.cm.Theme.GenericOverlayStyle.
+					Align(lipgloss.Center).
+					Padding(1)
 	)
 
 	switch m.state {
@@ -246,9 +223,9 @@ func (m *model) errorView() string {
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Top,
-		styles.ErrorTitleStyle.Render("ERROR"),
+		m.cm.Theme.ErrorTitleStyle.Padding(0, 1).Render("ERROR"),
 		lipgloss.NewStyle().Padding(1, 0).Render(errMsg),
-		styles.SubtleStyle.Render("press any key to close"),
+		m.cm.Theme.SubtleStyle.Render("press any key to close"),
 	)
 }
 

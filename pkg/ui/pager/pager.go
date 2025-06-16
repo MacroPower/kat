@@ -70,25 +70,14 @@ func NewPagerModel(cm *common.CommonModel) PagerModel {
 	)
 
 	m := PagerModel{
-		cm:           cm,
-		helpRenderer: statusbar.NewHelpRenderer(kbr),
-		ViewState:    StateReady,
-		viewport:     vp,
+		cm:              cm,
+		helpRenderer:    statusbar.NewHelpRenderer(cm.Theme, kbr),
+		glamourRenderer: NewGlamourRenderer(cm.Theme, cm.Config.LineNumbersDisabled),
+		ViewState:       StateReady,
+		viewport:        vp,
 	}
 
 	return m
-}
-
-func (m *PagerModel) Init() tea.Cmd {
-	return func() tea.Msg {
-		gr, err := NewGlamourRenderer(m.cm.Config.GlamourStyle, m.cm.Config.LineNumbersDisabled)
-		if err != nil {
-			return common.ErrMsg{Err: err}
-		}
-		m.glamourRenderer = gr
-
-		return nil
-	}
 }
 
 func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
@@ -175,16 +164,11 @@ func (m *PagerModel) SetSize(w, h int) {
 // This is where the magic happens.
 func (m PagerModel) RenderWithGlamour(yaml string) tea.Cmd {
 	return func() tea.Msg {
-		if m.glamourRenderer == nil || m.cm.Config.GlamourDisabled {
+		if m.glamourRenderer == nil || m.cm.Config.ChromaDisabled {
 			return ContentRenderedMsg(yaml)
 		}
 
-		viewMaxWidth := max(0, m.viewport.Width)
-		if m.cm.Config.GlamourMaxWidth > 0 {
-			viewMaxWidth = min(viewMaxWidth, m.cm.Config.GlamourMaxWidth)
-		}
-
-		s, err := m.glamourRenderer.RenderContent(yaml, viewMaxWidth)
+		s, err := m.glamourRenderer.RenderContent(yaml, max(0, m.viewport.Width))
 		if err != nil {
 			log.Debug("error rendering with Glamour", "error", err)
 

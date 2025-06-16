@@ -7,15 +7,18 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/MacroPower/kat/pkg/ui/themes"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
 
 // FilterHandler provides filter-specific event handling.
-type FilterHandler struct{}
+type FilterHandler struct {
+	theme *themes.Theme
+}
 
 // NewFilterHandler creates a new FilterHandler.
-func NewFilterHandler() *FilterHandler {
-	return &FilterHandler{}
+func NewFilterHandler(theme *themes.Theme) *FilterHandler {
+	return &FilterHandler{theme: theme}
 }
 
 // HandleFilteringMode handles events when in filtering mode.
@@ -75,7 +78,7 @@ func (h *FilterHandler) handleFilterKeys(m StashModel, key string) (StashModel, 
 		if m.sections[len(m.sections)-1].key != SectionFilter {
 			m.sections = append(m.sections, Section{
 				key:       SectionFilter,
-				paginator: newStashPaginator(),
+				paginator: newStashPaginator(h.theme),
 			})
 		}
 		m.sectionIndex = len(m.sections) - 1

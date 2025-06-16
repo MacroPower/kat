@@ -10,6 +10,7 @@ import (
 	"github.com/MacroPower/kat/pkg/ui/config"
 	"github.com/MacroPower/kat/pkg/ui/keys"
 	"github.com/MacroPower/kat/pkg/ui/statusbar"
+	"github.com/MacroPower/kat/pkg/ui/themes"
 )
 
 func TestNewHelpRenderer(t *testing.T) {
@@ -36,7 +37,7 @@ func TestNewHelpRenderer(t *testing.T) {
 			kbr := &keys.KeyBindRenderer{}
 			kbr.AddColumn(keys.NewBind("foo", keys.New("f")))
 
-			renderer := statusbar.NewHelpRenderer(kbr)
+			renderer := statusbar.NewHelpRenderer(themes.DefaultTheme, kbr)
 			require.NotNil(t, renderer)
 
 			view := renderer.Render(tc.width)

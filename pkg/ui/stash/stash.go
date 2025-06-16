@@ -14,7 +14,6 @@ import (
 	"github.com/MacroPower/kat/pkg/ui/common"
 	"github.com/MacroPower/kat/pkg/ui/keys"
 	"github.com/MacroPower/kat/pkg/ui/statusbar"
-	"github.com/MacroPower/kat/pkg/ui/styles"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
 
@@ -23,18 +22,6 @@ const (
 	stashViewTopPadding        = 1 // Padding at the top of the stash view.
 	stashViewBottomPadding     = 6 // Pagination and gaps, but not help.
 	stashViewHorizontalPadding = 6
-)
-
-var (
-	dividerDot = styles.DarkGrayFg.SetString(" • ")
-	dividerBar = styles.DarkGrayFg.SetString(" │ ")
-
-	stashInputPromptStyle = lipgloss.NewStyle().
-				Foreground(styles.YellowGreen).
-				MarginRight(1)
-	stashInputCursorStyle = lipgloss.NewStyle().
-				Foreground(styles.Fuchsia).
-				MarginRight(1)
 )
 
 type (
@@ -111,14 +98,14 @@ type StashModel struct {
 func NewStashModel(cm *common.CommonModel) StashModel {
 	si := textinput.New()
 	si.Prompt = "Find:"
-	si.PromptStyle = stashInputPromptStyle
-	si.Cursor.Style = stashInputCursorStyle
+	si.PromptStyle = cm.Theme.FilterStyle.MarginRight(1)
+	si.Cursor.Style = cm.Theme.CursorStyle.MarginRight(1)
 	si.Focus()
 
 	s := []Section{
 		{
 			key:       SectionDocuments,
-			paginator: newStashPaginator(),
+			paginator: newStashPaginator(cm.Theme),
 		},
 	}
 
@@ -151,8 +138,8 @@ func NewStashModel(cm *common.CommonModel) StashModel {
 		cm:           cm,
 		filterInput:  si,
 		sections:     s,
-		helpRenderer: statusbar.NewHelpRenderer(kbr),
-		docRenderer:  NewDocumentListRenderer(stashIndent, cm.Config.Compact),
+		helpRenderer: statusbar.NewHelpRenderer(cm.Theme, kbr),
+		docRenderer:  NewDocumentListRenderer(cm.Theme, stashIndent, cm.Config.Compact),
 	}
 
 	return m
@@ -165,7 +152,7 @@ func (m StashModel) Update(msg tea.Msg) (StashModel, tea.Cmd) {
 
 	if isFiltering {
 		var cmd tea.Cmd
-		filterHandler := NewFilterHandler()
+		filterHandler := NewFilterHandler(m.cm.Theme)
 		m, cmd = filterHandler.HandleFilteringMode(m, msg)
 		cmds = append(cmds, cmd)
 	}
@@ -438,7 +425,7 @@ func (m StashModel) documentListView() string {
 func (m StashModel) paginationView() string {
 	pagination := "\n"
 	if m.paginator().TotalPages > 1 {
-		pagination = NewPaginationRenderer(m.cm.Width).
+		pagination = NewPaginationRenderer(m.cm.Theme, m.cm.Width).
 			RenderPagination(m.paginator(), m.paginator().TotalPages)
 	}
 
@@ -469,12 +456,17 @@ func (m StashModel) getHeaderSections() ([]string, lipgloss.Style) {
 	localCount := len(m.YAMLs)
 	sections := []string{}
 
+	var (
+		dividerDot = m.cm.Theme.SubtleStyle.SetString(" • ")
+		dividerBar = m.cm.Theme.SubtleStyle.SetString(" │ ")
+	)
+
 	// Filter results.
 	if m.FilterState == Filtering {
 		sections = append(sections, m.filterInput.View())
 
 		for i := range sections {
-			sections[i] = styles.GrayFg(sections[i])
+			sections[i] = m.cm.Theme.GenericTextStyle.Render(sections[i])
 		}
 
 		return sections, dividerDot
@@ -493,9 +485,9 @@ func (m StashModel) getHeaderSections() ([]string, lipgloss.Style) {
 		}
 
 		if m.sectionIndex == i && len(m.sections) > 1 {
-			s = styles.SelectedTabStyle.Render(s)
+			s = m.cm.Theme.SelectedStyle.Render(s)
 		} else {
-			s = styles.TabStyle.Render(s)
+			s = m.cm.Theme.SubtleStyle.Render(s)
 		}
 		sections = append(sections, s)
 	}

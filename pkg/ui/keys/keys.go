@@ -6,7 +6,7 @@ import (
 
 	"github.com/muesli/reflow/ansi"
 
-	"github.com/MacroPower/kat/pkg/ui/styles"
+	"github.com/MacroPower/kat/pkg/ui/themes"
 )
 
 type Key struct {
@@ -80,7 +80,7 @@ func (kb *KeyBind) StringRow(keyWidth, descWidth int) string {
 		return "" // No keybinds or all keybinds are hidden.
 	}
 
-	truncDesc := styles.TruncateWithEllipsis(kb.Description, descWidth-2)
+	truncDesc := truncateWithEllipsis(kb.Description, descWidth-2)
 
 	keySpaces := strings.Repeat(" ", max(0, keyWidth-ansi.PrintableRuneWidth(keys)))
 	descSpaces := strings.Repeat(" ", max(0, descWidth-ansi.PrintableRuneWidth(truncDesc)-2))
@@ -239,4 +239,41 @@ func SetDefaultBind(kb **KeyBind, defaultKb KeyBind) {
 	if (*kb).Description == "" {
 		(*kb).Description = defaultKb.Description
 	}
+}
+
+// truncateWithEllipsis truncates a string with ellipsis if it exceeds maxWidth.
+func truncateWithEllipsis(s string, maxWidth int) string {
+	if maxWidth <= 0 {
+		if s == "" {
+			return ""
+		}
+
+		return themes.Ellipsis
+	}
+	if ansi.PrintableRuneWidth(s) <= maxWidth {
+		return s
+	}
+
+	lenEllipsis := ansi.PrintableRuneWidth(themes.Ellipsis)
+
+	// Reserve space for ellipsis.
+	if maxWidth <= lenEllipsis {
+		return themes.Ellipsis[:maxWidth]
+	}
+
+	// Simple truncation - could be improved with proper text handling.
+	availableWidth := maxWidth - lenEllipsis
+	truncated := ""
+	currentWidth := 0
+
+	for _, r := range s {
+		runeWidth := ansi.PrintableRuneWidth(string(r))
+		if currentWidth+runeWidth > availableWidth {
+			break
+		}
+		truncated += string(r)
+		currentWidth += runeWidth
+	}
+
+	return truncated + themes.Ellipsis
 }

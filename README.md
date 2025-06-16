@@ -45,46 +45,54 @@ Archives are posted in [releases](https://github.com/MacroPower/kat/releases).
 
 ## ⚡️ Usage
 
-```console
-$ kat --help
+Show help:
 
-Usage: kat [<path> [<command> ...]] [flags]
-
-cat for Kubernetes manifests.
-
-Examples:
-
-    # kat the current directory.
-    kat .
-
-    # kat a file or directory path.
-    kat ./example/kustomize
-
-    # kat with command passthrough.
-    kat ./example/kustomize -- kustomize build .
-
-    # kat a file or stdin directly (no reload support).
-    cat ./example/kustomize/resources.yaml | kat -f -
-
-Arguments:
-  [<path>]           File or directory path, default is $PWD.
-  [<command> ...]    Command to run, defaults set in ~/.config/kat/config.yaml.
-
-Flags:
-  -h, --help                        Show context-sensitive help.
-      --ui-minimum-delay=500ms      Minimum delay for UI updates ($KAT_UI_MINIMUM_DELAY).
-      --ui-glamour-style="auto"     Glamour style for rendering ($KAT_UI_GLAMOUR_STYLE).
-      --ui-glamour-max-width=0      Maximum width for glamour rendering ($KAT_UI_GLAMOUR_MAX_WIDTH).
-      --ui-glamour-disabled         Disable glamour rendering ($KAT_UI_GLAMOUR_DISABLED).
-      --ui-line-numbers-disabled    Disable line numbers in the UI ($KAT_UI_LINE_NUMBERS_DISABLED).
-      --ui-compact                  Enable compact mode for the UI ($KAT_UI_COMPACT).
-      --log-level="info"            Log level ($KAT_LOG_LEVEL).
-      --log-format="text"           Log format ($KAT_LOG_FORMAT).
-  -f, --file=FILE                   File content to read.
-  -w, --watch                       Watch for changes and trigger reloading.
-      --write-config                Write the configuration file to the default path.
-      --show-config                 Print the active configuration and exit.
+```sh
+kat --help
 ```
+
+Render a project in the current directory:
+
+```sh
+kat
+```
+
+Render a project and enable watch (live reloading):
+
+```sh
+kat -w
+```
+
+Render a project in a specific directory:
+
+```sh
+kat ./example/helm
+```
+
+Render a project in a specific directory with command passthrough:
+
+```sh
+kat ./example/helm -- helm template my-chart .
+```
+
+Render using data from stdin:
+
+```sh
+cat ./example/kustomize/resources.yaml | kat -f -
+```
+
+## 🌈 Themes
+
+![Themes](./docs/assets/themes.gif)
+
+Configure a theme with `--ui-theme`, `KAT_UI_THEME`, or via config:
+
+```yaml
+ui:
+  theme: "dracula"
+```
+
+We use [Chroma](https://github.com/alecthomas/chroma/) for theming, so you can use any styles from the [Chroma Style Gallery](https://xyproto.github.io/splash/docs/).
 
 ## ⚙️ Configuration
 

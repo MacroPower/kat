@@ -9,13 +9,8 @@ import (
 	"github.com/muesli/reflow/truncate"
 	"github.com/sahilm/fuzzy"
 
-	"github.com/MacroPower/kat/pkg/ui/styles"
+	"github.com/MacroPower/kat/pkg/ui/themes"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
-)
-
-const (
-	verticalLine         = "│"
-	fileListingStashIcon = "• "
 )
 
 // stashItemDisplayState represents the visual state of a stash item.
@@ -23,8 +18,6 @@ type stashItemDisplayState struct {
 	gutter    string
 	title     string
 	desc      string
-	editedBy  string
-	icon      string
 	separator string
 }
 
@@ -34,8 +27,8 @@ func stashItemView(b *strings.Builder, m StashModel, index int, compact bool, y 
 		truncateTo = uint(max(0, m.cm.Width-stashViewHorizontalPadding*2)) //nolint:gosec // Uses max.
 
 		// Prepare content.
-		title = truncate.StringWithTail(y.Title, truncateTo, styles.Ellipsis)
-		desc  = truncate.StringWithTail(y.Desc, truncateTo, styles.Ellipsis)
+		title = truncate.StringWithTail(y.Title, truncateTo, m.cm.Theme.Ellipsis)
+		desc  = truncate.StringWithTail(y.Desc, truncateTo, m.cm.Theme.Ellipsis)
 
 		// Determine item state.
 		isSelected         = index == m.cursor()
@@ -55,9 +48,9 @@ func stashItemView(b *strings.Builder, m StashModel, index int, compact bool, y 
 	// Apply appropriate styling based on state.
 	var displayState stashItemDisplayState
 	if shouldHighlight {
-		displayState = applySelectedStyling(title, desc, shouldShowFilter, filterValue)
+		displayState = applySelectedStyling(m.cm.Theme, title, desc, shouldShowFilter, filterValue)
 	} else {
-		displayState = applyUnselectedStyling(title, desc, isFiltering, filterValue)
+		displayState = applyUnselectedStyling(m.cm.Theme, title, desc, isFiltering, filterValue)
 	}
 
 	// Render the item.
@@ -69,29 +62,26 @@ func stashItemView(b *strings.Builder, m StashModel, index int, compact bool, y 
 }
 
 // applySelectedStyling applies styling for selected/highlighted items.
-func applySelectedStyling(title, desc string, showFilter bool, filterValue string) stashItemDisplayState {
+func applySelectedStyling(theme *themes.Theme, title, desc string, showFilter bool, filterValue string) stashItemDisplayState {
 	result := stashItemDisplayState{
-		gutter:    styles.DullFuchsiaFg(verticalLine),
-		desc:      styles.DimFuchsiaFg(desc),
-		editedBy:  styles.DimDullFuchsiaFg(""),
-		separator: styles.DullFuchsiaFg(""),
+		gutter:    theme.SelectedStyle.Render("│"),
+		desc:      theme.SelectedSubtleStyle.Render(desc),
+		separator: theme.SelectedStyle.Render(""),
 	}
 
 	if showFilter {
-		// Apply filtered text styling with fuchsia theme.
-		fuchsiaStyle := lipgloss.NewStyle().Foreground(styles.Fuchsia)
-		result.title = styleFilteredText(title, filterValue, fuchsiaStyle, fuchsiaStyle.Underline(true))
+		// Apply filtered text styling.
+		result.title = styleFilteredText(title, filterValue, theme.SelectedStyle, theme.SelectedStyle.Underline(true))
 	} else {
 		// Apply standard selected styling.
-		result.title = styles.FuchsiaFg(title)
-		result.icon = styles.FuchsiaFg("")
+		result.title = theme.SelectedStyle.Render(title)
 	}
 
 	return result
 }
 
 // applyUnselectedStyling applies styling for unselected items.
-func applyUnselectedStyling(title, desc string, isFiltering bool, filterValue string) stashItemDisplayState {
+func applyUnselectedStyling(theme *themes.Theme, title, desc string, isFiltering bool, filterValue string) stashItemDisplayState {
 	hasEmptyFilter := isFiltering && filterValue == ""
 
 	result := stashItemDisplayState{
@@ -100,24 +90,17 @@ func applyUnselectedStyling(title, desc string, isFiltering bool, filterValue st
 
 	if hasEmptyFilter {
 		// Dimmed styling when filtering with empty input.
-		result.icon = styles.DimGreenFg("")
-		result.title = styles.DimNormalFg(title)
-		result.desc = styles.DimBrightGrayFg(desc)
-		result.editedBy = styles.DimBrightGrayFg("")
-		result.separator = styles.DimBrightGrayFg("")
+		result.title = theme.SubtleStyle.Render(title)
+		result.desc = theme.SubtleStyle.Render(desc)
+		result.separator = theme.GenericTextStyle.Render("")
 	} else {
 		// Normal unselected styling.
-		result.icon = styles.GreenFg("")
-		result.desc = styles.GrayFg(desc)
-		result.editedBy = styles.MidGrayFg("")
-		result.separator = styles.BrightGrayFg("")
+		result.desc = theme.GenericTextStyle.Render(desc)
+		result.separator = theme.GenericTextStyle.Render("")
 
-		// Apply filtered text styling with adaptive colors.
-		titleStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#dddddd"})
-		result.title = styleFilteredText(title, filterValue, titleStyle, titleStyle.Underline(true))
-
-		descStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#4d4d4d", Dark: "#b3b3b3"})
-		result.desc = styleFilteredText(desc, filterValue, descStyle, descStyle.Underline(true))
+		// Apply filtered text styling.
+		result.title = styleFilteredText(title, filterValue, theme.GenericTextStyle, theme.GenericTextStyle.Underline(true))
+		result.desc = styleFilteredText(desc, filterValue, theme.SubtleStyle, theme.SubtleStyle.Underline(true))
 	}
 
 	return result
@@ -125,12 +108,12 @@ func applyUnselectedStyling(title, desc string, isFiltering bool, filterValue st
 
 // renderStashItemCompact renders the final output for a stash item.
 func renderStashItemCompact(b *strings.Builder, state stashItemDisplayState) {
-	fmt.Fprintf(b, "%s %s%s%s%s %s", state.gutter, state.icon, state.separator, state.separator, state.desc, state.title)
+	fmt.Fprintf(b, "%s %s%s%s %s", state.gutter, state.separator, state.separator, state.desc, state.title)
 }
 
 // renderStashItem renders the final output for a stash item.
 func renderStashItem(b *strings.Builder, state stashItemDisplayState) {
-	fmt.Fprintf(b, "%s %s%s%s%s\n", state.gutter, state.icon, state.separator, state.separator, state.title)
+	fmt.Fprintf(b, "%s %s%s%s\n", state.gutter, state.separator, state.separator, state.title)
 	fmt.Fprintf(b, "%s %s", state.gutter, state.desc)
 }
 
