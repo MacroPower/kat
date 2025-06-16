@@ -81,6 +81,14 @@ Render using data from stdin:
 cat ./example/kustomize/resources.yaml | kat -f -
 ```
 
+## ⚙️ Configuration
+
+You can use `kat --write-config` to generate a default configuration file at `~/.config/kat/config.yaml`. This file allows you to customize the behavior of `kat`, such as the UI style, keybindings, and commands.
+
+Alternatively, you can use `kat --show-config` to print the active configuration and redirect the output to a file.
+
+You can also find an example configuration file in [example/config.yaml](example/config.yaml).
+
 ## 🌈 Themes
 
 ![Themes](./docs/assets/themes.gif)
@@ -94,15 +102,26 @@ ui:
 
 We use [Chroma](https://github.com/alecthomas/chroma/) for theming, so you can use any styles from the [Chroma Style Gallery](https://xyproto.github.io/splash/docs/).
 
-## ⚙️ Configuration
+You can also add your own themes in the config:
 
-You can use `kat --write-config` to generate a default configuration file at `~/.config/kat/config.yaml`. This file allows you to customize the behavior of `kat`, such as the UI style, keybindings, and commands.
+```yaml
+ui:
+  theme: "my-custom-theme"
+  themes:
+    my-custom-theme:
+      styles:
+        background: "#abb2bf bg:#282c34"
+        punctuation: "#abb2bf"
+        keyword: "#c678dd"
+        name: "bold #e06c75"
+        comment: "italic #8b949e"
+        commentSpecial: "bold italic #8b949e"
+        # ...
+```
 
-Alternatively, you can use `kat --show-config` to print the active configuration and redirect the output to a file.
+Chroma uses the same syntax as Pygments. Define `ui.themes.[name].styles` as a map of Pygments [Tokens](https://pygments.org/docs/tokens/) to [Styles](http://pygments.org/docs/styles/). You can then reference any theme in `ui.theme` (or by using the corresponding flag / env var).
 
-You can also find an example configuration file in [example/config.yaml](example/config.yaml).
-
-### Custom Commands
+## 🛠️ Commands
 
 You can customize the commands that `kat` runs in the configuration file. These rules match files or directories and specify the command to run when `kat` is invoked.
 

@@ -1,6 +1,7 @@
 package themes
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/alecthomas/chroma/v2"
@@ -132,6 +133,16 @@ func NewTheme(theme string) *Theme {
 		ChromaStyle: style.style,
 		Ellipsis:    Ellipsis,
 	}
+}
+
+func RegisterTheme(name string, entries chroma.StyleEntries) error {
+	customTheme, err := chroma.NewStyle(name, entries)
+	if err != nil {
+		return fmt.Errorf("create chroma style: %w", err)
+	}
+	styles.Register(customTheme)
+
+	return nil
 }
 
 type chromaStyle struct {

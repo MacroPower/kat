@@ -19,11 +19,11 @@ type Commander interface {
 }
 
 type CommonModel struct {
+	Config             config.Config
 	Cmd                Commander
 	Theme              *themes.Theme
 	StatusMessageTimer *time.Timer
 	StatusMessage      StatusMessage
-	Config             config.Config
 	Width              int
 	Height             int
 	Loaded             bool

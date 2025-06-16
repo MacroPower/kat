@@ -16,6 +16,7 @@ import (
 	"github.com/MacroPower/kat/pkg/ui"
 	"github.com/MacroPower/kat/pkg/ui/common"
 	uiconfig "github.com/MacroPower/kat/pkg/ui/config"
+	"github.com/MacroPower/kat/pkg/ui/themes"
 )
 
 const (
@@ -178,6 +179,13 @@ func parseCommand(cmdArgs []string) *kube.Command {
 
 // runUI starts the UI program.
 func runUI(cfg uiconfig.Config, cr common.Commander) error {
+	for name, tc := range cfg.Themes {
+		err := themes.RegisterTheme(name, tc.Styles)
+		if err != nil {
+			return fmt.Errorf("theme %q: %w", name, err)
+		}
+	}
+
 	p := ui.NewProgram(cfg, cr)
 
 	ch := make(chan kube.CommandEvent)

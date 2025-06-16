@@ -3,6 +3,7 @@ package config
 import (
 	"time"
 
+	"github.com/alecthomas/chroma/v2"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/MacroPower/kat/pkg/ui/keys"
@@ -10,13 +11,18 @@ import (
 
 // Config contains TUI-specific configuration.
 type Config struct {
-	KeyBinds            *KeyBinds      `json:"keybinds" kong:"-"                               yaml:"keybinds"`
-	MinimumDelay        *time.Duration `default:"500ms" help:"Minimum delay for UI updates."   json:"minimum-delay"         yaml:"minimum-delay"`
-	Theme               string         `default:"auto"  help:"Theme for the UI."               json:"theme"                 yaml:"theme"`
-	WordWrap            bool           `default:"false" help:"Enable word wrapping in the UI." json:"word-wrap"             yaml:"word-wrap"`
-	ChromaDisabled      bool           `default:"false" help:"Disable chroma rendering."       json:"chroma-disabled"       yaml:"chroma-disabled"`
-	LineNumbersDisabled bool           `default:"false" help:"Disable line numbers in the UI." json:"line-numbers-disabled" yaml:"line-numbers-disabled"`
-	Compact             bool           `default:"false" help:"Enable compact mode for the UI." json:"compact"               yaml:"compact"`
+	KeyBinds            *KeyBinds              `json:"keybinds"         kong:"-"                               yaml:"keybinds"`
+	MinimumDelay        *time.Duration         `default:"500ms"         help:"Minimum delay for UI updates."   json:"minimum-delay"         yaml:"minimum-delay"`
+	Themes              map[string]ThemeConfig `json:"themes,omitempty" kong:"-"                               yaml:"themes,omitempty"`
+	Theme               string                 `default:"auto"          help:"Theme for the UI."               json:"theme"                 yaml:"theme"`
+	WordWrap            bool                   `default:"false"         help:"Enable word wrapping in the UI." json:"word-wrap"             yaml:"word-wrap"`
+	ChromaDisabled      bool                   `default:"false"         help:"Disable chroma rendering."       json:"chroma-disabled"       yaml:"chroma-disabled"`
+	LineNumbersDisabled bool                   `default:"false"         help:"Disable line numbers in the UI." json:"line-numbers-disabled" yaml:"line-numbers-disabled"`
+	Compact             bool                   `default:"false"         help:"Enable compact mode for the UI." json:"compact"               yaml:"compact"`
+}
+
+type ThemeConfig struct {
+	Styles chroma.StyleEntries `json:"styles,omitempty" yaml:"styles,omitempty"`
 }
 
 func (c *Config) EnsureDefaults() {
