@@ -32,7 +32,7 @@ func NewGlamourRenderer(theme *themes.Theme, lineNumbersDisabled bool) *GlamourR
 	lexer := lexers.Get("YAML")
 	lexer = chroma.Coalesce(lexer)
 
-	formatter := formatters.Get("terminal256")
+	formatter := formatters.Get("terminal16m")
 
 	return &GlamourRenderer{
 		theme:               theme,
