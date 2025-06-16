@@ -49,15 +49,16 @@ func NewTheme(theme string) *Theme {
 		genericStyle = lipgloss.NewStyle().
 				Foreground(style.lipglossFromToken(chroma.Background))
 
-		logoStyle = genericStyle.
-				Background(style.lipglossFromToken(chroma.Keyword)).
+		logoStyle = lipgloss.NewStyle().
+				Foreground(style.lipglossFromTokenBg(chroma.Background)).
+				Background(style.lipglossFromToken(chroma.NameTag)).
 				Bold(true)
 
 		selectedStyle = lipgloss.NewStyle().
-				Foreground(style.lipglossFromToken(chroma.Keyword))
+				Foreground(style.lipglossFromToken(chroma.NameTag))
 
 		selectedSubtleStyle = lipgloss.NewStyle().
-					Foreground(style.lipglossFromTokenWithFactor(chroma.Keyword, 0.3))
+					Foreground(style.lipglossFromTokenWithFactor(chroma.NameTag, 0.3))
 
 		filterStyle = selectedStyle
 
@@ -68,25 +69,26 @@ func NewTheme(theme string) *Theme {
 				Background(style.lipglossFromTokenBgWithFactor(chroma.Background, 0.2))
 
 		statusBarStyle = lipgloss.NewStyle().
-				Foreground(style.lipglossFromTokenWithFactor(chroma.Background, 0.1)).
+				Foreground(style.lipglossFromToken(chroma.Background)).
 				Background(style.lipglossFromTokenBgWithFactor(chroma.Background, 0.1))
 
 		statusBarPosStyle = lipgloss.NewStyle().
-					Foreground(style.lipglossFromTokenWithFactor(chroma.Background, 0.15)).
+					Foreground(style.lipglossFromToken(chroma.Background)).
 					Background(style.lipglossFromTokenBgWithFactor(chroma.Background, 0.15))
 
 		statusBarHelpStyle = helpStyle
 
 		statusBarMessageStyle = lipgloss.NewStyle().
-					Foreground(style.lipglossFromTokenWithFactor(chroma.Background, 0.2)).
-					Background(style.lipglossFromTokenWithFactor(chroma.Keyword, 0.2))
+					Foreground(style.lipglossFromTokenBg(chroma.Background)).
+					Background(style.lipglossFromTokenWithFactor(chroma.NameTag, 0.15))
 
 		statusBarMessagePosStyle = lipgloss.NewStyle().
-						Foreground(style.lipglossFromTokenWithFactor(chroma.Background, 0.15)).
-						Background(style.lipglossFromTokenWithFactor(chroma.Keyword, 0.15))
+						Foreground(style.lipglossFromTokenBg(chroma.Background)).
+						Background(style.lipglossFromTokenWithFactor(chroma.NameTag, 0.1))
 
 		statusBarMessageHelpStyle = genericStyle.
-						Background(style.lipglossFromToken(chroma.Keyword))
+						Foreground(style.lipglossFromTokenBg(chroma.Background)).
+						Background(style.lipglossFromToken(chroma.NameTag))
 
 		errorTitleStyle = genericStyle.
 				Background(style.lipglossFromToken(chroma.GenericDeleted))
@@ -153,6 +155,14 @@ func (cs chromaStyle) lipglossFromToken(c chroma.TokenType) lipgloss.Color {
 
 	// Convert chroma color to lipgloss.AdaptiveColor.
 	return lipgloss.Color(s.Colour.String()) // nolint:misspell // Chroma naming.
+}
+
+// nolint:unparam // Will you shut up man...
+func (cs chromaStyle) lipglossFromTokenBg(c chroma.TokenType) lipgloss.Color {
+	s := cs.style.Get(c)
+
+	// Convert chroma color to lipgloss.AdaptiveColor.
+	return lipgloss.Color(s.Background.String())
 }
 
 func (cs chromaStyle) lipglossFromTokenWithFactor(c chroma.TokenType, factor float64) lipgloss.Color {
