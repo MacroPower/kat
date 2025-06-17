@@ -79,7 +79,7 @@ func TestCommandRunner_RunForPath(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			runner, err := kube.NewCommandRunner(tc.path, kube.WithCommands(kube.DefaultConfig.Commands))
+			runner, err := kube.NewCommandRunner(tc.path, kube.WithCommands(TestCommands))
 			if tc.initError != nil {
 				require.ErrorIs(t, err, tc.initError)
 

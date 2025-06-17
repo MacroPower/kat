@@ -9,6 +9,23 @@ import (
 	"github.com/MacroPower/kat/pkg/kube"
 )
 
+var TestCommands = []*kube.Command{
+	kube.MustNewCommand(
+		kube.NewHooks(
+			kube.WithPreRender(
+				kube.NewHookCommand("helm", "dependency", "build"),
+			),
+		),
+		".*/Chart\\.ya?ml$", ".*\\.(ya?ml|tpl)$",
+		"helm", "template", ".", "--generate-name",
+	),
+	kube.MustNewCommand(
+		nil,
+		".*/kustomization\\.ya?ml$", ".*\\.ya?ml$",
+		"kustomize", "build", ".",
+	),
+}
+
 func TestCommand_WithPostRenderHooks(t *testing.T) {
 	t.Parallel()
 
