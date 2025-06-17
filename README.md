@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  ❤️ Made with <a href="https://github.com/charmbracelet/bubbletea">bubble tea</a> and <a href="https://github.com/charmbracelet/glow">glow</a>.
+  ❤️ Made with <a href="https://github.com/charmbracelet/bubbletea">bubble tea</a>, <a href="https://github.com/charmbracelet/glow">glow</a>, and <a href="https://github.com/alecthomas/chroma/">chroma</a>.
 </p>
 
 ## ✨ Features
