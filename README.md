@@ -123,44 +123,101 @@ Chroma uses the same syntax as Pygments. Define `ui.themes.[name].styles` as a m
 
 ## 🛠️ Commands
 
-You can customize the commands that `kat` runs in the configuration file. These rules match files or directories and specify the command to run when `kat` is invoked.
+You can customize the commands that `kat` runs in the configuration file. This allows you to define how `kat` should render different types of projects. For example, you can define specific commands and arguments for rendering `helm` charts or `kustomize` projects, or add support for other languages/tools like [`kcl`](https://www.kcl-lang.io/) (maybe with [`kclipper`](https://github.com/MacroPower/kclipper)?), [`jsonnet`](https://jsonnet.org/), [`flux-local`](https://github.com/allenporter/flux-local), [`cue`](https://cuelang.org/), and so on.
 
-Additionally, you can define hooks:
-
-- `preRender` hooks are executed before the main command is run, allowing you to prepare the environment (e.g., running `helm dependency build`).
-- `postRender` hooks are executed after the main command has run, allowing you to process the rendered manifests (e.g., validating them with `kubeconform`).
-
-If any hooks exit with a non-zero status, `kat` will display the error message. You can dismiss the error message and return to the main view, or make edits and press `r` to re-run the command.
+Commands are defined as an ordered list under `kube.commands`, and each command has three required properties: `match`, `command`, and `args`.
 
 ```yaml
 kube:
   commands:
-    # Run `helm template . --generate-name` when kat targets a directory
-    # containing a `Chart.yaml` file.
     - match: .*/Chart\.ya?ml$
-      source: .*\.(ya?ml|tpl)$ # Used for `--watch`.
+      command: helm
+      args: [template, ".", --generate-name]
+```
+
+When `kat` is invoked, it will check each command in the order they are defined. The `match` property is a regular expression that matches the files in the provided directory path. If a match is found, `kat` will run the specified `command` with the provided `args`.
+
+In the above example, running `kat example/helm` will evaluate `match` against the files in the `example/helm` directory. If a file matches the regex (e.g., `Chart.yaml`), it will run the command `helm template . --generate-name`.
+
+Additionally, you can optionally specify a `source` regex to filter files that should trigger the command when using `-w, --watch`. Note that the entire file tree is walked, so the regex will be evaluated against all files in the directory and its subdirectories.
+
+```yaml
+kube:
+  commands:
+    - match: .*/Chart\.ya?ml$
+      source: .*\.(ya?ml|tpl)$ # Reload on any changes to YAML or template files.
+      command: helm
+      args: [template, ".", --generate-name]
+```
+
+> Eventually, more sophisticated rules for match/source will be supported, but this method is simple and effective for many use cases.
+
+### 🪝 Hooks
+
+You can optionally define hooks for your commands:
+
+- `init` hooks are executed once when `kat` is initialized, allowing you to run any one-time initialization tasks (e.g., checking that `helm` is available).
+- `preRender` hooks are executed before the main command is run, allowing you to prepare the environment (e.g., running `helm dependency build`).
+- `postRender` hooks are executed after the main command has run and are provided the rendered output via stdin, allowing you to process the rendered manifests (e.g., validating them with `kubeconform`).
+
+Like `commands`, hooks are defined as an ordered list of commands under the respective hook type. Each hook command has its own `command` and `args`.
+
+If any hooks exit with a non-zero status, `kat` will display the error message. You can dismiss the error message and return to the main view, or trigger a reload to re-render the manifests and re-run the render hooks.
+
+```yaml
+kube:
+  commands:
+    - match: .*/Chart\.ya?ml$
+      source: .*\.(ya?ml|tpl)$
       command: helm
       args: [template, ".", --generate-name]
       hooks:
-        preRender:
-          # Run `helm dependency build` before rendering the chart.
-          - command: helm
-            args: [dependency, build]
         postRender:
           # Pass the rendered manifests via stdin to `kubeconform`.
-          - &kubeconform
-            command: kubeconform
+          - command: kubeconform
             args: [-strict, -summary]
+```
 
-    # Run `kustomize build --enable-helm .` when kat targets a directory
-    # containing a `kustomization.yaml` file.
+### 📖 Examples
+
+By default, `kat` includes a minimal configuration that supports `helm` and `kustomize`. This is a great starting point for your own custom config.
+
+```yaml
+kube:
+  commands:
+    - match: .*/Chart\.ya?ml$
+      source: .*\.(ya?ml|tpl)$
+      command: helm
+      args: [template, ".", --generate-name]
+      hooks:
+        init:
+          - command: helm
+            args: [version, --short]
+        preRender:
+          - command: helm
+            args: [dependency, build]
     - match: .*/kustomization\.ya?ml$
-      source: .*\.ya?ml$ # Used for `--watch`.
+      source: .*\.ya?ml$
       command: kustomize
-      args: [build, --enable-helm, "."]
+      args: [build, "."]
+      hooks:
+        init:
+          - command: kustomize
+            args: [version]
+```
+
+If you use something like `make` or [`task`](https://taskfile.dev), you can alternatively use these in the `kat` config. Additionally, this allows you to swap out backend rendering implementations very easily.
+
+```yaml
+kube:
+  commands:
+    - match: .*/Taskfile\.ya?ml$
+      command: task
+      args: [render]
       hooks:
         postRender:
-          - *kubeconform
+          - command: task
+            args: [validate]
 ```
 
 ## 🔍️ Similar Tools
