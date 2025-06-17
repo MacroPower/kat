@@ -206,7 +206,7 @@ kube:
             args: [version]
 ```
 
-If you use something like `make` or [`task`](https://taskfile.dev), you can alternatively use these in the `kat` config. Additionally, this allows you to swap out backend rendering implementations very easily.
+If you use [`task`](https://taskfile.dev), you can additionally (or alternatively) use your tasks in the `kat` config. This allows for additional customization, and also allows you to swap out backend rendering implementations very easily.
 
 ```yaml
 kube:
@@ -219,6 +219,15 @@ kube:
           - command: task
             args: [validate]
 ```
+
+Note that you should write your tasks to:
+
+- Output the rendered manifests to stdout, and anything else to stderr.
+- Tolerate being called from any directory in the project.
+  - E.g., instead of `./folder`, use `{{joinPath .ROOT_DIR "folder"}}`.
+- Not require any additional arguments to run.
+  - You can reference `{{.USER_WORKING_DIR}}` to obtain the path that the user invoked `kat` from/with.
+  - E.g., `vars: { PATH: "{{.PATH | default .USER_WORKING_DIR}}" }`
 
 ## 🔍️ Similar Tools
 
