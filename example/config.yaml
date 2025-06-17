@@ -3,6 +3,11 @@ kube:
     - match: .*/Chart\.ya?ml$
       source: .*\.(ya?ml|tpl)$
       hooks:
+        init:
+          - command: helm
+            args:
+              - version
+              - --short
         preRender:
           - command: helm
             args:
@@ -15,6 +20,11 @@ kube:
         - --generate-name
     - match: .*/kustomization\.ya?ml$
       source: .*\.ya?ml$
+      hooks:
+        init:
+          - command: kustomize
+            args:
+              - version
       command: kustomize
       args:
         - build

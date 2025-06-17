@@ -69,6 +69,12 @@ func NewCommandRunner(path string, opts ...CommandRunnerOpt) (*CommandRunner, er
 		return nil, fmt.Errorf("%w: %s", ErrNoCommandForPath, cr.path)
 	}
 
+	for _, hook := range cr.command.Hooks.Init {
+		if err := hook.Exec(context.Background(), cr.path, nil); err != nil {
+			return nil, fmt.Errorf("%w: init: %w", ErrHookExecution, err)
+		}
+	}
+
 	return cr, nil
 }
 

@@ -14,6 +14,9 @@ var DefaultConfig = Config{
 	Commands: []*Command{
 		MustNewCommand(
 			NewHooks(
+				WithInit(
+					NewHookCommand("helm", "version", "--short"),
+				),
 				WithPreRender(
 					NewHookCommand("helm", "dependency", "build"),
 				),
@@ -22,7 +25,11 @@ var DefaultConfig = Config{
 			"helm", "template", ".", "--generate-name",
 		),
 		MustNewCommand(
-			nil,
+			NewHooks(
+				WithInit(
+					NewHookCommand("kustomize", "version"),
+				),
+			),
 			".*/kustomization\\.ya?ml$", ".*\\.ya?ml$",
 			"kustomize", "build", ".",
 		),

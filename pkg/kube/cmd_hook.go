@@ -9,6 +9,7 @@ import (
 
 // Hooks represents the different types of hooks that can be executed.
 type Hooks struct {
+	Init       []*HookCommand `json:"init,omitempty"       yaml:"init,omitempty"`
 	PreRender  []*HookCommand `json:"preRender,omitempty"  yaml:"preRender,omitempty"`
 	PostRender []*HookCommand `json:"postRender,omitempty" yaml:"postRender,omitempty"`
 }
@@ -23,6 +24,12 @@ func NewHooks(opts ...HookOpts) *Hooks {
 }
 
 type HookOpts func(*Hooks)
+
+func WithInit(hooks ...*HookCommand) HookOpts {
+	return func(h *Hooks) {
+		h.Init = append(h.Init, hooks...)
+	}
+}
 
 func WithPreRender(hooks ...*HookCommand) HookOpts {
 	return func(h *Hooks) {
