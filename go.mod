@@ -13,7 +13,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.5
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
 	github.com/charmbracelet/log v0.4.2
-	github.com/charmbracelet/x/ansi v0.9.2
+	github.com/charmbracelet/x/ansi v0.9.3
 	github.com/charmbracelet/x/cellbuf v0.0.13
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/hashicorp/go-multierror v1.1.1
