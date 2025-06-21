@@ -139,7 +139,7 @@ func NewStashModel(cm *common.CommonModel) StashModel {
 		filterInput:  si,
 		sections:     s,
 		helpRenderer: statusbar.NewHelpRenderer(cm.Theme, kbr),
-		docRenderer:  NewDocumentListRenderer(cm.Theme, stashIndent, cm.Config.Compact),
+		docRenderer:  NewDocumentListRenderer(cm.Theme, stashIndent, *cm.Config.UI.Compact),
 	}
 
 	return m
@@ -310,7 +310,7 @@ func (m *StashModel) updatePagination() {
 		stashViewTopPadding -
 		stashViewBottomPadding
 
-	if !m.cm.Config.Compact {
+	if !*m.cm.Config.UI.Compact {
 		availableHeight++
 	}
 

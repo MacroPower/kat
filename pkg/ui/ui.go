@@ -76,10 +76,16 @@ func (m *model) unloadDocument() {
 }
 
 func newModel(cfg config.Config, cmd common.Commander) tea.Model {
+	theme := cfg.UI.Theme
+	currentTheme := cmd.GetCurrentTheme()
+	if currentTheme != "" {
+		theme = currentTheme
+	}
+
 	cm := common.CommonModel{
 		Config: cfg,
 		Cmd:    cmd,
-		Theme:  themes.NewTheme(cfg.Theme),
+		Theme:  themes.NewTheme(theme),
 	}
 
 	sp := spinner.New()

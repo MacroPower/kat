@@ -9,28 +9,11 @@ import (
 	"github.com/MacroPower/kat/pkg/kube"
 )
 
-var TestCommands = []*kube.Command{
-	kube.MustNewCommand(
-		kube.NewHooks(
-			kube.WithPreRender(
-				kube.NewHookCommand("helm", "dependency", "build"),
-			),
-		),
-		".*/Chart\\.ya?ml$", ".*\\.(ya?ml|tpl)$",
-		"helm", "template", ".", "--generate-name",
-	),
-	kube.MustNewCommand(
-		nil,
-		".*/kustomization\\.ya?ml$", ".*\\.ya?ml$",
-		"kustomize", "build", ".",
-	),
-}
-
-func TestCommand_WithPostRenderHooks(t *testing.T) {
+func TestProfile_WithPostRenderHooks(t *testing.T) {
 	t.Parallel()
 
 	// Create a command with postRender hooks that use stdin
-	cmd := &kube.Command{
+	cmd := &kube.Profile{
 		Command: "echo",
 		Args:    []string{"{apiVersion: v1, kind: Service, metadata: {name: test}}"},
 		Hooks: &kube.Hooks{
@@ -49,11 +32,11 @@ func TestCommand_WithPostRenderHooks(t *testing.T) {
 	assert.Equal(t, "Service", output.Resources[0].Object.GetKind())
 }
 
-func TestCommand_FailingPostRenderHook(t *testing.T) {
+func TestProfile_FailingPostRenderHook(t *testing.T) {
 	t.Parallel()
 
 	// Create a command with a failing postRender hook
-	cmd := &kube.Command{
+	cmd := &kube.Profile{
 		Command: "echo",
 		Args:    []string{"{apiVersion: v1, kind: Pod, metadata: {name: test}}"},
 		Hooks: &kube.Hooks{
@@ -68,11 +51,11 @@ func TestCommand_FailingPostRenderHook(t *testing.T) {
 	assert.Contains(t, output.Error.Error(), "exit status 1")
 }
 
-func TestCommand_EmptyHookCommand(t *testing.T) {
+func TestProfile_EmptyHookCommand(t *testing.T) {
 	t.Parallel()
 
 	// Create a command with an empty hook command
-	cmd := &kube.Command{
+	cmd := &kube.Profile{
 		Command: "echo",
 		Args:    []string{"{apiVersion: v1, kind: Pod, metadata: {name: test}}"},
 		Hooks: &kube.Hooks{
@@ -87,22 +70,7 @@ func TestCommand_EmptyHookCommand(t *testing.T) {
 	assert.Contains(t, output.Error.Error(), "empty command")
 }
 
-func TestNewCommandWithHooks(t *testing.T) {
-	t.Parallel()
-
-	hooks := &kube.Hooks{
-		PostRender: []*kube.HookCommand{
-			{Command: "echo", Args: []string{"post-render"}},
-		},
-	}
-
-	cmd, err := kube.NewCommand(hooks, ".*\\.yaml", "echo", "test")
-	require.NoError(t, err)
-	assert.NotNil(t, cmd.Hooks)
-	assert.Len(t, cmd.Hooks.PostRender, 1)
-}
-
-func TestCommand_WithPreRenderHooks(t *testing.T) {
+func TestProfile_WithPreRenderHooks(t *testing.T) {
 	t.Parallel()
 
 	tcs := map[string]struct {
@@ -154,7 +122,7 @@ func TestCommand_WithPreRenderHooks(t *testing.T) {
 			t.Parallel()
 
 			// Create a command with preRender hooks
-			cmd := &kube.Command{
+			cmd := &kube.Profile{
 				Command: "echo",
 				Args:    []string{"{apiVersion: v1, kind: ConfigMap, metadata: {name: test}}"},
 				Hooks: &kube.Hooks{
@@ -182,12 +150,12 @@ func TestCommand_WithPreRenderHooks(t *testing.T) {
 	}
 }
 
-func TestCommand_PreRenderHookFailurePreventsMainCommand(t *testing.T) {
+func TestProfile_PreRenderHookFailurePreventsMainCommand(t *testing.T) {
 	t.Parallel()
 
 	// Create a command with a failing preRender hook
 	// The main command should not execute if preRender fails
-	cmd := &kube.Command{
+	cmd := &kube.Profile{
 		Command: "echo",
 		Args:    []string{"this should not execute"},
 		Hooks: &kube.Hooks{
@@ -206,11 +174,11 @@ func TestCommand_PreRenderHookFailurePreventsMainCommand(t *testing.T) {
 	assert.Empty(t, output.Resources)
 }
 
-func TestCommand_WithBothPreAndPostRenderHooks(t *testing.T) {
+func TestProfile_WithBothPreAndPostRenderHooks(t *testing.T) {
 	t.Parallel()
 
 	// Test that both preRender and postRender hooks execute successfully
-	cmd := &kube.Command{
+	cmd := &kube.Profile{
 		Command: "echo",
 		Args:    []string{"{apiVersion: v1, kind: Service, metadata: {name: test}}"},
 		Hooks: &kube.Hooks{

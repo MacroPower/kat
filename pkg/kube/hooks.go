@@ -9,9 +9,9 @@ import (
 
 // Hooks represents the different types of hooks that can be executed.
 type Hooks struct {
-	Init       []*HookCommand `json:"init,omitempty"       yaml:"init,omitempty"`
-	PreRender  []*HookCommand `json:"preRender,omitempty"  yaml:"preRender,omitempty"`
-	PostRender []*HookCommand `json:"postRender,omitempty" yaml:"postRender,omitempty"`
+	Init       []*HookCommand `yaml:"init,omitempty"`
+	PreRender  []*HookCommand `yaml:"preRender,omitempty"`
+	PostRender []*HookCommand `yaml:"postRender,omitempty"`
 }
 
 func NewHooks(opts ...HookOpts) *Hooks {
@@ -45,8 +45,8 @@ func WithPostRender(hooks ...*HookCommand) HookOpts {
 
 // HookCommand represents a single hook command to execute.
 type HookCommand struct {
-	Command string   `json:"command" yaml:"command"`
-	Args    []string `json:"args"    yaml:"args"`
+	Command string   `validate:"required,alphanum" yaml:"command"`
+	Args    []string `yaml:"args,flow"`
 }
 
 func NewHookCommand(command string, args ...string) *HookCommand {

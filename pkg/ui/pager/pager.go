@@ -72,7 +72,7 @@ func NewPagerModel(cm *common.CommonModel) PagerModel {
 	m := PagerModel{
 		cm:              cm,
 		helpRenderer:    statusbar.NewHelpRenderer(cm.Theme, kbr),
-		glamourRenderer: NewGlamourRenderer(cm.Theme, cm.Config.LineNumbersDisabled),
+		glamourRenderer: NewGlamourRenderer(cm.Theme, !*cm.Config.UI.LineNumbers),
 		ViewState:       StateReady,
 		viewport:        vp,
 	}
@@ -164,7 +164,7 @@ func (m *PagerModel) SetSize(w, h int) {
 // This is where the magic happens.
 func (m PagerModel) RenderWithGlamour(yaml string) tea.Cmd {
 	return func() tea.Msg {
-		if m.glamourRenderer == nil || m.cm.Config.ChromaDisabled {
+		if m.glamourRenderer == nil || !*m.cm.Config.UI.ChromaRendering {
 			return ContentRenderedMsg(yaml)
 		}
 

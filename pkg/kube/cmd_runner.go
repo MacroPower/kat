@@ -34,7 +34,7 @@ type (
 //   - Filesystem notifications / watching.
 //   - Concurrent command execution.
 type CommandRunner struct {
-	command    *Command
+	rule       *Rule
 	watcher    *fsnotify.Watcher
 	cancelFunc context.CancelFunc
 	path       string
@@ -56,7 +56,7 @@ func NewCommandRunner(path string, opts ...CommandRunnerOpt) (*CommandRunner, er
 
 	if len(opts) == 0 {
 		// Defaults if no options are provided.
-		opts = append(opts, WithCommands(DefaultConfig.Commands))
+		opts = append(opts, WithRules(DefaultConfig.Rules))
 	}
 
 	for _, opt := range opts {
@@ -65,12 +65,13 @@ func NewCommandRunner(path string, opts ...CommandRunnerOpt) (*CommandRunner, er
 		}
 	}
 
-	if cr.command == nil {
+	if cr.rule == nil {
 		return nil, fmt.Errorf("%w: %s", ErrNoCommandForPath, cr.path)
 	}
 
-	if cr.command.Hooks != nil {
-		for _, hook := range cr.command.Hooks.Init {
+	profile := cr.rule.GetProfile()
+	if profile.Hooks != nil {
+		for _, hook := range profile.Hooks.Init {
 			if err := hook.Exec(context.Background(), cr.path, nil); err != nil {
 				return nil, fmt.Errorf("%w: init: %w", ErrHookExecution, err)
 			}
@@ -82,17 +83,24 @@ func NewCommandRunner(path string, opts ...CommandRunnerOpt) (*CommandRunner, er
 
 type CommandRunnerOpt func(cr *CommandRunner) error
 
-// WithCommand sets a specific command to run.
-func WithCommand(cmd *Command) CommandRunnerOpt {
+// WithProfile sets a specific profile to use.
+func WithProfile(name string, p *Profile) CommandRunnerOpt {
 	return func(cr *CommandRunner) error {
-		cr.command = cmd
+		cr.rule = &Rule{
+			Profile: name,
+			Match:   ".*",
+		}
+		cr.rule.SetProfile(p)
+		if err := cr.rule.CompileMatch(); err != nil {
+			return fmt.Errorf("invalid match: %w", err)
+		}
 
 		return nil
 	}
 }
 
-// WithCommands sets multiple commands to run.
-func WithCommands(cmds []*Command) CommandRunnerOpt {
+// WithRules sets multiple rules from which the first matching rule will be used.
+func WithRules(rules []*Rule) CommandRunnerOpt {
 	return func(cr *CommandRunner) error {
 		fileInfo, err := os.Stat(cr.path)
 		if err != nil {
@@ -101,18 +109,22 @@ func WithCommands(cmds []*Command) CommandRunnerOpt {
 
 		if fileInfo.IsDir() {
 			// Path is a directory, find matching files inside.
-			cmd, err := findMatchInDirectory(cr.path, cmds)
+			cmd, err := findMatchInDirectory(cr.path, rules)
 			if err != nil {
 				return err
 			}
 
-			cr.command = cmd
+			cr.rule = cmd
+
+			return nil
 		}
 
 		// Path is a file, check for direct match.
-		for _, cmd := range cmds {
-			if cmd.Match.MatchString(cr.path) {
-				cr.command = cmd
+		for _, cmd := range rules {
+			if cmd.MatchPath(cr.path) {
+				cr.rule = cmd
+
+				return nil
 			}
 		}
 
@@ -120,7 +132,13 @@ func WithCommands(cmds []*Command) CommandRunnerOpt {
 	}
 }
 
+func (cr *CommandRunner) GetCurrentTheme() string {
+	return cr.rule.GetProfile().Theme
+}
+
 func (cr *CommandRunner) Watch() error {
+	profile := cr.rule.GetProfile()
+
 	err := filepath.Walk(cr.path, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("walk %q: %w", path, err)
@@ -129,7 +147,7 @@ func (cr *CommandRunner) Watch() error {
 			// Skip directories, we only want to watch files.
 			return nil
 		}
-		if cr.command.Source == nil || cr.command.Source.MatchString(path) {
+		if profile.Match(path) {
 			// If the file matches the command's regex, add it to the watcher.
 			if err := cr.watcher.Add(path); err != nil {
 				return fmt.Errorf("add path to watcher: %w", err)
@@ -203,11 +221,7 @@ type CommandOutput struct {
 }
 
 func (cr *CommandRunner) String() string {
-	if cr.command != nil {
-		return cr.command.Command
-	}
-
-	return "auto"
+	return cr.rule.String()
 }
 
 // RunFirstMatch executes the first matching command for the given path.
@@ -225,9 +239,10 @@ func (cr *CommandRunner) RunContext(ctx context.Context) CommandOutput {
 	cr.mu.Lock()
 
 	var (
-		path = cr.path
-		cmd  = cr.command.Command
-		args = cr.command.Args
+		path    = cr.path
+		profile = cr.rule.GetProfile()
+		cmd     = profile.Command
+		args    = profile.Args
 	)
 
 	// Cancel any currently running command.
@@ -257,7 +272,7 @@ func (cr *CommandRunner) RunContext(ctx context.Context) CommandOutput {
 		return co
 	}
 
-	co := cr.command.Exec(ctx, path)
+	co := profile.Exec(ctx, path)
 
 	// Check if the command was canceled.
 	if co.Error != nil && errors.Is(ctx.Err(), context.Canceled) {
@@ -270,8 +285,8 @@ func (cr *CommandRunner) RunContext(ctx context.Context) CommandOutput {
 }
 
 // findMatchInDirectory looks for matching files in a directory.
-func findMatchInDirectory(dirPath string, cmds []*Command) (*Command, error) {
-	var matchedCommand *Command
+func findMatchInDirectory(dirPath string, rules []*Rule) (*Rule, error) {
+	var matchedRule *Rule
 	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -280,11 +295,11 @@ func findMatchInDirectory(dirPath string, cmds []*Command) (*Command, error) {
 			return filepath.SkipDir // Skip subdirectories.
 		}
 		if !d.IsDir() {
-			for _, cmd := range cmds {
-				if cmd.Match.MatchString(path) {
-					matchedCommand = cmd
+			for _, r := range rules {
+				if r.MatchPath(path) {
+					matchedRule = r
 
-					return nil
+					return filepath.SkipAll // Stop the walk after finding the first match.
 				}
 			}
 		}
@@ -294,9 +309,9 @@ func findMatchInDirectory(dirPath string, cmds []*Command) (*Command, error) {
 	if err != nil {
 		return nil, fmt.Errorf("walk directory: %w", err)
 	}
-	if matchedCommand == nil {
+	if matchedRule == nil {
 		return nil, fmt.Errorf("%w: no matching files in %s", ErrNoCommandForPath, dirPath)
 	}
 
-	return matchedCommand, nil
+	return matchedRule, nil
 }

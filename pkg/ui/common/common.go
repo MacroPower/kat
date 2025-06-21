@@ -16,6 +16,7 @@ type Commander interface {
 	RunOnEvent()
 	String() string
 	Subscribe(ch chan<- kube.CommandEvent)
+	GetCurrentTheme() string
 }
 
 type CommonModel struct {

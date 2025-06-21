@@ -15,6 +15,28 @@ import (
 	"github.com/MacroPower/kat/pkg/kube"
 )
 
+var (
+	testProfiles = map[string]*kube.Profile{
+		"ks": kube.MustNewProfile("kustomize",
+			kube.WithArgs("build", "."),
+			kube.WithSource("\\.ya?ml$")),
+		"helm": kube.MustNewProfile("helm",
+			kube.WithArgs("template", ".", "--generate-name"),
+			kube.WithSource("\\.(ya?ml|tpl)$")),
+		"yaml": kube.MustNewProfile("sh",
+			kube.WithArgs("-c", "yq eval-all '.' *.yaml"),
+			kube.WithSource("\\.ya?ml$")),
+	}
+
+	testRules = []*kube.Rule{
+		kube.MustNewRule("kustomize", "/kustomization\\.ya?ml$", "ks"),
+		kube.MustNewRule("helm", "/Chart\\.ya?ml$", "helm"),
+		kube.MustNewRule("yaml", "\\.ya?ml$", "yaml"),
+	}
+
+	TestConfig = kube.MustNewConfig(testProfiles, testRules)
+)
+
 func TestCommandRunner_RunForPath(t *testing.T) {
 	t.Parallel()
 
@@ -28,7 +50,7 @@ func TestCommandRunner_RunForPath(t *testing.T) {
 	kustomizationFile := filepath.Join(tempDir, "kustomization.yaml")
 	require.NoError(t, os.WriteFile(kustomizationFile, []byte("resources: []"), 0o644))
 
-	unknownFile := filepath.Join(tempDir, "unknown.yaml")
+	unknownFile := filepath.Join(tempDir, "unknown")
 	require.NoError(t, os.WriteFile(unknownFile, []byte(""), 0o644))
 
 	// Create a subdirectory with a nested file
@@ -79,7 +101,7 @@ func TestCommandRunner_RunForPath(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			runner, err := kube.NewCommandRunner(tc.path, kube.WithCommands(TestCommands))
+			runner, err := kube.NewCommandRunner(tc.path, kube.WithRules(TestConfig.Rules))
 			if tc.initError != nil {
 				require.ErrorIs(t, err, tc.initError)
 
@@ -104,9 +126,10 @@ func TestCommandRunner_RunForPath(t *testing.T) {
 func TestCommandRunner_WithCommand(t *testing.T) {
 	t.Parallel()
 
-	runner, err := kube.NewCommandRunner(t.TempDir(), kube.WithCommand(
-		kube.MustNewCommand(nil, "", "", "echo", "{apiVersion: v1, kind: Resource}"),
-	))
+	profile, err := kube.NewProfile("echo", kube.WithArgs("{apiVersion: v1, kind: Resource}"))
+	require.NoError(t, err)
+
+	runner, err := kube.NewCommandRunner(t.TempDir(), kube.WithProfile("echo", profile))
 	require.NoError(t, err)
 
 	output := runner.Run()
@@ -121,9 +144,10 @@ func TestCommandRunner_WithCommand(t *testing.T) {
 func TestCommandRunner_RunContext(t *testing.T) {
 	t.Parallel()
 
-	runner, err := kube.NewCommandRunner(t.TempDir(), kube.WithCommand(
-		kube.MustNewCommand(nil, "", "", "echo", "{apiVersion: v1, kind: ConfigMap, metadata: {name: test}}"),
-	))
+	profile, err := kube.NewProfile("echo", kube.WithArgs("{apiVersion: v1, kind: ConfigMap, metadata: {name: test}}"))
+	require.NoError(t, err)
+
+	runner, err := kube.NewCommandRunner(t.TempDir(), kube.WithProfile("echo", profile))
 	require.NoError(t, err)
 
 	// Test with context.Background()
@@ -150,10 +174,11 @@ func TestCommandRunner_RunContext(t *testing.T) {
 func TestCommandRunner_CancellationBehavior(t *testing.T) {
 	t.Parallel()
 
+	profile, err := kube.NewProfile("sleep", kube.WithArgs("2"))
+	require.NoError(t, err)
+
 	// Create a command that takes some time to execute
-	runner, err := kube.NewCommandRunner(t.TempDir(), kube.WithCommand(
-		kube.MustNewCommand(nil, "", "", "sleep", "2"),
-	))
+	runner, err := kube.NewCommandRunner(t.TempDir(), kube.WithProfile("sleep", profile))
 	require.NoError(t, err)
 
 	// Test that a new command cancels the previous one
@@ -240,10 +265,14 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 			testFile := filepath.Join(tempDir, "test.yaml")
 			require.NoError(t, os.WriteFile(testFile, []byte("test: data"), 0o644))
 
+			profile, err := kube.NewProfile("sleep",
+				kube.WithArgs(tc.commandSleepTime),
+				kube.WithSource("\\.yaml$"),
+			)
+			require.NoError(t, err)
+
 			// Create a command that takes a bit of time to execute
-			runner, err := kube.NewCommandRunner(tempDir, kube.WithCommand(
-				kube.MustNewCommand(nil, ".*\\.yaml$", "", "sleep", tc.commandSleepTime),
-			))
+			runner, err := kube.NewCommandRunner(tempDir, kube.WithProfile("sleep", profile))
 			require.NoError(t, err)
 
 			// Start watching

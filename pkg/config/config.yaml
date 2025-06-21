@@ -1,0 +1,133 @@
+apiVersion: config.kat.jacobcolvin.com/v1beta1
+kind: Configuration
+
+rules:
+  - # Select the `ks` profile if the provided directory contains a Kustomization file.
+    match: ".*/kustomization\\.ya?ml$"
+    profile: ks
+
+  - # Select the `helm` profile if the provided directory contains a Helm chart.
+    match: ".*/Chart\\.ya?ml$"
+    profile: helm
+
+  - # Otherwise, select the `yaml` profile to load any YAML files in the directory.
+    match: ".*\\.ya?ml$"
+    profile: yaml
+
+# Profiles is a map of profile names to profile definitions.
+# A profile is a set of configuration which can be selected by rules, or used
+# directly via CLI arguments.
+profiles:
+  # helm is a profile for Helm charts.
+  helm:
+    source: ".*\\.(ya?ml|tpl)$"
+    command: helm
+    args: [template, ., --generate-name]
+    theme: dracula
+    hooks:
+      init:
+        - command: helm
+          args: [version, --short]
+      preRender:
+        - command: helm
+          args: [dependency, build]
+
+  # ks is a profile for Kustomize.
+  ks: &ks
+    source: ".*\\.ya?ml$"
+    watch: true
+    command: kustomize
+    args: [build, .]
+    theme: tokyonight-storm
+    hooks:
+      init:
+        - command: kustomize
+          args: [version]
+
+  # ks-helm is a profile for Kustomize with Helm support.
+  ks-helm:
+    <<: *ks
+    args: [build, ., --enable-helm]
+
+  # yaml is a generic profile for YAML files.
+  yaml:
+    source: ".*\\.ya?ml$"
+    watch: true
+    command: sh
+    args:
+      - -c
+      - yq eval-all '.' *.yaml
+    theme: github-dark
+    hooks:
+      init:
+        - command: yq
+          args: [-V]
+
+# ui:
+#   # Chroma theme.
+#   # Choose from the Chroma Style Gallery: https://xyproto.github.io/splash/docs/
+#   # If you want to use a custom theme, add it to the `themes` section below.
+#   theme: "auto"
+#
+#   # Minimum delay for updates.
+#   # You can increase this value if commands complete faster than the UI can update.
+#   minimumDelay: 200ms
+#
+#   # Enable compact mode.
+#   # This places each list item on a single line.
+#   compact: false
+
+# # Themes is a map of theme names to theme definitions.
+# themes:
+#   custom:
+#     # Styles is a map of Pygments Tokens to Styles.
+#     # Tokens: https://pygments.org/docs/tokens/, Styles: http://pygments.org/docs/styles/
+#     styles: {}
+#       # background: "#abb2bf bg:#282c34"
+#       # punctuation: "#abb2bf"
+#       # keyword: "#c678dd"
+#       # name: "bold #e06c75"
+#       # comment: "italic #8b949e"
+#       # commentSpecial: "bold italic #8b949e"
+
+# # Keybinds is a map of category/actions to keybind definitions.
+# keybinds:
+#   # Common keybinds are available in all views.
+#   common:
+#     quit: ~
+#       # # Description of the action, shown in the help menu.
+#       # description: quit
+#       # keys:
+#       #   - code: q
+#       #   - code: ctrl+c
+#       #     alias: ⌃c # Key code alias for the help menu.
+#       #   - code: ctrl+alt+z
+#       #     hidden: true # Hide key code in the help menu.
+#     suspend: ~
+#     reload: ~
+#     help: ~
+#     error: ~
+#     escape: ~
+#     up: ~
+#     down: ~
+#     left: ~
+#     right: ~
+#     prev: ~
+#     next: ~
+#   # List keybinds are only available in list views.
+#   list:
+#     open: ~
+#     find: ~
+#     home: ~
+#     end: ~
+#     pageUp: ~
+#     pageDown: ~
+#   # Pager keybinds are only available in pager views.
+#   pager:
+#     copy: ~
+#     home: ~
+#     end: ~
+#     pageUp: ~
+#     pageDown: ~
+#     halfPageUp: ~
+#     halfPageDown: ~

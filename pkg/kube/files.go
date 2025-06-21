@@ -27,6 +27,11 @@ func (rg *ResourceGetter) String() string {
 	return "static"
 }
 
+func (rg *ResourceGetter) GetCurrentTheme() string {
+	// Static resources do not have a theme.
+	return ""
+}
+
 func (rg *ResourceGetter) Run() CommandOutput {
 	rg.broadcast(CommandEventStart{})
 
