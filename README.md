@@ -4,11 +4,11 @@
 </p>
 
 <p align="center">
-  <code>kat</code> is like <code>cat</code> for projects that render Kubernetes manifests. It provides a pretty terminal UI to quickly <b>find</b>, <b>debug</b>, and <b>reload</b> manifests, without ever leaving your shell.
+  <code>kat</code> provides an <b>interactive terminal UI</b> for rendering and viewing local Kubernetes manifests. It eliminates the frustrating cycle of running commands, scrolling through output, and losing context when debugging Helm charts, Kustomize overlays, and other manifest generators.
 </p>
 
 <p align="center">
-  <code>kat</code> is designed to reduce inner loop time for <b>developers</b> and <b>platform engineers</b> working on things like <code>helm</code> charts and <code>kustomize</code> projects. By editing the config, you can make <code>kat</code> work with anything that generates Kubernetes manifests, with powerful content-based project detection!
+  Designed for <b>developers</b> and <b>platform engineers</b> who need to quickly iterate on Kubernetes manifests, <code>kat</code> gives you <b>instant feedback</b> with features like <b>search</b>, <b>live reloading</b>, and <b>hooks</b>. Works with Helm, Kustomize, and any tool that generates manifests; with powerful customization to fit your exact workflow.
 </p>
 
 <p align="center">
@@ -22,13 +22,13 @@
 
 ## ✨ Features
 
-- 🚀 List and filter hundreds of manifests without leaving your shell.
-- 🔄 Reload from any context to quickly diff individual manifests.
-- 👀 Use `--watch` to trigger reloads on changes to source files.
-- 🐛 Immediately view any errors from rendering, and re-reload!
-- 🎨 Customize keybinds, styles, and more to match your preferences.
-- 🪄 Add your own rules to detect different project types.
-- 🚨 Define custom hooks to automatically validate rendered manifests.
+- **🔍️ Manifest browsing** - Navigate hundreds of rendered manifests with fuzzy search and filtering, no more endless scrolling through terminal output
+- **⚡️ Live reload** - Use `--watch` to automatically re-render when you modify source files, without losing your current context
+- **🐛 Error handling** - Rendering and validation errors are displayed as overlays and disappear if reloading resolves the error
+- **🎯 Project detection** - Automatically detect Helm charts, Kustomize projects, and custom manifest generators using powerful CEL expressions
+- **🧪 Tool integration** - Define profiles for any manifest generator (Helm, Kustomize, CUE, KCL, Jsonnet, etc.) with pre/post-render hooks
+- **✅ Custom validation** - Run tools like `kubeconform`, `kyverno`, or custom validators automatically on rendered output
+- **🎨 Beautiful UI** - Syntax-highlighted YAML with customizable themes and keybindings that match your preferences
 
 ## 📦 Installation
 
@@ -43,7 +43,7 @@ brew install kat --cask
 
 Archives are posted in [releases](https://github.com/MacroPower/kat/releases).
 
-## ⚡️ Usage
+## 🚀 Usage
 
 Show help:
 
@@ -105,7 +105,7 @@ You can also find an example configuration file in [pkg/config/config.yaml](pkg/
 
 You can customize how `kat` detects and renders different types of projects using **rules** and **profiles** in the configuration file. This system uses [CEL (Common Expression Language)](https://cel.dev/) expressions to provide flexible file matching and processing.
 
-### Rules
+### 🎯 Rules
 
 **Rules determine which profile should be used.** Each rule contains:
 
@@ -135,7 +135,7 @@ rules:
     profile: yaml
 ```
 
-### Profiles
+### 🎭 Profiles
 
 **Profiles define how to render projects.** They can be automatically selected by rules, or manually specified when `kat` is invoked. Each profile contains:
 
@@ -182,7 +182,7 @@ profiles:
           args: [version]
 ```
 
-### CEL Functions
+### 🧩 CEL Functions
 
 `kat` provides custom CEL functions for file path operations:
 
