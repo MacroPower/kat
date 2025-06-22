@@ -1,17 +1,21 @@
-package kube_test
+package expr_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/google/cel-go/common/types"
 	"github.com/stretchr/testify/require"
 
-	"github.com/MacroPower/kat/pkg/kube"
+	"github.com/MacroPower/kat/pkg/expr"
 )
 
 func TestCELFilepathFunctions(t *testing.T) {
 	t.Parallel()
+
+	env, err := expr.CreateEnvironment()
+	require.NoError(t, err)
 
 	tests := []struct {
 		name       string
@@ -88,36 +92,29 @@ func TestCELFilepathFunctions(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			rule, err := kube.NewRule("test", test.expression)
+			// Compile the CEL expression
+			ast, issues := env.Compile(test.expression)
+			require.NoError(t, issues.Err())
+
+			program, err := env.Program(ast)
 			require.NoError(t, err)
 
-			matches := rule.MatchFiles("/k8s", test.files)
-			require.Equal(t, test.expected, matches)
+			// Create input data
+			fileList := types.NewStringList(types.DefaultTypeAdapter, test.files)
+			vars := map[string]any{
+				"files": fileList,
+				"dir":   "/k8s",
+			}
+
+			// Evaluate the expression
+			result, _, err := program.Eval(vars)
+			require.NoError(t, err)
+
+			boolResult, ok := result.Value().(bool)
+			require.True(t, ok, "result should be a boolean")
+			require.Equal(t, test.expected, boolResult)
 		})
 	}
-}
-
-func TestCELFilepathFunctionsInProfile(t *testing.T) {
-	t.Parallel()
-
-	// Test that filepath functions work in profile source expressions too
-	profile, err := kube.NewProfile("kubectl",
-		kube.WithArgs("apply", "-f", "-"),
-		kube.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"] && !pathBase(f).matches(".*test.*"))`),
-	)
-	require.NoError(t, err)
-
-	files := []string{
-		"/k8s/deployment.yaml",
-		"/k8s/service.yml",
-		"/k8s/test-config.yaml",
-		"/k8s/readme.txt",
-	}
-
-	matches, result := profile.MatchFiles("/k8s", files)
-	expected := []string{"/k8s/deployment.yaml", "/k8s/service.yml"}
-	require.True(t, matches)
-	require.ElementsMatch(t, expected, result)
 }
 
 func TestCELYamlPathFunction(t *testing.T) {
@@ -148,6 +145,9 @@ service:
 `
 	valuesPath := filepath.Join(tempDir, "values.yaml")
 	require.NoError(t, os.WriteFile(valuesPath, []byte(valuesContent), 0o644))
+
+	env, err := expr.CreateEnvironment()
+	require.NoError(t, err)
 
 	tests := []struct {
 		name       string
@@ -185,11 +185,27 @@ service:
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			rule, err := kube.NewRule("test", test.expression)
+			// Compile the CEL expression
+			ast, issues := env.Compile(test.expression)
+			require.NoError(t, issues.Err())
+
+			program, err := env.Program(ast)
 			require.NoError(t, err)
 
-			matches := rule.MatchFiles(tempDir, test.files)
-			require.Equal(t, test.expected, matches)
+			// Create input data
+			fileList := types.NewStringList(types.DefaultTypeAdapter, test.files)
+			vars := map[string]any{
+				"files": fileList,
+				"dir":   tempDir,
+			}
+
+			// Evaluate the expression
+			result, _, err := program.Eval(vars)
+			require.NoError(t, err)
+
+			boolResult, ok := result.Value().(bool)
+			require.True(t, ok, "result should be a boolean")
+			require.Equal(t, test.expected, boolResult)
 		})
 	}
 }

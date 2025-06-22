@@ -1,4 +1,4 @@
-package kube_test
+package rule_test
 
 import (
 	"testing"
@@ -6,10 +6,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/MacroPower/kat/pkg/kube"
+	"github.com/MacroPower/kat/pkg/rule"
 )
 
-func TestNewRule(t *testing.T) {
+func TestNew(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -48,39 +48,39 @@ func TestNewRule(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			rule, err := kube.NewRule(tt.profile, tt.match)
+			r, err := rule.New(tt.profile, tt.match)
 
 			if tt.wantErr {
 				require.Error(t, err)
-				assert.Nil(t, rule)
+				assert.Nil(t, r)
 				assert.Contains(t, err.Error(), tt.match)
 			} else {
 				require.NoError(t, err)
-				require.NotNil(t, rule)
-				assert.Equal(t, tt.match, rule.Match)
-				assert.Equal(t, tt.profile, rule.Profile)
+				require.NotNil(t, r)
+				assert.Equal(t, tt.match, r.Match)
+				assert.Equal(t, tt.profile, r.Profile)
 			}
 		})
 	}
 }
 
-func TestMustNewRule(t *testing.T) {
+func TestMustNew(t *testing.T) {
 	t.Parallel()
 
 	t.Run("valid rule", func(t *testing.T) {
 		t.Parallel()
 
-		rule := kube.MustNewRule("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`)
-		require.NotNil(t, rule)
-		assert.Equal(t, `files.exists(f, pathExt(f) in [".yaml", ".yml"])`, rule.Match)
-		assert.Equal(t, "yaml", rule.Profile)
+		r := rule.MustNew("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`)
+		require.NotNil(t, r)
+		assert.Equal(t, `files.exists(f, pathExt(f) in [".yaml", ".yml"])`, r.Match)
+		assert.Equal(t, "yaml", r.Profile)
 	})
 
 	t.Run("invalid rule panics", func(t *testing.T) {
 		t.Parallel()
 
 		assert.Panics(t, func() {
-			kube.MustNewRule("yaml", "path.invalidFunction()")
+			rule.MustNew("yaml", "path.invalidFunction()")
 		})
 	})
 }
@@ -119,12 +119,12 @@ func TestRule_CompileMatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			rule := &kube.Rule{
+			r := &rule.Rule{
 				Match:   tt.match,
 				Profile: "test",
 			}
 
-			err := rule.CompileMatch()
+			err := r.CompileMatch()
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -132,141 +132,11 @@ func TestRule_CompileMatch(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				// Calling CompileMatch again should not cause an error.
-				err2 := rule.CompileMatch()
+				err2 := r.CompileMatch()
 				require.NoError(t, err2)
 			}
 		})
 	}
-}
-
-func TestRule_GetProfile(t *testing.T) {
-	t.Parallel()
-
-	t.Run("returns profile when set", func(t *testing.T) {
-		t.Parallel()
-
-		profile := &kube.Profile{
-			Command: "kubectl",
-			Args:    []string{"apply", "-f", "-"},
-		}
-
-		rule := &kube.Rule{
-			Match:   "\\.ya?ml$",
-			Profile: "kubectl",
-		}
-		rule.SetProfile(profile)
-
-		result := rule.GetProfile()
-		assert.Same(t, profile, result)
-	})
-
-	t.Run("panics when profile not set", func(t *testing.T) {
-		t.Parallel()
-
-		rule := &kube.Rule{
-			Match:   "\\.ya?ml$",
-			Profile: "kubectl",
-		}
-
-		assert.Panics(t, func() {
-			rule.GetProfile()
-		})
-	})
-}
-
-func TestRule_SetProfile(t *testing.T) {
-	t.Parallel()
-
-	profile := &kube.Profile{
-		Command: "helm",
-		Args:    []string{"template", "."},
-	}
-
-	rule := &kube.Rule{
-		Match:   "/Chart\\.ya?ml$",
-		Profile: "helm",
-	}
-
-	rule.SetProfile(profile)
-
-	// Verify profile was set correctly.
-	result := rule.GetProfile()
-	assert.Same(t, profile, result)
-}
-
-func TestRule_String(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		command  string
-		profile  string
-		expected string
-		args     []string
-	}{
-		{
-			name:     "helm command",
-			command:  "helm",
-			args:     []string{"template", ".", "--generate-name"},
-			profile:  "helm",
-			expected: "helm: helm template . --generate-name",
-		},
-		{
-			name:     "kubectl command",
-			command:  "kubectl",
-			args:     []string{"apply", "-f", "-"},
-			profile:  "kubectl",
-			expected: "kubectl: kubectl apply -f -",
-		},
-		{
-			name:     "command with no args",
-			command:  "cat",
-			args:     []string{},
-			profile:  "cat",
-			expected: "cat: cat ",
-		},
-		{
-			name:     "kustomize command",
-			command:  "kustomize",
-			args:     []string{"build", "."},
-			profile:  "ks",
-			expected: "ks: kustomize build .",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			profile := &kube.Profile{
-				Command: tt.command,
-				Args:    tt.args,
-			}
-
-			rule := &kube.Rule{
-				Match:   "\\.ya?ml$",
-				Profile: tt.profile,
-			}
-			rule.SetProfile(profile)
-
-			result := rule.String()
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestRule_String_Panics(t *testing.T) {
-	t.Parallel()
-
-	rule := &kube.Rule{
-		Match:   "\\.ya?ml$",
-		Profile: "test",
-	}
-	// Don't set the profile.
-
-	assert.Panics(t, func() {
-		_ = rule.String()
-	})
 }
 
 func TestRule_MatchFiles_BooleanAndLegacySupport(t *testing.T) {
@@ -314,10 +184,10 @@ func TestRule_MatchFiles_BooleanAndLegacySupport(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			rule, err := kube.NewRule("test-profile", tt.expression)
+			r, err := rule.New("test-profile", tt.expression)
 			require.NoError(t, err)
 
-			gotMatches := rule.MatchFiles("/app", tt.files)
+			gotMatches := r.MatchFiles("/app", tt.files)
 			assert.Equal(t, tt.wantMatches, gotMatches)
 		})
 	}

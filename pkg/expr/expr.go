@@ -1,4 +1,14 @@
-package kube
+// Package expr provides CEL (Common Expression Language) functionality
+// for evaluating expressions against file paths and YAML content.
+//
+// This package creates CEL environments with custom functions for:
+// - File path operations (pathBase, pathDir, pathExt)
+// - YAML content extraction (yamlPath)
+//
+// CEL expressions have access to variables:
+//   - `files` (list<string>): All file paths in directory
+//   - `dir` (string): The directory path being processed
+package expr
 
 import (
 	"fmt"
@@ -14,9 +24,9 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 )
 
-// createCELEnvironment creates a CEL environment with functions for filepath operations.
+// CreateEnvironment creates a CEL environment with functions for filepath operations.
 // These functions provide direct access to Go's filepath package functionality.
-func createCELEnvironment() (*cel.Env, error) {
+func CreateEnvironment() (*cel.Env, error) {
 	celEnv, err := cel.NewEnv(
 		cel.Variable("files", cel.ListType(cel.StringType)),
 		cel.Variable("dir", cel.StringType),
@@ -121,7 +131,7 @@ func createCELEnvironment() (*cel.Env, error) {
 					}
 
 					// Convert the extracted value to a CEL value.
-					return convertToCELValue(value)
+					return ConvertToCELValue(value)
 				}),
 			),
 		),
@@ -133,9 +143,9 @@ func createCELEnvironment() (*cel.Env, error) {
 	return celEnv, nil
 }
 
-// convertToCELValue converts a Go value to a CEL value.
+// ConvertToCELValue converts a Go value to a CEL value.
 // Handles common YAML types and returns null for unsupported types.
-func convertToCELValue(value any) ref.Val { // nolint:ireturn // Following CEL's function signature.
+func ConvertToCELValue(value any) ref.Val { // nolint:ireturn // Following CEL's function signature.
 	switch v := value.(type) {
 	case nil:
 		return types.NullValue
@@ -181,7 +191,7 @@ func convertToCELValue(value any) ref.Val { // nolint:ireturn // Following CEL's
 		// Convert slice to CEL list.
 		celValues := make([]ref.Val, len(v))
 		for i, item := range v {
-			celValues[i] = convertToCELValue(item)
+			celValues[i] = ConvertToCELValue(item)
 		}
 
 		return types.NewDynamicList(types.DefaultTypeAdapter, celValues)
@@ -189,8 +199,8 @@ func convertToCELValue(value any) ref.Val { // nolint:ireturn // Following CEL's
 		// Convert map to CEL map.
 		celMap := make(map[ref.Val]ref.Val)
 		for key, val := range v {
-			celKey := convertToCELValue(key)
-			celVal := convertToCELValue(val)
+			celKey := ConvertToCELValue(key)
+			celVal := ConvertToCELValue(val)
 			celMap[celKey] = celVal
 		}
 
@@ -200,7 +210,7 @@ func convertToCELValue(value any) ref.Val { // nolint:ireturn // Following CEL's
 		celMap := make(map[ref.Val]ref.Val)
 		for key, val := range v {
 			celKey := types.String(key)
-			celVal := convertToCELValue(val)
+			celVal := ConvertToCELValue(val)
 			celMap[celKey] = celVal
 		}
 

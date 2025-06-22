@@ -1,4 +1,4 @@
-package kube
+package profile
 
 import (
 	"bytes"
@@ -14,6 +14,7 @@ type Hooks struct {
 	PostRender []*HookCommand `yaml:"postRender,omitempty"`
 }
 
+// NewHooks creates a new Hooks instance with the given options.
 func NewHooks(opts ...HookOpts) *Hooks {
 	h := &Hooks{}
 	for _, opt := range opts {
@@ -23,20 +24,24 @@ func NewHooks(opts ...HookOpts) *Hooks {
 	return h
 }
 
+// HookOpts is a functional option for configuring Hooks.
 type HookOpts func(*Hooks)
 
+// WithInit adds init hooks.
 func WithInit(hooks ...*HookCommand) HookOpts {
 	return func(h *Hooks) {
 		h.Init = append(h.Init, hooks...)
 	}
 }
 
+// WithPreRender adds pre-render hooks.
 func WithPreRender(hooks ...*HookCommand) HookOpts {
 	return func(h *Hooks) {
 		h.PreRender = append(h.PreRender, hooks...)
 	}
 }
 
+// WithPostRender adds post-render hooks.
 func WithPostRender(hooks ...*HookCommand) HookOpts {
 	return func(h *Hooks) {
 		h.PostRender = append(h.PostRender, hooks...)
@@ -49,6 +54,7 @@ type HookCommand struct {
 	Args    []string `yaml:"args,flow"`
 }
 
+// NewHookCommand creates a new hook command with the given command and arguments.
 func NewHookCommand(command string, args ...string) *HookCommand {
 	return &HookCommand{
 		Command: command,
@@ -56,6 +62,7 @@ func NewHookCommand(command string, args ...string) *HookCommand {
 	}
 }
 
+// Exec executes the hook command in the given directory with optional stdin.
 func (hc *HookCommand) Exec(ctx context.Context, dir string, stdin []byte) error {
 	if hc.Command == "" {
 		return ErrEmptyCommand

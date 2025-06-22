@@ -13,25 +13,27 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/MacroPower/kat/pkg/kube"
+	"github.com/MacroPower/kat/pkg/profile"
+	"github.com/MacroPower/kat/pkg/rule"
 )
 
 var (
-	testProfiles = map[string]*kube.Profile{
-		"ks": kube.MustNewProfile("kustomize",
-			kube.WithArgs("build", "."),
-			kube.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`)),
-		"helm": kube.MustNewProfile("helm",
-			kube.WithArgs("template", ".", "--generate-name"),
-			kube.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])`)),
-		"yaml": kube.MustNewProfile("sh",
-			kube.WithArgs("-c", "yq eval-all '.' *.yaml"),
-			kube.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`)),
+	testProfiles = map[string]*profile.Profile{
+		"ks": profile.MustNew("kustomize",
+			profile.WithArgs("build", "."),
+			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`)),
+		"helm": profile.MustNew("helm",
+			profile.WithArgs("template", ".", "--generate-name"),
+			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])`)),
+		"yaml": profile.MustNew("sh",
+			profile.WithArgs("-c", "yq eval-all '.' *.yaml"),
+			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`)),
 	}
 
-	testRules = []*kube.Rule{
-		kube.MustNewRule("ks", `files.exists(f, pathBase(f).matches(".*kustomization.*"))`),
-		kube.MustNewRule("helm", `files.exists(f, pathBase(f).matches("Chart\\..*"))`),
-		kube.MustNewRule("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`),
+	testRules = []*rule.Rule{
+		rule.MustNew("ks", `files.exists(f, pathBase(f).matches(".*kustomization.*"))`),
+		rule.MustNew("helm", `files.exists(f, pathBase(f).matches("Chart\\..*"))`),
+		rule.MustNew("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`),
 	}
 
 	TestConfig = kube.MustNewConfig(testProfiles, testRules)
@@ -126,10 +128,10 @@ func TestCommandRunner_RunForPath(t *testing.T) {
 func TestCommandRunner_WithCommand(t *testing.T) {
 	t.Parallel()
 
-	profile, err := kube.NewProfile("echo", kube.WithArgs("{apiVersion: v1, kind: Resource}"))
+	p, err := profile.New("echo", profile.WithArgs("{apiVersion: v1, kind: Resource}"))
 	require.NoError(t, err)
 
-	runner, err := kube.NewCommandRunner(t.TempDir(), kube.WithProfile("echo", profile))
+	runner, err := kube.NewCommandRunner(t.TempDir(), kube.WithProfile("echo", p))
 	require.NoError(t, err)
 
 	output := runner.Run()
@@ -137,6 +139,7 @@ func TestCommandRunner_WithCommand(t *testing.T) {
 
 	assert.Empty(t, output.Stderr)
 	assert.Equal(t, "{apiVersion: v1, kind: Resource}\n", output.Stdout)
+	require.Len(t, output.Resources, 1)
 	assert.Equal(t, "v1", output.Resources[0].Object.GetAPIVersion())
 	assert.Equal(t, "Resource", output.Resources[0].Object.GetKind())
 }
@@ -144,10 +147,10 @@ func TestCommandRunner_WithCommand(t *testing.T) {
 func TestCommandRunner_RunContext(t *testing.T) {
 	t.Parallel()
 
-	profile, err := kube.NewProfile("echo", kube.WithArgs("{apiVersion: v1, kind: ConfigMap, metadata: {name: test}}"))
+	p, err := profile.New("echo", profile.WithArgs("{apiVersion: v1, kind: ConfigMap, metadata: {name: test}}"))
 	require.NoError(t, err)
 
-	runner, err := kube.NewCommandRunner(t.TempDir(), kube.WithProfile("echo", profile))
+	runner, err := kube.NewCommandRunner(t.TempDir(), kube.WithProfile("echo", p))
 	require.NoError(t, err)
 
 	// Test with context.Background()
@@ -156,6 +159,7 @@ func TestCommandRunner_RunContext(t *testing.T) {
 
 	assert.Empty(t, output.Stderr)
 	assert.Equal(t, "{apiVersion: v1, kind: ConfigMap, metadata: {name: test}}\n", output.Stdout)
+	require.Len(t, output.Resources, 1)
 	assert.Equal(t, "v1", output.Resources[0].Object.GetAPIVersion())
 	assert.Equal(t, "ConfigMap", output.Resources[0].Object.GetKind())
 
@@ -174,11 +178,11 @@ func TestCommandRunner_RunContext(t *testing.T) {
 func TestCommandRunner_CancellationBehavior(t *testing.T) {
 	t.Parallel()
 
-	profile, err := kube.NewProfile("sleep", kube.WithArgs("2"))
+	p, err := profile.New("sleep", profile.WithArgs("2"))
 	require.NoError(t, err)
 
 	// Create a command that takes some time to execute
-	runner, err := kube.NewCommandRunner(t.TempDir(), kube.WithProfile("sleep", profile))
+	runner, err := kube.NewCommandRunner(t.TempDir(), kube.WithProfile("sleep", p))
 	require.NoError(t, err)
 
 	// Test that a new command cancels the previous one
@@ -265,14 +269,14 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 			testFile := filepath.Join(tempDir, "test.yaml")
 			require.NoError(t, os.WriteFile(testFile, []byte("test: data"), 0o644))
 
-			profile, err := kube.NewProfile("sleep",
-				kube.WithArgs(tc.commandSleepTime),
-				kube.WithSource(`files.filter(f, pathExt(f) == ".yaml")`),
+			p, err := profile.New("sleep",
+				profile.WithArgs(tc.commandSleepTime),
+				profile.WithSource(`files.filter(f, pathExt(f) == ".yaml")`),
 			)
 			require.NoError(t, err)
 
 			// Create a command that takes a bit of time to execute
-			runner, err := kube.NewCommandRunner(tempDir, kube.WithProfile("sleep", profile))
+			runner, err := kube.NewCommandRunner(tempDir, kube.WithProfile("sleep", p))
 			require.NoError(t, err)
 
 			// Start watching

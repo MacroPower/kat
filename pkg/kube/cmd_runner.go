@@ -11,6 +11,23 @@ import (
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
+
+	"github.com/MacroPower/kat/pkg/profile"
+	"github.com/MacroPower/kat/pkg/rule"
+)
+
+var (
+	// ErrNoCommandForPath is returned when no command is found for a path.
+	ErrNoCommandForPath = errors.New("no command for path")
+
+	// ErrCommandExecution is returned when command execution fails.
+	ErrCommandExecution = errors.New("command execution")
+
+	// ErrEmptyCommand is returned when a command is empty.
+	ErrEmptyCommand = errors.New("empty command")
+
+	// ErrHookExecution is returned when hook execution fails.
+	ErrHookExecution = errors.New("hook execution")
 )
 
 // CommandEvent represents an event related to command execution.
@@ -29,12 +46,12 @@ type (
 	CommandEventCancel struct{}
 )
 
-// CommandRunner wraps one or more [Command] objects. It manages:
+// CommandRunner wraps one or more Rule objects. It manages:
 //   - File-to-command mappings.
 //   - Filesystem notifications / watching.
 //   - Concurrent command execution.
 type CommandRunner struct {
-	rule       *Rule
+	rule       *rule.Rule
 	watcher    *fsnotify.Watcher
 	cancelFunc context.CancelFunc
 	path       string
@@ -69,9 +86,9 @@ func NewCommandRunner(path string, opts ...CommandRunnerOpt) (*CommandRunner, er
 		return nil, fmt.Errorf("%w: %s", ErrNoCommandForPath, cr.path)
 	}
 
-	profile := cr.rule.GetProfile()
-	if profile.Hooks != nil {
-		for _, hook := range profile.Hooks.Init {
+	p := cr.rule.GetProfile()
+	if p.Hooks != nil {
+		for _, hook := range p.Hooks.Init {
 			if err := hook.Exec(context.Background(), cr.path, nil); err != nil {
 				return nil, fmt.Errorf("%w: init: %w", ErrHookExecution, err)
 			}
@@ -84,23 +101,21 @@ func NewCommandRunner(path string, opts ...CommandRunnerOpt) (*CommandRunner, er
 type CommandRunnerOpt func(cr *CommandRunner) error
 
 // WithProfile sets a specific profile to use.
-func WithProfile(name string, p *Profile) CommandRunnerOpt {
+func WithProfile(name string, p *profile.Profile) CommandRunnerOpt {
 	return func(cr *CommandRunner) error {
-		cr.rule = &Rule{
-			Profile: name,
-			Match:   "true", // Always match in CEL.
-		}
-		cr.rule.SetProfile(p)
-		if err := cr.rule.CompileMatch(); err != nil {
+		r, err := rule.New(name, "true") // Always match in CEL.
+		if err != nil {
 			return fmt.Errorf("invalid match: %w", err)
 		}
+		r.SetProfile(p)
+		cr.rule = r
 
 		return nil
 	}
 }
 
 // WithRules sets multiple rules from which the first matching rule will be used.
-func WithRules(rules []*Rule) CommandRunnerOpt {
+func WithRules(rs []*rule.Rule) CommandRunnerOpt {
 	return func(cr *CommandRunner) error {
 		fileInfo, err := os.Stat(cr.path)
 		if err != nil {
@@ -109,7 +124,7 @@ func WithRules(rules []*Rule) CommandRunnerOpt {
 
 		if fileInfo.IsDir() {
 			// Path is a directory, find matching files inside.
-			cmd, err := findMatchInDirectory(cr.path, rules)
+			cmd, err := findMatchInDirectory(cr.path, rs)
 			if err != nil {
 				return err
 			}
@@ -122,7 +137,7 @@ func WithRules(rules []*Rule) CommandRunnerOpt {
 		// Path is a file, check for direct match.
 		// Normalize to directory mode: pass parent directory and file list.
 		fileDir := filepath.Dir(cr.path)
-		for _, r := range rules {
+		for _, r := range rs {
 			if r.MatchFiles(fileDir, []string{cr.path}) {
 				cr.rule = r
 
@@ -139,7 +154,7 @@ func (cr *CommandRunner) GetCurrentTheme() string {
 }
 
 func (cr *CommandRunner) Watch() error {
-	profile := cr.rule.GetProfile()
+	p := cr.rule.GetProfile()
 
 	var files []string
 	err := filepath.Walk(cr.path, func(path string, info fs.FileInfo, err error) error {
@@ -158,7 +173,7 @@ func (cr *CommandRunner) Watch() error {
 		return fmt.Errorf("walk %q: %w", cr.path, err)
 	}
 
-	if ok, matchedFiles := profile.MatchFiles(cr.path, files); ok {
+	if ok, matchedFiles := p.MatchFiles(cr.path, files); ok {
 		for _, file := range matchedFiles {
 			if err := cr.watcher.Add(file); err != nil {
 				return fmt.Errorf("add path to watcher: %w", err)
@@ -223,7 +238,6 @@ type CommandOutput struct {
 	Stdout    string
 	Stderr    string
 	Resources []*Resource
-	Hooks     []*HookCommand
 }
 
 func (cr *CommandRunner) String() string {
@@ -245,10 +259,10 @@ func (cr *CommandRunner) RunContext(ctx context.Context) CommandOutput {
 	cr.mu.Lock()
 
 	var (
-		path    = cr.path
-		profile = cr.rule.GetProfile()
-		cmd     = profile.Command
-		args    = profile.Args
+		path = cr.path
+		p    = cr.rule.GetProfile()
+		cmd  = p.Command
+		args = p.Args
 	)
 
 	// Cancel any currently running command.
@@ -278,14 +292,31 @@ func (cr *CommandRunner) RunContext(ctx context.Context) CommandOutput {
 		return co
 	}
 
-	co := profile.Exec(ctx, path)
+	result := p.Exec(ctx, path)
+	co := CommandOutput{
+		Error:  result.Error,
+		Stdout: result.Stdout,
+		Stderr: result.Stderr,
+	}
 
 	// Check if the command was canceled.
 	if co.Error != nil && errors.Is(ctx.Err(), context.Canceled) {
 		cr.broadcast(CommandEventCancel{})
-	} else {
+
+		return co
+	} else if co.Error != nil {
+		co.Error = fmt.Errorf("%w: %w", ErrCommandExecution, co.Error)
 		cr.broadcast(CommandEventEnd(co))
+
+		return co
 	}
+
+	objects, err := SplitYAML([]byte(co.Stdout))
+	if err != nil {
+		co.Error = fmt.Errorf("%w: %w", err, co.Error)
+	}
+	co.Resources = objects
+	cr.broadcast(CommandEventEnd(co))
 
 	return co
 }
@@ -293,7 +324,7 @@ func (cr *CommandRunner) RunContext(ctx context.Context) CommandOutput {
 // findMatchInDirectory looks for matching files in a directory.
 // It collects all files and allows CEL expressions to operate on the entire collection.
 // Returns (rule, files) where files contains the specific files to process, or nil to use profile.source.
-func findMatchInDirectory(dirPath string, rules []*Rule) (*Rule, error) {
+func findMatchInDirectory(dirPath string, rs []*rule.Rule) (*rule.Rule, error) {
 	var files []string
 
 	// Collect all files in the directory (non-recursive).
@@ -315,7 +346,7 @@ func findMatchInDirectory(dirPath string, rules []*Rule) (*Rule, error) {
 	}
 
 	// Try each rule with the full file collection.
-	for _, r := range rules {
+	for _, r := range rs {
 		if r.MatchFiles(dirPath, files) {
 			return r, nil
 		}

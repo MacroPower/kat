@@ -12,6 +12,7 @@ import (
 	"github.com/MacroPower/kat/pkg/config"
 	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/log"
+	"github.com/MacroPower/kat/pkg/profile"
 	"github.com/MacroPower/kat/pkg/ui"
 	"github.com/MacroPower/kat/pkg/ui/common"
 	"github.com/MacroPower/kat/pkg/ui/themes"
@@ -140,22 +141,22 @@ func main() {
 	}
 }
 
-func getProfile(cfg *config.Config, cmd string, args []string) (*kube.Profile, error) {
-	profile, ok := cfg.Kube.Profiles[cmd]
+func getProfile(cfg *config.Config, cmd string, args []string) (*profile.Profile, error) {
+	p, ok := cfg.Kube.Profiles[cmd]
 	if !ok {
 		// If the command is not a profile, create a new profile with the command.
 		slog.Debug("creating new profile", slog.String("name", cmd))
 		var err error
-		profile, err = kube.NewProfile(cmd, kube.WithArgs(args...))
+		p, err = profile.New(cmd, profile.WithArgs(args...))
 		if err != nil {
 			return nil, fmt.Errorf("create profile: %w", err)
 		}
 	} else if len(args) > 0 {
 		slog.Debug("overwriting profile arguments", slog.String("name", cmd))
-		profile.Args = args
+		p.Args = args
 	}
 
-	return profile, nil
+	return p, nil
 }
 
 // setupCommandRunner creates and configures the command runner.
@@ -166,12 +167,12 @@ func setupCommandRunner(path string, cfg *config.Config) (*kube.CommandRunner, e
 	)
 
 	if cli.Command != "" {
-		profile, err := getProfile(cfg, cli.Command, parseArgs(cli.Args))
+		p, err := getProfile(cfg, cli.Command, parseArgs(cli.Args))
 		if err != nil {
 			return nil, err
 		}
 
-		cr, err = kube.NewCommandRunner(path, kube.WithProfile(cli.Command, profile))
+		cr, err = kube.NewCommandRunner(path, kube.WithProfile(cli.Command, p))
 		if err != nil {
 			return nil, err
 		}

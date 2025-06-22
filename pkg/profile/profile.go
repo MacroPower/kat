@@ -1,4 +1,10 @@
-package kube
+// Package profile provides command profile functionality for executing
+// commands with optional source filtering using CEL expressions.
+//
+// Profiles define how to execute commands against sets of files,
+// with support for hooks (pre/post execution commands) and source
+// filtering to determine which files should be processed.
+package profile
 
 import (
 	"bytes"
@@ -10,6 +16,8 @@ import (
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types/ref"
+
+	"github.com/MacroPower/kat/pkg/expr"
 )
 
 var (
@@ -53,7 +61,11 @@ type Profile struct {
 	Args    []string `yaml:"args,flow"`
 }
 
-func NewProfile(command string, opts ...ProfileOpt) (*Profile, error) {
+// ProfileOpt is a functional option for configuring a Profile.
+type ProfileOpt func(*Profile)
+
+// New creates a new profile with the given command and options.
+func New(command string, opts ...ProfileOpt) (*Profile, error) {
 	p := &Profile{
 		Command: command,
 	}
@@ -67,8 +79,9 @@ func NewProfile(command string, opts ...ProfileOpt) (*Profile, error) {
 	return p, nil
 }
 
-func MustNewProfile(command string, opts ...ProfileOpt) *Profile {
-	p, err := NewProfile(command, opts...)
+// MustNew creates a new profile and panics if there's an error.
+func MustNew(command string, opts ...ProfileOpt) *Profile {
+	p, err := New(command, opts...)
 	if err != nil {
 		panic(err)
 	}
@@ -76,29 +89,38 @@ func MustNewProfile(command string, opts ...ProfileOpt) *Profile {
 	return p
 }
 
-type ProfileOpt func(*Profile)
-
+// WithArgs sets the command arguments for the profile.
 func WithArgs(args ...string) ProfileOpt {
 	return func(p *Profile) {
 		p.Args = args
 	}
 }
 
+// WithHooks sets the hooks for the profile.
 func WithHooks(hooks *Hooks) ProfileOpt {
 	return func(p *Profile) {
 		p.Hooks = hooks
 	}
 }
 
+// WithSource sets the source filtering expression for the profile.
 func WithSource(source string) ProfileOpt {
 	return func(p *Profile) {
 		p.Source = source
 	}
 }
 
+// WithTheme sets the theme for the profile.
+func WithTheme(theme string) ProfileOpt {
+	return func(p *Profile) {
+		p.Theme = theme
+	}
+}
+
+// CompileSource compiles the profile's source expression into a CEL program.
 func (p *Profile) CompileSource() error {
 	if p.sourceProgram == nil && p.Source != "" {
-		env, err := createCELEnvironment()
+		env, err := expr.CreateEnvironment()
 		if err != nil {
 			return fmt.Errorf("create CEL environment: %w", err)
 		}
@@ -160,17 +182,25 @@ func (p *Profile) MatchFiles(dirPath string, files []string) (bool, []string) {
 	return false, nil
 }
 
+// ExecResult represents the result of executing a profile.
+type ExecResult struct {
+	Error  error
+	Stdout string
+	Stderr string
+}
+
 // Exec runs the profile in the specified directory.
-func (p *Profile) Exec(ctx context.Context, dir string) CommandOutput {
+// Returns ExecResult with the command output and any post-render hooks.
+func (p *Profile) Exec(ctx context.Context, dir string) ExecResult {
 	if p.Command == "" {
-		return CommandOutput{Error: fmt.Errorf("%w: %w", ErrCommandExecution, ErrEmptyCommand)}
+		return ExecResult{Error: fmt.Errorf("%w: %w", ErrCommandExecution, ErrEmptyCommand)}
 	}
 
 	// Execute preRender hooks, if any.
 	if p.Hooks != nil {
 		for _, hook := range p.Hooks.PreRender {
 			if err := hook.Exec(ctx, dir, nil); err != nil {
-				return CommandOutput{Error: fmt.Errorf("%w: %w", ErrHookExecution, err)}
+				return ExecResult{Error: fmt.Errorf("%w: %w", ErrHookExecution, err)}
 			}
 		}
 	}
@@ -184,47 +214,35 @@ func (p *Profile) Exec(ctx context.Context, dir string) CommandOutput {
 	cmd.Stderr = &stderr
 
 	err := cmd.Run()
-	output := CommandOutput{
+	result := ExecResult{
 		Stdout: stdout.String(),
 		Stderr: stderr.String(),
-	}
-	if p.Hooks != nil {
-		output.Hooks = p.Hooks.PostRender
 	}
 
 	if err != nil {
 		if stderr.Len() > 0 {
-			output.Error = fmt.Errorf("%s\n%w: %w", stderr.String(), ErrCommandExecution, err)
+			result.Error = fmt.Errorf("%s\n%w: %w", stderr.String(), ErrCommandExecution, err)
 
-			return output
+			return result
 		}
 
-		output.Error = fmt.Errorf("%w: %w", ErrCommandExecution, err)
+		result.Error = fmt.Errorf("%w: %w", ErrCommandExecution, err)
 
-		return output
+		return result
 	}
-
-	objects, err := SplitYAML(stdout.Bytes())
-	if err != nil {
-		output.Error = err
-
-		return output
-	}
-
-	output.Resources = objects
 
 	// Execute postRender hooks, passing the main command's output as stdin.
 	if p.Hooks != nil {
 		for _, hook := range p.Hooks.PostRender {
 			if err := hook.Exec(ctx, dir, stdout.Bytes()); err != nil {
-				output.Error = err
+				result.Error = err
 
-				return output
+				return result
 			}
 		}
 	}
 
-	slog.DebugContext(ctx, "returning objects", slog.Int("count", len(objects)))
+	slog.DebugContext(ctx, "profile executed successfully", slog.String("command", p.Command))
 
-	return output
+	return result
 }

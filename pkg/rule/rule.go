@@ -1,4 +1,11 @@
-package kube
+// Package rules provides functionality for matching files and directories
+// using CEL (Common Expression Language) expressions.
+//
+// Rules use CEL expressions to determine if a profile should be applied
+// to a given set of files in a directory. The expressions have access
+// to file paths and directory information, allowing for flexible
+// matching logic.
+package rule
 
 import (
 	"errors"
@@ -6,6 +13,9 @@ import (
 	"strings"
 
 	"github.com/google/cel-go/cel"
+
+	"github.com/MacroPower/kat/pkg/expr"
+	"github.com/MacroPower/kat/pkg/profile"
 )
 
 // Rule uses a CEL matcher to determine if its profile should be applied.
@@ -34,17 +44,18 @@ import (
 //
 // Use the `in` operator to check membership in lists, e.g.: pathBase(f) in ["Chart.yaml"].
 type Rule struct {
-	matchProgram cel.Program // Compiled CEL program for matching file paths.
-	pfl          *Profile    // Profile associated with the rule.
+	matchProgram cel.Program      // Compiled CEL program for matching file paths.
+	pfl          *profile.Profile // Profile associated with the rule.
 
 	Match   string `validate:"required" yaml:"match"`   // CEL expression to match file paths.
 	Profile string `validate:"required" yaml:"profile"` // Profile name.
 }
 
-func NewRule(profile, match string) (*Rule, error) {
+// New creates a new rule with the given profile name and match expression.
+func New(profileName, match string) (*Rule, error) {
 	r := &Rule{
 		Match:   match,
-		Profile: profile,
+		Profile: profileName,
 	}
 	if err := r.CompileMatch(); err != nil {
 		return nil, fmt.Errorf("rule %q: %w", match, err)
@@ -53,8 +64,9 @@ func NewRule(profile, match string) (*Rule, error) {
 	return r, nil
 }
 
-func MustNewRule(profile, match string) *Rule {
-	r, err := NewRule(profile, match)
+// MustNew creates a new rule and panics if there's an error.
+func MustNew(profileName, match string) *Rule {
+	r, err := New(profileName, match)
 	if err != nil {
 		panic(err)
 	}
@@ -62,9 +74,10 @@ func MustNewRule(profile, match string) *Rule {
 	return r
 }
 
+// CompileMatch compiles the rule's match expression into a CEL program.
 func (r *Rule) CompileMatch() error {
 	if r.matchProgram == nil {
-		env, err := createCELEnvironment()
+		env, err := expr.CreateEnvironment()
 		if err != nil {
 			return fmt.Errorf("create CEL environment: %w", err)
 		}
@@ -113,7 +126,7 @@ func (r *Rule) MatchFiles(dirPath string, files []string) bool {
 	return false
 }
 
-func (r *Rule) GetProfile() *Profile {
+func (r *Rule) GetProfile() *profile.Profile {
 	if r.pfl == nil {
 		panic(errors.New("rule missing a profile"))
 	}
@@ -121,12 +134,12 @@ func (r *Rule) GetProfile() *Profile {
 	return r.pfl
 }
 
-func (r *Rule) SetProfile(p *Profile) {
+func (r *Rule) SetProfile(p *profile.Profile) {
 	r.pfl = p
 }
 
 func (r *Rule) String() string {
-	profile := r.GetProfile()
+	p := r.GetProfile()
 
-	return fmt.Sprintf("%s: %s %s", r.Profile, profile.Command, strings.Join(profile.Args, " "))
+	return fmt.Sprintf("%s: %s %s", r.Profile, p.Command, strings.Join(p.Args, " "))
 }
