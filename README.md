@@ -216,59 +216,7 @@ For more details on CEL expressions and examples, see the [CEL documentation](do
 
 **Default config** - By default, `kat` includes a configuration that supports `helm`, `kustomize`, and generic YAML files. This is a great starting point for writing your own custom config:
 
-```yaml
-apiVersion: kat.jacobcolvin.com/v1beta1
-kind: Configuration
-rules:
-  - # Select the Kustomize profile if Kustomization files exist
-    match: >-
-      files.exists(f,
-        pathBase(f) in ["kustomization.yaml", "kustomization.yml"])
-    profile: ks
-  - # Select the Helm profile if Helm chart files exist
-    match: >-
-      files.exists(f,
-        pathBase(f) in ["Chart.yaml", "Chart.yml"])
-    profile: helm
-  - # Fallback: select the YAML profile if any YAML files exist
-    match: >-
-      files.exists(f,
-        pathExt(f) in [".yaml", ".yml"])
-    profile: yaml
-profiles:
-  helm:
-    command: helm
-    args: [template, ., --generate-name]
-    source: >-
-      files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])
-    hooks:
-      init:
-        - command: helm
-          args: [version, --short]
-      preRender:
-        - command: helm
-          args: [dependency, build]
-  ks:
-    command: kustomize
-    args: [build, .]
-    source: >-
-      files.filter(f, pathExt(f) in [".yaml", ".yml"])
-    hooks:
-      init:
-        - command: kustomize
-          args: [version]
-  yaml:
-    command: sh
-    args:
-      - -c
-      - yq eval-all '.' *.yaml
-    source: >-
-      files.filter(f, pathExt(f) in [".yaml", ".yml"])
-    hooks:
-      init:
-        - command: yq
-          args: [-V]
-```
+- See [`pkg/config/config.yaml`](pkg/config/config.yaml) for the default configuration.
 
 **Support for custom tools** - You can add support for other languages/tools like [`kcl`](https://www.kcl-lang.io/), [`jsonnet`](https://jsonnet.org/), [`flux-local`](https://github.com/allenporter/flux-local), [`cue`](https://cuelang.org/), and so on:
 

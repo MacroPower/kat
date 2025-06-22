@@ -29,9 +29,9 @@ var (
 	}
 
 	testRules = []*kube.Rule{
-		kube.MustNewRule("kustomize", `files.exists(f, pathBase(f).matches(".*kustomization.*"))`, "ks"),
-		kube.MustNewRule("helm", `files.exists(f, pathBase(f).matches("Chart\\..*"))`, "helm"),
-		kube.MustNewRule("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`, "yaml"),
+		kube.MustNewRule("ks", `files.exists(f, pathBase(f).matches(".*kustomization.*"))`),
+		kube.MustNewRule("helm", `files.exists(f, pathBase(f).matches("Chart\\..*"))`),
+		kube.MustNewRule("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`),
 	}
 
 	TestConfig = kube.MustNewConfig(testProfiles, testRules)

@@ -88,7 +88,7 @@ func TestCELFilepathFunctions(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			rule, err := kube.NewRule(test.name, test.expression, "test")
+			rule, err := kube.NewRule("test", test.expression)
 			require.NoError(t, err)
 
 			matches := rule.MatchFiles("/k8s", test.files)
@@ -185,7 +185,7 @@ service:
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			rule, err := kube.NewRule(test.name, test.expression, "test")
+			rule, err := kube.NewRule("test", test.expression)
 			require.NoError(t, err)
 
 			matches := rule.MatchFiles(tempDir, test.files)

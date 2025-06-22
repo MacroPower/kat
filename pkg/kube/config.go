@@ -33,7 +33,7 @@ var (
 			)),
 		"yaml": MustNewProfile("sh",
 			WithArgs("-c", "yq eval-all '.' *.yaml"),
-			WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"] && !pathBase(f).matches(".*test.*"))`),
+			WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`),
 			WithHooks(
 				NewHooks(
 					WithInit(
@@ -44,9 +44,9 @@ var (
 	}
 
 	defaultRules = []*Rule{
-		MustNewRule("kustomize", `files.filter(f, pathBase(f) in ["kustomization.yaml", "kustomization.yml"])`, "ks"),
-		MustNewRule("helm", `files.filter(f, pathBase(f) in ["Chart.yaml", "Chart.yml", "values.yaml", "values.yml"])`, "helm"),
-		MustNewRule("yaml", `files.filter(f, pathExt(f) in [".yaml", ".yml"] && !pathBase(f).matches(".*test.*"))`, "yaml"),
+		MustNewRule("ks", `files.exists(f, pathBase(f) in ["kustomization.yaml", "kustomization.yml"])`),
+		MustNewRule("helm", `files.exists(f, pathBase(f) in ["Chart.yaml", "Chart.yml"])`),
+		MustNewRule("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`),
 	}
 
 	DefaultConfig = MustNewConfig(defaultProfiles, defaultRules)

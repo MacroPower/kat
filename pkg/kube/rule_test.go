@@ -13,39 +13,34 @@ func TestNewRule(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		ruleName string
-		match    string
-		profile  string
-		wantErr  bool
+		name    string
+		match   string
+		profile string
+		wantErr bool
 	}{
 		{
-			name:     "valid rule",
-			ruleName: "kustomize",
-			match:    `files.exists(f, pathBase(f) in ["kustomization.yaml", "kustomization.yml"])`,
-			profile:  "ks",
-			wantErr:  false,
+			name:    "valid rule",
+			match:   `files.exists(f, pathBase(f) in ["kustomization.yaml", "kustomization.yml"])`,
+			profile: "ks",
+			wantErr: false,
 		},
 		{
-			name:     "valid rule with simple expression",
-			ruleName: "yaml",
-			match:    `files.exists(f, pathExt(f) in [".yaml", ".yml"])`,
-			profile:  "yaml",
-			wantErr:  false,
+			name:    "valid rule with simple expression",
+			match:   `files.exists(f, pathExt(f) in [".yaml", ".yml"])`,
+			profile: "yaml",
+			wantErr: false,
 		},
 		{
-			name:     "invalid CEL expression",
-			ruleName: "invalid",
-			match:    "path.invalidFunction()",
-			profile:  "test",
-			wantErr:  true,
+			name:    "invalid CEL expression",
+			match:   "path.invalidFunction()",
+			profile: "test",
+			wantErr: true,
 		},
 		{
-			name:     "empty match",
-			ruleName: "empty",
-			match:    "",
-			profile:  "test",
-			wantErr:  true,
+			name:    "empty match",
+			match:   "",
+			profile: "test",
+			wantErr: true,
 		},
 	}
 
@@ -53,12 +48,12 @@ func TestNewRule(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			rule, err := kube.NewRule(tt.ruleName, tt.match, tt.profile)
+			rule, err := kube.NewRule(tt.profile, tt.match)
 
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Nil(t, rule)
-				assert.Contains(t, err.Error(), tt.ruleName)
+				assert.Contains(t, err.Error(), tt.match)
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, rule)
@@ -75,7 +70,7 @@ func TestMustNewRule(t *testing.T) {
 	t.Run("valid rule", func(t *testing.T) {
 		t.Parallel()
 
-		rule := kube.MustNewRule("test", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`, "yaml")
+		rule := kube.MustNewRule("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`)
 		require.NotNil(t, rule)
 		assert.Equal(t, `files.exists(f, pathExt(f) in [".yaml", ".yml"])`, rule.Match)
 		assert.Equal(t, "yaml", rule.Profile)
@@ -85,7 +80,7 @@ func TestMustNewRule(t *testing.T) {
 		t.Parallel()
 
 		assert.Panics(t, func() {
-			kube.MustNewRule("test", "path.invalidFunction()", "yaml")
+			kube.MustNewRule("yaml", "path.invalidFunction()")
 		})
 	})
 }
@@ -319,7 +314,7 @@ func TestRule_MatchFiles_BooleanAndLegacySupport(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			rule, err := kube.NewRule("test", tt.expression, "test-profile")
+			rule, err := kube.NewRule("test-profile", tt.expression)
 			require.NoError(t, err)
 
 			gotMatches := rule.MatchFiles("/app", tt.files)

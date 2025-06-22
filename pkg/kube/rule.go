@@ -41,20 +41,20 @@ type Rule struct {
 	Profile string `validate:"required" yaml:"profile"` // Profile name.
 }
 
-func NewRule(name, match, profile string) (*Rule, error) {
+func NewRule(profile, match string) (*Rule, error) {
 	r := &Rule{
 		Match:   match,
 		Profile: profile,
 	}
 	if err := r.CompileMatch(); err != nil {
-		return nil, fmt.Errorf("rule %q: %w", name, err)
+		return nil, fmt.Errorf("rule %q: %w", match, err)
 	}
 
 	return r, nil
 }
 
-func MustNewRule(name, match, profile string) *Rule {
-	r, err := NewRule(name, match, profile)
+func MustNewRule(profile, match string) *Rule {
+	r, err := NewRule(profile, match)
 	if err != nil {
 		panic(err)
 	}

@@ -31,7 +31,6 @@ profiles:
       files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])
     command: helm
     args: [template, ., --generate-name]
-    theme: dracula
     hooks:
       init:
         - command: helm
@@ -46,7 +45,6 @@ profiles:
       files.filter(f, pathExt(f) in [".yaml", ".yml"])
     command: kustomize
     args: [build, .]
-    theme: tokyonight-storm
     hooks:
       init:
         - command: kustomize
@@ -65,7 +63,6 @@ profiles:
     args:
       - -c
       - yq eval-all '.' *.yaml
-    theme: github-dark
     hooks:
       init:
         - command: yq
