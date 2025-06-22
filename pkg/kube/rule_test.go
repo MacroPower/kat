@@ -22,21 +22,21 @@ func TestNewRule(t *testing.T) {
 		{
 			name:     "valid rule",
 			ruleName: "kustomize",
-			match:    "/kustomization\\.ya?ml$",
+			match:    `files.exists(f, pathBase(f) in ["kustomization.yaml", "kustomization.yml"])`,
 			profile:  "ks",
 			wantErr:  false,
 		},
 		{
-			name:     "valid rule with simple regex",
+			name:     "valid rule with simple expression",
 			ruleName: "yaml",
-			match:    "\\.ya?ml$",
+			match:    `files.exists(f, pathExt(f) in [".yaml", ".yml"])`,
 			profile:  "yaml",
 			wantErr:  false,
 		},
 		{
-			name:     "invalid regex",
+			name:     "invalid CEL expression",
 			ruleName: "invalid",
-			match:    "[",
+			match:    "path.invalidFunction()",
 			profile:  "test",
 			wantErr:  true,
 		},
@@ -45,7 +45,7 @@ func TestNewRule(t *testing.T) {
 			ruleName: "empty",
 			match:    "",
 			profile:  "test",
-			wantErr:  false,
+			wantErr:  true,
 		},
 	}
 
@@ -75,9 +75,9 @@ func TestMustNewRule(t *testing.T) {
 	t.Run("valid rule", func(t *testing.T) {
 		t.Parallel()
 
-		rule := kube.MustNewRule("test", "\\.ya?ml$", "yaml")
+		rule := kube.MustNewRule("test", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`, "yaml")
 		require.NotNil(t, rule)
-		assert.Equal(t, "\\.ya?ml$", rule.Match)
+		assert.Equal(t, `files.exists(f, pathExt(f) in [".yaml", ".yml"])`, rule.Match)
 		assert.Equal(t, "yaml", rule.Profile)
 	})
 
@@ -85,7 +85,7 @@ func TestMustNewRule(t *testing.T) {
 		t.Parallel()
 
 		assert.Panics(t, func() {
-			kube.MustNewRule("test", "[", "yaml")
+			kube.MustNewRule("test", "path.invalidFunction()", "yaml")
 		})
 	})
 }
@@ -99,24 +99,24 @@ func TestRule_CompileMatch(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "valid regex",
-			match:   "\\.ya?ml$",
+			name:    "valid CEL expression",
+			match:   `files.exists(f, pathExt(f) in [".yaml", ".yml"])`,
 			wantErr: false,
 		},
 		{
-			name:    "complex regex",
-			match:   "/kustomization\\.ya?ml$",
+			name:    "complex CEL expression",
+			match:   `files.exists(f, pathBase(f) in ["kustomization.yaml", "kustomization.yml"])`,
 			wantErr: false,
 		},
 		{
-			name:    "invalid regex",
-			match:   "[",
+			name:    "invalid CEL expression",
+			match:   "path.invalidFunction()",
 			wantErr: true,
 		},
 		{
-			name:    "empty regex",
+			name:    "empty expression",
 			match:   "",
-			wantErr: false,
+			wantErr: true,
 		},
 	}
 
@@ -133,7 +133,7 @@ func TestRule_CompileMatch(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "compile match regex")
+				assert.Contains(t, err.Error(), "compile match expression")
 			} else {
 				require.NoError(t, err)
 				// Calling CompileMatch again should not cause an error.
@@ -142,110 +142,6 @@ func TestRule_CompileMatch(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestRule_MatchPath(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		match    string
-		path     string
-		expected bool
-	}{
-		{
-			name:     "yaml file matches",
-			match:    "\\.ya?ml$",
-			path:     "test.yaml",
-			expected: true,
-		},
-		{
-			name:     "yml file matches",
-			match:    "\\.ya?ml$",
-			path:     "test.yml",
-			expected: true,
-		},
-		{
-			name:     "kustomization yaml matches",
-			match:    "/kustomization\\.ya?ml$",
-			path:     "path/to/kustomization.yaml",
-			expected: true,
-		},
-		{
-			name:     "kustomization yml matches",
-			match:    "/kustomization\\.ya?ml$",
-			path:     "path/to/kustomization.yml",
-			expected: true,
-		},
-		{
-			name:     "chart yaml matches",
-			match:    "/Chart\\.ya?ml$",
-			path:     "helm/Chart.yaml",
-			expected: true,
-		},
-		{
-			name:     "txt file does not match yaml regex",
-			match:    "\\.ya?ml$",
-			path:     "test.txt",
-			expected: false,
-		},
-		{
-			name:     "partial kustomization path does not match",
-			match:    "/kustomization\\.ya?ml$",
-			path:     "kustomization-base.yaml",
-			expected: false,
-		},
-		{
-			name:     "case sensitive chart match fails",
-			match:    "/Chart\\.ya?ml$",
-			path:     "helm/chart.yaml",
-			expected: false,
-		},
-		{
-			name:     "empty path",
-			match:    "\\.ya?ml$",
-			path:     "",
-			expected: false,
-		},
-		{
-			name:     "root file matches",
-			match:    "^[^/]*\\.ya?ml$",
-			path:     "config.yaml",
-			expected: true,
-		},
-		{
-			name:     "nested file does not match root pattern",
-			match:    "^[^/]*\\.ya?ml$",
-			path:     "dir/config.yaml",
-			expected: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			rule, err := kube.NewRule("test", tt.match, "profile")
-			require.NoError(t, err)
-
-			result := rule.MatchPath(tt.path)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestRule_MatchPath_Panics(t *testing.T) {
-	t.Parallel()
-
-	rule := &kube.Rule{
-		Match:   "\\.ya?ml$",
-		Profile: "test",
-	}
-	// Don't compile the match expression.
-
-	assert.Panics(t, func() {
-		rule.MatchPath("test.yaml")
-	})
 }
 
 func TestRule_GetProfile(t *testing.T) {
@@ -376,4 +272,58 @@ func TestRule_String_Panics(t *testing.T) {
 	assert.Panics(t, func() {
 		_ = rule.String()
 	})
+}
+
+func TestRule_MatchFiles_BooleanAndLegacySupport(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		expression  string
+		files       []string
+		wantMatches bool
+	}{
+		{
+			name:        "boolean expression - true",
+			expression:  `files.exists(f, pathExt(f) in [".yaml", ".yml"])`,
+			files:       []string{"/app/config.yaml", "/app/service.json"},
+			wantMatches: true,
+		},
+		{
+			name:        "boolean expression - false",
+			expression:  `files.exists(f, pathExt(f) == ".xml")`,
+			files:       []string{"/app/config.yaml", "/app/service.json"},
+			wantMatches: false,
+		},
+		{
+			name:        "simple boolean - true",
+			expression:  `true`,
+			files:       []string{"/app/config.yaml"},
+			wantMatches: true,
+		},
+		{
+			name:        "simple boolean - false",
+			expression:  `false`,
+			files:       []string{"/app/config.yaml"},
+			wantMatches: false,
+		},
+		{
+			name:        "non-boolean expression returns false",
+			expression:  `files.filter(f, pathExt(f) in [".yaml", ".yml"])`,
+			files:       []string{"/app/config.yaml", "/app/service.json"},
+			wantMatches: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			rule, err := kube.NewRule("test", tt.expression, "test-profile")
+			require.NoError(t, err)
+
+			gotMatches := rule.MatchFiles("/app", tt.files)
+			assert.Equal(t, tt.wantMatches, gotMatches)
+		})
+	}
 }

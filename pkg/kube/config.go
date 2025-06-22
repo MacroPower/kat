@@ -10,7 +10,7 @@ var (
 	defaultProfiles = map[string]*Profile{
 		"ks": MustNewProfile("kustomize",
 			WithArgs("build", "."),
-			WithSource("\\.ya?ml$"),
+			WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`),
 			WithHooks(
 				NewHooks(
 					WithInit(
@@ -20,7 +20,7 @@ var (
 			)),
 		"helm": MustNewProfile("helm",
 			WithArgs("template", ".", "--generate-name"),
-			WithSource("\\.(ya?ml|tpl)$"),
+			WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])`),
 			WithHooks(
 				NewHooks(
 					WithInit(
@@ -33,7 +33,7 @@ var (
 			)),
 		"yaml": MustNewProfile("sh",
 			WithArgs("-c", "yq eval-all '.' *.yaml"),
-			WithSource("\\.ya?ml$"),
+			WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"] && !pathBase(f).matches(".*test.*"))`),
 			WithHooks(
 				NewHooks(
 					WithInit(
@@ -44,9 +44,9 @@ var (
 	}
 
 	defaultRules = []*Rule{
-		MustNewRule("kustomize", "/kustomization\\.ya?ml$", "ks"),
-		MustNewRule("helm", "/Chart\\.ya?ml$", "helm"),
-		MustNewRule("yaml", "\\.ya?ml$", "yaml"),
+		MustNewRule("kustomize", `files.filter(f, pathBase(f) in ["kustomization.yaml", "kustomization.yml"])`, "ks"),
+		MustNewRule("helm", `files.filter(f, pathBase(f) in ["Chart.yaml", "Chart.yml", "values.yaml", "values.yml"])`, "helm"),
+		MustNewRule("yaml", `files.filter(f, pathExt(f) in [".yaml", ".yml"] && !pathBase(f).matches(".*test.*"))`, "yaml"),
 	}
 
 	DefaultConfig = MustNewConfig(defaultProfiles, defaultRules)

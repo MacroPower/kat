@@ -88,7 +88,7 @@ func WithProfile(name string, p *Profile) CommandRunnerOpt {
 	return func(cr *CommandRunner) error {
 		cr.rule = &Rule{
 			Profile: name,
-			Match:   ".*",
+			Match:   "true", // Always match in CEL.
 		}
 		cr.rule.SetProfile(p)
 		if err := cr.rule.CompileMatch(); err != nil {
@@ -120,9 +120,11 @@ func WithRules(rules []*Rule) CommandRunnerOpt {
 		}
 
 		// Path is a file, check for direct match.
-		for _, cmd := range rules {
-			if cmd.MatchPath(cr.path) {
-				cr.rule = cmd
+		// Normalize to directory mode: pass parent directory and file list.
+		fileDir := filepath.Dir(cr.path)
+		for _, r := range rules {
+			if r.MatchFiles(fileDir, []string{cr.path}) {
+				cr.rule = r
 
 				return nil
 			}
@@ -139,6 +141,7 @@ func (cr *CommandRunner) GetCurrentTheme() string {
 func (cr *CommandRunner) Watch() error {
 	profile := cr.rule.GetProfile()
 
+	var files []string
 	err := filepath.Walk(cr.path, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("walk %q: %w", path, err)
@@ -147,17 +150,20 @@ func (cr *CommandRunner) Watch() error {
 			// Skip directories, we only want to watch files.
 			return nil
 		}
-		if profile.Match(path) {
-			// If the file matches the command's regex, add it to the watcher.
-			if err := cr.watcher.Add(path); err != nil {
-				return fmt.Errorf("add path to watcher: %w", err)
-			}
-		}
+		files = append(files, path)
 
 		return nil
 	})
 	if err != nil {
 		return fmt.Errorf("walk %q: %w", cr.path, err)
+	}
+
+	if ok, matchedFiles := profile.MatchFiles(cr.path, files); ok {
+		for _, file := range matchedFiles {
+			if err := cr.watcher.Add(file); err != nil {
+				return fmt.Errorf("add path to watcher: %w", err)
+			}
+		}
 	}
 
 	return nil
@@ -285,8 +291,12 @@ func (cr *CommandRunner) RunContext(ctx context.Context) CommandOutput {
 }
 
 // findMatchInDirectory looks for matching files in a directory.
+// It collects all files and allows CEL expressions to operate on the entire collection.
+// Returns (rule, files) where files contains the specific files to process, or nil to use profile.source.
 func findMatchInDirectory(dirPath string, rules []*Rule) (*Rule, error) {
-	var matchedRule *Rule
+	var files []string
+
+	// Collect all files in the directory (non-recursive).
 	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -295,13 +305,7 @@ func findMatchInDirectory(dirPath string, rules []*Rule) (*Rule, error) {
 			return filepath.SkipDir // Skip subdirectories.
 		}
 		if !d.IsDir() {
-			for _, r := range rules {
-				if r.MatchPath(path) {
-					matchedRule = r
-
-					return filepath.SkipAll // Stop the walk after finding the first match.
-				}
-			}
+			files = append(files, path)
 		}
 
 		return nil
@@ -309,9 +313,13 @@ func findMatchInDirectory(dirPath string, rules []*Rule) (*Rule, error) {
 	if err != nil {
 		return nil, fmt.Errorf("walk directory: %w", err)
 	}
-	if matchedRule == nil {
-		return nil, fmt.Errorf("%w: no matching files in %s", ErrNoCommandForPath, dirPath)
+
+	// Try each rule with the full file collection.
+	for _, r := range rules {
+		if r.MatchFiles(dirPath, files) {
+			return r, nil
+		}
 	}
 
-	return matchedRule, nil
+	return nil, fmt.Errorf("%w: no matching files in %s", ErrNoCommandForPath, dirPath)
 }

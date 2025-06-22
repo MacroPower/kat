@@ -21,7 +21,7 @@ import (
 
 var (
 	ValidAPIVersions = []string{
-		"config.kat.jacobcolvin.com/v1beta1",
+		"kat.jacobcolvin.com/v1beta1",
 	}
 	ValidKinds = []string{
 		"Configuration",
@@ -37,7 +37,7 @@ type Config struct {
 
 func NewConfig() *Config {
 	c := &Config{
-		APIVersion: "config.kat.jacobcolvin.com/v1beta1",
+		APIVersion: "kat.jacobcolvin.com/v1beta1",
 		Kind:       "Configuration",
 	}
 	c.EnsureDefaults()

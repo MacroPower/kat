@@ -1,17 +1,24 @@
-apiVersion: config.kat.jacobcolvin.com/v1beta1
+apiVersion: kat.jacobcolvin.com/v1beta1
 kind: Configuration
 
 rules:
   - # Select the `ks` profile if the provided directory contains a Kustomization file.
-    match: ".*/kustomization\\.ya?ml$"
+    match: >-
+      files.exists(f,
+        pathBase(f) in ["kustomization.yaml", "kustomization.yml"])
     profile: ks
 
   - # Select the `helm` profile if the provided directory contains a Helm chart.
-    match: ".*/Chart\\.ya?ml$"
+    match: >-
+      files.exists(f,
+        pathBase(f) in ["Chart.yaml", "Chart.yml"] &&
+        yamlPath(f, "$.apiVersion") == "v2")
     profile: helm
 
   - # Otherwise, select the `yaml` profile to load any YAML files in the directory.
-    match: ".*\\.ya?ml$"
+    match: >-
+      files.exists(f,
+        pathExt(f) in [".yaml", ".yml"])
     profile: yaml
 
 # Profiles is a map of profile names to profile definitions.
@@ -20,7 +27,8 @@ rules:
 profiles:
   # helm is a profile for Helm charts.
   helm:
-    source: ".*\\.(ya?ml|tpl)$"
+    source: >-
+      files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])
     command: helm
     args: [template, ., --generate-name]
     theme: dracula
@@ -34,8 +42,8 @@ profiles:
 
   # ks is a profile for Kustomize.
   ks: &ks
-    source: ".*\\.ya?ml$"
-    watch: true
+    source: >-
+      files.filter(f, pathExt(f) in [".yaml", ".yml"])
     command: kustomize
     args: [build, .]
     theme: tokyonight-storm
@@ -51,8 +59,8 @@ profiles:
 
   # yaml is a generic profile for YAML files.
   yaml:
-    source: ".*\\.ya?ml$"
-    watch: true
+    source: >-
+      files.filter(f, pathExt(f) in [".yaml", ".yml"])
     command: sh
     args:
       - -c

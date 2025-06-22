@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"log/slog"
 	"os/exec"
-	"regexp"
+
+	"github.com/google/cel-go/cel"
+	"github.com/google/cel-go/common/types/ref"
 )
 
 var (
@@ -24,8 +26,25 @@ var (
 	ErrHookExecution = errors.New("hook execution")
 )
 
+// Profile represents a command profile with optional source filtering.
+//
+// The Source field contains a CEL expression that determines which files
+// should be processed by this profile. The expression has access to:
+//   - `files` (list<string>): All file paths in directory
+//   - `dir` (string): The directory path being processed
+//
+// Source CEL expressions must return a list of files:
+//   - `files.filter(f, pathExt(f) in [".yaml", ".yml"])` - returns all YAML files
+//   - `files.filter(f, pathBase(f) in ["Chart.yaml", "values.yaml"])` - returns Chart and values files
+//   - `files.filter(f, pathBase(f) == "Chart.yaml")` - returns files named Chart.yaml
+//   - `files.filter(f, !pathBase(f).matches(".*test.*")) - returns non-test files
+//   - `files.filter(f, pathBase(f) == "Chart.yaml" && yamlPath(f, "$.apiVersion") == "v2")` - returns charts with apiVersion v2
+//   - `files` - unfiltered list means all files should be processed
+//   - `[]` - empty list means no files should be processed
+//
+// If no Source expression is provided, the profile will use default file filtering.
 type Profile struct {
-	sourceExp *regexp.Regexp // Compiled regex for source matching.
+	sourceProgram cel.Program // Compiled CEL program for source matching.
 
 	Hooks   *Hooks   `yaml:"hooks,omitempty"`
 	Source  string   `yaml:"source,omitempty"`
@@ -78,24 +97,67 @@ func WithSource(source string) ProfileOpt {
 }
 
 func (p *Profile) CompileSource() error {
-	if p.sourceExp == nil && p.Source != "" {
-		re, err := regexp.Compile(p.Source)
+	if p.sourceProgram == nil && p.Source != "" {
+		env, err := createCELEnvironment()
 		if err != nil {
-			return fmt.Errorf("compile source regex: %w", err)
+			return fmt.Errorf("create CEL environment: %w", err)
 		}
-		p.sourceExp = re
+
+		ast, issues := env.Compile(p.Source)
+		if issues != nil && issues.Err() != nil {
+			return fmt.Errorf("compile source expression: %w", issues.Err())
+		}
+
+		program, err := env.Program(ast)
+		if err != nil {
+			return fmt.Errorf("create CEL program: %w", err)
+		}
+
+		p.sourceProgram = program
 	}
 
 	return nil
 }
 
-// MatchSource checks if the given source matches the profile's source regex.
-func (p *Profile) Match(source string) bool {
-	if p.sourceExp == nil {
-		return true // If no source regex is defined, match all sources.
+// MatchFiles checks if the profile's source expression matches files in a directory.
+// The CEL expression must return a list of strings representing files.
+// An empty list means no files should be processed with this profile.
+//
+// Returns (matches, files) where:
+// - matches: true if the profile should be used (non-empty file list)
+// - files: specific files that were matched.
+func (p *Profile) MatchFiles(dirPath string, files []string) (bool, []string) {
+	if p.sourceProgram == nil {
+		return true, nil // If no source expression is defined, use default file filtering.
 	}
 
-	return p.sourceExp.MatchString(source)
+	result, _, err := p.sourceProgram.Eval(map[string]any{
+		"files": files,
+		"dir":   dirPath,
+	})
+	if err != nil {
+		// If evaluation fails, consider it a non-match.
+		return false, nil
+	}
+
+	// CEL expression must return a list of files.
+	if listVal, ok := result.Value().([]ref.Val); ok {
+		var matchedFiles []string
+		for _, item := range listVal {
+			if str, ok := item.Value().(string); ok {
+				matchedFiles = append(matchedFiles, str)
+			}
+		}
+		// If we got a non-empty list, return these specific files.
+		if len(matchedFiles) > 0 {
+			return true, matchedFiles
+		}
+		// Empty list means no match.
+		return false, nil
+	}
+
+	// If the result is not a list, it's an error. CEL expressions must return lists.
+	return false, nil
 }
 
 // Exec runs the profile in the specified directory.

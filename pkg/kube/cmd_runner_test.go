@@ -19,19 +19,19 @@ var (
 	testProfiles = map[string]*kube.Profile{
 		"ks": kube.MustNewProfile("kustomize",
 			kube.WithArgs("build", "."),
-			kube.WithSource("\\.ya?ml$")),
+			kube.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`)),
 		"helm": kube.MustNewProfile("helm",
 			kube.WithArgs("template", ".", "--generate-name"),
-			kube.WithSource("\\.(ya?ml|tpl)$")),
+			kube.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])`)),
 		"yaml": kube.MustNewProfile("sh",
 			kube.WithArgs("-c", "yq eval-all '.' *.yaml"),
-			kube.WithSource("\\.ya?ml$")),
+			kube.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`)),
 	}
 
 	testRules = []*kube.Rule{
-		kube.MustNewRule("kustomize", "/kustomization\\.ya?ml$", "ks"),
-		kube.MustNewRule("helm", "/Chart\\.ya?ml$", "helm"),
-		kube.MustNewRule("yaml", "\\.ya?ml$", "yaml"),
+		kube.MustNewRule("kustomize", `files.exists(f, pathBase(f).matches(".*kustomization.*"))`, "ks"),
+		kube.MustNewRule("helm", `files.exists(f, pathBase(f).matches("Chart\\..*"))`, "helm"),
+		kube.MustNewRule("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`, "yaml"),
 	}
 
 	TestConfig = kube.MustNewConfig(testProfiles, testRules)
@@ -267,7 +267,7 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 
 			profile, err := kube.NewProfile("sleep",
 				kube.WithArgs(tc.commandSleepTime),
-				kube.WithSource("\\.yaml$"),
+				kube.WithSource(`files.filter(f, pathExt(f) == ".yaml")`),
 			)
 			require.NoError(t, err)
 
