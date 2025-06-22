@@ -4,11 +4,11 @@
 </p>
 
 <p align="center">
-  <code>kat</code> is like <code>cat</code> for projects that render Kubernetes manifests. It provides a pretty terminal UI to quickly <b>find</b>, <b>debug</b>, and <b>reload</b> manifests, without ever leaving your shell.
+  <code>kat</code> provides an <b>interactive terminal UI</b> for rendering and viewing local Kubernetes manifests. It eliminates the frustrating cycle of running commands, scrolling through output, and losing context when debugging Helm charts, Kustomize overlays, and other manifest generators.
 </p>
 
 <p align="center">
-  <code>kat</code> is designed to reduce inner loop time for <b>developers</b> and <b>platform engineers</b> working on things like <code>helm</code> charts and <code>kustomize</code> projects. By defining custom rules in the config, you can make <code>kat</code> work with anything that generates Kubernetes manifests!
+  Designed for <b>developers</b> and <b>platform engineers</b> who need to quickly iterate on Kubernetes manifests, <code>kat</code> gives you <b>instant feedback</b> with features like <b>search</b>, <b>live reloading</b>, and <b>hooks</b>. Works with Helm, Kustomize, and any tool that generates manifests; with powerful customization to fit your exact workflow.
 </p>
 
 <p align="center">
@@ -22,13 +22,13 @@
 
 ## ✨ Features
 
-- 🚀 List and filter hundreds of manifests without leaving your shell.
-- 🔄 Reload from any context to quickly diff individual manifests.
-- 👀 Use `--watch` to trigger reloads on changes to source files.
-- 🐛 Immediately view any errors from rendering, and re-reload!
-- 🎨 Customize keybinds, styles, and more to match your preferences.
-- 🪄 Add your own commands and rules to detect different project types.
-- 🚨 Define custom hooks to automatically validate rendered manifests.
+- **🔍️ Manifest browsing** - Navigate hundreds of rendered manifests with fuzzy search and filtering, no more endless scrolling through terminal output
+- **⚡️ Live reload** - Use `--watch` to automatically re-render when you modify source files, without losing your current context
+- **🐛 Error handling** - Rendering and validation errors are displayed as overlays and disappear if reloading resolves the error
+- **🎯 Project detection** - Automatically detect Helm charts, Kustomize projects, and custom manifest generators using powerful CEL expressions
+- **🧪 Tool integration** - Define profiles for any manifest generator (Helm, Kustomize, CUE, KCL, Jsonnet, etc.) with pre/post-render hooks
+- **✅ Custom validation** - Run tools like `kubeconform`, `kyverno`, or custom validators automatically on rendered output
+- **🎨 Beautiful UI** - Syntax-highlighted YAML with customizable themes and keybindings that match your preferences
 
 ## 📦 Installation
 
@@ -43,7 +43,7 @@ brew install kat --cask
 
 Archives are posted in [releases](https://github.com/MacroPower/kat/releases).
 
-## ⚡️ Usage
+## 🚀 Usage
 
 Show help:
 
@@ -69,10 +69,22 @@ Render a project in a specific directory:
 kat ./example/helm
 ```
 
-Render a project in a specific directory with command passthrough:
+Render a project in a specific directory using the `ks` profile:
 
 ```sh
-kat ./example/helm -- helm template my-chart .
+kat ./example/kustomize ks
+```
+
+Render a project and override the profile arguments:
+
+```sh
+kat ./example/kustomize ks -- build . --enable-helm
+```
+
+Render a project with command passthrough:
+
+```sh
+kat ./example/helm task -- helm:render
 ```
 
 Render using data from stdin:
@@ -83,11 +95,189 @@ cat ./example/kustomize/resources.yaml | kat -f -
 
 ## ⚙️ Configuration
 
-You can use `kat --write-config` to generate a default configuration file at `~/.config/kat/config.yaml`. This file allows you to customize the behavior of `kat`, such as the UI style, keybindings, and commands.
+You can use `kat --write-config` to generate a default configuration file at `~/.config/kat/config.yaml`. This file allows you to customize the behavior of `kat`, such as the UI style, keybindings, rules for project detection, and profiles for rendering different types of projects.
 
-Alternatively, you can use `kat --show-config` to print the active configuration and redirect the output to a file.
+Alternatively, you can find the default configuration file in [pkg/config/config.yaml](pkg/config/config.yaml).
 
-You can also find an example configuration file in [example/config.yaml](example/config.yaml).
+## 🛠️ Rules and Profiles
+
+You can customize how `kat` detects and renders different types of projects using **rules** and **profiles** in the configuration file. This system uses [CEL (Common Expression Language)](https://cel.dev/) expressions to provide flexible file matching and processing.
+
+### 🎯 Rules
+
+**Rules determine which profile should be used.** Each rule contains:
+
+- `match` (required): A CEL expression that returns `true` if the rule should be applied
+- `profile` (required): The name of the profile to use when this rule matches
+
+Rules use boolean CEL expressions with access to:
+
+- `files` (list<string>): All file paths in the directory
+- `dir` (string): The directory path being processed
+
+```yaml
+rules:
+  - # Select the Helm profile if any Helm chart files exist
+    match: >-
+      files.exists(f, pathBase(f) in ["Chart.yaml", "Chart.yml"])
+    profile: helm
+
+  - # Select the Kustomize profile if any Kustomization files exist
+    match: >-
+      files.exists(f, pathBase(f) in ["kustomization.yaml", "kustomization.yml"])
+    profile: ks
+
+  - # Fallback: select the YAML profile if any YAML files exist
+    match: >-
+      files.exists(f, pathExt(f) in [".yaml", ".yml"])
+    profile: yaml
+```
+
+### 🎭 Profiles
+
+**Profiles define how to render projects.** They can be automatically selected by rules, or manually specified when `kat` is invoked. Each profile contains:
+
+- `command` (required): The command to execute
+- `args`: Arguments to pass to the command
+- `source`: Define which files to watch for changes (when watch is enabled)
+- `theme`: UI theme to use for this profile
+- `hooks`: Initialization and rendering hooks
+  - `init` hooks are executed once when `kat` is initialized
+  - `preRender` hooks are executed before the profile's command is run
+  - `postRender` hooks are executed after the profile's command has run, and are provided the rendered output via stdin
+
+Profile `source` expressions use list-returning CEL expressions with the same variables as rules.
+
+```yaml
+profiles:
+  helm:
+    command: helm
+    args: [template, ., --generate-name]
+    source: >-
+      files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])
+    theme: dracula
+    hooks:
+      init:
+        - command: helm
+          args: [version, --short]
+      preRender:
+        - command: helm
+          args: [dependency, build]
+      postRender:
+        # Pass the rendered manifests via stdin to `kubeconform`.
+        - command: kubeconform
+          args: [-strict, -summary]
+
+  ks:
+    command: kustomize
+    args: [build, .]
+    source: >-
+      files.filter(f, pathExt(f) in [".yaml", ".yml"])
+    theme: tokyonight-storm
+    hooks:
+      init:
+        - command: kustomize
+          args: [version]
+```
+
+### 🧩 CEL Functions
+
+`kat` provides custom CEL functions for file path operations:
+
+- `pathBase(string)`: Returns the filename (e.g., `"Chart.yaml"`)
+- `pathExt(string)`: Returns the file extension (e.g., `".yaml"`)
+- `pathDir(string)`: Returns the directory path
+- `yamlPath(file, path)`: Reads a YAML file and extracts a value using a YAML path expression
+
+You can combine these with CEL's built-in functions like `exists()`, `filter()`, `in`, `contains()`, `matches()`, and logical operators.
+
+Example:
+
+```yaml
+rules:
+  - match: >-
+      files.exists(f,
+        pathBase(f) == "Chart.yaml" &&
+        yamlPath(f, "$.apiVersion") == "v2")
+    profile: helm
+
+profiles:
+  helm:
+    command: helm
+    args: [template, ., --generate-name]
+    source: >-
+      files.filter(f,
+        pathExt(f) in [".yaml", ".yml", ".tpl"])
+```
+
+For more details on CEL expressions and examples, see the [CEL documentation](docs/CEL.md).
+
+### 📖 Examples
+
+**Default config** - By default, `kat` includes a configuration that supports `helm`, `kustomize`, and generic YAML files. This is a great starting point for writing your own custom config:
+
+- See [`pkg/config/config.yaml`](pkg/config/config.yaml) for the default configuration.
+
+**Support for custom tools** - You can add support for other languages/tools like [`kcl`](https://www.kcl-lang.io/), [`jsonnet`](https://jsonnet.org/), [`flux-local`](https://github.com/allenporter/flux-local), [`cue`](https://cuelang.org/), and so on:
+
+```yaml
+rules:
+  - match: >-
+      files.exists(f, pathExt(f) == ".k")
+    profile: kcl
+profiles:
+  kcl:
+    command: kcl
+    args: [run, .]
+    source: >-
+      files.filter(f, pathExt(f) == ".k")
+```
+
+**Content-based detection** - Match based on file content, not just names:
+
+```yaml
+rules:
+  - # Match Helm v3 specifically
+    match: >-
+      files.exists(f,
+        pathBase(f) == "Chart.yaml" &&
+        yamlPath(f, "$.apiVersion") == "v2")
+    profile: helm-v3
+  - # Match Kubernetes native manifests with specific API versions
+    match: >-
+      files.exists(f,
+        pathExt(f) in [".yaml", ".yml"] &&
+        yamlPath(f, "$.apiVersion") in ["apps/v1", "v1"])
+    profile: yaml
+```
+
+**Using Task** - If you use [`task`](https://taskfile.dev), you can use your tasks in the `kat` config:
+
+```yaml
+rules:
+  - match: >-
+      files.exists(f, pathBase(f) in ["Taskfile.yml", "Taskfile.yaml"])
+    profile: task
+profiles:
+  task:
+    command: task
+    args: [render]
+    source: >-
+      files.filter(f, pathExt(f) in [".yaml", ".yml"])
+    hooks:
+      postRender:
+        - command: task
+          args: [validate]
+```
+
+> Note that you should write your `task` to:
+>
+> - Output the rendered manifests to stdout, and anything else to stderr.
+> - Tolerate being called from any directory in the project.
+>   - E.g., instead of `./folder`, use `{{joinPath .ROOT_DIR "folder"}}`.
+> - Not require any additional arguments to run.
+>   - You can reference `{{.USER_WORKING_DIR}}` to obtain the path that the user invoked `kat` from/with.
+>   - E.g., `vars: { PATH: "{{.PATH | default .USER_WORKING_DIR}}" }`
 
 ## 🌈 Themes
 
@@ -98,6 +288,18 @@ Configure a theme with `--ui-theme`, `KAT_UI_THEME`, or via config:
 ```yaml
 ui:
   theme: "dracula"
+```
+
+You can optionally set different themes for different profiles:
+
+```yaml
+profiles:
+  helm:
+    theme: "dracula"
+    # ...
+  ks:
+    theme: "tokyonight-storm"
+    # ...
 ```
 
 We use [Chroma](https://github.com/alecthomas/chroma/) for theming, so you can use any styles from the [Chroma Style Gallery](https://xyproto.github.io/splash/docs/).
@@ -120,114 +322,6 @@ ui:
 ```
 
 Chroma uses the same syntax as Pygments. Define `ui.themes.[name].styles` as a map of Pygments [Tokens](https://pygments.org/docs/tokens/) to [Styles](http://pygments.org/docs/styles/). You can then reference any theme in `ui.theme` (or by using the corresponding flag / env var).
-
-## 🛠️ Commands
-
-You can customize the commands that `kat` runs in the configuration file. This allows you to define how `kat` should render different types of projects. For example, you can define specific commands and arguments for rendering `helm` charts or `kustomize` projects, or add support for other languages/tools like [`kcl`](https://www.kcl-lang.io/) (maybe with [`kclipper`](https://github.com/MacroPower/kclipper)?), [`jsonnet`](https://jsonnet.org/), [`flux-local`](https://github.com/allenporter/flux-local), [`cue`](https://cuelang.org/), and so on.
-
-Commands are defined as an ordered list under `kube.commands`, and each command has three required properties: `match`, `command`, and `args`.
-
-```yaml
-kube:
-  commands:
-    - match: .*/Chart\.ya?ml$
-      command: helm
-      args: [template, ".", --generate-name]
-```
-
-When `kat` is invoked, it will check each command in the order they are defined. The `match` property is a regular expression that matches the files in the provided directory path. If a match is found, `kat` will run the specified `command` with the provided `args`.
-
-In the above example, running `kat example/helm` will evaluate `match` against the files in the `example/helm` directory. If a file matches the regex (e.g., `Chart.yaml`), it will run the command `helm template . --generate-name`.
-
-Additionally, you can optionally specify a `source` regex to filter files that should trigger the command when using `-w, --watch`. Note that the entire file tree is walked, so the regex will be evaluated against all files in the directory and its subdirectories.
-
-```yaml
-kube:
-  commands:
-    - match: .*/Chart\.ya?ml$
-      source: .*\.(ya?ml|tpl)$ # Reload on any changes to YAML or template files.
-      command: helm
-      args: [template, ".", --generate-name]
-```
-
-> Eventually, more sophisticated rules for match/source will be supported, but this method is simple and effective for many use cases.
-
-### 🪝 Hooks
-
-You can optionally define hooks for your commands:
-
-- `init` hooks are executed once when `kat` is initialized, allowing you to run any one-time initialization tasks (e.g., checking that `helm` is available).
-- `preRender` hooks are executed before the main command is run, allowing you to prepare the environment (e.g., running `helm dependency build`).
-- `postRender` hooks are executed after the main command has run and are provided the rendered output via stdin, allowing you to process the rendered manifests (e.g., validating them with `kubeconform`).
-
-Like `commands`, hooks are defined as an ordered list of commands under the respective hook type. Each hook command has its own `command` and `args`.
-
-If any hooks exit with a non-zero status, `kat` will display the error message. You can dismiss the error message and return to the main view, or trigger a reload to re-render the manifests and re-run the render hooks.
-
-```yaml
-kube:
-  commands:
-    - match: .*/Chart\.ya?ml$
-      source: .*\.(ya?ml|tpl)$
-      command: helm
-      args: [template, ".", --generate-name]
-      hooks:
-        postRender:
-          # Pass the rendered manifests via stdin to `kubeconform`.
-          - command: kubeconform
-            args: [-strict, -summary]
-```
-
-### 📖 Examples
-
-By default, `kat` includes a minimal configuration that supports `helm` and `kustomize`. This is a great starting point for your own custom config.
-
-```yaml
-kube:
-  commands:
-    - match: .*/Chart\.ya?ml$
-      source: .*\.(ya?ml|tpl)$
-      command: helm
-      args: [template, ".", --generate-name]
-      hooks:
-        init:
-          - command: helm
-            args: [version, --short]
-        preRender:
-          - command: helm
-            args: [dependency, build]
-    - match: .*/kustomization\.ya?ml$
-      source: .*\.ya?ml$
-      command: kustomize
-      args: [build, "."]
-      hooks:
-        init:
-          - command: kustomize
-            args: [version]
-```
-
-If you use [`task`](https://taskfile.dev), you can additionally (or alternatively) use your tasks in the `kat` config. This allows for additional customization, and also allows you to swap out backend rendering implementations very easily.
-
-```yaml
-kube:
-  commands:
-    - match: .*/Taskfile\.ya?ml$
-      command: task
-      args: [render]
-      hooks:
-        postRender:
-          - command: task
-            args: [validate]
-```
-
-Note that you should write your tasks to:
-
-- Output the rendered manifests to stdout, and anything else to stderr.
-- Tolerate being called from any directory in the project.
-  - E.g., instead of `./folder`, use `{{joinPath .ROOT_DIR "folder"}}`.
-- Not require any additional arguments to run.
-  - You can reference `{{.USER_WORKING_DIR}}` to obtain the path that the user invoked `kat` from/with.
-  - E.g., `vars: { PATH: "{{.PATH | default .USER_WORKING_DIR}}" }`
 
 ## 🔍️ Similar Tools
 

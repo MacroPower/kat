@@ -7,15 +7,13 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
-
-	kongyaml "github.com/alecthomas/kong-yaml"
+	"github.com/goccy/go-yaml"
 
 	"github.com/MacroPower/kat/pkg/config"
 	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/log"
 	"github.com/MacroPower/kat/pkg/ui"
 	"github.com/MacroPower/kat/pkg/ui/common"
-	uiconfig "github.com/MacroPower/kat/pkg/ui/config"
 	"github.com/MacroPower/kat/pkg/ui/themes"
 )
 
@@ -26,13 +24,16 @@ const (
 	cmdExamples = `
 Examples:
 	# kat the current directory.
-	kat .
+	kat
 
 	# kat a file or directory path.
 	kat ./example/kustomize
 
-	# kat with command passthrough.
-	kat ./example/kustomize -- kustomize build .
+	# Force using the "ks" profile (defined in config).
+	kat ./example/kustomize ks
+
+	# Override the "ks" profile arguments.
+	kat ./example/kustomize ks -- build . --enable-helm
 
 	# kat a file or stdin directly (no reload support).
 	cat ./example/kustomize/resources.yaml | kat -f -
@@ -40,8 +41,6 @@ Examples:
 )
 
 var cli struct {
-	Config config.Config `embed:""`
-
 	Log struct {
 		Level  string `default:"info" help:"Log level."`
 		Format string `default:"text" enum:"text,logfmt,json" help:"Log format."`
@@ -51,21 +50,20 @@ var cli struct {
 
 	Path string `arg:"" default:"." help:"File or directory path, default is $PWD." type:"path"`
 
-	Command []string `arg:"" help:"Command to run, defaults set in ~/.config/kat/config.yaml." optional:""`
+	Command string   `arg:"" help:"Command or profile override."          optional:""`
+	Args    []string `arg:"" help:"Arguments for the command or profile." optional:""`
 
+	Compact     bool `env:"-" help:"Enable compact mode for the UI."                   short:"c"`
 	Watch       bool `env:"-" help:"Watch for changes and trigger reloading."          short:"w"`
 	WriteConfig bool `env:"-" help:"Write the configuration file to the default path."`
 	ShowConfig  bool `env:"-" help:"Print the active configuration and exit."`
 }
 
 func main() {
-	configPath := config.GetPath()
-
 	cliCtx := kong.Parse(&cli,
 		kong.Name(cmdName),
 		kong.Description(cmdDesc+"\n"+cmdExamples),
 		kong.DefaultEnvars(strings.ToUpper(cmdName)),
-		kong.Configuration(kongyaml.Loader, configPath),
 	)
 
 	logHandler, err := log.CreateHandlerWithStrings(cliCtx.Stderr, cli.Log.Level, cli.Log.Format)
@@ -74,20 +72,31 @@ func main() {
 	}
 	slog.SetDefault(slog.New(logHandler))
 
+	cfg := config.NewConfig()
+	configPath := config.GetPath()
+
 	if cli.WriteConfig {
-		if err := config.NewConfig().Write(configPath); err != nil {
+		if err := config.WriteDefaultConfig(configPath); err != nil {
 			slog.Error("write config", slog.Any("err", err))
+			cliCtx.Fatalf(cmdInitErr)
+		}
+		slog.Info("configuration written", slog.String("path", configPath))
+		cliCtx.Exit(0)
+	}
+
+	cfgData, err := config.ReadConfig(configPath)
+	if err != nil {
+		slog.Warn("could not read config, using defaults", slog.Any("err", err))
+	} else {
+		cfg, err = config.LoadConfig(cfgData)
+		if err != nil {
+			fmt.Println(yaml.FormatError(err, true, true))
+
 			cliCtx.Fatalf(cmdInitErr)
 		}
 	}
 
-	// Load more complex structured configuration that is ignored by kong.
-	if err := cli.Config.Load(configPath); err != nil {
-		slog.Warn("load config", slog.Any("err", err))
-	}
-	cli.Config.EnsureDefaults()
-
-	err = cli.Config.UI.KeyBinds.Validate()
+	err = cfg.UI.KeyBinds.Validate()
 	if err != nil {
 		slog.Error("validate key binds", slog.Any("err", err))
 		cliCtx.Fatalf(cmdInitErr)
@@ -100,7 +109,7 @@ func main() {
 
 	if cli.ShowConfig {
 		// Print the active configuration and exit.
-		yamlConfig, err := cli.Config.MarshalYAML()
+		yamlConfig, err := cfg.MarshalYAML()
 		if err != nil {
 			slog.Error("marshal config yaml", slog.Any("err", err))
 			cliCtx.Fatalf(cmdInitErr)
@@ -119,34 +128,55 @@ func main() {
 			cliCtx.Fatalf(cmdInitErr)
 		}
 	} else {
-		cr, err = setupCommandRunner(cli.Path)
+		cr, err = setupCommandRunner(cli.Path, cfg)
 		if err != nil {
 			slog.Error("create command runner", slog.Any("err", err))
 			cliCtx.Fatalf(cmdInitErr)
 		}
 	}
 
-	if err := runUI(*cli.Config.UI, cr); err != nil {
-		cliCtx.FatalIfErrorf(err)
+	if err := runUI(cfg, cr); err != nil {
+		cliCtx.FatalIfErrorf(fmt.Errorf("ui program failure: %w", err))
 	}
 }
 
+func getProfile(cfg *config.Config, cmd string, args []string) (*kube.Profile, error) {
+	profile, ok := cfg.Kube.Profiles[cmd]
+	if !ok {
+		// If the command is not a profile, create a new profile with the command.
+		slog.Debug("creating new profile", slog.String("name", cmd))
+		var err error
+		profile, err = kube.NewProfile(cmd, kube.WithArgs(args...))
+		if err != nil {
+			return nil, fmt.Errorf("create profile: %w", err)
+		}
+	} else if len(args) > 0 {
+		slog.Debug("overwriting profile arguments", slog.String("name", cmd))
+		profile.Args = args
+	}
+
+	return profile, nil
+}
+
 // setupCommandRunner creates and configures the command runner.
-func setupCommandRunner(path string) (*kube.CommandRunner, error) {
+func setupCommandRunner(path string, cfg *config.Config) (*kube.CommandRunner, error) {
 	var (
 		cr  *kube.CommandRunner
 		err error
 	)
 
-	if len(cli.Command) > 0 {
-		cmd := parseCommand(cli.Command)
+	if cli.Command != "" {
+		profile, err := getProfile(cfg, cli.Command, parseArgs(cli.Args))
+		if err != nil {
+			return nil, err
+		}
 
-		cr, err = kube.NewCommandRunner(path, kube.WithCommand(cmd))
+		cr, err = kube.NewCommandRunner(path, kube.WithProfile(cli.Command, profile))
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		cr, err = kube.NewCommandRunner(path, kube.WithCommands(cli.Config.Kube.Commands))
+		cr, err = kube.NewCommandRunner(path, kube.WithRules(cfg.Kube.Rules))
 		if err != nil {
 			return nil, err
 		}
@@ -162,31 +192,29 @@ func setupCommandRunner(path string) (*kube.CommandRunner, error) {
 	return cr, nil
 }
 
-// parseCommand parses the CLI command arguments into a [kube.Command].
-func parseCommand(cmdArgs []string) *kube.Command {
-	cmd := &kube.Command{}
-	cmdIdx := 0
+func parseArgs(cmdArgs []string) []string {
+	if len(cmdArgs) == 0 {
+		return []string{}
+	}
+	argIdx := 0
 	if cmdArgs[0] == "--" {
-		cmdIdx = 1
+		argIdx = 1
 	}
-	cmd.Command = cmdArgs[cmdIdx]
-	if len(cmdArgs) > cmdIdx {
-		cmd.Args = cmdArgs[cmdIdx+1:]
-	}
+	args := cmdArgs[argIdx:]
 
-	return cmd
+	return args
 }
 
 // runUI starts the UI program.
-func runUI(cfg uiconfig.Config, cr common.Commander) error {
-	for name, tc := range cfg.Themes {
+func runUI(cfg *config.Config, cr common.Commander) error {
+	for name, tc := range cfg.UI.Themes {
 		err := themes.RegisterTheme(name, tc.Styles)
 		if err != nil {
 			return fmt.Errorf("theme %q: %w", name, err)
 		}
 	}
 
-	p := ui.NewProgram(cfg, cr)
+	p := ui.NewProgram(*cfg.UI, cr)
 
 	ch := make(chan kube.CommandEvent)
 	cr.Subscribe(ch)
@@ -199,10 +227,10 @@ func runUI(cfg uiconfig.Config, cr common.Commander) error {
 				p.Send(common.CommandRunStarted{})
 
 			case kube.CommandEventEnd:
-				if time.Since(lastEventTime) < *cli.Config.UI.MinimumDelay {
+				if time.Since(lastEventTime) < *cfg.UI.UI.MinimumDelay {
 					// Add a delay if the command ran faster than MinimumDelay.
 					// This prevents the status from flickering in the UI.
-					time.Sleep(*cli.Config.UI.MinimumDelay - time.Since(lastEventTime))
+					time.Sleep(*cfg.UI.UI.MinimumDelay - time.Since(lastEventTime))
 				}
 				p.Send(common.CommandRunFinished(e))
 

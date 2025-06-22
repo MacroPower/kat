@@ -9,20 +9,33 @@ import (
 	"github.com/MacroPower/kat/pkg/ui/keys"
 )
 
+var DefaultConfig = NewConfig()
+
 // Config contains TUI-specific configuration.
 type Config struct {
-	KeyBinds            *KeyBinds              `json:"keybinds"         kong:"-"                               yaml:"keybinds"`
-	MinimumDelay        *time.Duration         `default:"500ms"         help:"Minimum delay for UI updates."   json:"minimum-delay"         yaml:"minimum-delay"`
-	Themes              map[string]ThemeConfig `json:"themes,omitempty" kong:"-"                               yaml:"themes,omitempty"`
-	Theme               string                 `default:"auto"          help:"Theme for the UI."               json:"theme"                 yaml:"theme"`
-	WordWrap            bool                   `default:"false"         help:"Enable word wrapping in the UI." json:"word-wrap"             yaml:"word-wrap"`
-	ChromaDisabled      bool                   `default:"false"         help:"Disable chroma rendering."       json:"chroma-disabled"       yaml:"chroma-disabled"`
-	LineNumbersDisabled bool                   `default:"false"         help:"Disable line numbers in the UI." json:"line-numbers-disabled" yaml:"line-numbers-disabled"`
-	Compact             bool                   `default:"false"         help:"Enable compact mode for the UI." json:"compact"               yaml:"compact"`
+	KeyBinds *KeyBinds              `yaml:"keybinds"`
+	Themes   map[string]ThemeConfig `validate:"dive"     yaml:"themes,omitempty"`
+	UI       *UIConfig              `yaml:"ui,omitempty"`
+}
+
+func NewConfig() *Config {
+	c := &Config{}
+	c.EnsureDefaults()
+
+	return c
+}
+
+type UIConfig struct {
+	MinimumDelay    *time.Duration `validate:"max=1s"      yaml:"minimumDelay"`
+	Compact         *bool          `yaml:"compact"`
+	WordWrap        *bool          `yaml:"wordWrap"`
+	ChromaRendering *bool          `yaml:"chromaRendering"`
+	LineNumbers     *bool          `yaml:"lineNumbers"`
+	Theme           string         `yaml:"theme"`
 }
 
 type ThemeConfig struct {
-	Styles chroma.StyleEntries `json:"styles,omitempty" yaml:"styles,omitempty"`
+	Styles chroma.StyleEntries `yaml:"styles,omitempty"`
 }
 
 func (c *Config) EnsureDefaults() {
@@ -31,16 +44,40 @@ func (c *Config) EnsureDefaults() {
 	} else {
 		c.KeyBinds.EnsureDefaults()
 	}
-	if c.MinimumDelay == nil {
-		defaultDelay := 500 * time.Millisecond
-		c.MinimumDelay = &defaultDelay
+
+	if c.Themes == nil {
+		c.Themes = make(map[string]ThemeConfig)
+	}
+
+	if c.UI == nil {
+		c.UI = &UIConfig{}
+	}
+
+	if c.UI.Theme == "" {
+		c.UI.Theme = "auto"
+	}
+
+	if c.UI.MinimumDelay == nil {
+		defaultDelay := 200 * time.Millisecond
+		c.UI.MinimumDelay = &defaultDelay
+	}
+
+	setDefaultBool(&c.UI.Compact, false)
+	setDefaultBool(&c.UI.WordWrap, true)
+	setDefaultBool(&c.UI.ChromaRendering, true)
+	setDefaultBool(&c.UI.LineNumbers, true)
+}
+
+func setDefaultBool(b **bool, value bool) {
+	if *b == nil {
+		*b = &value
 	}
 }
 
 type KeyBinds struct {
-	Common *CommonKeyBinds `json:"common" yaml:"common"`
-	Stash  *StashKeyBinds  `json:"stash"  yaml:"stash"`
-	Pager  *PagerKeyBinds  `json:"pager"  yaml:"pager"`
+	Common *CommonKeyBinds `yaml:"common"`
+	Stash  *StashKeyBinds  `yaml:"list"`
+	Pager  *PagerKeyBinds  `yaml:"pager"`
 }
 
 func NewKeyBinds() *KeyBinds {
@@ -86,20 +123,20 @@ func (kb *KeyBinds) Validate() error {
 }
 
 type CommonKeyBinds struct {
-	Quit    *keys.KeyBind `json:"quit"    yaml:"quit"`
-	Suspend *keys.KeyBind `json:"suspend" yaml:"suspend"`
-	Reload  *keys.KeyBind `json:"reload"  yaml:"reload"`
-	Help    *keys.KeyBind `json:"help"    yaml:"help"`
-	Error   *keys.KeyBind `json:"error"   yaml:"error"`
-	Escape  *keys.KeyBind `json:"escape"  yaml:"escape"`
+	Quit    *keys.KeyBind `yaml:"quit"`
+	Suspend *keys.KeyBind `yaml:"suspend"`
+	Reload  *keys.KeyBind `yaml:"reload"`
+	Help    *keys.KeyBind `yaml:"help"`
+	Error   *keys.KeyBind `yaml:"error"`
+	Escape  *keys.KeyBind `yaml:"escape"`
 
 	// Navigation.
-	Up    *keys.KeyBind `json:"up"    yaml:"up"`
-	Down  *keys.KeyBind `json:"down"  yaml:"down"`
-	Left  *keys.KeyBind `json:"left"  yaml:"left"`
-	Right *keys.KeyBind `json:"right" yaml:"right"`
-	Prev  *keys.KeyBind `json:"prev"  yaml:"prev"`
-	Next  *keys.KeyBind `json:"next"  yaml:"next"`
+	Up    *keys.KeyBind `yaml:"up"`
+	Down  *keys.KeyBind `yaml:"down"`
+	Left  *keys.KeyBind `yaml:"left"`
+	Right *keys.KeyBind `yaml:"right"`
+	Prev  *keys.KeyBind `yaml:"prev"`
+	Next  *keys.KeyBind `yaml:"next"`
 }
 
 func (kb *CommonKeyBinds) EnsureDefaults() {
@@ -178,12 +215,12 @@ func (kb *CommonKeyBinds) GetKeyBinds() []keys.KeyBind {
 }
 
 type StashKeyBinds struct {
-	Open     *keys.KeyBind `json:"open"     yaml:"open"`
-	Find     *keys.KeyBind `json:"find"     yaml:"find"`
-	Home     *keys.KeyBind `json:"home"     yaml:"home"`
-	End      *keys.KeyBind `json:"end"      yaml:"end"`
-	PageUp   *keys.KeyBind `json:"pageUp"   yaml:"pageUp"`
-	PageDown *keys.KeyBind `json:"pageDown" yaml:"pageDown"`
+	Open     *keys.KeyBind `yaml:"open"`
+	Find     *keys.KeyBind `yaml:"find"`
+	Home     *keys.KeyBind `yaml:"home"`
+	End      *keys.KeyBind `yaml:"end"`
+	PageUp   *keys.KeyBind `yaml:"pageUp"`
+	PageDown *keys.KeyBind `yaml:"pageDown"`
 }
 
 func (kb *StashKeyBinds) EnsureDefaults() {
@@ -234,12 +271,12 @@ type PagerKeyBinds struct {
 	Copy *keys.KeyBind
 
 	// Navigation.
-	Home         *keys.KeyBind `json:"home"         yaml:"home"`
-	End          *keys.KeyBind `json:"end"          yaml:"end"`
-	PageUp       *keys.KeyBind `json:"pageUp"       yaml:"pageUp"`
-	PageDown     *keys.KeyBind `json:"pageDown"     yaml:"pageDown"`
-	HalfPageUp   *keys.KeyBind `json:"halfPageUp"   yaml:"halfPageUp"`
-	HalfPageDown *keys.KeyBind `json:"halfPageDown" yaml:"halfPageDown"`
+	Home         *keys.KeyBind `yaml:"home"`
+	End          *keys.KeyBind `yaml:"end"`
+	PageUp       *keys.KeyBind `yaml:"pageUp"`
+	PageDown     *keys.KeyBind `yaml:"pageDown"`
+	HalfPageUp   *keys.KeyBind `yaml:"halfPageUp"`
+	HalfPageDown *keys.KeyBind `yaml:"halfPageDown"`
 }
 
 func (kb *PagerKeyBinds) EnsureDefaults() {
@@ -287,8 +324,4 @@ func (kb *PagerKeyBinds) GetKeyBinds() []keys.KeyBind {
 		*kb.HalfPageUp,
 		*kb.HalfPageDown,
 	}
-}
-
-var DefaultConfig = Config{
-	KeyBinds: NewKeyBinds(),
 }

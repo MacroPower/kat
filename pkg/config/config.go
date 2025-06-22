@@ -2,67 +2,126 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/user"
 	"path/filepath"
+	"slices"
+	"strings"
 
-	yaml "sigs.k8s.io/yaml/goyaml.v3"
+	"github.com/go-playground/validator/v10"
+
+	_ "embed"
+
+	yaml "github.com/goccy/go-yaml"
 
 	"github.com/MacroPower/kat/pkg/kube"
-	uiconfig "github.com/MacroPower/kat/pkg/ui/config"
+	ui "github.com/MacroPower/kat/pkg/ui/config"
+)
+
+var (
+	//go:embed config.yaml
+	defaultConfigYAML []byte
+
+	ValidAPIVersions = []string{
+		"kat.jacobcolvin.com/v1beta1",
+	}
+	ValidKinds = []string{
+		"Configuration",
+	}
 )
 
 type Config struct {
-	Kube *kube.Config     `embed:"" json:"kube" prefix:"kube-" yaml:"kube"`
-	UI   *uiconfig.Config `embed:"" json:"ui"   prefix:"ui-"   yaml:"ui"`
+	Kube       *kube.Config `yaml:",inline"`
+	UI         *ui.Config   `yaml:",inline"`
+	APIVersion string       `validate:"required" yaml:"apiVersion"`
+	Kind       string       `validate:"required" yaml:"kind"`
 }
 
 func NewConfig() *Config {
-	return &Config{
-		UI:   &uiconfig.DefaultConfig,
-		Kube: &kube.DefaultConfig,
+	c := &Config{
+		APIVersion: "kat.jacobcolvin.com/v1beta1",
+		Kind:       "Configuration",
 	}
+	c.EnsureDefaults()
+
+	return c
 }
 
 func (c *Config) EnsureDefaults() {
 	if c.UI == nil {
-		c.UI = &uiconfig.DefaultConfig
+		c.UI = ui.DefaultConfig
 	} else {
 		c.UI.EnsureDefaults()
 	}
 
 	if c.Kube == nil {
-		c.Kube = &kube.DefaultConfig
+		c.Kube = kube.DefaultConfig
 	} else {
 		c.Kube.EnsureDefaults()
 	}
 }
 
-func (c *Config) Load(path string) error {
+func (c *Config) Validate() error {
+	if !slices.Contains(ValidAPIVersions, c.APIVersion) {
+		return fmt.Errorf("unsupported apiVersion %q, expected one of [%s]", c.APIVersion, strings.Join(ValidAPIVersions, ", "))
+	}
+	if !slices.Contains(ValidKinds, c.Kind) {
+		return fmt.Errorf("unsupported kind %q, expected one of [%s]", c.Kind, strings.Join(ValidKinds, ", "))
+	}
+
+	return nil
+}
+
+func ReadConfig(path string) ([]byte, error) {
 	pathInfo, err := os.Stat(path)
 	if pathInfo != nil {
-		if err == nil && !pathInfo.Mode().IsRegular() {
-			return fmt.Errorf("%s: unknown file state", path)
+		if err == nil && pathInfo.IsDir() {
+			return nil, fmt.Errorf("%s: path is a directory", path)
 		}
-		if pathInfo.IsDir() {
-			return fmt.Errorf("%s: path is a directory", path)
+		if err == nil && !pathInfo.Mode().IsRegular() {
+			return nil, fmt.Errorf("%s: unknown file state", path)
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("stat file: %w", err)
+		return nil, fmt.Errorf("stat file: %w", err)
 	}
 
 	data, err := os.ReadFile(path) //nolint:gosec // G304: Potential file inclusion via variable.
 	if err != nil {
-		return fmt.Errorf("read file: %w", err)
+		return nil, fmt.Errorf("read file: %w", err)
 	}
 
-	if err := yaml.Unmarshal(data, c); err != nil {
-		return fmt.Errorf("unmarshal yaml: %w", err)
+	return data, nil
+}
+
+func LoadConfig(data []byte) (*Config, error) {
+	c := &Config{}
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	dec := yaml.NewDecoder(bytes.NewReader(data),
+		yaml.Validator(validate),
+		yaml.AllowDuplicateMapKey(),
+	)
+	if err := dec.Decode(c); err != nil && !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("decode yaml config: %w", err)
 	}
 
-	return nil
+	c.EnsureDefaults()
+	if err := c.Validate(); err != nil {
+		return nil, err
+	}
+	if err := c.Kube.Validate(); err != nil {
+		source, srcErr := err.Path.AnnotateSource(data, true)
+		if srcErr != nil {
+			panic(srcErr)
+		}
+
+		return nil, fmt.Errorf("validate config: %w\n%s", err, source)
+	}
+
+	return c, nil
 }
 
 func (c *Config) Write(path string) error {
@@ -94,12 +153,38 @@ func (c *Config) Write(path string) error {
 	return nil
 }
 
+// WriteDefaultConfig writes the embedded default config.yaml to the specified path.
+func WriteDefaultConfig(path string) error {
+	pathInfo, err := os.Stat(path)
+	if pathInfo != nil {
+		if err == nil && pathInfo.Mode().IsRegular() {
+			return nil // Config already exists.
+		}
+		if pathInfo.IsDir() {
+			return fmt.Errorf("%s: path is a directory", path)
+		}
+
+		return fmt.Errorf("%s: unknown file state", path)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return fmt.Errorf("create directories: %w", err)
+	}
+
+	if err := os.WriteFile(path, defaultConfigYAML, 0o600); err != nil {
+		return fmt.Errorf("write file: %w", err)
+	}
+
+	return nil
+}
+
 func (c *Config) MarshalYAML() ([]byte, error) {
 	b := &bytes.Buffer{}
-	enc := yaml.NewEncoder(b)
-	enc.SetIndent(2)
-
-	if err := enc.Encode(c); err != nil {
+	enc := yaml.NewEncoder(b,
+		yaml.Indent(2),
+		yaml.IndentSequence(true),
+	)
+	if err := enc.Encode(*c); err != nil {
 		return nil, fmt.Errorf("marshal yaml: %w", err)
 	}
 
