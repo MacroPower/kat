@@ -76,7 +76,7 @@ func main() {
 	configPath := config.GetPath()
 
 	if cli.WriteConfig {
-		if err := cfg.Write(configPath); err != nil {
+		if err := config.WriteDefaultConfig(configPath); err != nil {
 			slog.Error("write config", slog.Any("err", err))
 			cliCtx.Fatalf(cmdInitErr)
 		}

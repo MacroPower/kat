@@ -13,6 +13,8 @@ import (
 
 	"github.com/go-playground/validator/v10"
 
+	_ "embed"
+
 	yaml "github.com/goccy/go-yaml"
 
 	"github.com/MacroPower/kat/pkg/kube"
@@ -20,6 +22,9 @@ import (
 )
 
 var (
+	//go:embed config.yaml
+	defaultConfigYAML []byte
+
 	ValidAPIVersions = []string{
 		"kat.jacobcolvin.com/v1beta1",
 	}
@@ -73,11 +78,11 @@ func (c *Config) Validate() error {
 func ReadConfig(path string) ([]byte, error) {
 	pathInfo, err := os.Stat(path)
 	if pathInfo != nil {
+		if err == nil && pathInfo.IsDir() {
+			return nil, fmt.Errorf("%s: path is a directory", path)
+		}
 		if err == nil && !pathInfo.Mode().IsRegular() {
 			return nil, fmt.Errorf("%s: unknown file state", path)
-		}
-		if pathInfo.IsDir() {
-			return nil, fmt.Errorf("%s: path is a directory", path)
 		}
 	}
 	if err != nil {
@@ -142,6 +147,31 @@ func (c *Config) Write(path string) error {
 	}
 
 	if err := os.WriteFile(path, b, 0o600); err != nil {
+		return fmt.Errorf("write file: %w", err)
+	}
+
+	return nil
+}
+
+// WriteDefaultConfig writes the embedded default config.yaml to the specified path.
+func WriteDefaultConfig(path string) error {
+	pathInfo, err := os.Stat(path)
+	if pathInfo != nil {
+		if err == nil && pathInfo.Mode().IsRegular() {
+			return nil // Config already exists.
+		}
+		if pathInfo.IsDir() {
+			return fmt.Errorf("%s: path is a directory", path)
+		}
+
+		return fmt.Errorf("%s: unknown file state", path)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return fmt.Errorf("create directories: %w", err)
+	}
+
+	if err := os.WriteFile(path, defaultConfigYAML, 0o600); err != nil {
 		return fmt.Errorf("write file: %w", err)
 	}
 

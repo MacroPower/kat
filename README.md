@@ -97,9 +97,7 @@ cat ./example/kustomize/resources.yaml | kat -f -
 
 You can use `kat --write-config` to generate a default configuration file at `~/.config/kat/config.yaml`. This file allows you to customize the behavior of `kat`, such as the UI style, keybindings, rules for project detection, and profiles for rendering different types of projects.
 
-Alternatively, you can use `kat --show-config` to print the active configuration and redirect the output to a file.
-
-You can also find an example configuration file in [pkg/config/config.yaml](pkg/config/config.yaml).
+Alternatively, you can find the default configuration file in [pkg/config/config.yaml](pkg/config/config.yaml).
 
 ## 🛠️ Rules and Profiles
 
