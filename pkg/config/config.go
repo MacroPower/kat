@@ -59,6 +59,17 @@ func (c *Config) EnsureDefaults() {
 	}
 }
 
+func (c *Config) Validate() error {
+	if !slices.Contains(ValidAPIVersions, c.APIVersion) {
+		return fmt.Errorf("unsupported apiVersion %q, expected one of [%s]", c.APIVersion, strings.Join(ValidAPIVersions, ", "))
+	}
+	if !slices.Contains(ValidKinds, c.Kind) {
+		return fmt.Errorf("unsupported kind %q, expected one of [%s]", c.Kind, strings.Join(ValidKinds, ", "))
+	}
+
+	return nil
+}
+
 func ReadConfig(path string) ([]byte, error) {
 	pathInfo, err := os.Stat(path)
 	if pathInfo != nil {
@@ -91,15 +102,11 @@ func LoadConfig(data []byte) (*Config, error) {
 	if err := dec.Decode(c); err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("decode yaml config: %w", err)
 	}
+
 	c.EnsureDefaults()
-
-	if !slices.Contains(ValidAPIVersions, c.APIVersion) {
-		return nil, fmt.Errorf("unsupported apiVersion %q, expected one of [%s]", c.APIVersion, strings.Join(ValidAPIVersions, ", "))
+	if err := c.Validate(); err != nil {
+		return nil, err
 	}
-	if !slices.Contains(ValidKinds, c.Kind) {
-		return nil, fmt.Errorf("unsupported kind %q, expected one of [%s]", c.Kind, strings.Join(ValidKinds, ", "))
-	}
-
 	if err := c.Kube.Validate(); err != nil {
 		source, srcErr := err.Path.AnnotateSource(data, true)
 		if srcErr != nil {
