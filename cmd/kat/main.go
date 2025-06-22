@@ -53,8 +53,8 @@ var cli struct {
 	Command string   `arg:"" help:"Command or profile override."          optional:""`
 	Args    []string `arg:"" help:"Arguments for the command or profile." optional:""`
 
-	Compact     bool `env:"-" help:"Enable compact mode for the UI."                   short:"c"`
-	Watch       bool `env:"-" help:"Watch for changes and trigger reloading."          short:"w"`
+	Watch bool `help:"Watch for changes and trigger reloading." short:"w"`
+
 	WriteConfig bool `env:"-" help:"Write the configuration file to the default path."`
 	ShowConfig  bool `env:"-" help:"Print the active configuration and exit."`
 }
