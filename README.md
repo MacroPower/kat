@@ -281,6 +281,8 @@ profiles:
 > - Not require any additional arguments to run.
 >   - You can reference `{{.USER_WORKING_DIR}}` to obtain the path that the user invoked `kat` from/with.
 >   - E.g., `vars: { PATH: "{{.PATH | default .USER_WORKING_DIR}}" }`
+>
+> If you are concerned about safety (i.e. accidentally calling a task defined by someone else), you can consider not including a rule for `task` and only allowing it to be invoked manually via the CLI args, or you could write a more narrow match expression (e.g. `f.contains("/my-org/")`).
 
 ## 🌈 Themes
 
