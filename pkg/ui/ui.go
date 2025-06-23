@@ -77,9 +77,24 @@ func (m *model) unloadDocument() {
 
 func newModel(cfg config.Config, cmd common.Commander) tea.Model {
 	theme := cfg.UI.Theme
-	currentTheme := cmd.GetCurrentTheme()
-	if currentTheme != "" {
-		theme = currentTheme
+	profile := cmd.GetCurrentProfile()
+	if profile.UI.Theme != "" {
+		theme = profile.UI.Theme
+	}
+	if profile.UI.Compact != nil {
+		cfg.UI.Compact = profile.UI.Compact
+	}
+	if profile.UI.WordWrap != nil {
+		cfg.UI.WordWrap = profile.UI.WordWrap
+	}
+	if profile.UI.ChromaRendering != nil {
+		cfg.UI.ChromaRendering = profile.UI.ChromaRendering
+	}
+	if profile.UI.LineNumbers != nil {
+		cfg.UI.LineNumbers = profile.UI.LineNumbers
+	}
+	if profile.UI.MinimumDelay != nil {
+		cfg.UI.MinimumDelay = profile.UI.MinimumDelay
 	}
 
 	cm := common.CommonModel{

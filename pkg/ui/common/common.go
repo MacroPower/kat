@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/MacroPower/kat/pkg/kube"
+	"github.com/MacroPower/kat/pkg/profile"
 	"github.com/MacroPower/kat/pkg/ui/config"
 	"github.com/MacroPower/kat/pkg/ui/statusbar"
 	"github.com/MacroPower/kat/pkg/ui/themes"
@@ -16,7 +17,7 @@ type Commander interface {
 	RunOnEvent()
 	String() string
 	Subscribe(ch chan<- kube.CommandEvent)
-	GetCurrentTheme() string
+	GetCurrentProfile() *profile.Profile
 }
 
 type CommonModel struct {

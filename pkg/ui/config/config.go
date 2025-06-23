@@ -26,12 +26,19 @@ func NewConfig() *Config {
 }
 
 type UIConfig struct {
-	MinimumDelay    *time.Duration `validate:"max=1s"      yaml:"minimumDelay"`
+	MinimumDelay    *time.Duration `yaml:"minimumDelay"`
 	Compact         *bool          `yaml:"compact"`
 	WordWrap        *bool          `yaml:"wordWrap"`
 	ChromaRendering *bool          `yaml:"chromaRendering"`
 	LineNumbers     *bool          `yaml:"lineNumbers"`
 	Theme           string         `yaml:"theme"`
+}
+
+func (c *UIConfig) EnsureDefaults() {
+	if c.MinimumDelay == nil {
+		defaultDelay := 200 * time.Millisecond
+		c.MinimumDelay = &defaultDelay
+	}
 }
 
 type ThemeConfig struct {
@@ -52,16 +59,9 @@ func (c *Config) EnsureDefaults() {
 	if c.UI == nil {
 		c.UI = &UIConfig{}
 	}
+	c.UI.EnsureDefaults()
 
-	if c.UI.Theme == "" {
-		c.UI.Theme = "auto"
-	}
-
-	if c.UI.MinimumDelay == nil {
-		defaultDelay := 200 * time.Millisecond
-		c.UI.MinimumDelay = &defaultDelay
-	}
-
+	// Set defaults for UIConfig in this Config context only.
 	setDefaultBool(&c.UI.Compact, false)
 	setDefaultBool(&c.UI.WordWrap, true)
 	setDefaultBool(&c.UI.ChromaRendering, true)

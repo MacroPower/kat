@@ -3,6 +3,8 @@ package kube
 import (
 	"errors"
 	"fmt"
+
+	"github.com/MacroPower/kat/pkg/profile"
 )
 
 type ResourceGetter struct {
@@ -27,9 +29,9 @@ func (rg *ResourceGetter) String() string {
 	return "static"
 }
 
-func (rg *ResourceGetter) GetCurrentTheme() string {
-	// Static resources do not have a theme.
-	return ""
+func (rg *ResourceGetter) GetCurrentProfile() *profile.Profile {
+	// Static resources do not have a profile.
+	return &profile.Profile{}
 }
 
 func (rg *ResourceGetter) Run() CommandOutput {

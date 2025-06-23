@@ -149,8 +149,8 @@ func WithRules(rs []*rule.Rule) CommandRunnerOpt {
 	}
 }
 
-func (cr *CommandRunner) GetCurrentTheme() string {
-	return cr.rule.GetProfile().Theme
+func (cr *CommandRunner) GetCurrentProfile() *profile.Profile {
+	return cr.rule.GetProfile()
 }
 
 func (cr *CommandRunner) Watch() error {

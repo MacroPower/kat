@@ -18,6 +18,7 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 
 	"github.com/MacroPower/kat/pkg/expr"
+	ui "github.com/MacroPower/kat/pkg/ui/config"
 )
 
 var (
@@ -54,11 +55,11 @@ var (
 type Profile struct {
 	sourceProgram cel.Program // Compiled CEL program for source matching.
 
-	Hooks   *Hooks   `yaml:"hooks,omitempty"`
-	Source  string   `yaml:"source,omitempty"`
-	Theme   string   `yaml:"theme,omitempty"`
-	Command string   `validate:"required,alphanum" yaml:"command"`
-	Args    []string `yaml:"args,flow"`
+	Hooks   *Hooks       `yaml:"hooks,omitempty"`
+	UI      *ui.UIConfig `yaml:"ui,omitempty"` // UI configuration for the profile.
+	Source  string       `yaml:"source,omitempty"`
+	Command string       `validate:"required,alphanum" yaml:"command"`
+	Args    []string     `yaml:"args,flow"`
 }
 
 // ProfileOpt is a functional option for configuring a Profile.
@@ -75,6 +76,7 @@ func New(command string, opts ...ProfileOpt) (*Profile, error) {
 	if err := p.CompileSource(); err != nil {
 		return nil, fmt.Errorf("profile %q: %w", command, err)
 	}
+	p.EnsureDefaults()
 
 	return p, nil
 }
@@ -110,11 +112,11 @@ func WithSource(source string) ProfileOpt {
 	}
 }
 
-// WithTheme sets the theme for the profile.
-func WithTheme(theme string) ProfileOpt {
-	return func(p *Profile) {
-		p.Theme = theme
+func (p *Profile) EnsureDefaults() {
+	if p.UI == nil {
+		p.UI = &ui.UIConfig{}
 	}
+	p.UI.EnsureDefaults()
 }
 
 // CompileSource compiles the profile's source expression into a CEL program.

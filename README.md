@@ -140,7 +140,7 @@ rules:
 - `command` (required): The command to execute
 - `args`: Arguments to pass to the command
 - `source`: Define which files to watch for changes (when watch is enabled)
-- `theme`: UI theme to use for this profile
+- `ui`: UI configuration overrides
 - `hooks`: Initialization and rendering hooks
   - `init` hooks are executed once when `kat` is initialized
   - `preRender` hooks are executed before the profile's command is run
@@ -155,7 +155,8 @@ profiles:
     args: [template, ., --generate-name]
     source: >-
       files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])
-    theme: dracula
+    ui:
+      theme: dracula
     hooks:
       init:
         - command: helm
@@ -173,7 +174,9 @@ profiles:
     args: [build, .]
     source: >-
       files.filter(f, pathExt(f) in [".yaml", ".yml"])
-    theme: tokyonight-storm
+    ui:
+      compact: true
+      theme: tokyonight-storm
     hooks:
       init:
         - command: kustomize
@@ -295,11 +298,13 @@ You can optionally set different themes for different profiles:
 ```yaml
 profiles:
   helm:
-    theme: "dracula"
-    # ...
+    ui:
+      theme: "dracula"
+      # ...
   ks:
-    theme: "tokyonight-storm"
-    # ...
+    ui:
+      theme: "tokyonight-storm"
+      # ...
 ```
 
 We use [Chroma](https://github.com/alecthomas/chroma/) for theming, so you can use any styles from the [Chroma Style Gallery](https://xyproto.github.io/splash/docs/).
