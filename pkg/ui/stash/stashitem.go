@@ -72,9 +72,11 @@ func applySelectedStyling(theme *themes.Theme, title, desc string, showFilter bo
 	if showFilter {
 		// Apply filtered text styling.
 		result.title = styleFilteredText(title, filterValue, theme.SelectedStyle, theme.SelectedStyle.Underline(true))
+		result.desc = styleFilteredText(desc, filterValue, theme.SelectedSubtleStyle, theme.SelectedSubtleStyle.Underline(true))
 	} else {
 		// Apply standard selected styling.
 		result.title = theme.SelectedStyle.Render(title)
+		result.desc = theme.SelectedSubtleStyle.Render(desc)
 	}
 
 	return result
@@ -85,19 +87,15 @@ func applyUnselectedStyling(theme *themes.Theme, title, desc string, isFiltering
 	hasEmptyFilter := isFiltering && filterValue == ""
 
 	result := stashItemDisplayState{
-		gutter: " ",
+		gutter:    " ",
+		separator: theme.GenericTextStyle.Render(""),
 	}
 
 	if hasEmptyFilter {
 		// Dimmed styling when filtering with empty input.
 		result.title = theme.SubtleStyle.Render(title)
 		result.desc = theme.SubtleStyle.Render(desc)
-		result.separator = theme.GenericTextStyle.Render("")
 	} else {
-		// Normal unselected styling.
-		result.desc = theme.GenericTextStyle.Render(desc)
-		result.separator = theme.GenericTextStyle.Render("")
-
 		// Apply filtered text styling.
 		result.title = styleFilteredText(title, filterValue, theme.GenericTextStyle, theme.GenericTextStyle.Underline(true))
 		result.desc = styleFilteredText(desc, filterValue, theme.SubtleStyle, theme.SubtleStyle.Underline(true))
