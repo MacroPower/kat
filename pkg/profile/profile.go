@@ -19,6 +19,7 @@ import (
 
 	"github.com/MacroPower/kat/pkg/expr"
 	ui "github.com/MacroPower/kat/pkg/ui/config"
+	"github.com/MacroPower/kat/pkg/ui/keys"
 )
 
 var (
@@ -55,11 +56,12 @@ var (
 type Profile struct {
 	sourceProgram cel.Program // Compiled CEL program for source matching.
 
-	Hooks   *Hooks       `yaml:"hooks,omitempty"`
-	UI      *ui.UIConfig `yaml:"ui,omitempty"` // UI configuration for the profile.
-	Source  string       `yaml:"source,omitempty"`
-	Command string       `validate:"required,alphanum" yaml:"command"`
-	Args    []string     `yaml:"args,flow"`
+	Hooks   *Hooks             `yaml:"hooks,omitempty"`
+	UI      *ui.UIConfig       `yaml:"ui,omitempty"` // UI configuration for the profile.
+	Plugins map[string]*Plugin `yaml:"plugins,omitempty"`
+	Source  string             `yaml:"source,omitempty"`
+	Command string             `validate:"required,alphanum" yaml:"command"`
+	Args    []string           `yaml:"args,flow"`
 }
 
 // ProfileOpt is a functional option for configuring a Profile.
@@ -109,6 +111,13 @@ func WithHooks(hooks *Hooks) ProfileOpt {
 func WithSource(source string) ProfileOpt {
 	return func(p *Profile) {
 		p.Source = source
+	}
+}
+
+// WithPlugins sets the plugins for the profile.
+func WithPlugins(plugins map[string]*Plugin) ProfileOpt {
+	return func(p *Profile) {
+		p.Plugins = plugins
 	}
 }
 
@@ -247,4 +256,54 @@ func (p *Profile) Exec(ctx context.Context, dir string) ExecResult {
 	slog.DebugContext(ctx, "profile executed successfully", slog.String("command", p.Command))
 
 	return result
+}
+
+// GetPlugin returns the plugin with the given name, or nil if not found.
+func (p *Profile) GetPlugin(name string) *Plugin {
+	if p.Plugins == nil {
+		return nil
+	}
+
+	return p.Plugins[name]
+}
+
+// GetPluginNameByKey returns the name of the first plugin that matches the given key code.
+func (p *Profile) GetPluginNameByKey(keyCode string) string {
+	if p.Plugins == nil {
+		return ""
+	}
+
+	for name, plugin := range p.Plugins {
+		if plugin.MatchKeys(keyCode) {
+			slog.Debug("matched plugin",
+				slog.String("name", name),
+				slog.Any("keys", plugin.Keys),
+			)
+
+			return name
+		}
+	}
+
+	return ""
+}
+
+func (p *Profile) GetPluginKeyBinds() []*keys.KeyBind {
+	binds := []*keys.KeyBind{}
+
+	if p.Plugins == nil {
+		return binds
+	}
+
+	for name, plugin := range p.Plugins {
+		desc := plugin.Description
+		if desc == "" {
+			desc = fmt.Sprintf("plugin %q", name)
+		}
+		binds = append(binds, &keys.KeyBind{
+			Description: desc,
+			Keys:        plugin.Keys,
+		})
+	}
+
+	return binds
 }

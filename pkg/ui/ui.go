@@ -8,9 +8,11 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
+	"golang.org/x/exp/slog"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/MacroPower/kat/pkg/command"
 	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/ui/common"
 	"github.com/MacroPower/kat/pkg/ui/config"
@@ -46,6 +48,7 @@ const (
 	overlayStateNone OverlayState = iota
 	overlayStateError
 	overlayStateLoading
+	overlayStateResult
 )
 
 func (s State) String() string {
@@ -57,6 +60,7 @@ func (s State) String() string {
 
 type model struct {
 	err          error
+	result       string
 	cm           *common.CommonModel
 	overlay      *overlay.Overlay
 	spinner      spinner.Model
@@ -130,7 +134,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		kb := m.cm.Config.KeyBinds
 
-		if m.overlayState == overlayStateError {
+		if m.overlayState == overlayStateError || m.overlayState == overlayStateResult {
 			// If we're showing an error, any key exits the error view.
 			m.overlayState = overlayStateNone
 		} else if m.cm.Config.KeyBinds.Common.Error.Match(msg.String()) {
@@ -148,11 +152,20 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// Handle plugin keybinds.
+		if profile := m.cm.Cmd.GetCurrentProfile(); profile != nil {
+			if pluginName := profile.GetPluginNameByKey(msg.String()); pluginName != "" {
+				cmd := m.runPlugin(pluginName)
+
+				return m, cmd
+			}
+		}
+
 	// Window size is received when starting up and on every resize.
 	case tea.WindowSizeMsg:
 		m.handleWindowResize(msg)
 
-	case common.CommandRunStarted:
+	case command.EventStart:
 		m.cm.Loaded = false
 		m.cm.ShowStatusMessage = false
 		if m.cm.StatusMessageTimer != nil {
@@ -170,13 +183,19 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case pager.ContentRenderedMsg:
 		m.state = stateShowDocument
 
-	case common.CommandRunFinished:
+	case command.EventEnd:
 		cmds = append(cmds, m.handleResourceUpdate(msg)...)
 
 		m.cm.Loaded = true
-		m.overlayState = overlayStateNone
+		switch msg.Type {
+		case command.TypeRun:
+			m.overlayState = overlayStateNone
+		case command.TypePlugin:
+			m.result = msg.Stdout
+			m.overlayState = overlayStateResult
+		}
 
-		if msg.Error == nil {
+		if msg.Error == nil && len(msg.Resources) > 0 {
 			statusMsg := fmt.Sprintf("rendered %d manifests", len(msg.Resources))
 			cmds = append(cmds, m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess))
 		}
@@ -215,6 +234,10 @@ func (m *model) View() string {
 		loadingOverlayStyle = m.cm.Theme.GenericOverlayStyle.
 					Align(lipgloss.Center).
 					Padding(1)
+
+		resultOverlayStyle = m.cm.Theme.GenericOverlayStyle.
+					Align(lipgloss.Left).
+					Padding(1)
 	)
 
 	switch m.state {
@@ -232,9 +255,26 @@ func (m *model) View() string {
 	case overlayStateLoading:
 		overlaySizeFraction = 1.0 / 4.0
 		s = m.overlay.Place(s, m.loadingView(), overlaySizeFraction, loadingOverlayStyle)
+
+	case overlayStateResult:
+		overlaySizeFraction = 2.0 / 3.0
+		s = m.overlay.Place(s, m.resultView(), overlaySizeFraction, resultOverlayStyle)
 	}
 
 	return strings.TrimRight(s, " \n")
+}
+
+func (m *model) resultView() string {
+	resultMsg := "<nil>"
+	if m.result != "" {
+		resultMsg = m.result
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Top,
+		m.cm.Theme.ResultTitleStyle.Padding(0, 1).Render("OUTPUT"),
+		lipgloss.NewStyle().Padding(1, 0).Render(resultMsg),
+		m.cm.Theme.SubtleStyle.Render("press any key to close"),
+	)
 }
 
 func (m *model) errorView() string {
@@ -301,7 +341,7 @@ func (m *model) handleRefreshKey(_ tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 }
 
 // handleResourceUpdate processes kubernetes resource updates.
-func (m *model) handleResourceUpdate(msg common.CommandRunFinished) []tea.Cmd {
+func (m *model) handleResourceUpdate(msg command.EventEnd) []tea.Cmd {
 	var cmds []tea.Cmd
 
 	if msg.Error != nil {
@@ -309,6 +349,10 @@ func (m *model) handleResourceUpdate(msg common.CommandRunFinished) []tea.Cmd {
 			return common.ErrMsg{Err: msg.Error}
 		})
 
+		return cmds
+	}
+
+	if len(msg.Resources) == 0 {
 		return cmds
 	}
 
@@ -365,6 +409,18 @@ func (m *model) handleWindowResize(msg tea.WindowSizeMsg) {
 func (m *model) runCommand() tea.Cmd {
 	return func() tea.Msg {
 		go m.cm.Cmd.Run()
+
+		return nil
+	}
+}
+
+func (m *model) runPlugin(name string) tea.Cmd {
+	return func() tea.Msg {
+		slog.Debug("running plugin",
+			slog.String("name", name),
+		)
+
+		go m.cm.Cmd.RunPlugin(name)
 
 		return nil
 	}

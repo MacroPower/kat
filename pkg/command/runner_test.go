@@ -1,4 +1,4 @@
-package kube_test
+package command_test
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/MacroPower/kat/pkg/kube"
+	"github.com/MacroPower/kat/pkg/command"
 	"github.com/MacroPower/kat/pkg/profile"
 	"github.com/MacroPower/kat/pkg/rule"
 )
@@ -36,7 +36,7 @@ var (
 		rule.MustNew("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`),
 	}
 
-	TestConfig = kube.MustNewConfig(testProfiles, testRules)
+	TestConfig = command.MustNewConfig(testProfiles, testRules)
 )
 
 func TestCommandRunner_RunForPath(t *testing.T) {
@@ -74,12 +74,12 @@ func TestCommandRunner_RunForPath(t *testing.T) {
 		},
 		"no command for path": {
 			path:        unknownFile,
-			initError:   kube.ErrNoCommandForPath,
+			initError:   command.ErrNoCommandForPath,
 			checkOutput: false,
 		},
 		"directory with no matching files": {
 			path:        t.TempDir(), // Empty temp directory
-			initError:   kube.ErrNoCommandForPath,
+			initError:   command.ErrNoCommandForPath,
 			checkOutput: false,
 		},
 		"match Chart.yaml file": {
@@ -103,7 +103,7 @@ func TestCommandRunner_RunForPath(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			runner, err := kube.NewCommandRunner(tc.path, kube.WithRules(TestConfig.Rules))
+			runner, err := command.NewCommandRunner(tc.path, command.WithRules(TestConfig.Rules))
 			if tc.initError != nil {
 				require.ErrorIs(t, err, tc.initError)
 
@@ -131,7 +131,7 @@ func TestCommandRunner_WithCommand(t *testing.T) {
 	p, err := profile.New("echo", profile.WithArgs("{apiVersion: v1, kind: Resource}"))
 	require.NoError(t, err)
 
-	runner, err := kube.NewCommandRunner(t.TempDir(), kube.WithProfile("echo", p))
+	runner, err := command.NewCommandRunner(t.TempDir(), command.WithProfile("echo", p))
 	require.NoError(t, err)
 
 	output := runner.Run()
@@ -150,7 +150,7 @@ func TestCommandRunner_RunContext(t *testing.T) {
 	p, err := profile.New("echo", profile.WithArgs("{apiVersion: v1, kind: ConfigMap, metadata: {name: test}}"))
 	require.NoError(t, err)
 
-	runner, err := kube.NewCommandRunner(t.TempDir(), kube.WithProfile("echo", p))
+	runner, err := command.NewCommandRunner(t.TempDir(), command.WithProfile("echo", p))
 	require.NoError(t, err)
 
 	// Test with context.Background()
@@ -182,7 +182,7 @@ func TestCommandRunner_CancellationBehavior(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a command that takes some time to execute
-	runner, err := kube.NewCommandRunner(t.TempDir(), kube.WithProfile("sleep", p))
+	runner, err := command.NewCommandRunner(t.TempDir(), command.WithProfile("sleep", p))
 	require.NoError(t, err)
 
 	// Test that a new command cancels the previous one
@@ -192,7 +192,7 @@ func TestCommandRunner_CancellationBehavior(t *testing.T) {
 		defer cancel1()
 
 		// Channel to collect results
-		results := make(chan kube.CommandOutput, 2)
+		results := make(chan command.Output, 2)
 
 		// Start first command in a goroutine
 		go func() {
@@ -208,7 +208,7 @@ func TestCommandRunner_CancellationBehavior(t *testing.T) {
 		}()
 
 		// Collect results
-		var outputs []kube.CommandOutput
+		var outputs []command.Output
 		for range 2 {
 			select {
 			case output := <-results:
@@ -276,7 +276,7 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 			require.NoError(t, err)
 
 			// Create a command that takes a bit of time to execute
-			runner, err := kube.NewCommandRunner(tempDir, kube.WithProfile("sleep", p))
+			runner, err := command.NewCommandRunner(tempDir, command.WithProfile("sleep", p))
 			require.NoError(t, err)
 
 			// Start watching
@@ -284,7 +284,7 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 			defer runner.Close()
 
 			// Channel to collect command outputs
-			results := make(chan kube.CommandEvent, 50) // Larger buffer for multiple FS events
+			results := make(chan command.Event, 50) // Larger buffer for multiple FS events
 			runner.Subscribe(results)
 
 			// Start RunOnEvent in a goroutine
@@ -302,7 +302,7 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 
 			// Collect all events for a specified duration
 			var (
-				outputs        []kube.CommandOutput
+				outputs        []command.Output
 				startEvents    int
 				cancelEvents   int
 				collectionDone = make(chan struct{})
@@ -316,11 +316,11 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 					select {
 					case event := <-results:
 						switch out := event.(type) {
-						case kube.CommandEventStart:
+						case command.EventStart:
 							startEvents++
-						case kube.CommandEventEnd:
-							outputs = append(outputs, kube.CommandOutput(out))
-						case kube.CommandEventCancel:
+						case command.EventEnd:
+							outputs = append(outputs, command.Output(out))
+						case command.EventCancel:
 							cancelEvents++
 						}
 					case <-deadline:

@@ -1,4 +1,4 @@
-package kube
+package command
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
+	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/profile"
 	"github.com/MacroPower/kat/pkg/rule"
 )
@@ -30,22 +31,6 @@ var (
 	ErrHookExecution = errors.New("hook execution")
 )
 
-// CommandEvent represents an event related to command execution.
-type CommandEvent any
-
-type (
-	// CommandEventStart indicates that a command execution has started.
-	CommandEventStart struct{}
-
-	// CommandEventEnd indicates that a command execution has ended.
-	// This event carries the output of the command execution, which could be
-	// an error if the command failed.
-	CommandEventEnd CommandOutput
-
-	// CommandEventCancel indicates that a command execution has been canceled.
-	CommandEventCancel struct{}
-)
-
 // CommandRunner wraps one or more Rule objects. It manages:
 //   - File-to-command mappings.
 //   - Filesystem notifications / watching.
@@ -55,7 +40,7 @@ type CommandRunner struct {
 	watcher    *fsnotify.Watcher
 	cancelFunc context.CancelFunc
 	path       string
-	listeners  []chan<- CommandEvent
+	listeners  []chan<- Event
 	mu         sync.Mutex
 }
 
@@ -153,6 +138,80 @@ func (cr *CommandRunner) GetCurrentProfile() *profile.Profile {
 	return cr.rule.GetProfile()
 }
 
+// RunPlugin executes a plugin by name.
+func (cr *CommandRunner) RunPlugin(name string) Output {
+	return cr.RunPluginContext(context.Background(), name)
+}
+
+// RunPluginContext executes a plugin by name with the provided context.
+func (cr *CommandRunner) RunPluginContext(ctx context.Context, name string) Output {
+	cr.mu.Lock()
+
+	var (
+		path = cr.path
+		p    = cr.rule.GetProfile()
+	)
+
+	// Cancel any currently running command.
+	if cr.cancelFunc != nil {
+		cr.broadcast(EventCancel{})
+		cr.cancelFunc()
+	}
+
+	// Create a new context for this plugin execution.
+	ctx, cr.cancelFunc = context.WithCancel(ctx)
+
+	cr.mu.Unlock()
+
+	cr.broadcast(EventStart(TypePlugin))
+
+	slog.DebugContext(ctx, "run plugin",
+		slog.String("path", path),
+		slog.String("name", name),
+	)
+
+	co := Output{
+		Type: TypePlugin,
+	}
+
+	plugin := p.GetPlugin(name)
+	if plugin == nil {
+		co.Error = fmt.Errorf("plugin %q not found", name)
+		cr.broadcast(EventEnd(co))
+
+		return co
+	}
+
+	_, err := os.Stat(path)
+	if err != nil {
+		co.Error = fmt.Errorf("stat path: %w", err)
+		cr.broadcast(EventEnd(co))
+
+		return co
+	}
+
+	result := plugin.Exec(ctx, path)
+	co.Error = result.Error
+	co.Stdout = result.Stdout
+	co.Stderr = result.Stderr
+
+	// Check if the command was canceled.
+	if co.Error != nil && errors.Is(ctx.Err(), context.Canceled) {
+		cr.broadcast(EventCancel{})
+
+		return co
+	} else if co.Error != nil {
+		co.Error = fmt.Errorf("%w: plugin %q: %w", ErrCommandExecution, plugin.Description, co.Error)
+		cr.broadcast(EventEnd(co))
+
+		return co
+	}
+
+	cr.broadcast(EventEnd(co))
+
+	return co
+}
+
 func (cr *CommandRunner) Watch() error {
 	p := cr.rule.GetProfile()
 
@@ -185,11 +244,11 @@ func (cr *CommandRunner) Watch() error {
 }
 
 // Subscribe allows other components to listen for command events.
-func (cr *CommandRunner) Subscribe(ch chan<- CommandEvent) {
+func (cr *CommandRunner) Subscribe(ch chan<- Event) {
 	cr.listeners = append(cr.listeners, ch)
 }
 
-func (cr *CommandRunner) broadcast(evt CommandEvent) {
+func (cr *CommandRunner) broadcast(evt Event) {
 	// Send the event to all listeners.
 	for _, ch := range cr.listeners {
 		ch <- evt
@@ -218,7 +277,7 @@ func (cr *CommandRunner) RunOnEvent() {
 			if !ok {
 				return
 			}
-			cr.broadcast(CommandEventEnd(CommandOutput{
+			cr.broadcast(EventEnd(Output{
 				Error: err,
 			}))
 		}
@@ -232,14 +291,6 @@ func (cr *CommandRunner) Close() {
 	}
 }
 
-// CommandOutput represents the output of a command execution.
-type CommandOutput struct {
-	Error     error
-	Stdout    string
-	Stderr    string
-	Resources []*Resource
-}
-
 func (cr *CommandRunner) String() string {
 	return cr.rule.String()
 }
@@ -247,7 +298,7 @@ func (cr *CommandRunner) String() string {
 // RunFirstMatch executes the first matching command for the given path.
 // If path is a file, it checks for direct matches.
 // If path is a directory, it checks all files in the directory for matches.
-func (cr *CommandRunner) Run() CommandOutput {
+func (cr *CommandRunner) Run() Output {
 	return cr.RunContext(context.Background())
 }
 
@@ -255,7 +306,7 @@ func (cr *CommandRunner) Run() CommandOutput {
 // If path is a file, it checks for direct matches.
 // If path is a directory, it checks all files in the directory for matches.
 // The context can be used for cancellation, timeouts, and tracing.
-func (cr *CommandRunner) RunContext(ctx context.Context) CommandOutput {
+func (cr *CommandRunner) RunContext(ctx context.Context) Output {
 	cr.mu.Lock()
 
 	var (
@@ -267,7 +318,7 @@ func (cr *CommandRunner) RunContext(ctx context.Context) CommandOutput {
 
 	// Cancel any currently running command.
 	if cr.cancelFunc != nil {
-		cr.broadcast(CommandEventCancel{})
+		cr.broadcast(EventCancel{})
 		cr.cancelFunc()
 	}
 
@@ -276,7 +327,7 @@ func (cr *CommandRunner) RunContext(ctx context.Context) CommandOutput {
 
 	cr.mu.Unlock()
 
-	cr.broadcast(CommandEventStart{})
+	cr.broadcast(EventStart(TypeRun))
 
 	slog.DebugContext(ctx, "run",
 		slog.String("path", path),
@@ -284,39 +335,41 @@ func (cr *CommandRunner) RunContext(ctx context.Context) CommandOutput {
 		slog.Any("args", args),
 	)
 
+	co := Output{
+		Type: TypeRun,
+	}
+
 	_, err := os.Stat(path)
 	if err != nil {
-		co := CommandOutput{Error: fmt.Errorf("stat path: %w", err)}
-		cr.broadcast(CommandEventEnd(co))
+		co.Error = fmt.Errorf("stat path: %w", err)
+		cr.broadcast(EventEnd(co))
 
 		return co
 	}
 
 	result := p.Exec(ctx, path)
-	co := CommandOutput{
-		Error:  result.Error,
-		Stdout: result.Stdout,
-		Stderr: result.Stderr,
-	}
+	co.Error = result.Error
+	co.Stdout = result.Stdout
+	co.Stderr = result.Stderr
 
 	// Check if the command was canceled.
 	if co.Error != nil && errors.Is(ctx.Err(), context.Canceled) {
-		cr.broadcast(CommandEventCancel{})
+		cr.broadcast(EventCancel{})
 
 		return co
 	} else if co.Error != nil {
 		co.Error = fmt.Errorf("%w: %w", ErrCommandExecution, co.Error)
-		cr.broadcast(CommandEventEnd(co))
+		cr.broadcast(EventEnd(co))
 
 		return co
 	}
 
-	objects, err := SplitYAML([]byte(co.Stdout))
+	objects, err := kube.SplitYAML([]byte(co.Stdout))
 	if err != nil {
 		co.Error = fmt.Errorf("%w: %w", err, co.Error)
 	}
 	co.Resources = objects
-	cr.broadcast(CommandEventEnd(co))
+	cr.broadcast(EventEnd(co))
 
 	return co
 }

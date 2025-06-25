@@ -27,6 +27,7 @@
 - **🐛 Error handling** - Rendering and validation errors are displayed as overlays and disappear if reloading resolves the error
 - **🎯 Project detection** - Automatically detect Helm charts, Kustomize projects, and custom manifest generators using powerful CEL expressions
 - **🧪 Tool integration** - Define profiles for any manifest generator (Helm, Kustomize, CUE, KCL, Jsonnet, etc.) with pre/post-render hooks
+- **🔌 Plugin system** - Create custom keybind-triggered commands for common tasks that can't run on hooks, like dry-runs or diffs
 - **✅ Custom validation** - Run tools like `kubeconform`, `kyverno`, or custom validators automatically on rendered output
 - **🎨 Beautiful UI** - Syntax-highlighted YAML with customizable themes and keybindings that match your preferences
 
@@ -145,6 +146,11 @@ rules:
   - `init` hooks are executed once when `kat` is initialized
   - `preRender` hooks are executed before the profile's command is run
   - `postRender` hooks are executed after the profile's command has run, and are provided the rendered output via stdin
+- `plugins`: Custom commands that can be executed on-demand with keybinds
+  - `description` (required): Human-readable description of what the plugin does
+  - `keys` (required): Array of key bindings that trigger the plugin
+  - `command` (required): The command to execute
+  - `args`: Arguments to pass to the command
 
 Profile `source` expressions use list-returning CEL expressions with the same variables as rules.
 
@@ -214,6 +220,39 @@ profiles:
 ```
 
 For more details on CEL expressions and examples, see the [CEL documentation](docs/CEL.md).
+
+### 🔥 DRY Configuration
+
+The `kat` configuration supports YAML [anchor nodes](https://yaml.org/spec/1.2.2/#692-node-anchors), [alias nodes](https://yaml.org/spec/1.2.2/#71-alias-nodes), and [merge keys](https://yaml.org/type/merge.html). You can define common settings once and reuse them across the configuration.
+
+```yaml
+profiles:
+  ks: &ks
+    source: >-
+      files.filter(f, pathExt(f) in [".yaml", ".yml"])
+    command: kustomize
+    args: [build, .]
+    hooks:
+      postRender:
+        - &kubeconform
+          command: kubeconform
+          args: [-strict, -summary]
+
+  ks-helm:
+    <<: *ks
+    args: [build, ., --enable-helm]
+
+  helm:
+    command: helm
+    args: [template, ., --generate-name]
+    source: >-
+      files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])
+    hooks:
+      postRender:
+        - *kubeconform
+```
+
+> ❤️ Thanks to [goccy/go-yaml](https://github.com/goccy/go-yaml).
 
 ### 📖 Examples
 

@@ -9,8 +9,8 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/goccy/go-yaml"
 
+	"github.com/MacroPower/kat/pkg/command"
 	"github.com/MacroPower/kat/pkg/config"
-	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/log"
 	"github.com/MacroPower/kat/pkg/profile"
 	"github.com/MacroPower/kat/pkg/ui"
@@ -123,7 +123,7 @@ func main() {
 	var cr common.Commander
 
 	if len(cli.File) > 0 {
-		cr, err = kube.NewResourceGetter(string(cli.File))
+		cr, err = command.NewResourceGetter(string(cli.File))
 		if err != nil {
 			slog.Error("create resource getter", slog.Any("err", err))
 			cliCtx.Fatalf(cmdInitErr)
@@ -160,9 +160,9 @@ func getProfile(cfg *config.Config, cmd string, args []string) (*profile.Profile
 }
 
 // setupCommandRunner creates and configures the command runner.
-func setupCommandRunner(path string, cfg *config.Config) (*kube.CommandRunner, error) {
+func setupCommandRunner(path string, cfg *config.Config) (*command.CommandRunner, error) {
 	var (
-		cr  *kube.CommandRunner
+		cr  *command.CommandRunner
 		err error
 	)
 
@@ -172,12 +172,12 @@ func setupCommandRunner(path string, cfg *config.Config) (*kube.CommandRunner, e
 			return nil, err
 		}
 
-		cr, err = kube.NewCommandRunner(path, kube.WithProfile(cli.Command, p))
+		cr, err = command.NewCommandRunner(path, command.WithProfile(cli.Command, p))
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		cr, err = kube.NewCommandRunner(path, kube.WithRules(cfg.Kube.Rules))
+		cr, err = command.NewCommandRunner(path, command.WithRules(cfg.Kube.Rules))
 		if err != nil {
 			return nil, err
 		}
@@ -217,25 +217,25 @@ func runUI(cfg *config.Config, cr common.Commander) error {
 
 	p := ui.NewProgram(*cfg.UI, cr)
 
-	ch := make(chan kube.CommandEvent)
+	ch := make(chan command.Event)
 	cr.Subscribe(ch)
 
 	go func() {
 		lastEventTime := time.Now()
 		for event := range ch {
 			switch e := event.(type) {
-			case kube.CommandEventStart:
-				p.Send(common.CommandRunStarted{})
+			case command.EventStart:
+				p.Send(e)
 
-			case kube.CommandEventEnd:
+			case command.EventEnd:
 				if time.Since(lastEventTime) < *cfg.UI.UI.MinimumDelay {
 					// Add a delay if the command ran faster than MinimumDelay.
 					// This prevents the status from flickering in the UI.
 					time.Sleep(*cfg.UI.UI.MinimumDelay - time.Since(lastEventTime))
 				}
-				p.Send(common.CommandRunFinished(e))
+				p.Send(e)
 
-			case kube.CommandEventCancel:
+			case command.EventCancel:
 				continue
 			}
 			lastEventTime = time.Now()
