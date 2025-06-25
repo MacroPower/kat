@@ -5,7 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/MacroPower/kat/pkg/kube"
+	"github.com/MacroPower/kat/pkg/command"
 	"github.com/MacroPower/kat/pkg/profile"
 	"github.com/MacroPower/kat/pkg/ui/config"
 	"github.com/MacroPower/kat/pkg/ui/statusbar"
@@ -13,11 +13,12 @@ import (
 )
 
 type Commander interface {
-	Run() kube.CommandOutput
+	Run() command.Output
 	RunOnEvent()
 	String() string
-	Subscribe(ch chan<- kube.CommandEvent)
+	Subscribe(ch chan<- command.Event)
 	GetCurrentProfile() *profile.Profile
+	RunPlugin(name string) command.Output
 }
 
 type CommonModel struct {
@@ -49,9 +50,6 @@ type (
 		Style   statusbar.Style
 	}
 	StatusMessageTimeoutMsg ApplicationContext
-
-	CommandRunStarted  struct{}
-	CommandRunFinished kube.CommandOutput
 )
 
 func (m *CommonModel) GetStatusBar() *statusbar.StatusBarRenderer {

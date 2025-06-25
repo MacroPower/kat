@@ -17,7 +17,7 @@ import (
 
 	yaml "github.com/goccy/go-yaml"
 
-	"github.com/MacroPower/kat/pkg/kube"
+	"github.com/MacroPower/kat/pkg/command"
 	ui "github.com/MacroPower/kat/pkg/ui/config"
 )
 
@@ -34,10 +34,10 @@ var (
 )
 
 type Config struct {
-	Kube       *kube.Config `yaml:",inline"`
-	UI         *ui.Config   `yaml:",inline"`
-	APIVersion string       `validate:"required" yaml:"apiVersion"`
-	Kind       string       `validate:"required" yaml:"kind"`
+	Kube       *command.Config `yaml:",inline"`
+	UI         *ui.Config      `yaml:",inline"`
+	APIVersion string          `validate:"required" yaml:"apiVersion"`
+	Kind       string          `validate:"required" yaml:"kind"`
 }
 
 func NewConfig() *Config {
@@ -58,7 +58,7 @@ func (c *Config) EnsureDefaults() {
 	}
 
 	if c.Kube == nil {
-		c.Kube = kube.DefaultConfig
+		c.Kube = command.DefaultConfig
 	} else {
 		c.Kube.EnsureDefaults()
 	}
