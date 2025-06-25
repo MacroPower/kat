@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/MacroPower/kat/pkg/keys"
-	"github.com/MacroPower/kat/pkg/ui/config"
+	"github.com/MacroPower/kat/pkg/ui"
 	"github.com/MacroPower/kat/pkg/ui/statusbar"
 	"github.com/MacroPower/kat/pkg/ui/themes"
 )
@@ -52,9 +52,9 @@ func TestHelpRenderer_GetHelpCommands(t *testing.T) {
 	t.Parallel()
 
 	kbr := &keys.KeyBindRenderer{}
-	kbr.AddColumn(config.DefaultConfig.KeyBinds.Common.GetKeyBinds()...)
-	kbr.AddColumn(config.DefaultConfig.KeyBinds.Pager.GetKeyBinds()...)
-	kbr.AddColumn(config.DefaultConfig.KeyBinds.List.GetKeyBinds()...)
+	kbr.AddColumn(ui.DefaultConfig.KeyBinds.Common.GetKeyBinds()...)
+	kbr.AddColumn(ui.DefaultConfig.KeyBinds.Pager.GetKeyBinds()...)
+	kbr.AddColumn(ui.DefaultConfig.KeyBinds.List.GetKeyBinds()...)
 
 	helpView := kbr.Render(80)
 
@@ -104,9 +104,9 @@ func TestHelpRenderer_FillEmptySpaces(t *testing.T) {
 			t.Parallel()
 
 			kbr := &keys.KeyBindRenderer{}
-			kbr.AddColumn(config.DefaultConfig.KeyBinds.Common.GetKeyBinds()...)
-			kbr.AddColumn(config.DefaultConfig.KeyBinds.Pager.GetKeyBinds()...)
-			kbr.AddColumn(config.DefaultConfig.KeyBinds.List.GetKeyBinds()...)
+			kbr.AddColumn(ui.DefaultConfig.KeyBinds.Common.GetKeyBinds()...)
+			kbr.AddColumn(ui.DefaultConfig.KeyBinds.Pager.GetKeyBinds()...)
+			kbr.AddColumn(ui.DefaultConfig.KeyBinds.List.GetKeyBinds()...)
 
 			helpView := kbr.Render(tc.width)
 

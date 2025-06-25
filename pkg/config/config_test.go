@@ -21,7 +21,7 @@ func TestNewConfig(t *testing.T) {
 	assert.Equal(t, "kat.jacobcolvin.com/v1beta1", cfg.APIVersion)
 	assert.Equal(t, "Configuration", cfg.Kind)
 	assert.NotNil(t, cfg.UI)
-	assert.NotNil(t, cfg.Kube)
+	assert.NotNil(t, cfg.Command)
 }
 
 func TestConfig_EnsureDefaults(t *testing.T) {
@@ -34,13 +34,13 @@ func TestConfig_EnsureDefaults(t *testing.T) {
 
 	// Before EnsureDefaults, UI and Kube should be nil.
 	assert.Nil(t, cfg.UI)
-	assert.Nil(t, cfg.Kube)
+	assert.Nil(t, cfg.Command)
 
 	cfg.EnsureDefaults()
 
 	// After EnsureDefaults, both should be set.
 	assert.NotNil(t, cfg.UI)
-	assert.NotNil(t, cfg.Kube)
+	assert.NotNil(t, cfg.Command)
 }
 
 func TestConfig_Validate(t *testing.T) {
@@ -369,24 +369,24 @@ func TestDefaultConfigYAMLIsValid(t *testing.T) {
 	// Validate the loaded config.
 	assert.Equal(t, "kat.jacobcolvin.com/v1beta1", cfg.APIVersion)
 	assert.Equal(t, "Configuration", cfg.Kind)
-	assert.NotNil(t, cfg.Kube)
+	assert.NotNil(t, cfg.Command)
 	assert.NotNil(t, cfg.UI)
 
 	// Ensure the config has expected profiles.
-	assert.Contains(t, cfg.Kube.Profiles, "ks")
-	assert.Contains(t, cfg.Kube.Profiles, "helm")
-	assert.Contains(t, cfg.Kube.Profiles, "yaml")
+	assert.Contains(t, cfg.Command.Profiles, "ks")
+	assert.Contains(t, cfg.Command.Profiles, "helm")
+	assert.Contains(t, cfg.Command.Profiles, "yaml")
 
 	// Ensure the config has expected rules.
-	assert.NotEmpty(t, cfg.Kube.Rules)
-	assert.Len(t, cfg.Kube.Rules, 3) // Based on the config.yaml content.
+	assert.NotEmpty(t, cfg.Command.Rules)
+	assert.Len(t, cfg.Command.Rules, 3) // Based on the config.yaml content.
 
 	// Verify that key profiles have expected commands.
-	ksProfile := cfg.Kube.Profiles["ks"]
+	ksProfile := cfg.Command.Profiles["ks"]
 	assert.Equal(t, "kustomize", ksProfile.Command)
 	assert.Contains(t, ksProfile.Args, "build")
 
-	helmProfile := cfg.Kube.Profiles["helm"]
+	helmProfile := cfg.Command.Profiles["helm"]
 	assert.Equal(t, "helm", helmProfile.Command)
 	assert.Contains(t, helmProfile.Args, "template")
 }
@@ -536,7 +536,7 @@ func TestUnmarshalAndValidateDefaultConfig(t *testing.T) {
 	require.NoError(t, err, "embedded default config should pass validation")
 
 	// Validate the Kube configuration.
-	kubeErr := cfg.Kube.Validate()
+	kubeErr := cfg.Command.Validate()
 	assert.Nil(t, kubeErr, "embedded default config Kube section should pass validation")
 
 	// Validate the UI configuration key binds.
@@ -546,31 +546,31 @@ func TestUnmarshalAndValidateDefaultConfig(t *testing.T) {
 	// Verify essential config properties.
 	assert.Equal(t, "kat.jacobcolvin.com/v1beta1", cfg.APIVersion)
 	assert.Equal(t, "Configuration", cfg.Kind)
-	assert.NotNil(t, cfg.Kube)
+	assert.NotNil(t, cfg.Command)
 	assert.NotNil(t, cfg.UI)
 
 	// Verify that all expected profiles exist and are valid.
 	expectedProfiles := []string{"ks", "helm", "yaml", "ks-helm"}
 	for _, profileName := range expectedProfiles {
-		profile, exists := cfg.Kube.Profiles[profileName]
+		profile, exists := cfg.Command.Profiles[profileName]
 		assert.True(t, exists, "profile %q should exist in default config", profileName)
 		assert.NotEmpty(t, profile.Command, "profile %q should have a command", profileName)
 		assert.NotEmpty(t, profile.Args, "profile %q should have args", profileName)
 	}
 
 	// Verify that rules exist and can be evaluated.
-	assert.NotEmpty(t, cfg.Kube.Rules, "default config should have rules")
-	assert.Len(t, cfg.Kube.Rules, 3, "default config should have exactly 3 rules")
+	assert.NotEmpty(t, cfg.Command.Rules, "default config should have rules")
+	assert.Len(t, cfg.Command.Rules, 3, "default config should have exactly 3 rules")
 
 	// Verify that each rule has the required fields.
-	for i, rule := range cfg.Kube.Rules {
+	for i, rule := range cfg.Command.Rules {
 		assert.NotEmpty(t, rule.Match, "rule %d should have a match expression", i)
 		assert.NotEmpty(t, rule.Profile, "rule %d should specify a profile", i)
 	}
 
 	// Verify that profile references in rules are valid.
-	for i, rule := range cfg.Kube.Rules {
-		_, exists := cfg.Kube.Profiles[rule.Profile]
+	for i, rule := range cfg.Command.Rules {
+		_, exists := cfg.Command.Profiles[rule.Profile]
 		assert.True(t, exists, "rule %d references profile %q which should exist", i, rule.Profile)
 	}
 }
@@ -610,8 +610,8 @@ func TestDefaultConfigFullPipeline(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, cfg.APIVersion, cfg2.APIVersion)
 	assert.Equal(t, cfg.Kind, cfg2.Kind)
-	assert.Len(t, cfg2.Kube.Profiles, len(cfg.Kube.Profiles))
-	assert.Len(t, cfg2.Kube.Rules, len(cfg.Kube.Rules))
+	assert.Len(t, cfg2.Command.Profiles, len(cfg.Command.Profiles))
+	assert.Len(t, cfg2.Command.Rules, len(cfg.Command.Rules))
 }
 
 // createTempFile creates a temporary file with the given content.

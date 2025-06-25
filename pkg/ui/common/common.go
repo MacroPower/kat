@@ -6,8 +6,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/MacroPower/kat/pkg/command"
+	"github.com/MacroPower/kat/pkg/keys"
 	"github.com/MacroPower/kat/pkg/profile"
-	"github.com/MacroPower/kat/pkg/ui/config"
 	"github.com/MacroPower/kat/pkg/ui/statusbar"
 	"github.com/MacroPower/kat/pkg/ui/themes"
 )
@@ -22,10 +22,10 @@ type Commander interface {
 }
 
 type CommonModel struct {
-	Config             config.Config
 	Cmd                Commander
 	Theme              *themes.Theme
 	StatusMessageTimer *time.Timer
+	KeyBinds           *KeyBinds
 	StatusMessage      StatusMessage
 	Width              int
 	Height             int
@@ -85,5 +85,97 @@ func WaitForStatusMessageTimeout(appCtx ApplicationContext, t *time.Timer) tea.C
 		<-t.C
 
 		return StatusMessageTimeoutMsg(appCtx)
+	}
+}
+
+type KeyBinds struct {
+	Quit    *keys.KeyBind `yaml:"quit"`
+	Suspend *keys.KeyBind `yaml:"suspend"`
+	Reload  *keys.KeyBind `yaml:"reload"`
+	Help    *keys.KeyBind `yaml:"help"`
+	Error   *keys.KeyBind `yaml:"error"`
+	Escape  *keys.KeyBind `yaml:"escape"`
+
+	// Navigation.
+	Up    *keys.KeyBind `yaml:"up"`
+	Down  *keys.KeyBind `yaml:"down"`
+	Left  *keys.KeyBind `yaml:"left"`
+	Right *keys.KeyBind `yaml:"right"`
+	Prev  *keys.KeyBind `yaml:"prev"`
+	Next  *keys.KeyBind `yaml:"next"`
+}
+
+func (kb *KeyBinds) EnsureDefaults() {
+	keys.SetDefaultBind(&kb.Quit, keys.NewBind("quit", keys.New("q")))
+	// Always ensure that ctrl+c is bound to quit.
+	kb.Quit.AddKey(keys.New("ctrl+c", keys.WithAlias("⌃c"), keys.Hidden()))
+
+	keys.SetDefaultBind(&kb.Suspend,
+		keys.NewBind("suspend",
+			keys.New("ctrl+z", keys.WithAlias("⌃z"), keys.Hidden()),
+		))
+	keys.SetDefaultBind(&kb.Reload,
+		keys.NewBind("reload",
+			keys.New("r"),
+		))
+	keys.SetDefaultBind(&kb.Escape,
+		keys.NewBind("go back",
+			keys.New("esc"),
+		))
+	keys.SetDefaultBind(&kb.Help,
+		keys.NewBind("toggle help",
+			keys.New("?"),
+		))
+	keys.SetDefaultBind(&kb.Error,
+		keys.NewBind("toggle error",
+			keys.New("!"),
+		))
+
+	keys.SetDefaultBind(&kb.Up,
+		keys.NewBind("move up",
+			keys.New("up", keys.WithAlias("↑")),
+			keys.New("k"),
+		))
+	keys.SetDefaultBind(&kb.Down,
+		keys.NewBind("move down",
+			keys.New("down", keys.WithAlias("↓")),
+			keys.New("j"),
+		))
+	keys.SetDefaultBind(&kb.Left,
+		keys.NewBind("move left",
+			keys.New("left", keys.WithAlias("←")),
+			keys.New("h"),
+		))
+	keys.SetDefaultBind(&kb.Right,
+		keys.NewBind("move right",
+			keys.New("right", keys.WithAlias("→")),
+			keys.New("l"),
+		))
+	keys.SetDefaultBind(&kb.Prev,
+		keys.NewBind("previous page",
+			keys.New("shift+tab", keys.WithAlias("⇧+tab")),
+			keys.New("H"),
+		))
+	keys.SetDefaultBind(&kb.Next,
+		keys.NewBind("next page",
+			keys.New("tab"),
+			keys.New("L"),
+		))
+}
+
+func (kb *KeyBinds) GetKeyBinds() []keys.KeyBind {
+	return []keys.KeyBind{
+		*kb.Quit,
+		*kb.Suspend,
+		*kb.Reload,
+		*kb.Escape,
+		*kb.Help,
+		*kb.Error,
+		*kb.Up,
+		*kb.Down,
+		*kb.Left,
+		*kb.Right,
+		*kb.Prev,
+		*kb.Next,
 	}
 }

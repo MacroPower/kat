@@ -19,7 +19,6 @@ import (
 
 	"github.com/MacroPower/kat/pkg/expr"
 	"github.com/MacroPower/kat/pkg/keys"
-	ui "github.com/MacroPower/kat/pkg/ui/config"
 )
 
 var (
@@ -57,7 +56,7 @@ type Profile struct {
 	sourceProgram cel.Program // Compiled CEL program for source matching.
 
 	Hooks   *Hooks             `yaml:"hooks,omitempty"`
-	UI      *ui.UIConfig       `yaml:"ui,omitempty"` // UI configuration for the profile.
+	UI      *UIConfig          `yaml:"ui,omitempty"` // UI configuration for the profile.
 	Plugins map[string]*Plugin `yaml:"plugins,omitempty"`
 	Source  string             `yaml:"source,omitempty"`
 	Command string             `validate:"required,alphanum" yaml:"command"`
@@ -78,7 +77,6 @@ func New(command string, opts ...ProfileOpt) (*Profile, error) {
 	if err := p.CompileSource(); err != nil {
 		return nil, fmt.Errorf("profile %q: %w", command, err)
 	}
-	p.EnsureDefaults()
 
 	return p, nil
 }
@@ -119,13 +117,6 @@ func WithPlugins(plugins map[string]*Plugin) ProfileOpt {
 	return func(p *Profile) {
 		p.Plugins = plugins
 	}
-}
-
-func (p *Profile) EnsureDefaults() {
-	if p.UI == nil {
-		p.UI = &ui.UIConfig{}
-	}
-	p.UI.EnsureDefaults()
 }
 
 // CompileSource compiles the profile's source expression into a CEL program.

@@ -2,38 +2,101 @@ package list
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/MacroPower/kat/pkg/keys"
+	"github.com/MacroPower/kat/pkg/ui/common"
+	"github.com/MacroPower/kat/pkg/ui/themes"
 )
 
-// ListKeyHandler provides key handling for list view.
-type ListKeyHandler struct{}
+type KeyBinds struct {
+	Open     *keys.KeyBind `yaml:"open"`
+	Find     *keys.KeyBind `yaml:"find"`
+	Home     *keys.KeyBind `yaml:"home"`
+	End      *keys.KeyBind `yaml:"end"`
+	PageUp   *keys.KeyBind `yaml:"pageUp"`
+	PageDown *keys.KeyBind `yaml:"pageDown"`
+}
 
-// NewListKeyHandler creates a new ListKeyHandler.
-func NewListKeyHandler() *ListKeyHandler {
-	return &ListKeyHandler{}
+func (kb *KeyBinds) EnsureDefaults() {
+	keys.SetDefaultBind(&kb.Open,
+		keys.NewBind("open",
+			keys.New("enter", keys.WithAlias("↵")),
+		))
+	keys.SetDefaultBind(&kb.Find,
+		keys.NewBind("find",
+			keys.New("/"),
+		))
+	keys.SetDefaultBind(&kb.Home,
+		keys.NewBind("go to start",
+			keys.New("home"),
+			keys.New("g"),
+		))
+	keys.SetDefaultBind(&kb.End,
+		keys.NewBind("go to end",
+			keys.New("end"),
+			keys.New("G"),
+		))
+	keys.SetDefaultBind(&kb.PageUp,
+		keys.NewBind("page up",
+			keys.New("pgup"),
+			keys.New("b"),
+			keys.New("u"),
+		))
+	keys.SetDefaultBind(&kb.PageDown,
+		keys.NewBind("page down",
+			keys.New("pgdown", keys.WithAlias("pgdn")),
+			keys.New("f"),
+			keys.New("d"),
+		))
+}
+
+func (kb *KeyBinds) GetKeyBinds() []keys.KeyBind {
+	return []keys.KeyBind{
+		*kb.Open,
+		*kb.Find,
+		*kb.Home,
+		*kb.End,
+		*kb.PageUp,
+		*kb.PageDown,
+	}
+}
+
+// KeyHandler provides key handling for list view.
+type KeyHandler struct {
+	kb    *KeyBinds
+	ckb   *common.KeyBinds
+	theme *themes.Theme // TODO: Remove this dependency.
+}
+
+// NewKeyHandler creates a new ListKeyHandler.
+func NewKeyHandler(kb *KeyBinds, ckb *common.KeyBinds, theme *themes.Theme) *KeyHandler {
+	return &KeyHandler{
+		kb:    kb,
+		ckb:   ckb,
+		theme: theme,
+	}
 }
 
 // HandleDocumentBrowsing handles key events for document browsing in list view.
-func (h *ListKeyHandler) HandleDocumentBrowsing(m ListModel, msg tea.KeyMsg) (ListModel, tea.Cmd) {
+func (h *KeyHandler) HandleDocumentBrowsing(m ListModel, msg tea.KeyMsg) (ListModel, tea.Cmd) {
 	key := msg.String()
 
 	// Handle navigation keys.
 	numDocs := len(m.getVisibleYAMLs())
-	kb := m.cm.Config.KeyBinds
-
 	switch {
-	case kb.Common.Up.Match(key):
+	case h.ckb.Up.Match(key):
 		m.moveCursorUp()
 
-	case kb.Common.Down.Match(key):
+	case h.ckb.Down.Match(key):
 		m.moveCursorDown()
 
-	case kb.List.PageUp.Match(key):
+	case h.kb.PageUp.Match(key):
 		m.setCursor(0)
 
-	case kb.List.PageDown.Match(key):
+	case h.kb.PageDown.Match(key):
 		m.setCursor(m.paginator().ItemsOnPage(numDocs) - 1)
 
-	case kb.Common.Left.Match(key), kb.Common.Prev.Match(key):
+	case h.ckb.Left.Match(key), h.ckb.Prev.Match(key):
 		if len(m.sections) == 0 || m.FilterState == Filtering {
 			return m, nil
 		}
@@ -44,7 +107,7 @@ func (h *ListKeyHandler) HandleDocumentBrowsing(m ListModel, msg tea.KeyMsg) (Li
 
 		return m, cmd
 
-	case kb.Common.Right.Match(key), kb.Common.Next.Match(key):
+	case h.ckb.Right.Match(key), h.ckb.Next.Match(key):
 		if len(m.sections) == 0 || m.FilterState == Filtering {
 			return m, nil
 		}
@@ -55,16 +118,16 @@ func (h *ListKeyHandler) HandleDocumentBrowsing(m ListModel, msg tea.KeyMsg) (Li
 
 		return m, cmd
 
-	case kb.List.Home.Match(key):
+	case h.kb.Home.Match(key):
 		m.paginator().Page = 0
 		m.setCursor(0)
 
-	case kb.List.End.Match(key):
+	case h.kb.End.Match(key):
 		m.paginator().Page = m.paginator().TotalPages - 1
 		m.setCursor(m.paginator().ItemsOnPage(numDocs) - 1)
 
 	// Document actions.
-	case kb.List.Open.Match(key):
+	case h.kb.Open.Match(key):
 		if numDocs != 0 {
 			md := m.selectedYAML()
 			cmd := m.openYAML(md)
@@ -73,15 +136,104 @@ func (h *ListKeyHandler) HandleDocumentBrowsing(m ListModel, msg tea.KeyMsg) (Li
 		}
 
 	// Filtering actions.
-	case kb.List.Find.Match(key):
+	case h.kb.Find.Match(key):
 		cmd := m.startFiltering()
 
 		return m, cmd
 
 	// Other actions.
-	case kb.Common.Help.Match(key):
+	case h.ckb.Help.Match(key):
 		m.toggleHelp()
 	}
 
 	return m, nil
+}
+
+// HandleFilteringMode handles events when in filtering mode.
+func (h *KeyHandler) HandleFilteringMode(m ListModel, msg tea.Msg) (ListModel, tea.Cmd) {
+	var cmds []tea.Cmd
+
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		var cmd tea.Cmd
+		m, cmd = h.handleFilterKeys(m, keyMsg.String())
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	}
+
+	// Update the filter input component.
+	m, inputCmd := h.updateFilterInput(m, msg)
+	cmds = append(cmds, inputCmd)
+
+	// Update pagination.
+	m.updatePagination()
+
+	return m, tea.Batch(cmds...)
+}
+
+// handleFilterKeys handles key events specific to filtering mode.
+func (h *KeyHandler) handleFilterKeys(m ListModel, key string) (ListModel, tea.Cmd) {
+	switch {
+	case h.ckb.Up.Match(key),
+		h.ckb.Down.Match(key),
+		h.ckb.Next.Match(key),
+		h.ckb.Prev.Match(key),
+		h.kb.Open.Match(key):
+		// Apply filter.
+		if len(m.YAMLs) == 0 {
+			return m, nil
+		}
+
+		visibleYAMLs := m.getVisibleYAMLs()
+
+		// If we've filtered down to nothing, clear the filter.
+		if len(visibleYAMLs) == 0 {
+			m.ResetFiltering()
+
+			return m, nil
+		}
+
+		// When there's only one filtered yaml left we can just "open" it directly.
+		if len(visibleYAMLs) == 1 {
+			m.ResetFiltering()
+			cmd := m.openYAML(visibleYAMLs[0])
+
+			return m, cmd
+		}
+
+		// Add new section if it's not present.
+		if m.sections[len(m.sections)-1].key != SectionFilter {
+			m.sections = append(m.sections, Section{
+				key:       SectionFilter,
+				paginator: newListPaginator(h.theme),
+			})
+		}
+		m.sectionIndex = len(m.sections) - 1
+
+		m.filterInput.Blur()
+		m.FilterState = FilterApplied
+		if m.filterInput.Value() == "" {
+			m.ResetFiltering()
+		}
+	}
+
+	return m, nil
+}
+
+// updateFilterInput updates the filter input component and handles value changes.
+func (h *KeyHandler) updateFilterInput(m ListModel, msg tea.Msg) (ListModel, tea.Cmd) {
+	var cmds []tea.Cmd
+
+	newFilterInputModel, inputCmd := m.filterInput.Update(msg)
+	currentFilterVal := m.filterInput.Value()
+	newFilterVal := newFilterInputModel.Value()
+	m.filterInput = newFilterInputModel
+	cmds = append(cmds, inputCmd)
+
+	// If the filtering input has changed, request updated filtering.
+	if newFilterVal != currentFilterVal {
+		cmds = append(cmds, FilterYAMLs(m))
+	}
+
+	return m, tea.Batch(cmds...)
 }

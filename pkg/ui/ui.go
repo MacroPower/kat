@@ -15,7 +15,6 @@ import (
 	"github.com/MacroPower/kat/pkg/command"
 	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/ui/common"
-	"github.com/MacroPower/kat/pkg/ui/config"
 	"github.com/MacroPower/kat/pkg/ui/list"
 	"github.com/MacroPower/kat/pkg/ui/overlay"
 	"github.com/MacroPower/kat/pkg/ui/pager"
@@ -25,7 +24,7 @@ import (
 )
 
 // NewProgram returns a new Tea program.
-func NewProgram(cfg config.Config, cmd common.Commander) *tea.Program {
+func NewProgram(cfg *Config, cmd common.Commander) *tea.Program {
 	log.Debug("starting kat")
 
 	opts := []tea.ProgramOption{tea.WithAltScreen()}
@@ -63,6 +62,7 @@ type model struct {
 	result       string
 	cm           *common.CommonModel
 	overlay      *overlay.Overlay
+	kb           *KeyBinds
 	spinner      spinner.Model
 	pager        pager.PagerModel
 	list         list.ListModel
@@ -79,7 +79,7 @@ func (m *model) unloadDocument() {
 	m.pager.ShowHelp = false
 }
 
-func newModel(cfg config.Config, cmd common.Commander) tea.Model {
+func newModel(cfg *Config, cmd common.Commander) tea.Model {
 	theme := cfg.UI.Theme
 	profile := cmd.GetCurrentProfile()
 	if profile.UI.Theme != "" {
@@ -91,33 +91,40 @@ func newModel(cfg config.Config, cmd common.Commander) tea.Model {
 	if profile.UI.WordWrap != nil {
 		cfg.UI.WordWrap = profile.UI.WordWrap
 	}
-	if profile.UI.ChromaRendering != nil {
-		cfg.UI.ChromaRendering = profile.UI.ChromaRendering
-	}
 	if profile.UI.LineNumbers != nil {
 		cfg.UI.LineNumbers = profile.UI.LineNumbers
 	}
-	if profile.UI.MinimumDelay != nil {
-		cfg.UI.MinimumDelay = profile.UI.MinimumDelay
-	}
 
-	cm := common.CommonModel{
-		Config: cfg,
-		Cmd:    cmd,
-		Theme:  themes.NewTheme(theme),
+	cm := &common.CommonModel{
+		Cmd:   cmd,
+		Theme: themes.NewTheme(theme),
 	}
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Line
 	sp.Style = cm.Theme.GenericTextStyle
 
+	listModel := list.NewModel(list.Config{
+		CommonModel: cm,
+		KeyBinds:    cfg.KeyBinds.List,
+		Compact:     *cfg.UI.Compact,
+	})
+
+	pagerModel := pager.NewModel(pager.Config{
+		CommonModel:     cm,
+		KeyBinds:        cfg.KeyBinds.Pager,
+		ChromaRendering: *cfg.UI.ChromaRendering,
+		ShowLineNumbers: *cfg.UI.LineNumbers,
+	})
+
 	m := &model{
-		cm:      &cm,
+		cm:      cm,
 		spinner: sp,
 		state:   stateShowList,
-		pager:   pager.NewPagerModel(&cm),
-		list:    list.NewListModel(&cm),
+		pager:   pagerModel,
+		list:    listModel,
 		overlay: overlay.New(),
+		kb:      cfg.KeyBinds,
 	}
 
 	return m
@@ -132,12 +139,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		kb := m.cm.Config.KeyBinds
-
 		if m.overlayState == overlayStateError || m.overlayState == overlayStateResult {
 			// If we're showing an error, any key exits the error view.
 			m.overlayState = overlayStateNone
-		} else if m.cm.Config.KeyBinds.Common.Error.Match(msg.String()) {
+		} else if m.kb.Common.Error.Match(msg.String()) {
 			m.overlayState = overlayStateError
 		}
 
@@ -146,7 +151,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return newModel, cmd
 		}
 
-		if kb.Common.Left.Match(msg.String()) {
+		if m.kb.Common.Left.Match(msg.String()) {
 			if m.state == stateShowDocument {
 				m.unloadDocument()
 			}
@@ -297,10 +302,9 @@ func (m *model) loadingView() string {
 // handleGlobalKeys handles keys that work across all contexts.
 func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	key := msg.String()
-	kb := m.cm.Config.KeyBinds
 
 	switch {
-	case kb.Common.Quit.Match(key):
+	case m.kb.Common.Quit.Match(key):
 		if m.state == stateShowList && m.list.FilterState == list.Filtering {
 			// Pass through to filter handler.
 			return m, nil, false
@@ -308,10 +312,10 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 
 		return m, tea.Quit, true
 
-	case kb.Common.Suspend.Match(key):
+	case m.kb.Common.Suspend.Match(key):
 		return m, tea.Suspend, true
 
-	case kb.Common.Escape.Match(key):
+	case m.kb.Common.Escape.Match(key):
 		if m.state == stateShowDocument || !m.cm.Loaded {
 			m.unloadDocument()
 		}
@@ -321,7 +325,7 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 
 		return m, nil, true
 
-	case kb.Common.Reload.Match(key):
+	case m.kb.Common.Reload.Match(key):
 		return m.handleRefreshKey(msg)
 	}
 

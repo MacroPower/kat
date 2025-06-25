@@ -97,10 +97,6 @@ func (c *Config) EnsureDefaults() {
 	if c.Rules == nil {
 		c.Rules = defaultRules
 	}
-
-	for _, p := range c.Profiles {
-		p.EnsureDefaults()
-	}
 }
 
 func (c *Config) Validate() *ConfigError {

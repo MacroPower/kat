@@ -136,13 +136,13 @@ func main() {
 		}
 	}
 
-	if err := runUI(cfg, cr); err != nil {
+	if err := runUI(cfg.UI, cr); err != nil {
 		cliCtx.FatalIfErrorf(fmt.Errorf("ui program failure: %w", err))
 	}
 }
 
 func getProfile(cfg *config.Config, cmd string, args []string) (*profile.Profile, error) {
-	p, ok := cfg.Kube.Profiles[cmd]
+	p, ok := cfg.Command.Profiles[cmd]
 	if !ok {
 		// If the command is not a profile, create a new profile with the command.
 		slog.Debug("creating new profile", slog.String("name", cmd))
@@ -177,7 +177,7 @@ func setupCommandRunner(path string, cfg *config.Config) (*command.Runner, error
 			return nil, err
 		}
 	} else {
-		cr, err = command.NewRunner(path, command.WithRules(cfg.Kube.Rules))
+		cr, err = command.NewRunner(path, command.WithRules(cfg.Command.Rules))
 		if err != nil {
 			return nil, err
 		}
@@ -207,15 +207,15 @@ func parseArgs(cmdArgs []string) []string {
 }
 
 // runUI starts the UI program.
-func runUI(cfg *config.Config, cr common.Commander) error {
-	for name, tc := range cfg.UI.Themes {
+func runUI(cfg *ui.Config, cr common.Commander) error {
+	for name, tc := range cfg.Themes {
 		err := themes.RegisterTheme(name, tc.Styles)
 		if err != nil {
 			return fmt.Errorf("theme %q: %w", name, err)
 		}
 	}
 
-	p := ui.NewProgram(*cfg.UI, cr)
+	p := ui.NewProgram(cfg, cr)
 
 	ch := make(chan command.Event)
 	cr.Subscribe(ch)
@@ -228,10 +228,10 @@ func runUI(cfg *config.Config, cr common.Commander) error {
 				p.Send(e)
 
 			case command.EventEnd:
-				if time.Since(lastEventTime) < *cfg.UI.UI.MinimumDelay {
+				if time.Since(lastEventTime) < *cfg.UI.MinimumDelay {
 					// Add a delay if the command ran faster than MinimumDelay.
 					// This prevents the status from flickering in the UI.
-					time.Sleep(*cfg.UI.UI.MinimumDelay - time.Since(lastEventTime))
+					time.Sleep(*cfg.UI.MinimumDelay - time.Since(lastEventTime))
 				}
 				p.Send(e)
 

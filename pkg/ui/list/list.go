@@ -71,75 +71,86 @@ type ListModel struct {
 	cm           *common.CommonModel
 	helpRenderer *statusbar.HelpRenderer
 	docRenderer  *DocumentListRenderer
+	keyHandler   *KeyHandler
 
 	// The master set of yaml documents we're working with.
 	YAMLs []*yamldoc.YAMLDocument
+
+	// Available document sections we can cycle through. We use a slice, rather
+	// than a map, because order is important.
+	sections []Section
 
 	// YAML documents we're currently displaying. Filtering, toggles and so
 	// on will alter this slice so we can show what is relevant. For that
 	// reason, this field should be considered ephemeral.
 	filteredYAMLs []*yamldoc.YAMLDocument
 
-	// Available document sections we can cycle through. We use a slice, rather
-	// than a map, because order is important.
-	sections    []Section
 	filterInput textinput.Model
 	ViewState   ViewState
 
 	// Index of the section we're currently looking at.
 	sectionIndex int
-	FilterState  FilterState
 
-	// Tracks if files were loaded.
-	ShowHelp   bool
-	helpHeight int
+	FilterState FilterState
+	helpHeight  int
+	ShowHelp    bool
+	compact     bool
 }
 
-func NewListModel(cm *common.CommonModel) ListModel {
+type Config struct {
+	CommonModel *common.CommonModel
+	KeyBinds    *KeyBinds
+	Compact     bool
+}
+
+func NewModel(c Config) ListModel {
 	si := textinput.New()
 	si.Prompt = "Find:"
-	si.PromptStyle = cm.Theme.FilterStyle.MarginRight(1)
-	si.Cursor.Style = cm.Theme.CursorStyle.MarginRight(1)
+	si.PromptStyle = c.CommonModel.Theme.FilterStyle.MarginRight(1)
+	si.Cursor.Style = c.CommonModel.Theme.CursorStyle.MarginRight(1)
 	si.Focus()
 
 	s := []Section{
 		{
 			key:       SectionDocuments,
-			paginator: newListPaginator(cm.Theme),
+			paginator: newListPaginator(c.CommonModel.Theme),
 		},
 	}
 
 	// Initialize help renderer with key bindings like pager does.
-	kb := cm.Config.KeyBinds
+	ckb := c.CommonModel.KeyBinds
+	kb := c.KeyBinds
 	kbr := &keys.KeyBindRenderer{}
 	kbr.AddColumn(
-		*kb.Common.Up,
-		*kb.Common.Down,
-		*kb.Common.Left,
-		*kb.Common.Right,
-		*kb.List.PageUp,
-		*kb.List.PageDown,
+		*ckb.Up,
+		*ckb.Down,
+		*ckb.Left,
+		*ckb.Right,
+		*kb.PageUp,
+		*kb.PageDown,
 	)
 	kbr.AddColumn(
-		*kb.Common.Reload,
-		*kb.List.Open,
-		*kb.List.Find,
-		*kb.List.Home,
-		*kb.List.End,
+		*ckb.Reload,
+		*kb.Open,
+		*kb.Find,
+		*kb.Home,
+		*kb.End,
 	)
 	kbr.AddColumn(
-		*kb.Common.Escape,
-		*kb.Common.Error,
-		*kb.Common.Help,
-		*kb.Common.Quit,
+		*ckb.Escape,
+		*ckb.Error,
+		*ckb.Help,
+		*ckb.Quit,
 	)
 
 	m := ListModel{
-		cm:           cm,
+		cm:           c.CommonModel,
 		filterInput:  si,
 		sections:     s,
-		helpRenderer: statusbar.NewHelpRenderer(cm.Theme, kbr),
-		docRenderer:  NewDocumentListRenderer(cm.Theme, listIndent, *cm.Config.UI.Compact),
+		helpRenderer: statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr),
+		docRenderer:  NewDocumentListRenderer(c.CommonModel.Theme, listIndent, c.Compact),
+		keyHandler:   NewKeyHandler(kb, ckb, c.CommonModel.Theme),
+		compact:      c.Compact,
 	}
 
 	return m
@@ -152,8 +163,7 @@ func (m ListModel) Update(msg tea.Msg) (ListModel, tea.Cmd) {
 
 	if isFiltering {
 		var cmd tea.Cmd
-		filterHandler := NewFilterHandler(m.cm.Theme)
-		m, cmd = filterHandler.HandleFilteringMode(m, msg)
+		m, cmd = m.keyHandler.HandleFilteringMode(m, msg)
 		cmds = append(cmds, cmd)
 	}
 
@@ -164,8 +174,7 @@ func (m ListModel) Update(msg tea.Msg) (ListModel, tea.Cmd) {
 			break
 		}
 		var cmd tea.Cmd
-		listHandler := NewListKeyHandler()
-		m, cmd = listHandler.HandleDocumentBrowsing(m, msg)
+		m, cmd = m.keyHandler.HandleDocumentBrowsing(m, msg)
 		cmds = append(cmds, cmd)
 
 	case FilteredYAMLMsg:
@@ -310,7 +319,7 @@ func (m *ListModel) updatePagination() {
 		listViewTopPadding -
 		listViewBottomPadding
 
-	if !*m.cm.Config.UI.Compact {
+	if !m.compact {
 		availableHeight++
 	}
 

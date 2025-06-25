@@ -18,7 +18,7 @@ import (
 	yaml "github.com/goccy/go-yaml"
 
 	"github.com/MacroPower/kat/pkg/command"
-	ui "github.com/MacroPower/kat/pkg/ui/config"
+	"github.com/MacroPower/kat/pkg/ui"
 )
 
 var (
@@ -34,7 +34,7 @@ var (
 )
 
 type Config struct {
-	Kube       *command.Config `yaml:",inline"`
+	Command    *command.Config `yaml:",inline"`
 	UI         *ui.Config      `yaml:",inline"`
 	APIVersion string          `validate:"required" yaml:"apiVersion"`
 	Kind       string          `validate:"required" yaml:"kind"`
@@ -57,10 +57,10 @@ func (c *Config) EnsureDefaults() {
 		c.UI.EnsureDefaults()
 	}
 
-	if c.Kube == nil {
-		c.Kube = command.DefaultConfig
+	if c.Command == nil {
+		c.Command = command.DefaultConfig
 	} else {
-		c.Kube.EnsureDefaults()
+		c.Command.EnsureDefaults()
 	}
 }
 
@@ -112,7 +112,7 @@ func LoadConfig(data []byte) (*Config, error) {
 	if err := c.Validate(); err != nil {
 		return nil, err
 	}
-	if err := c.Kube.Validate(); err != nil {
+	if err := c.Command.Validate(); err != nil {
 		source, srcErr := err.Path.AnnotateSource(data, true)
 		if srcErr != nil {
 			panic(srcErr)

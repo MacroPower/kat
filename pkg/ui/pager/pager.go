@@ -34,45 +34,56 @@ type PagerModel struct {
 	cm              *common.CommonModel
 	helpRenderer    *statusbar.HelpRenderer
 	glamourRenderer *GlamourRenderer
+	kb              *KeyBinds
 
 	// Current document being rendered, sans-glamour rendering. We cache
 	// it here so we can re-render it on resize.
 	CurrentDocument yamldoc.YAMLDocument
 
-	viewport   viewport.Model
-	helpHeight int
-	ViewState  ViewState
-	ShowHelp   bool
+	viewport        viewport.Model
+	helpHeight      int
+	ViewState       ViewState
+	ShowHelp        bool
+	chromaRendering bool
 }
 
-func NewPagerModel(cm *common.CommonModel) PagerModel {
+type Config struct {
+	CommonModel     *common.CommonModel
+	KeyBinds        *KeyBinds
+	ChromaRendering bool
+	ShowLineNumbers bool
+}
+
+func NewModel(c Config) PagerModel {
 	// Init viewport.
 	vp := viewport.New(0, 0)
 	vp.YPosition = 0
 
-	kb := cm.Config.KeyBinds
 	kbr := &keys.KeyBindRenderer{}
+	ckb := c.CommonModel.KeyBinds
+	kb := c.KeyBinds
 	kbr.AddColumn(
-		*kb.Common.Up,
-		*kb.Common.Down,
-		*kb.Pager.PageUp,
-		*kb.Pager.PageDown,
-		*kb.Pager.HalfPageUp,
-		*kb.Pager.HalfPageDown,
+		*ckb.Up,
+		*ckb.Down,
+		*kb.PageUp,
+		*kb.PageDown,
+		*kb.HalfPageUp,
+		*kb.HalfPageDown,
 	)
 	kbr.AddColumn(
-		*kb.Pager.Home,
-		*kb.Pager.End,
-		*kb.Pager.Copy,
-		*kb.Common.Reload,
-		*kb.Common.Escape,
-		*kb.Common.Quit,
+		*kb.Home,
+		*kb.End,
+		*kb.Copy,
+		*ckb.Reload,
+		*ckb.Escape,
+		*ckb.Quit,
 	)
 
 	m := PagerModel{
-		cm:              cm,
-		helpRenderer:    statusbar.NewHelpRenderer(cm.Theme, kbr),
-		glamourRenderer: NewGlamourRenderer(cm.Theme, !*cm.Config.UI.LineNumbers),
+		cm:              c.CommonModel,
+		kb:              c.KeyBinds,
+		helpRenderer:    statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr),
+		glamourRenderer: NewGlamourRenderer(c.CommonModel.Theme, !c.ShowLineNumbers),
 		ViewState:       StateReady,
 		viewport:        vp,
 	}
@@ -85,36 +96,35 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		kb := m.cm.Config.KeyBinds
 		key := msg.String()
 
 		switch {
-		case kb.Pager.Home.Match(key):
+		case m.kb.Home.Match(key):
 			m.viewport.GotoTop()
 
 			return m, nil
 
-		case kb.Pager.End.Match(key):
+		case m.kb.End.Match(key):
 			m.viewport.GotoBottom()
 
 			return m, nil
 
-		case kb.Pager.HalfPageDown.Match(key):
+		case m.kb.HalfPageDown.Match(key):
 			m.viewport.HalfPageDown()
 
 			return m, nil
 
-		case kb.Pager.HalfPageUp.Match(key):
+		case m.kb.HalfPageUp.Match(key):
 			m.viewport.HalfPageUp()
 
 			return m, nil
 
-		case kb.Common.Help.Match(key):
+		case m.cm.KeyBinds.Help.Match(key):
 			m.toggleHelp()
 
 			return m, nil
 
-		case kb.Pager.Copy.Match(key):
+		case m.kb.Copy.Match(key):
 			// Copy using OSC 52.
 			termenv.Copy(m.CurrentDocument.Body)
 			// Copy using native system clipboard.
@@ -164,7 +174,7 @@ func (m *PagerModel) SetSize(w, h int) {
 // This is where the magic happens.
 func (m PagerModel) RenderWithGlamour(yaml string) tea.Cmd {
 	return func() tea.Msg {
-		if m.glamourRenderer == nil || !*m.cm.Config.UI.ChromaRendering {
+		if m.glamourRenderer == nil || !m.chromaRendering {
 			return ContentRenderedMsg(yaml)
 		}
 
