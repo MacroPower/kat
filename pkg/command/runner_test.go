@@ -103,7 +103,7 @@ func TestCommandRunner_RunForPath(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			runner, err := command.NewCommandRunner(tc.path, command.WithRules(TestConfig.Rules))
+			runner, err := command.NewRunner(tc.path, command.WithRules(TestConfig.Rules))
 			if tc.initError != nil {
 				require.ErrorIs(t, err, tc.initError)
 
@@ -131,7 +131,7 @@ func TestCommandRunner_WithCommand(t *testing.T) {
 	p, err := profile.New("echo", profile.WithArgs("{apiVersion: v1, kind: Resource}"))
 	require.NoError(t, err)
 
-	runner, err := command.NewCommandRunner(t.TempDir(), command.WithProfile("echo", p))
+	runner, err := command.NewRunner(t.TempDir(), command.WithProfile("echo", p))
 	require.NoError(t, err)
 
 	output := runner.Run()
@@ -150,7 +150,7 @@ func TestCommandRunner_RunContext(t *testing.T) {
 	p, err := profile.New("echo", profile.WithArgs("{apiVersion: v1, kind: ConfigMap, metadata: {name: test}}"))
 	require.NoError(t, err)
 
-	runner, err := command.NewCommandRunner(t.TempDir(), command.WithProfile("echo", p))
+	runner, err := command.NewRunner(t.TempDir(), command.WithProfile("echo", p))
 	require.NoError(t, err)
 
 	// Test with context.Background()
@@ -182,7 +182,7 @@ func TestCommandRunner_CancellationBehavior(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a command that takes some time to execute
-	runner, err := command.NewCommandRunner(t.TempDir(), command.WithProfile("sleep", p))
+	runner, err := command.NewRunner(t.TempDir(), command.WithProfile("sleep", p))
 	require.NoError(t, err)
 
 	// Test that a new command cancels the previous one
@@ -276,7 +276,7 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 			require.NoError(t, err)
 
 			// Create a command that takes a bit of time to execute
-			runner, err := command.NewCommandRunner(tempDir, command.WithProfile("sleep", p))
+			runner, err := command.NewRunner(tempDir, command.WithProfile("sleep", p))
 			require.NoError(t, err)
 
 			// Start watching

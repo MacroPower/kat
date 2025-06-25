@@ -31,11 +31,11 @@ var (
 	ErrHookExecution = errors.New("hook execution")
 )
 
-// CommandRunner wraps one or more Rule objects. It manages:
+// Runner wraps one or more Rule objects. It manages:
 //   - File-to-command mappings.
 //   - Filesystem notifications / watching.
 //   - Concurrent command execution.
-type CommandRunner struct {
+type Runner struct {
 	rule       *rule.Rule
 	watcher    *fsnotify.Watcher
 	cancelFunc context.CancelFunc
@@ -44,9 +44,9 @@ type CommandRunner struct {
 	mu         sync.Mutex
 }
 
-// NewCommandRunner creates a new [CommandRunner].
-func NewCommandRunner(path string, opts ...CommandRunnerOpt) (*CommandRunner, error) {
-	cr := &CommandRunner{
+// NewRunner creates a new [Runner].
+func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
+	cr := &Runner{
 		path: path,
 	}
 
@@ -83,11 +83,11 @@ func NewCommandRunner(path string, opts ...CommandRunnerOpt) (*CommandRunner, er
 	return cr, nil
 }
 
-type CommandRunnerOpt func(cr *CommandRunner) error
+type RunnerOpt func(cr *Runner) error
 
 // WithProfile sets a specific profile to use.
-func WithProfile(name string, p *profile.Profile) CommandRunnerOpt {
-	return func(cr *CommandRunner) error {
+func WithProfile(name string, p *profile.Profile) RunnerOpt {
+	return func(cr *Runner) error {
 		r, err := rule.New(name, "true") // Always match in CEL.
 		if err != nil {
 			return fmt.Errorf("invalid match: %w", err)
@@ -100,8 +100,8 @@ func WithProfile(name string, p *profile.Profile) CommandRunnerOpt {
 }
 
 // WithRules sets multiple rules from which the first matching rule will be used.
-func WithRules(rs []*rule.Rule) CommandRunnerOpt {
-	return func(cr *CommandRunner) error {
+func WithRules(rs []*rule.Rule) RunnerOpt {
+	return func(cr *Runner) error {
 		fileInfo, err := os.Stat(cr.path)
 		if err != nil {
 			return fmt.Errorf("stat path: %w", err)
@@ -134,17 +134,17 @@ func WithRules(rs []*rule.Rule) CommandRunnerOpt {
 	}
 }
 
-func (cr *CommandRunner) GetCurrentProfile() *profile.Profile {
+func (cr *Runner) GetCurrentProfile() *profile.Profile {
 	return cr.rule.GetProfile()
 }
 
 // RunPlugin executes a plugin by name.
-func (cr *CommandRunner) RunPlugin(name string) Output {
+func (cr *Runner) RunPlugin(name string) Output {
 	return cr.RunPluginContext(context.Background(), name)
 }
 
 // RunPluginContext executes a plugin by name with the provided context.
-func (cr *CommandRunner) RunPluginContext(ctx context.Context, name string) Output {
+func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 	cr.mu.Lock()
 
 	var (
@@ -212,7 +212,7 @@ func (cr *CommandRunner) RunPluginContext(ctx context.Context, name string) Outp
 	return co
 }
 
-func (cr *CommandRunner) Watch() error {
+func (cr *Runner) Watch() error {
 	p := cr.rule.GetProfile()
 
 	var files []string
@@ -244,11 +244,11 @@ func (cr *CommandRunner) Watch() error {
 }
 
 // Subscribe allows other components to listen for command events.
-func (cr *CommandRunner) Subscribe(ch chan<- Event) {
+func (cr *Runner) Subscribe(ch chan<- Event) {
 	cr.listeners = append(cr.listeners, ch)
 }
 
-func (cr *CommandRunner) broadcast(evt Event) {
+func (cr *Runner) broadcast(evt Event) {
 	// Send the event to all listeners.
 	for _, ch := range cr.listeners {
 		ch <- evt
@@ -256,8 +256,8 @@ func (cr *CommandRunner) broadcast(evt Event) {
 }
 
 // RunOnEvent listens for file system events and runs the command in response.
-// The output should be collected via [CommandRunner.Subscribe].
-func (cr *CommandRunner) RunOnEvent() {
+// The output should be collected via [Runner.Subscribe].
+func (cr *Runner) RunOnEvent() {
 	for {
 		select {
 		case evt, ok := <-cr.watcher.Events:
@@ -284,21 +284,21 @@ func (cr *CommandRunner) RunOnEvent() {
 	}
 }
 
-func (cr *CommandRunner) Close() {
+func (cr *Runner) Close() {
 	err := cr.watcher.Close()
 	if err != nil {
 		slog.Error("close watcher", slog.Any("err", err))
 	}
 }
 
-func (cr *CommandRunner) String() string {
+func (cr *Runner) String() string {
 	return cr.rule.String()
 }
 
 // RunFirstMatch executes the first matching command for the given path.
 // If path is a file, it checks for direct matches.
 // If path is a directory, it checks all files in the directory for matches.
-func (cr *CommandRunner) Run() Output {
+func (cr *Runner) Run() Output {
 	return cr.RunContext(context.Background())
 }
 
@@ -306,7 +306,7 @@ func (cr *CommandRunner) Run() Output {
 // If path is a file, it checks for direct matches.
 // If path is a directory, it checks all files in the directory for matches.
 // The context can be used for cancellation, timeouts, and tracing.
-func (cr *CommandRunner) RunContext(ctx context.Context) Output {
+func (cr *Runner) RunContext(ctx context.Context) Output {
 	cr.mu.Lock()
 
 	var (

@@ -123,7 +123,7 @@ func main() {
 	var cr common.Commander
 
 	if len(cli.File) > 0 {
-		cr, err = command.NewResourceGetter(string(cli.File))
+		cr, err = command.NewStatic(string(cli.File))
 		if err != nil {
 			slog.Error("create resource getter", slog.Any("err", err))
 			cliCtx.Fatalf(cmdInitErr)
@@ -160,9 +160,9 @@ func getProfile(cfg *config.Config, cmd string, args []string) (*profile.Profile
 }
 
 // setupCommandRunner creates and configures the command runner.
-func setupCommandRunner(path string, cfg *config.Config) (*command.CommandRunner, error) {
+func setupCommandRunner(path string, cfg *config.Config) (*command.Runner, error) {
 	var (
-		cr  *command.CommandRunner
+		cr  *command.Runner
 		err error
 	)
 
@@ -172,12 +172,12 @@ func setupCommandRunner(path string, cfg *config.Config) (*command.CommandRunner
 			return nil, err
 		}
 
-		cr, err = command.NewCommandRunner(path, command.WithProfile(cli.Command, p))
+		cr, err = command.NewRunner(path, command.WithProfile(cli.Command, p))
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		cr, err = command.NewCommandRunner(path, command.WithRules(cfg.Kube.Rules))
+		cr, err = command.NewRunner(path, command.WithRules(cfg.Kube.Rules))
 		if err != nil {
 			return nil, err
 		}

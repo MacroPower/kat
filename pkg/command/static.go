@@ -8,12 +8,12 @@ import (
 	"github.com/MacroPower/kat/pkg/profile"
 )
 
-type ResourceGetter struct {
+type Static struct {
 	Resources []*kube.Resource
 	listeners []chan<- Event
 }
 
-func NewResourceGetter(input string) (*ResourceGetter, error) {
+func NewStatic(input string) (*Static, error) {
 	if input == "" {
 		return nil, errors.New("input cannot be empty")
 	}
@@ -23,19 +23,19 @@ func NewResourceGetter(input string) (*ResourceGetter, error) {
 		return nil, fmt.Errorf("split yaml: %w", err)
 	}
 
-	return &ResourceGetter{Resources: resources}, nil
+	return &Static{Resources: resources}, nil
 }
 
-func (rg *ResourceGetter) String() string {
+func (rg *Static) String() string {
 	return "static"
 }
 
-func (rg *ResourceGetter) GetCurrentProfile() *profile.Profile {
+func (rg *Static) GetCurrentProfile() *profile.Profile {
 	// Static resources do not have a profile.
 	return &profile.Profile{}
 }
 
-func (rg *ResourceGetter) Run() Output {
+func (rg *Static) Run() Output {
 	rg.broadcast(EventStart(TypeRun))
 
 	out := Output{
@@ -51,26 +51,26 @@ func (rg *ResourceGetter) Run() Output {
 	return out
 }
 
-func (rg *ResourceGetter) RunOnEvent() {
+func (rg *Static) RunOnEvent() {
 	// No events to watch for in static resources.
 }
 
-func (rg *ResourceGetter) Close() {
+func (rg *Static) Close() {
 	// No resources to close.
 }
 
-func (rg *ResourceGetter) Subscribe(ch chan<- Event) {
+func (rg *Static) Subscribe(ch chan<- Event) {
 	rg.listeners = append(rg.listeners, ch)
 }
 
-func (rg *ResourceGetter) broadcast(evt Event) {
+func (rg *Static) broadcast(evt Event) {
 	// Send the event to all listeners.
 	for _, ch := range rg.listeners {
 		ch <- evt
 	}
 }
 
-func (rg *ResourceGetter) RunPlugin(_ string) Output {
+func (rg *Static) RunPlugin(_ string) Output {
 	rg.broadcast(EventStart(TypePlugin))
 
 	out := Output{
