@@ -38,6 +38,14 @@ profiles:
       preRender:
         - command: helm
           args: [dependency, build]
+    # plugins:
+    #   dry-run:
+    #     description: invoke helm dry-run
+    #     keys:
+    #       - code: shift+h
+    #         alias: ⇧+h
+    #     command: helm
+    #     args: [install, ., -g, --dry-run]
 
   # ks is a profile for Kustomize.
   ks: &ks

@@ -174,6 +174,14 @@ profiles:
         # Pass the rendered manifests via stdin to `kubeconform`.
         - command: kubeconform
           args: [-strict, -summary]
+    plugins:
+      dry-run:
+        command: helm
+        args: [install, ., -g, --dry-run]
+        description: invoke helm dry-run
+        keys:
+          - code: shift+h
+            alias: ⇧+h
 
   ks:
     command: kustomize
@@ -228,10 +236,10 @@ The `kat` configuration supports YAML [anchor nodes](https://yaml.org/spec/1.2.2
 ```yaml
 profiles:
   ks: &ks
-    source: >-
-      files.filter(f, pathExt(f) in [".yaml", ".yml"])
     command: kustomize
     args: [build, .]
+    source: >-
+      files.filter(f, pathExt(f) in [".yaml", ".yml"])
     hooks:
       postRender:
         - &kubeconform
