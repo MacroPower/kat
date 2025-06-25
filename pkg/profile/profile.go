@@ -18,8 +18,8 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 
 	"github.com/MacroPower/kat/pkg/expr"
+	"github.com/MacroPower/kat/pkg/keys"
 	ui "github.com/MacroPower/kat/pkg/ui/config"
-	"github.com/MacroPower/kat/pkg/ui/keys"
 )
 
 var (

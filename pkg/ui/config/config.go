@@ -6,7 +6,7 @@ import (
 	"github.com/alecthomas/chroma/v2"
 	"github.com/hashicorp/go-multierror"
 
-	"github.com/MacroPower/kat/pkg/ui/keys"
+	"github.com/MacroPower/kat/pkg/keys"
 )
 
 var DefaultConfig = NewConfig()
