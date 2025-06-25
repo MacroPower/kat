@@ -1,4 +1,4 @@
-package stash
+package list
 
 import (
 	"fmt"
@@ -36,7 +36,7 @@ func (dlr *DocumentListRenderer) GetItemHeight() int {
 }
 
 // RenderDocumentList renders a list of documents with pagination and empty states.
-func (dlr *DocumentListRenderer) RenderDocumentList(docs []*yamldoc.YAMLDocument, m StashModel) string {
+func (dlr *DocumentListRenderer) RenderDocumentList(docs []*yamldoc.YAMLDocument, m ListModel) string {
 	var b strings.Builder
 
 	// Handle empty states.
@@ -66,7 +66,7 @@ func (dlr *DocumentListRenderer) RenderDocumentList(docs []*yamldoc.YAMLDocument
 		pageItems := docs[start:end]
 
 		for i, md := range pageItems {
-			stashItemView(&b, m, i, dlr.compact, md)
+			listItemView(&b, m, i, dlr.compact, md)
 			if i != len(pageItems)-1 {
 				b.WriteString("\n")
 				if !dlr.compact {

@@ -1,4 +1,4 @@
-package stash
+package list
 
 import (
 	"sort"
@@ -22,7 +22,7 @@ func NewFilterHandler(theme *themes.Theme) *FilterHandler {
 }
 
 // HandleFilteringMode handles events when in filtering mode.
-func (h *FilterHandler) HandleFilteringMode(m StashModel, msg tea.Msg) (StashModel, tea.Cmd) {
+func (h *FilterHandler) HandleFilteringMode(m ListModel, msg tea.Msg) (ListModel, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
@@ -44,14 +44,14 @@ func (h *FilterHandler) HandleFilteringMode(m StashModel, msg tea.Msg) (StashMod
 }
 
 // handleFilterKeys handles key events specific to filtering mode.
-func (h *FilterHandler) handleFilterKeys(m StashModel, key string) (StashModel, tea.Cmd) {
+func (h *FilterHandler) handleFilterKeys(m ListModel, key string) (ListModel, tea.Cmd) {
 	kb := m.cm.Config.KeyBinds
 	switch {
 	case kb.Common.Up.Match(key),
 		kb.Common.Down.Match(key),
 		kb.Common.Next.Match(key),
 		kb.Common.Prev.Match(key),
-		kb.Stash.Open.Match(key):
+		kb.List.Open.Match(key):
 		// Apply filter.
 		if len(m.YAMLs) == 0 {
 			return m, nil
@@ -78,7 +78,7 @@ func (h *FilterHandler) handleFilterKeys(m StashModel, key string) (StashModel, 
 		if m.sections[len(m.sections)-1].key != SectionFilter {
 			m.sections = append(m.sections, Section{
 				key:       SectionFilter,
-				paginator: newStashPaginator(h.theme),
+				paginator: newListPaginator(h.theme),
 			})
 		}
 		m.sectionIndex = len(m.sections) - 1
@@ -94,7 +94,7 @@ func (h *FilterHandler) handleFilterKeys(m StashModel, key string) (StashModel, 
 }
 
 // updateFilterInput updates the filter input component and handles value changes.
-func (h *FilterHandler) updateFilterInput(m StashModel, msg tea.Msg) (StashModel, tea.Cmd) {
+func (h *FilterHandler) updateFilterInput(m ListModel, msg tea.Msg) (ListModel, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	newFilterInputModel, inputCmd := m.filterInput.Update(msg)
@@ -111,7 +111,7 @@ func (h *FilterHandler) updateFilterInput(m StashModel, msg tea.Msg) (StashModel
 	return m, tea.Batch(cmds...)
 }
 
-func FilterYAMLs(m StashModel) tea.Cmd {
+func FilterYAMLs(m ListModel) tea.Cmd {
 	return func() tea.Msg {
 		if m.filterInput.Value() == "" || !m.FilterApplied() {
 			return FilteredYAMLMsg(m.YAMLs) // Return everything.

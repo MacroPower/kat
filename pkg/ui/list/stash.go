@@ -1,4 +1,4 @@
-package stash
+package list
 
 import (
 	"fmt"
@@ -18,10 +18,10 @@ import (
 )
 
 const (
-	stashIndent                = 1
-	stashViewTopPadding        = 1 // Padding at the top of the stash view.
-	stashViewBottomPadding     = 6 // Pagination and gaps, but not help.
-	stashViewHorizontalPadding = 6
+	listIndent                = 1
+	listViewTopPadding        = 1 // Padding at the top of the list view.
+	listViewBottomPadding     = 6 // Pagination and gaps, but not help.
+	listViewHorizontalPadding = 6
 )
 
 type (
@@ -67,7 +67,7 @@ const (
 	FilterApplied                    // A filter is applied and user is not editing filter.
 )
 
-type StashModel struct {
+type ListModel struct {
 	cm           *common.CommonModel
 	helpRenderer *statusbar.HelpRenderer
 	docRenderer  *DocumentListRenderer
@@ -95,7 +95,7 @@ type StashModel struct {
 	helpHeight int
 }
 
-func NewStashModel(cm *common.CommonModel) StashModel {
+func NewListModel(cm *common.CommonModel) ListModel {
 	si := textinput.New()
 	si.Prompt = "Find:"
 	si.PromptStyle = cm.Theme.FilterStyle.MarginRight(1)
@@ -105,7 +105,7 @@ func NewStashModel(cm *common.CommonModel) StashModel {
 	s := []Section{
 		{
 			key:       SectionDocuments,
-			paginator: newStashPaginator(cm.Theme),
+			paginator: newListPaginator(cm.Theme),
 		},
 	}
 
@@ -117,15 +117,15 @@ func NewStashModel(cm *common.CommonModel) StashModel {
 		*kb.Common.Down,
 		*kb.Common.Left,
 		*kb.Common.Right,
-		*kb.Stash.PageUp,
-		*kb.Stash.PageDown,
+		*kb.List.PageUp,
+		*kb.List.PageDown,
 	)
 	kbr.AddColumn(
 		*kb.Common.Reload,
-		*kb.Stash.Open,
-		*kb.Stash.Find,
-		*kb.Stash.Home,
-		*kb.Stash.End,
+		*kb.List.Open,
+		*kb.List.Find,
+		*kb.List.Home,
+		*kb.List.End,
 	)
 	kbr.AddColumn(
 		*kb.Common.Escape,
@@ -134,18 +134,18 @@ func NewStashModel(cm *common.CommonModel) StashModel {
 		*kb.Common.Quit,
 	)
 
-	m := StashModel{
+	m := ListModel{
 		cm:           cm,
 		filterInput:  si,
 		sections:     s,
 		helpRenderer: statusbar.NewHelpRenderer(cm.Theme, kbr),
-		docRenderer:  NewDocumentListRenderer(cm.Theme, stashIndent, *cm.Config.UI.Compact),
+		docRenderer:  NewDocumentListRenderer(cm.Theme, listIndent, *cm.Config.UI.Compact),
 	}
 
 	return m
 }
 
-func (m StashModel) Update(msg tea.Msg) (StashModel, tea.Cmd) {
+func (m ListModel) Update(msg tea.Msg) (ListModel, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	isFiltering := m.FilterState == Filtering
@@ -164,8 +164,8 @@ func (m StashModel) Update(msg tea.Msg) (StashModel, tea.Cmd) {
 			break
 		}
 		var cmd tea.Cmd
-		stashHandler := NewStashKeyHandler()
-		m, cmd = stashHandler.HandleDocumentBrowsing(m, msg)
+		listHandler := NewListKeyHandler()
+		m, cmd = listHandler.HandleDocumentBrowsing(m, msg)
 		cmds = append(cmds, cmd)
 
 	case FilteredYAMLMsg:
@@ -178,7 +178,7 @@ func (m StashModel) Update(msg tea.Msg) (StashModel, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m StashModel) View() string {
+func (m ListModel) View() string {
 	top := lipgloss.JoinVertical(
 		lipgloss.Top,
 		m.headerView(),
@@ -207,7 +207,7 @@ func (m StashModel) View() string {
 }
 
 // Adds yaml documents to the model.
-func (m *StashModel) AddYAMLs(yamls ...*yamldoc.YAMLDocument) {
+func (m *ListModel) AddYAMLs(yamls ...*yamldoc.YAMLDocument) {
 	if len(yamls) == 0 {
 		return
 	}
@@ -221,15 +221,15 @@ func (m *StashModel) AddYAMLs(yamls ...*yamldoc.YAMLDocument) {
 }
 
 // Whether or not the spinner should be spinning.
-func (m StashModel) IsLoading() bool {
+func (m ListModel) IsLoading() bool {
 	return !m.cm.Loaded
 }
 
-func (m StashModel) FilterApplied() bool {
+func (m ListModel) FilterApplied() bool {
 	return m.FilterState != Unfiltered
 }
 
-func (m *StashModel) SetSize(width, height int) {
+func (m *ListModel) SetSize(width, height int) {
 	m.cm.Width = width
 	m.cm.Height = height
 
@@ -240,39 +240,39 @@ func (m *StashModel) SetSize(width, height int) {
 
 	m.docRenderer.SetSize(width, height)
 
-	m.filterInput.Width = width - stashViewHorizontalPadding*2 - ansi.PrintableRuneWidth(
+	m.filterInput.Width = width - listViewHorizontalPadding*2 - ansi.PrintableRuneWidth(
 		m.filterInput.Prompt,
 	)
 
 	m.updatePagination()
 }
 
-func (m StashModel) currentSection() *Section {
+func (m ListModel) currentSection() *Section {
 	return &m.sections[m.sectionIndex]
 }
 
-func (m StashModel) paginator() *paginator.Model {
+func (m ListModel) paginator() *paginator.Model {
 	return &m.currentSection().paginator
 }
 
-func (m *StashModel) setPaginator(p paginator.Model) {
+func (m *ListModel) setPaginator(p paginator.Model) {
 	m.currentSection().paginator = p
 }
 
-func (m StashModel) cursor() int {
+func (m ListModel) cursor() int {
 	return m.currentSection().cursor
 }
 
-func (m *StashModel) setCursor(i int) {
+func (m *ListModel) setCursor(i int) {
 	m.currentSection().cursor = i
 }
 
-func (m *StashModel) toggleHelp() {
+func (m *ListModel) toggleHelp() {
 	m.ShowHelp = !m.ShowHelp
 	m.SetSize(m.cm.Width, m.cm.Height)
 }
 
-func (m *StashModel) ResetFiltering() {
+func (m *ListModel) ResetFiltering() {
 	m.FilterState = Unfiltered
 	m.filterInput.Reset()
 	m.filteredYAMLs = nil
@@ -298,7 +298,7 @@ func (m *StashModel) ResetFiltering() {
 
 // Update pagination according to the amount of yamls for the current
 // state.
-func (m *StashModel) updatePagination() {
+func (m *ListModel) updatePagination() {
 	helpHeight := 0
 	if m.ShowHelp {
 		helpHeight = m.helpHeight + 1
@@ -307,8 +307,8 @@ func (m *StashModel) updatePagination() {
 	// TODO: Why does this need to be set this way?
 	availableHeight := m.cm.Height -
 		helpHeight -
-		stashViewTopPadding -
-		stashViewBottomPadding
+		listViewTopPadding -
+		listViewBottomPadding
 
 	if !*m.cm.Config.UI.Compact {
 		availableHeight++
@@ -329,12 +329,12 @@ func (m *StashModel) updatePagination() {
 }
 
 // YAMLIndex returns the index of the currently selected yaml item.
-func (m StashModel) yamlIndex() int {
+func (m ListModel) yamlIndex() int {
 	return m.paginator().Page*m.paginator().PerPage + m.cursor()
 }
 
-// Return the current selected yaml in the stash.
-func (m StashModel) selectedYAML() *yamldoc.YAMLDocument {
+// Return the current selected yaml in the list.
+func (m ListModel) selectedYAML() *yamldoc.YAMLDocument {
 	i := m.yamlIndex()
 
 	mds := m.getVisibleYAMLs()
@@ -346,7 +346,7 @@ func (m StashModel) selectedYAML() *yamldoc.YAMLDocument {
 }
 
 // Returns the yamls that should be currently shown.
-func (m StashModel) getVisibleYAMLs() []*yamldoc.YAMLDocument {
+func (m ListModel) getVisibleYAMLs() []*yamldoc.YAMLDocument {
 	if m.FilterState == Filtering || m.currentSection().key == SectionFilter {
 		return m.filteredYAMLs
 	}
@@ -356,17 +356,17 @@ func (m StashModel) getVisibleYAMLs() []*yamldoc.YAMLDocument {
 
 // Command for opening a yaml document in the pager. Note that this also
 // alters the model.
-func (m *StashModel) openYAML(md *yamldoc.YAMLDocument) tea.Cmd {
+func (m *ListModel) openYAML(md *yamldoc.YAMLDocument) tea.Cmd {
 	cmd := LoadYAML(md)
 
 	return cmd
 }
 
-func (m *StashModel) itemsOnPage() int {
+func (m *ListModel) itemsOnPage() int {
 	return m.paginator().ItemsOnPage(len(m.getVisibleYAMLs()))
 }
 
-func (m *StashModel) moveCursorUp() {
+func (m *ListModel) moveCursorUp() {
 	m.setCursor(m.cursor() - 1)
 	if m.cursor() < 0 && m.paginator().Page == 0 {
 		// Stop.
@@ -385,7 +385,7 @@ func (m *StashModel) moveCursorUp() {
 	m.setCursor(m.itemsOnPage() - 1)
 }
 
-func (m *StashModel) moveCursorDown() {
+func (m *ListModel) moveCursorDown() {
 	itemsOnPage := m.itemsOnPage()
 
 	m.setCursor(m.cursor() + 1)
@@ -411,18 +411,18 @@ func (m *StashModel) moveCursorDown() {
 	m.setCursor(itemsOnPage - 1)
 }
 
-func (m *StashModel) enforcePaginationBounds() {
+func (m *ListModel) enforcePaginationBounds() {
 	itemsOnPage := m.itemsOnPage()
 	if m.cursor() > itemsOnPage-1 {
 		m.setCursor(max(0, itemsOnPage-1))
 	}
 }
 
-func (m StashModel) documentListView() string {
+func (m ListModel) documentListView() string {
 	return m.docRenderer.RenderDocumentList(m.getVisibleYAMLs(), m)
 }
 
-func (m StashModel) paginationView() string {
+func (m ListModel) paginationView() string {
 	pagination := "\n"
 	if m.paginator().TotalPages > 1 {
 		pagination = NewPaginationRenderer(m.cm.Theme, m.cm.Width).
@@ -432,7 +432,7 @@ func (m StashModel) paginationView() string {
 	return pagination
 }
 
-func (m StashModel) helpView() string {
+func (m ListModel) helpView() string {
 	var help string
 	if m.ShowHelp {
 		help = m.helpRenderer.Render(m.cm.Width)
@@ -441,18 +441,18 @@ func (m StashModel) helpView() string {
 	return help
 }
 
-func (m StashModel) headerView() string {
+func (m ListModel) headerView() string {
 	sections, divider := m.getHeaderSections()
 	header := strings.Join(sections, divider.String())
 
 	header = lipgloss.NewStyle().
-		Padding(stashViewTopPadding, stashIndent+2, 1).
+		Padding(listViewTopPadding, listIndent+2, 1).
 		Render(header)
 
 	return header
 }
 
-func (m StashModel) getHeaderSections() ([]string, lipgloss.Style) {
+func (m ListModel) getHeaderSections() ([]string, lipgloss.Style) {
 	localCount := len(m.YAMLs)
 	sections := []string{}
 
@@ -495,7 +495,7 @@ func (m StashModel) getHeaderSections() ([]string, lipgloss.Style) {
 	return sections, dividerBar
 }
 
-func (m StashModel) statusBarView() string {
+func (m ListModel) statusBarView() string {
 	// Determine what to show as the title/message.
 	title := m.cm.Cmd.String()
 
@@ -506,7 +506,7 @@ func (m StashModel) statusBarView() string {
 }
 
 // startFiltering initializes the filtering mode.
-func (m *StashModel) startFiltering() tea.Cmd {
+func (m *ListModel) startFiltering() tea.Cmd {
 	// Build values we'll filter against.
 	for _, md := range m.YAMLs {
 		md.BuildFilterValue()

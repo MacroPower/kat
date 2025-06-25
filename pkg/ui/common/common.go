@@ -38,7 +38,7 @@ type CommonModel struct {
 type ApplicationContext int
 
 const (
-	StashContext ApplicationContext = iota
+	ListContext ApplicationContext = iota
 	PagerContext
 
 	StatusMessageTimeout = time.Second * 3 // How long to show status messages.
@@ -73,7 +73,7 @@ func (m *CommonModel) SendStatusMessage(msg string, style statusbar.Style) tea.C
 	}
 	m.StatusMessageTimer = time.NewTimer(StatusMessageTimeout)
 
-	return WaitForStatusMessageTimeout(StashContext, m.StatusMessageTimer)
+	return WaitForStatusMessageTimeout(ListContext, m.StatusMessageTimer)
 }
 
 type ErrMsg struct{ Err error } //nolint:errname // Tea message.

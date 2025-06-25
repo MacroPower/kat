@@ -16,9 +16,9 @@ import (
 	"github.com/MacroPower/kat/pkg/kube"
 	"github.com/MacroPower/kat/pkg/ui/common"
 	"github.com/MacroPower/kat/pkg/ui/config"
+	"github.com/MacroPower/kat/pkg/ui/list"
 	"github.com/MacroPower/kat/pkg/ui/overlay"
 	"github.com/MacroPower/kat/pkg/ui/pager"
-	"github.com/MacroPower/kat/pkg/ui/stash"
 	"github.com/MacroPower/kat/pkg/ui/statusbar"
 	"github.com/MacroPower/kat/pkg/ui/themes"
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
@@ -38,7 +38,7 @@ func NewProgram(cfg config.Config, cmd common.Commander) *tea.Program {
 type State int
 
 const (
-	stateShowStash State = iota
+	stateShowList State = iota
 	stateShowDocument
 )
 
@@ -53,7 +53,7 @@ const (
 
 func (s State) String() string {
 	return map[State]string{
-		stateShowStash:    "showing file listing",
+		stateShowList:     "showing file listing",
 		stateShowDocument: "showing document",
 	}[s]
 }
@@ -65,7 +65,7 @@ type model struct {
 	overlay      *overlay.Overlay
 	spinner      spinner.Model
 	pager        pager.PagerModel
-	stash        stash.StashModel
+	list         list.ListModel
 	state        State
 	overlayState OverlayState
 }
@@ -73,8 +73,8 @@ type model struct {
 // unloadDocument unloads a document from the pager. Title that while this
 // method alters the model we also need to send along any commands returned.
 func (m *model) unloadDocument() {
-	m.state = stateShowStash
-	m.stash.ViewState = stash.StateReady
+	m.state = stateShowList
+	m.list.ViewState = list.StateReady
 	m.pager.Unload()
 	m.pager.ShowHelp = false
 }
@@ -114,9 +114,9 @@ func newModel(cfg config.Config, cmd common.Commander) tea.Model {
 	m := &model{
 		cm:      &cm,
 		spinner: sp,
-		state:   stateShowStash,
+		state:   stateShowList,
 		pager:   pager.NewPagerModel(&cm),
-		stash:   stash.NewStashModel(&cm),
+		list:    list.NewListModel(&cm),
 		overlay: overlay.New(),
 	}
 
@@ -174,7 +174,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.overlayState = overlayStateLoading
 		cmds = append(cmds, m.spinner.Tick)
 
-	case stash.FetchedYAMLMsg:
+	case list.FetchedYAMLMsg:
 		// We've loaded a YAML file's contents for rendering.
 		m.pager.CurrentDocument = *msg
 		body := msg.Body
@@ -244,7 +244,7 @@ func (m *model) View() string {
 	case stateShowDocument:
 		s = m.pager.View()
 	default:
-		s = m.stash.View()
+		s = m.list.View()
 	}
 
 	switch m.overlayState {
@@ -301,7 +301,7 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 
 	switch {
 	case kb.Common.Quit.Match(key):
-		if m.state == stateShowStash && m.stash.FilterState == stash.Filtering {
+		if m.state == stateShowList && m.list.FilterState == list.Filtering {
 			// Pass through to filter handler.
 			return m, nil, false
 		}
@@ -315,8 +315,8 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		if m.state == stateShowDocument || !m.cm.Loaded {
 			m.unloadDocument()
 		}
-		if m.state == stateShowStash {
-			m.stash.ResetFiltering()
+		if m.state == stateShowList {
+			m.list.ResetFiltering()
 		}
 
 		return m, nil, true
@@ -330,8 +330,8 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 
 // handleRefreshKey handles the refresh key based on current state.
 func (m *model) handleRefreshKey(_ tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
-	if m.state == stateShowStash && m.stash.FilterState == stash.Filtering {
-		// Pass through to stash handler.
+	if m.state == stateShowList && m.list.FilterState == list.Filtering {
+		// Pass through to list handler.
 		return m, nil, false
 	}
 
@@ -356,23 +356,23 @@ func (m *model) handleResourceUpdate(msg command.EventEnd) []tea.Cmd {
 		return cmds
 	}
 
-	m.stash.YAMLs = nil
+	m.list.YAMLs = nil
 
 	for _, yml := range msg.Resources {
 		newYaml := kubeResourceToYAML(yml)
-		m.stash.AddYAMLs(newYaml)
+		m.list.AddYAMLs(newYaml)
 
-		if m.stash.FilterApplied() {
+		if m.list.FilterApplied() {
 			newYaml.BuildFilterValue()
 		}
 
 		if m.state == stateShowDocument && kube.UnstructuredEqual(yml.Object, m.pager.CurrentDocument.Object) {
-			cmds = append(cmds, stash.LoadYAML(newYaml))
+			cmds = append(cmds, list.LoadYAML(newYaml))
 		}
 	}
 
-	if m.stash.FilterApplied() {
-		cmds = append(cmds, stash.FilterYAMLs(m.stash))
+	if m.list.FilterApplied() {
+		cmds = append(cmds, list.FilterYAMLs(m.list))
 	}
 
 	return cmds
@@ -383,9 +383,9 @@ func (m *model) updateChildModels(msg tea.Msg) []tea.Cmd {
 	var cmds []tea.Cmd
 
 	switch m.state {
-	case stateShowStash:
-		newStashModel, cmd := m.stash.Update(msg)
-		m.stash = newStashModel
+	case stateShowList:
+		newListModel, cmd := m.list.Update(msg)
+		m.list = newListModel
 		cmds = append(cmds, cmd)
 
 	case stateShowDocument:
@@ -401,7 +401,7 @@ func (m *model) updateChildModels(msg tea.Msg) []tea.Cmd {
 func (m *model) handleWindowResize(msg tea.WindowSizeMsg) {
 	m.cm.Width = msg.Width
 	m.cm.Height = msg.Height
-	m.stash.SetSize(msg.Width, msg.Height)
+	m.list.SetSize(msg.Width, msg.Height)
 	m.pager.SetSize(msg.Width, msg.Height)
 	m.overlay.SetSize(msg.Width, msg.Height)
 }

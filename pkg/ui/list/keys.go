@@ -1,19 +1,19 @@
-package stash
+package list
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// StashKeyHandler provides key handling for stash view.
-type StashKeyHandler struct{}
+// ListKeyHandler provides key handling for list view.
+type ListKeyHandler struct{}
 
-// NewStashKeyHandler creates a new StashKeyHandler.
-func NewStashKeyHandler() *StashKeyHandler {
-	return &StashKeyHandler{}
+// NewListKeyHandler creates a new ListKeyHandler.
+func NewListKeyHandler() *ListKeyHandler {
+	return &ListKeyHandler{}
 }
 
-// HandleDocumentBrowsing handles key events for document browsing in stash view.
-func (h *StashKeyHandler) HandleDocumentBrowsing(m StashModel, msg tea.KeyMsg) (StashModel, tea.Cmd) {
+// HandleDocumentBrowsing handles key events for document browsing in list view.
+func (h *ListKeyHandler) HandleDocumentBrowsing(m ListModel, msg tea.KeyMsg) (ListModel, tea.Cmd) {
 	key := msg.String()
 
 	// Handle navigation keys.
@@ -27,10 +27,10 @@ func (h *StashKeyHandler) HandleDocumentBrowsing(m StashModel, msg tea.KeyMsg) (
 	case kb.Common.Down.Match(key):
 		m.moveCursorDown()
 
-	case kb.Stash.PageUp.Match(key):
+	case kb.List.PageUp.Match(key):
 		m.setCursor(0)
 
-	case kb.Stash.PageDown.Match(key):
+	case kb.List.PageDown.Match(key):
 		m.setCursor(m.paginator().ItemsOnPage(numDocs) - 1)
 
 	case kb.Common.Left.Match(key), kb.Common.Prev.Match(key):
@@ -55,16 +55,16 @@ func (h *StashKeyHandler) HandleDocumentBrowsing(m StashModel, msg tea.KeyMsg) (
 
 		return m, cmd
 
-	case kb.Stash.Home.Match(key):
+	case kb.List.Home.Match(key):
 		m.paginator().Page = 0
 		m.setCursor(0)
 
-	case kb.Stash.End.Match(key):
+	case kb.List.End.Match(key):
 		m.paginator().Page = m.paginator().TotalPages - 1
 		m.setCursor(m.paginator().ItemsOnPage(numDocs) - 1)
 
 	// Document actions.
-	case kb.Stash.Open.Match(key):
+	case kb.List.Open.Match(key):
 		if numDocs != 0 {
 			md := m.selectedYAML()
 			cmd := m.openYAML(md)
@@ -73,7 +73,7 @@ func (h *StashKeyHandler) HandleDocumentBrowsing(m StashModel, msg tea.KeyMsg) (
 		}
 
 	// Filtering actions.
-	case kb.Stash.Find.Match(key):
+	case kb.List.Find.Match(key):
 		cmd := m.startFiltering()
 
 		return m, cmd

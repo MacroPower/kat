@@ -76,14 +76,14 @@ func setDefaultBool(b **bool, value bool) {
 
 type KeyBinds struct {
 	Common *CommonKeyBinds `yaml:"common"`
-	Stash  *StashKeyBinds  `yaml:"list"`
+	List   *ListKeyBinds   `yaml:"list"`
 	Pager  *PagerKeyBinds  `yaml:"pager"`
 }
 
 func NewKeyBinds() *KeyBinds {
 	kb := &KeyBinds{
 		Common: &CommonKeyBinds{},
-		Stash:  &StashKeyBinds{},
+		List:   &ListKeyBinds{},
 		Pager:  &PagerKeyBinds{},
 	}
 	kb.EnsureDefaults()
@@ -95,15 +95,15 @@ func (kb *KeyBinds) EnsureDefaults() {
 	if kb.Common == nil {
 		kb.Common = &CommonKeyBinds{}
 	}
-	if kb.Stash == nil {
-		kb.Stash = &StashKeyBinds{}
+	if kb.List == nil {
+		kb.List = &ListKeyBinds{}
 	}
 	if kb.Pager == nil {
 		kb.Pager = &PagerKeyBinds{}
 	}
 
 	kb.Common.EnsureDefaults()
-	kb.Stash.EnsureDefaults()
+	kb.List.EnsureDefaults()
 	kb.Pager.EnsureDefaults()
 }
 
@@ -112,7 +112,7 @@ func (kb *KeyBinds) Validate() error {
 
 	merr = multierror.Append(merr, keys.ValidateBinds(
 		kb.Common.GetKeyBinds(),
-		kb.Stash.GetKeyBinds(),
+		kb.List.GetKeyBinds(),
 	))
 	merr = multierror.Append(merr, keys.ValidateBinds(
 		kb.Common.GetKeyBinds(),
@@ -214,7 +214,7 @@ func (kb *CommonKeyBinds) GetKeyBinds() []keys.KeyBind {
 	}
 }
 
-type StashKeyBinds struct {
+type ListKeyBinds struct {
 	Open     *keys.KeyBind `yaml:"open"`
 	Find     *keys.KeyBind `yaml:"find"`
 	Home     *keys.KeyBind `yaml:"home"`
@@ -223,7 +223,7 @@ type StashKeyBinds struct {
 	PageDown *keys.KeyBind `yaml:"pageDown"`
 }
 
-func (kb *StashKeyBinds) EnsureDefaults() {
+func (kb *ListKeyBinds) EnsureDefaults() {
 	keys.SetDefaultBind(&kb.Open,
 		keys.NewBind("open",
 			keys.New("enter", keys.WithAlias("↵")),
@@ -256,7 +256,7 @@ func (kb *StashKeyBinds) EnsureDefaults() {
 		))
 }
 
-func (kb *StashKeyBinds) GetKeyBinds() []keys.KeyBind {
+func (kb *ListKeyBinds) GetKeyBinds() []keys.KeyBind {
 	return []keys.KeyBind{
 		*kb.Open,
 		*kb.Find,

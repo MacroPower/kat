@@ -1,4 +1,4 @@
-package stash
+package list
 
 import (
 	"slices"

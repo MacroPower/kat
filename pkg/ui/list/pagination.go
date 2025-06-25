@@ -1,4 +1,4 @@
-package stash
+package list
 
 import (
 	"github.com/charmbracelet/bubbles/paginator"
@@ -7,7 +7,7 @@ import (
 	"github.com/MacroPower/kat/pkg/ui/themes"
 )
 
-func newStashPaginator(theme *themes.Theme) paginator.Model {
+func newListPaginator(theme *themes.Theme) paginator.Model {
 	p := paginator.New()
 	p.Type = paginator.Dots
 	p.ActiveDot = theme.SelectedStyle.Render("•")
@@ -37,7 +37,7 @@ func (pr *PaginationRenderer) RenderPagination(paginatorModel *paginator.Model, 
 	pagination := paginatorModel.View()
 
 	// If the dot pagination is wider than available space, use arabic numerals.
-	availableWidth := pr.width - stashViewHorizontalPadding
+	availableWidth := pr.width - listViewHorizontalPadding
 	if ansi.PrintableRuneWidth(pagination) > availableWidth {
 		// Create a copy to avoid mutating the original.
 		p := *paginatorModel

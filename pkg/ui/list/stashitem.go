@@ -1,4 +1,4 @@
-package stash
+package list
 
 import (
 	"fmt"
@@ -13,18 +13,18 @@ import (
 	"github.com/MacroPower/kat/pkg/ui/yamldoc"
 )
 
-// stashItemDisplayState represents the visual state of a stash item.
-type stashItemDisplayState struct {
+// listItemDisplayState represents the visual state of a list item.
+type listItemDisplayState struct {
 	gutter    string
 	title     string
 	desc      string
 	separator string
 }
 
-func stashItemView(b *strings.Builder, m StashModel, index int, compact bool, y *yamldoc.YAMLDocument) {
+func listItemView(b *strings.Builder, m ListModel, index int, compact bool, y *yamldoc.YAMLDocument) {
 	var (
 		// Calculate truncation width based on available space.
-		truncateTo = uint(max(0, m.cm.Width-stashViewHorizontalPadding*2)) //nolint:gosec // Uses max.
+		truncateTo = uint(max(0, m.cm.Width-listViewHorizontalPadding*2)) //nolint:gosec // Uses max.
 
 		// Prepare content.
 		title = truncate.StringWithTail(y.Title, truncateTo, m.cm.Theme.Ellipsis)
@@ -46,7 +46,7 @@ func stashItemView(b *strings.Builder, m StashModel, index int, compact bool, y 
 	)
 
 	// Apply appropriate styling based on state.
-	var displayState stashItemDisplayState
+	var displayState listItemDisplayState
 	if shouldHighlight {
 		displayState = applySelectedStyling(m.cm.Theme, title, desc, shouldShowFilter, filterValue)
 	} else {
@@ -55,15 +55,15 @@ func stashItemView(b *strings.Builder, m StashModel, index int, compact bool, y 
 
 	// Render the item.
 	if compact {
-		renderStashItemCompact(b, displayState)
+		renderListItemCompact(b, displayState)
 	} else {
-		renderStashItem(b, displayState)
+		renderListItem(b, displayState)
 	}
 }
 
 // applySelectedStyling applies styling for selected/highlighted items.
-func applySelectedStyling(theme *themes.Theme, title, desc string, showFilter bool, filterValue string) stashItemDisplayState {
-	result := stashItemDisplayState{
+func applySelectedStyling(theme *themes.Theme, title, desc string, showFilter bool, filterValue string) listItemDisplayState {
+	result := listItemDisplayState{
 		gutter:    theme.SelectedStyle.Render("│"),
 		desc:      theme.SelectedSubtleStyle.Render(desc),
 		separator: theme.SelectedStyle.Render(""),
@@ -83,10 +83,10 @@ func applySelectedStyling(theme *themes.Theme, title, desc string, showFilter bo
 }
 
 // applyUnselectedStyling applies styling for unselected items.
-func applyUnselectedStyling(theme *themes.Theme, title, desc string, isFiltering bool, filterValue string) stashItemDisplayState {
+func applyUnselectedStyling(theme *themes.Theme, title, desc string, isFiltering bool, filterValue string) listItemDisplayState {
 	hasEmptyFilter := isFiltering && filterValue == ""
 
-	result := stashItemDisplayState{
+	result := listItemDisplayState{
 		gutter:    " ",
 		separator: theme.GenericTextStyle.Render(""),
 	}
@@ -104,13 +104,13 @@ func applyUnselectedStyling(theme *themes.Theme, title, desc string, isFiltering
 	return result
 }
 
-// renderStashItemCompact renders the final output for a stash item.
-func renderStashItemCompact(b *strings.Builder, state stashItemDisplayState) {
+// renderListItemCompact renders the final output for a list item.
+func renderListItemCompact(b *strings.Builder, state listItemDisplayState) {
 	fmt.Fprintf(b, "%s %s%s%s %s", state.gutter, state.separator, state.separator, state.desc, state.title)
 }
 
-// renderStashItem renders the final output for a stash item.
-func renderStashItem(b *strings.Builder, state stashItemDisplayState) {
+// renderListItem renders the final output for a list item.
+func renderListItem(b *strings.Builder, state listItemDisplayState) {
 	fmt.Fprintf(b, "%s %s%s%s\n", state.gutter, state.separator, state.separator, state.title)
 	fmt.Fprintf(b, "%s %s", state.gutter, state.desc)
 }
