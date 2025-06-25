@@ -3,12 +3,12 @@ package ui
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
-	"golang.org/x/exp/slog"
 
 	tea "github.com/charmbracelet/bubbletea"
 
