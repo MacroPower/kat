@@ -1,8 +1,6 @@
 package kube
 
-import "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-
-func UnstructuredEqual(a, b *unstructured.Unstructured) bool {
+func UnstructuredEqual(a, b *Object) bool {
 	if a.GetAPIVersion() != b.GetAPIVersion() {
 		return false
 	}

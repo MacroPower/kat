@@ -8,11 +8,12 @@ import (
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
+	"github.com/MacroPower/kat/pkg/kube"
 )
 
 type YAMLDocument struct {
-	Object *unstructured.Unstructured
+	Object *kube.Object
 
 	// Value we filter against. This exists so that we can maintain positions
 	// of filtered items if titles are edited while a filter is active. This

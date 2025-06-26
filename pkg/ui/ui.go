@@ -370,7 +370,7 @@ func (m *model) handleResourceUpdate(msg command.EventEnd) []tea.Cmd {
 			newYaml.BuildFilterValue()
 		}
 
-		if m.state == stateShowDocument && kube.UnstructuredEqual(yml.Object, m.pager.CurrentDocument.Object) {
+		if m.state == stateShowDocument && kube.ObjectEqual(yml.Object, m.pager.CurrentDocument.Object) {
 			cmds = append(cmds, list.LoadYAML(newYaml))
 		}
 	}
@@ -432,22 +432,11 @@ func (m *model) runPlugin(name string) tea.Cmd {
 
 // Convert a [kube.Resource] to an internal representation of a YAML document.
 func kubeResourceToYAML(res *kube.Resource) *yamldoc.YAMLDocument {
-	title := res.Object.GetName()
-	if res.Object.GetNamespace() != "" {
-		title = fmt.Sprintf("%s/%s", res.Object.GetNamespace(), res.Object.GetName())
-	}
-
-	gvk := res.Object.GetObjectKind().GroupVersionKind()
-	desc := gvk.Kind
-	if gvk.Group != "" {
-		desc = fmt.Sprintf("%s/%s", gvk.Group, gvk.Kind)
-	}
-
 	return &yamldoc.YAMLDocument{
 		Object: res.Object,
 		Body:   res.YAML,
-		Title:  title,
-		Desc:   desc,
+		Title:  res.Object.GetNamespacedName(),
+		Desc:   res.Object.GetGroupKind(),
 	}
 }
 

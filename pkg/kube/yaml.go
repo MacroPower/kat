@@ -22,9 +22,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strings"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"sigs.k8s.io/yaml"
+	"github.com/goccy/go-yaml"
 )
 
 var (
@@ -33,7 +33,7 @@ var (
 )
 
 type Resource struct {
-	Object *unstructured.Unstructured
+	Object *Object
 	YAML   string
 }
 
@@ -45,14 +45,16 @@ func SplitYAML(yamlData []byte) ([]*Resource, error) {
 	ymls := splitYAMLToString(yamlData)
 
 	for _, yml := range ymls {
-		u := &unstructured.Unstructured{}
-		if err := yaml.Unmarshal([]byte(yml), u); err != nil {
+		dec := yaml.NewDecoder(strings.NewReader(yml), yaml.AllowDuplicateMapKey())
+
+		obj := &Object{}
+		if err := dec.Decode(obj); err != nil {
 			return objs, fmt.Errorf("%w: %w", ErrInvalidKubeResource, err)
 		}
 
 		objs = append(objs, &Resource{
 			YAML:   yml,
-			Object: u,
+			Object: obj,
 		})
 	}
 

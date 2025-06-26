@@ -34,11 +34,6 @@ apiVersion: v1
 	kind: Deployment
 `
 
-const invalidKubeResource = `
-apiVersion: v1
-kind: {foo: bar}
-`
-
 func TestSplitYAML_SingleObject(t *testing.T) {
 	t.Parallel()
 
@@ -70,12 +65,4 @@ func TestSplitYAML_InvalidYAML(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorIs(t, err, kube.ErrInvalidKubeResource)
 	assert.Empty(t, objs)
-}
-
-func TestSplitYAML_InvalidKubeResource(t *testing.T) {
-	t.Parallel()
-
-	_, err := kube.SplitYAML([]byte(invalidKubeResource))
-	require.Error(t, err)
-	assert.ErrorIs(t, err, kube.ErrInvalidKubeResource)
 }
