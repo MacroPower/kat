@@ -82,22 +82,25 @@ func (m *model) unloadDocument() {
 func newModel(cfg *Config, cmd common.Commander) tea.Model {
 	theme := cfg.UI.Theme
 	profile := cmd.GetCurrentProfile()
-	if profile.UI.Theme != "" {
-		theme = profile.UI.Theme
-	}
-	if profile.UI.Compact != nil {
-		cfg.UI.Compact = profile.UI.Compact
-	}
-	if profile.UI.WordWrap != nil {
-		cfg.UI.WordWrap = profile.UI.WordWrap
-	}
-	if profile.UI.LineNumbers != nil {
-		cfg.UI.LineNumbers = profile.UI.LineNumbers
+	if profile.UI != nil {
+		if profile.UI.Theme != "" {
+			theme = profile.UI.Theme
+		}
+		if profile.UI.Compact != nil {
+			cfg.UI.Compact = profile.UI.Compact
+		}
+		if profile.UI.WordWrap != nil {
+			cfg.UI.WordWrap = profile.UI.WordWrap
+		}
+		if profile.UI.LineNumbers != nil {
+			cfg.UI.LineNumbers = profile.UI.LineNumbers
+		}
 	}
 
 	cm := &common.CommonModel{
-		Cmd:   cmd,
-		Theme: themes.NewTheme(theme),
+		Cmd:      cmd,
+		Theme:    themes.NewTheme(theme),
+		KeyBinds: cfg.KeyBinds.Common,
 	}
 
 	sp := spinner.New()
