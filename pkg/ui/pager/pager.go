@@ -86,6 +86,7 @@ func NewModel(c Config) PagerModel {
 		glamourRenderer: NewGlamourRenderer(c.CommonModel.Theme, !c.ShowLineNumbers),
 		ViewState:       StateReady,
 		viewport:        vp,
+		chromaRendering: c.ChromaRendering,
 	}
 
 	return m
