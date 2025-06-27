@@ -33,12 +33,17 @@ func NewProgram(cfg *Config, cmd common.Commander) *tea.Program {
 	return tea.NewProgram(m, opts...)
 }
 
+type GotResultMsg command.Output
+
+type ShowResultMsg struct{}
+
 // State is the top-level application State.
 type State int
 
 const (
 	stateShowList State = iota
 	stateShowDocument
+	stateShowResult
 )
 
 type OverlayState int
@@ -59,12 +64,13 @@ func (s State) String() string {
 
 type model struct {
 	err          error
-	result       string
 	cm           *common.CommonModel
 	overlay      *overlay.Overlay
 	kb           *KeyBinds
+	result       string
 	spinner      spinner.Model
 	pager        pager.PagerModel
+	fullResult   pager.PagerModel
 	list         list.ListModel
 	state        State
 	overlayState OverlayState
@@ -73,10 +79,17 @@ type model struct {
 // unloadDocument unloads a document from the pager. Title that while this
 // method alters the model we also need to send along any commands returned.
 func (m *model) unloadDocument() {
+	switch m.state {
+	case stateShowDocument:
+		m.pager.Unload()
+		m.pager.ShowHelp = false
+	case stateShowResult:
+		m.fullResult.Unload()
+		m.fullResult.ShowHelp = false
+	}
+
 	m.state = stateShowList
 	m.list.ViewState = list.StateReady
-	m.pager.Unload()
-	m.pager.ShowHelp = false
 }
 
 func newModel(cfg *Config, cmd common.Commander) tea.Model {
@@ -120,14 +133,22 @@ func newModel(cfg *Config, cmd common.Commander) tea.Model {
 		ShowLineNumbers: *cfg.UI.LineNumbers,
 	})
 
+	fullResultModel := pager.NewModel(pager.Config{
+		CommonModel:     cm,
+		KeyBinds:        cfg.KeyBinds.Pager,
+		ChromaRendering: *cfg.UI.ChromaRendering,
+		ShowLineNumbers: false,
+	})
+
 	m := &model{
-		cm:      cm,
-		spinner: sp,
-		state:   stateShowList,
-		pager:   pagerModel,
-		list:    listModel,
-		overlay: overlay.New(),
-		kb:      cfg.KeyBinds,
+		cm:         cm,
+		spinner:    sp,
+		state:      stateShowList,
+		pager:      pagerModel,
+		list:       listModel,
+		fullResult: fullResultModel,
+		overlay:    overlay.New(cm.Theme),
+		kb:         cfg.KeyBinds,
 	}
 
 	return m
@@ -142,11 +163,29 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.kb.Common.Error.Match(msg.String()) {
+			if m.state != stateShowResult {
+				m.overlayState = overlayStateNone
+				cmds = append(cmds, func() tea.Msg {
+					return ShowResultMsg{}
+				})
+
+				break
+			}
+			// If we're showing a result, <!> exits the result view.
+			m.state = stateShowList
+			m.overlayState = overlayStateNone
+			m.fullResult.Unload()
+			m.fullResult.ShowHelp = false
+
+			break
+		}
+
 		if m.overlayState == overlayStateError || m.overlayState == overlayStateResult {
 			// If we're showing an error, any key exits the error view.
 			m.overlayState = overlayStateNone
-		} else if m.kb.Common.Error.Match(msg.String()) {
-			m.overlayState = overlayStateError
+
+			// Don't break, continue to handle the key event.
 		}
 
 		// Handle global key events that should work anywhere in the app.
@@ -155,7 +194,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if m.kb.Common.Left.Match(msg.String()) {
-			if m.state == stateShowDocument {
+			if m.state == stateShowDocument || m.state == stateShowResult {
 				m.unloadDocument()
 			}
 		}
@@ -186,21 +225,37 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// We've loaded a YAML file's contents for rendering.
 		m.pager.CurrentDocument = *msg
 		body := msg.Body
-		cmds = append(cmds, m.pager.RenderWithChroma(body))
-
-	case pager.ContentRenderedMsg:
 		m.state = stateShowDocument
+		cmds = append(cmds, m.pager.Render(body))
+
+	case GotResultMsg:
+		m.err = msg.Error
+		m.result = msg.Stdout
+
+		var body string
+		if msg.Error != nil {
+			body += "# Error\n" + msg.Error.Error() + "\n---\n"
+			m.overlayState = overlayStateError
+		} else {
+			m.overlayState = overlayStateResult
+		}
+		body += "# Stdout\n" + msg.Stdout + "\n---\n# Stderr\n" + msg.Stderr
+
+		m.fullResult.CurrentDocument = yamldoc.YAMLDocument{
+			Body:  body,
+			Title: "output",
+		}
+
+	case ShowResultMsg:
+		m.state = stateShowResult
+		cmds = append(cmds, m.fullResult.Render(m.fullResult.CurrentDocument.Body))
 
 	case command.EventEnd:
 		cmds = append(cmds, m.handleResourceUpdate(msg)...)
 
 		m.cm.Loaded = true
-		switch msg.Type {
-		case command.TypeRun:
+		if msg.Type == command.TypeRun {
 			m.overlayState = overlayStateNone
-		case command.TypePlugin:
-			m.result = msg.Stdout
-			m.overlayState = overlayStateResult
 		}
 
 		if msg.Error == nil && len(msg.Resources) > 0 {
@@ -251,6 +306,8 @@ func (m *model) View() string {
 	switch m.state {
 	case stateShowDocument:
 		s = m.pager.View()
+	case stateShowResult:
+		s = m.fullResult.View()
 	default:
 		s = m.list.View()
 	}
@@ -281,7 +338,6 @@ func (m *model) resultView() string {
 	return lipgloss.JoinVertical(lipgloss.Top,
 		m.cm.Theme.ResultTitleStyle.Padding(0, 1).Render("OUTPUT"),
 		lipgloss.NewStyle().Padding(1, 0).Render(resultMsg),
-		m.cm.Theme.SubtleStyle.Render("press any key to close"),
 	)
 }
 
@@ -294,7 +350,6 @@ func (m *model) errorView() string {
 	return lipgloss.JoinVertical(lipgloss.Top,
 		m.cm.Theme.ErrorTitleStyle.Padding(0, 1).Render("ERROR"),
 		lipgloss.NewStyle().Padding(1, 0).Render(errMsg),
-		m.cm.Theme.SubtleStyle.Render("press any key to close"),
 	)
 }
 
@@ -319,7 +374,7 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		return m, tea.Suspend, true
 
 	case m.kb.Common.Escape.Match(key):
-		if m.state == stateShowDocument || !m.cm.Loaded {
+		if m.state == stateShowDocument || m.state == stateShowResult || !m.cm.Loaded {
 			m.unloadDocument()
 		}
 		if m.state == stateShowList {
@@ -351,12 +406,10 @@ func (m *model) handleRefreshKey(_ tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 func (m *model) handleResourceUpdate(msg command.EventEnd) []tea.Cmd {
 	var cmds []tea.Cmd
 
-	if msg.Error != nil {
+	if msg.Error != nil || msg.Type == command.TypePlugin {
 		cmds = append(cmds, func() tea.Msg {
-			return common.ErrMsg{Err: msg.Error}
+			return GotResultMsg(msg)
 		})
-
-		return cmds
 	}
 
 	if len(msg.Resources) == 0 {
@@ -399,6 +452,11 @@ func (m *model) updateChildModels(msg tea.Msg) []tea.Cmd {
 		newPagerModel, cmd := m.pager.Update(msg)
 		m.pager = newPagerModel
 		cmds = append(cmds, cmd)
+
+	case stateShowResult:
+		newResultModel, cmd := m.fullResult.Update(msg)
+		m.fullResult = newResultModel
+		cmds = append(cmds, cmd)
 	}
 
 	return cmds
@@ -410,6 +468,7 @@ func (m *model) handleWindowResize(msg tea.WindowSizeMsg) {
 	m.cm.Height = msg.Height
 	m.list.SetSize(msg.Width, msg.Height)
 	m.pager.SetSize(msg.Width, msg.Height)
+	m.fullResult.SetSize(msg.Width, msg.Height)
 	m.overlay.SetSize(msg.Width, msg.Height)
 }
 

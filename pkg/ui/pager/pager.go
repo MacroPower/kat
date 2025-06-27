@@ -139,7 +139,7 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 	// We've received terminal dimensions, either for the first time or
 	// after a resize.
 	case tea.WindowSizeMsg:
-		return m, m.RenderWithChroma(m.CurrentDocument.Body)
+		return m, m.Render(m.CurrentDocument.Body)
 	}
 
 	var cmd tea.Cmd
@@ -173,7 +173,7 @@ func (m *PagerModel) SetSize(w, h int) {
 }
 
 // This is where the magic happens.
-func (m PagerModel) RenderWithChroma(yaml string) tea.Cmd {
+func (m PagerModel) Render(yaml string) tea.Cmd {
 	return func() tea.Msg {
 		if m.chromaRenderer == nil || !m.chromaRendering {
 			return ContentRenderedMsg(yaml)

@@ -4,11 +4,14 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/cellbuf"
 	"github.com/muesli/reflow/ansi"
 	"github.com/muesli/reflow/truncate"
 	"github.com/muesli/termenv"
 
 	charmansi "github.com/charmbracelet/x/ansi"
+
+	"github.com/MacroPower/kat/pkg/ui/themes"
 )
 
 const (
@@ -16,7 +19,8 @@ const (
 )
 
 type Overlay struct {
-	ws *whitespace
+	ws    *whitespace
+	theme *themes.Theme
 
 	width, height int
 
@@ -24,9 +28,13 @@ type Overlay struct {
 	minWidth int
 }
 
-func New(opts ...OverlayOpt) *Overlay {
+func New(theme *themes.Theme, opts ...OverlayOpt) *Overlay {
 	ws := &whitespace{}
-	o := &Overlay{ws: ws, minWidth: defaultMinOverlayWidth}
+	o := &Overlay{
+		ws:       ws,
+		theme:    theme,
+		minWidth: defaultMinOverlayWidth,
+	}
 
 	for _, opt := range opts {
 		opt(o)
@@ -56,12 +64,28 @@ func (o *Overlay) Place(bg, fg string, widthFraction float64, style lipgloss.Sty
 	overlayWidth := int(float64(o.width) * widthFraction)
 	overlayWidth = clamp(overlayWidth, o.minWidth, o.width)
 
+	fg = cellbuf.Wrap(fg, overlayWidth, " /-")
+	fgLines, _ := getLines(fg)
+	fgHeight := len(fgLines)
+	maxHeight := o.height - 8
+	if maxHeight < 1 {
+		fgLines = []string{}
+	} else if fgHeight > maxHeight {
+		fgLines = fgLines[:maxHeight]
+		maxTextWidth := uint(max(0, overlayWidth-4)) //nolint:gosec // G115: integer overflow conversion int -> uint.
+		helperText := "output truncated; press <!> to view full output"
+		helperText = truncate.StringWithTail(helperText, maxTextWidth, o.theme.Ellipsis)
+		fgLines = append(fgLines, "", o.theme.SubtleStyle.Render(helperText))
+	}
+
+	fg = strings.Join(fgLines, "\n")
+
 	fg = style.Width(overlayWidth).Render(fg)
 
 	fgLines, fgWidth := getLines(fg)
 	bgLines, bgWidth := getLines(bg)
 	bgHeight := len(bgLines)
-	fgHeight := len(fgLines)
+	fgHeight = len(fgLines)
 
 	x := clamp(bgWidth-fgWidth, 0, bgWidth) / 2
 	y := clamp(bgHeight-fgHeight, 0, bgHeight) / 2
