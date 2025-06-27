@@ -18,8 +18,8 @@ const (
 	wrapOnCharacters = " /-"
 )
 
-// GlamourRenderer handles rendering content with glamour styling.
-type GlamourRenderer struct {
+// ChromaRenderer handles rendering content with chroma styling.
+type ChromaRenderer struct {
 	theme               *themes.Theme
 	lexer               chroma.Lexer
 	formatter           chroma.Formatter
@@ -27,14 +27,14 @@ type GlamourRenderer struct {
 	lineNumbersDisabled bool
 }
 
-// NewGlamourRenderer creates a new GlamourRenderer.
-func NewGlamourRenderer(theme *themes.Theme, lineNumbersDisabled bool) *GlamourRenderer {
+// NewChromaRenderer creates a new ChromaRenderer.
+func NewChromaRenderer(theme *themes.Theme, lineNumbersDisabled bool) *ChromaRenderer {
 	lexer := lexers.Get("YAML")
 	lexer = chroma.Coalesce(lexer)
 
 	formatter := formatters.Get("terminal16m")
 
-	return &GlamourRenderer{
+	return &ChromaRenderer{
 		theme:               theme,
 		lexer:               lexer,
 		formatter:           formatter,
@@ -43,8 +43,8 @@ func NewGlamourRenderer(theme *themes.Theme, lineNumbersDisabled bool) *GlamourR
 	}
 }
 
-// RenderContent renders YAML content with glamour styling.
-func (gr *GlamourRenderer) RenderContent(yaml string, width int) (string, error) {
+// RenderContent renders YAML content with chroma styling.
+func (gr *ChromaRenderer) RenderContent(yaml string, width int) (string, error) {
 	content, err := gr.executeRendering(yaml)
 	if err != nil {
 		return "", err
@@ -53,8 +53,8 @@ func (gr *GlamourRenderer) RenderContent(yaml string, width int) (string, error)
 	return gr.postProcessContent(content, width), nil
 }
 
-// executeRendering performs the actual glamour rendering.
-func (gr *GlamourRenderer) executeRendering(yaml string) (string, error) {
+// executeRendering performs the actual chroma rendering.
+func (gr *ChromaRenderer) executeRendering(yaml string) (string, error) {
 	iterator, err := gr.lexer.Tokenise(nil, yaml)
 	if err != nil {
 		return "", fmt.Errorf("lexer tokenize: %w", err)
@@ -70,7 +70,7 @@ func (gr *GlamourRenderer) executeRendering(yaml string) (string, error) {
 }
 
 // postProcessContent handles post-processing of rendered content.
-func (gr *GlamourRenderer) postProcessContent(content string, width int) string {
+func (gr *ChromaRenderer) postProcessContent(content string, width int) string {
 	content = strings.TrimSpace(content)
 
 	// Trim lines and add line numbers if needed.
@@ -93,7 +93,7 @@ func (gr *GlamourRenderer) postProcessContent(content string, width int) string 
 	return result.String()
 }
 
-func (gr *GlamourRenderer) formatLine(line string, width int) string {
+func (gr *ChromaRenderer) formatLine(line string, width int) string {
 	trunc := lipgloss.NewStyle().MaxWidth(width).Render
 	lines := cellbuf.Wrap(line, width, wrapOnCharacters)
 
@@ -101,7 +101,7 @@ func (gr *GlamourRenderer) formatLine(line string, width int) string {
 }
 
 // formatLineWithNumber formats a line with line number and truncation.
-func (gr *GlamourRenderer) formatLineWithNumber(line string, lineNum, width int) string {
+func (gr *ChromaRenderer) formatLineWithNumber(line string, lineNum, width int) string {
 	width = max(0, width-2) // Reserve space for line number and padding.
 
 	trunc := lipgloss.NewStyle().MaxWidth(width).Render

@@ -31,12 +31,12 @@ const (
 )
 
 type PagerModel struct {
-	cm              *common.CommonModel
-	helpRenderer    *statusbar.HelpRenderer
-	glamourRenderer *GlamourRenderer
-	kb              *KeyBinds
+	cm             *common.CommonModel
+	helpRenderer   *statusbar.HelpRenderer
+	chromaRenderer *ChromaRenderer
+	kb             *KeyBinds
 
-	// Current document being rendered, sans-glamour rendering. We cache
+	// Current document being rendered, sans-chroma rendering. We cache
 	// it here so we can re-render it on resize.
 	CurrentDocument yamldoc.YAMLDocument
 
@@ -83,7 +83,7 @@ func NewModel(c Config) PagerModel {
 		cm:              c.CommonModel,
 		kb:              c.KeyBinds,
 		helpRenderer:    statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr),
-		glamourRenderer: NewGlamourRenderer(c.CommonModel.Theme, !c.ShowLineNumbers),
+		chromaRenderer:  NewChromaRenderer(c.CommonModel.Theme, !c.ShowLineNumbers),
 		ViewState:       StateReady,
 		viewport:        vp,
 		chromaRendering: c.ChromaRendering,
@@ -139,7 +139,7 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 	// We've received terminal dimensions, either for the first time or
 	// after a resize.
 	case tea.WindowSizeMsg:
-		return m, m.RenderWithGlamour(m.CurrentDocument.Body)
+		return m, m.RenderWithChroma(m.CurrentDocument.Body)
 	}
 
 	var cmd tea.Cmd
@@ -173,15 +173,15 @@ func (m *PagerModel) SetSize(w, h int) {
 }
 
 // This is where the magic happens.
-func (m PagerModel) RenderWithGlamour(yaml string) tea.Cmd {
+func (m PagerModel) RenderWithChroma(yaml string) tea.Cmd {
 	return func() tea.Msg {
-		if m.glamourRenderer == nil || !m.chromaRendering {
+		if m.chromaRenderer == nil || !m.chromaRendering {
 			return ContentRenderedMsg(yaml)
 		}
 
-		s, err := m.glamourRenderer.RenderContent(yaml, max(0, m.viewport.Width))
+		s, err := m.chromaRenderer.RenderContent(yaml, max(0, m.viewport.Width))
 		if err != nil {
-			log.Debug("error rendering with Glamour", "error", err)
+			log.Debug("error rendering with Chroma", "error", err)
 
 			return common.ErrMsg{Err: err}
 		}

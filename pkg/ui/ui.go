@@ -186,7 +186,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// We've loaded a YAML file's contents for rendering.
 		m.pager.CurrentDocument = *msg
 		body := msg.Body
-		cmds = append(cmds, m.pager.RenderWithGlamour(body))
+		cmds = append(cmds, m.pager.RenderWithChroma(body))
 
 	case pager.ContentRenderedMsg:
 		m.state = stateShowDocument
