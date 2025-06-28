@@ -78,12 +78,14 @@ func NewModel(c Config) PagerModel {
 		*kb.HalfPageDown,
 	)
 	kbr.AddColumn(
-		*kb.Home,
-		*kb.End,
 		*kb.Copy,
 		*kb.Search,
 		*kb.NextMatch,
 		*kb.PrevMatch,
+		*kb.Home,
+		*kb.End,
+	)
+	kbr.AddColumn(
 		*ckb.Reload,
 		*ckb.Escape,
 		*ckb.Quit,

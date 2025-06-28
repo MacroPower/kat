@@ -144,3 +144,6 @@ profiles:
 #     pageDown: ~
 #     halfPageUp: ~
 #     halfPageDown: ~
+#     search: ~
+#     nextMatch: ~
+#     prevMatch: ~
