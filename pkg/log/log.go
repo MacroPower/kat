@@ -100,7 +100,7 @@ func newCharmLogHandler(w io.Writer, level slog.Level) slog.Handler {
 		TimeFormat:      time.StampMilli,
 	})
 	if isatty.IsTerminal(os.Stdout.Fd()) {
-		logger.SetColorProfile(termenv.ANSI256)
+		logger.SetColorProfile(termenv.ColorProfile())
 	}
 
 	return logger

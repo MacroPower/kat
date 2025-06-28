@@ -10,6 +10,7 @@ import (
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/cellbuf"
+	"github.com/muesli/termenv"
 
 	"github.com/MacroPower/kat/pkg/ui/themes"
 )
@@ -32,7 +33,19 @@ func NewChromaRenderer(theme *themes.Theme, lineNumbersDisabled bool) *ChromaRen
 	lexer := lexers.Get("YAML")
 	lexer = chroma.Coalesce(lexer)
 
-	formatter := formatters.Get("terminal16m")
+	formatterName := "noop" // Default to noop formatter.
+	switch termenv.ColorProfile() {
+	case termenv.TrueColor:
+		formatterName = "terminal16m"
+
+	case termenv.ANSI256:
+		formatterName = "terminal256"
+
+	case termenv.ANSI:
+		formatterName = "terminal8"
+	}
+
+	formatter := formatters.Get(formatterName)
 
 	return &ChromaRenderer{
 		theme:               theme,
