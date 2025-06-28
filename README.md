@@ -4,11 +4,7 @@
 </p>
 
 <p align="center">
-  <code>kat</code> provides an <b>interactive terminal UI</b> for rendering and viewing local Kubernetes manifests. It eliminates the frustrating cycle of running commands, scrolling through output, and losing context when debugging Helm charts, Kustomize overlays, and other manifest generators.
-</p>
-
-<p align="center">
-  Designed for <b>developers</b> and <b>platform engineers</b> who need to quickly iterate on Kubernetes manifests, <code>kat</code> gives you <b>instant feedback</b> with features like <b>search</b>, <b>live reloading</b>, and <b>hooks</b>. Works with Helm, Kustomize, and any tool that generates manifests; with powerful customization to fit your exact workflow.
+  <code>kat</code> provides a <b>terminal UI</b> for rendering, validating, and displaying <b>local Kubernetes manifests</b>. It eliminates the frustrating cycle of manually running commands, scrolling through endless output, and constantly losing context when working with Helm charts, Kustomize overlays, and other manifest generators.
 </p>
 
 <p align="center">
