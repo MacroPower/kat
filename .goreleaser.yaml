@@ -67,7 +67,7 @@ homebrew_casks:
       owner: MacroPower
       name: homebrew-tap
     url:
-      template: >-
+      template: &archiveTemplate >-
         https://github.com/MacroPower/kat/releases/download/{{ .Tag }}/
         {{- .ProjectName }}_
         {{- title .Os }}_
@@ -77,10 +77,23 @@ homebrew_casks:
         {{- if .Arm }}v{{ .Arm }}{{ end -}}
         .tar.gz
     commit_msg_template: "chore: formula update for kat {{ .Tag }}"
-    commit_author:
+    commit_author: &commitAuthor
       name: botty-mcbottington
       email: 168950816+botty-mcbottington[bot]@users.noreply.github.com
-    homepage: "https://github.com/MacroPower/kat/"
-    description: "cat for Kubernetes manifests"
-    license: "Apache License"
+    homepage: &homepage "https://github.com/MacroPower/kat/"
+    description: &description "TUI for rendering, validating, and displaying local Kubernetes manifests"
+    license: &license "Apache License"
+    skip_upload: false
+
+nix:
+  - name: kat
+    repository:
+      owner: MacroPower
+      name: nur-packages
+    url_template: *archiveTemplate
+    commit_msg_template: "chore: pkg update for kat {{ .Tag }}"
+    commit_author: *commitAuthor
+    homepage: *homepage
+    description: *description
+    license: *license
     skip_upload: false

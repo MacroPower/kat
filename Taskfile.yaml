@@ -115,7 +115,7 @@ tasks:
   go-build:
     desc: Builds Go binaries
     vars:
-      FLAGS: '{{.FLAGS | default "--skip=homebrew"}}'
+      FLAGS: '{{.FLAGS | default "--skip=homebrew,nix"}}'
     cmds:
       - goreleaser release --snapshot --clean {{ .FLAGS }}
 
