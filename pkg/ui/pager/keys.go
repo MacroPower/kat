@@ -12,6 +12,11 @@ type KeyBinds struct {
 	PageDown     *keys.KeyBind `yaml:"pageDown"`
 	HalfPageUp   *keys.KeyBind `yaml:"halfPageUp"`
 	HalfPageDown *keys.KeyBind `yaml:"halfPageDown"`
+
+	// Search.
+	Search    *keys.KeyBind `yaml:"search"`
+	NextMatch *keys.KeyBind `yaml:"nextMatch"`
+	PrevMatch *keys.KeyBind `yaml:"prevMatch"`
 }
 
 func (kb *KeyBinds) EnsureDefaults() {
@@ -47,6 +52,18 @@ func (kb *KeyBinds) EnsureDefaults() {
 		keys.NewBind("½ page down",
 			keys.New("d"),
 		))
+	keys.SetDefaultBind(&kb.Search,
+		keys.NewBind("search content",
+			keys.New("/"),
+		))
+	keys.SetDefaultBind(&kb.NextMatch,
+		keys.NewBind("next match",
+			keys.New("n"),
+		))
+	keys.SetDefaultBind(&kb.PrevMatch,
+		keys.NewBind("previous match",
+			keys.New("N"),
+		))
 }
 
 func (kb *KeyBinds) GetKeyBinds() []keys.KeyBind {
@@ -58,5 +75,8 @@ func (kb *KeyBinds) GetKeyBinds() []keys.KeyBind {
 		*kb.PageDown,
 		*kb.HalfPageUp,
 		*kb.HalfPageDown,
+		*kb.Search,
+		*kb.NextMatch,
+		*kb.PrevMatch,
 	}
 }

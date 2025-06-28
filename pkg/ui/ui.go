@@ -193,7 +193,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if m.kb.Common.Left.Match(msg.String()) {
-			if m.state == stateShowDocument || m.state == stateShowResult {
+			if (m.state == stateShowDocument && m.pager.ViewState != pager.StateSearching) || m.state == stateShowResult {
 				m.unloadDocument()
 			}
 		}
@@ -366,6 +366,14 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 			// Pass through to filter handler.
 			return m, nil, false
 		}
+		if m.state == stateShowDocument && m.pager.ViewState == pager.StateSearching {
+			// Pass through to pager search handler.
+			return m, nil, false
+		}
+		if m.state == stateShowResult && m.fullResult.ViewState == pager.StateSearching {
+			// Pass through to pager search handler.
+			return m, nil, false
+		}
 
 		return m, tea.Quit, true
 
@@ -373,11 +381,17 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		return m, tea.Suspend, true
 
 	case m.kb.Common.Escape.Match(key):
-		if m.state == stateShowDocument || m.state == stateShowResult || !m.cm.Loaded {
+		if (m.state == stateShowDocument && m.pager.ViewState != pager.StateSearching) || (m.state == stateShowResult && m.fullResult.ViewState != pager.StateSearching) || !m.cm.Loaded {
 			m.unloadDocument()
 		}
 		if m.state == stateShowList {
 			m.list.ResetFiltering()
+		}
+		if m.state == stateShowDocument {
+			m.pager.ExitSearch()
+		}
+		if m.state == stateShowResult {
+			m.fullResult.ExitSearch()
 		}
 
 		return m, nil, true
@@ -393,6 +407,14 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 func (m *model) handleRefreshKey(_ tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	if m.state == stateShowList && m.list.FilterState == list.Filtering {
 		// Pass through to list handler.
+		return m, nil, false
+	}
+	if m.state == stateShowDocument && m.pager.ViewState == pager.StateSearching {
+		// Pass through to pager search handler.
+		return m, nil, false
+	}
+	if m.state == stateShowResult && m.fullResult.ViewState == pager.StateSearching {
+		// Pass through to pager search handler.
 		return m, nil, false
 	}
 
