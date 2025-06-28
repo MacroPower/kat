@@ -42,8 +42,8 @@ profiles:
     #   dry-run:
     #     description: invoke helm dry-run
     #     keys:
-    #       - code: shift+h
-    #         alias: ⇧+h
+    #       - code: ctrl+r
+    #         alias: ⌃r
     #     command: helm
     #     args: [install, ., -g, --dry-run]
 
