@@ -36,13 +36,18 @@
 ### Homebrew
 
 ```sh
-brew tap macropower/tap
-brew install kat --cask
+brew install macropower/tap/kat --cask
+```
+
+### Go
+
+```sh
+go install github.com/macropower/kat/cmd/kat@latest
 ```
 
 ### Releases
 
-Archives are posted in [releases](https://github.com/MacroPower/kat/releases).
+Binaries are posted in [releases](https://github.com/macropower/kat/releases).
 
 ## 🚀 Usage
 
