@@ -101,7 +101,6 @@ func TestOverlay_SetSize(t *testing.T) {
 	t.Parallel()
 
 	theme := themes.DefaultTheme
-	o := overlay.New(theme)
 
 	tests := []struct {
 		name   string
@@ -134,6 +133,8 @@ func TestOverlay_SetSize(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			// Create a separate overlay instance for each test to avoid data races.
+			o := overlay.New(theme)
 			// Should not panic.
 			o.SetSize(tt.width, tt.height)
 		})
@@ -551,4 +552,355 @@ func TestWhitespaceRender(t *testing.T) {
 	assert.NotEmpty(t, result)
 	// Should not panic and should handle whitespace correctly.
 	assert.IsType(t, "", result)
+}
+
+func TestOverlay_Place_MultiLineContent(t *testing.T) {
+	t.Parallel()
+
+	theme := &themes.Theme{
+		Ellipsis:    "...",
+		SubtleStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("241")),
+	}
+	t.Run("multi-line background and foreground without border", func(t *testing.T) {
+		t.Parallel()
+
+		o := overlay.New(theme)
+		o.SetSize(80, 20) // Adequate height for content
+
+		background := "BG Line 1\nBG Line 2\nBG Line 3\nBG Line 4\nBG Line 5\nBG Line 6\nBG Line 7\nBG Line 8\nBG Line 9\nBG Line 10\nBG Line 11\nBG Line 12\nBG Line 13\nBG Line 14\nBG Line 15\nBG Line 16\nBG Line 17\nBG Line 18\nBG Line 19\nBG Line 20"
+		foreground := "FG Line 1\nFG Line 2\nFG Line 3"
+
+		// Use background color to make overlay content visible.
+		result := o.Place(background, foreground, 0.5, lipgloss.NewStyle().Background(lipgloss.Color("blue")))
+
+		lines := strings.Split(result, "\n")
+
+		// Should maintain background line count.
+		assert.Len(t, lines, 20, "should maintain background line count")
+
+		// Find overlay region by looking for styled content or whitespace where overlay should be.
+		overlayStartLine := -1
+		overlayEndLine := -1
+		for i, line := range lines {
+			// Look for foreground content or styled area (background color creates visible space).
+			if strings.Contains(line, "FG Line") || (len(line) > 20 && strings.TrimSpace(line) == "") {
+				if overlayStartLine == -1 {
+					overlayStartLine = i
+				}
+				overlayEndLine = i
+			}
+		}
+
+		assert.NotEqual(t, -1, overlayStartLine, "overlay region should be present")
+		assert.Positive(t, overlayStartLine, "overlay should not start at first line (should be centered)")
+		assert.Less(t, overlayEndLine, len(lines)-1, "overlay should not end at last line (should be centered)")
+
+		// Verify background content appears before and after overlay.
+		backgroundBefore := false
+		backgroundAfter := false
+		for i, line := range lines {
+			if strings.Contains(line, "BG Line") {
+				if i < overlayStartLine {
+					backgroundBefore = true
+				}
+				if i > overlayEndLine {
+					backgroundAfter = true
+				}
+			}
+		}
+
+		assert.True(t, backgroundBefore, "background content should appear before overlay")
+		assert.True(t, backgroundAfter, "background content should appear after overlay")
+
+		// With background style, overlay area should be visible as styled space.
+		overlayAreaFound := false
+		for i := overlayStartLine; i <= overlayEndLine; i++ {
+			line := lines[i]
+			// The overlay area should have content (either FG content or styled space).
+			if line != "" {
+				overlayAreaFound = true
+
+				break
+			}
+		}
+		assert.True(t, overlayAreaFound, "overlay area should be visible")
+	})
+
+	t.Run("multi-line background and foreground with border", func(t *testing.T) {
+		t.Parallel()
+
+		o := overlay.New(theme)
+		o.SetSize(80, 20) // Adequate height for content
+
+		background := "BG Line 1\nBG Line 2\nBG Line 3\nBG Line 4\nBG Line 5\nBG Line 6\nBG Line 7\nBG Line 8\nBG Line 9\nBG Line 10\nBG Line 11\nBG Line 12\nBG Line 13\nBG Line 14\nBG Line 15\nBG Line 16\nBG Line 17\nBG Line 18\nBG Line 19\nBG Line 20"
+		foreground := "FG Line 1\nFG Line 2"
+
+		result := o.Place(background, foreground, 0.5, lipgloss.NewStyle().Border(lipgloss.RoundedBorder()))
+
+		lines := strings.Split(result, "\n")
+
+		// With border, should have: top border, content lines with borders, bottom border, plus background.
+		borderTopFound := false
+		borderBottomFound := false
+		contentLinesWithBorder := 0
+		backgroundLinesFound := 0
+		fgLine1Found := false
+		fgLine2Found := false
+
+		for _, line := range lines {
+			switch {
+			case strings.Contains(line, "╭") && strings.Contains(line, "╮"):
+				borderTopFound = true
+			case strings.Contains(line, "╰") && strings.Contains(line, "╯"):
+				borderBottomFound = true
+			case strings.Contains(line, "│"):
+				contentLinesWithBorder++
+				if strings.Contains(line, "FG Line 1") {
+					fgLine1Found = true
+				}
+				if strings.Contains(line, "FG Line 2") {
+					fgLine2Found = true
+				}
+			case strings.Contains(line, "BG Line"):
+				backgroundLinesFound++
+			}
+		}
+
+		assert.True(t, borderTopFound, "should have top border (╭╮)")
+		assert.True(t, borderBottomFound, "should have bottom border (╰╯)")
+		assert.Positive(t, contentLinesWithBorder, "should have content lines with side borders")
+		assert.Positive(t, backgroundLinesFound, "should have background content outside overlay")
+
+		// With adequate height, the foreground content should be visible.
+		assert.True(t, fgLine1Found, "FG Line 1 should be visible within border")
+		assert.True(t, fgLine2Found, "FG Line 2 should be visible within border")
+	})
+
+	t.Run("overlay positioning with different height ratios", func(t *testing.T) {
+		t.Parallel()
+
+		o := overlay.New(theme)
+		o.SetSize(60, 25) // Adequate height for content and centering
+
+		background := strings.Repeat("Background line\n", 25)
+		background = strings.TrimSuffix(background, "\n") // Remove trailing newline for exact 25 lines
+		foreground := "Overlay 1\nOverlay 2\nOverlay 3\nOverlay 4"
+
+		// Use border to make overlay visible.
+		result := o.Place(background, foreground, 0.5, lipgloss.NewStyle().Border(lipgloss.RoundedBorder()))
+
+		lines := strings.Split(result, "\n")
+		assert.Len(t, lines, 25, "should maintain background line count")
+
+		// Find the overlay region by looking for border elements and content.
+		borderTopLine := -1
+		borderBottomLine := -1
+		overlayContentFound := 0
+
+		for i, line := range lines {
+			switch {
+			case strings.Contains(line, "╭") && strings.Contains(line, "╮"):
+				borderTopLine = i
+			case strings.Contains(line, "╰") && strings.Contains(line, "╯"):
+				borderBottomLine = i
+			case strings.Contains(line, "│") && strings.Contains(line, "Overlay"):
+				overlayContentFound++
+			}
+		}
+
+		assert.NotEqual(t, -1, borderTopLine, "border top should be present")
+		assert.NotEqual(t, -1, borderBottomLine, "border bottom should be present")
+		assert.Equal(t, 4, overlayContentFound, "all 4 overlay content lines should be visible")
+
+		// Verify overlay is centered vertically.
+		if borderTopLine != -1 && borderBottomLine != -1 {
+			// Should have background lines before and after.
+			assert.Positive(t, borderTopLine, "should have background content before overlay")
+			assert.Less(t, borderBottomLine, len(lines)-1, "should have background content after overlay")
+
+			// Verify approximate centering.
+			beforeCount := borderTopLine
+			afterCount := len(lines) - 1 - borderBottomLine
+			assert.LessOrEqual(t, abs(beforeCount-afterCount), 3, "overlay should be approximately centered")
+		}
+	})
+
+	t.Run("overlay content wrapping behavior", func(t *testing.T) {
+		t.Parallel()
+
+		o := overlay.New(theme)
+		o.SetSize(50, 15) // Narrow width to test wrapping
+
+		background := strings.Repeat("Background content line\n", 15)
+		background = strings.TrimSuffix(background, "\n")
+		// Long line that should wrap.
+		foreground := "This is a very long foreground line that should wrap when displayed because it exceeds the available overlay width"
+
+		// Use border to make overlay visible and test wrapping.
+		result := o.Place(background, foreground, 0.8, lipgloss.NewStyle().Border(lipgloss.RoundedBorder()))
+
+		lines := strings.Split(result, "\n")
+		assert.Len(t, lines, 15, "should maintain background line count")
+
+		// Find border region.
+		borderTopLine := -1
+		borderBottomLine := -1
+		contentLinesInBorder := 0
+		for i, line := range lines {
+			switch {
+			case strings.Contains(line, "╭") && strings.Contains(line, "╮"):
+				borderTopLine = i
+			case strings.Contains(line, "╰") && strings.Contains(line, "╯"):
+				borderBottomLine = i
+			case strings.Contains(line, "│"):
+				contentLinesInBorder++
+				// Check that line doesn't exceed terminal width.
+				assert.LessOrEqual(t, len(line), 50, "line should not exceed terminal width")
+			}
+		}
+
+		assert.NotEqual(t, -1, borderTopLine, "border top should be present")
+		assert.NotEqual(t, -1, borderBottomLine, "border bottom should be present")
+
+		// The long content should be wrapped into multiple lines within the border.
+		overlayHeight := borderBottomLine - borderTopLine - 1 // Exclude top and bottom border lines
+		assert.Greater(t, contentLinesInBorder, 1, "long content should be wrapped into multiple lines")
+		assert.LessOrEqual(t, contentLinesInBorder, overlayHeight, "content lines should fit within border")
+
+		// Verify background is visible outside overlay.
+		backgroundVisible := false
+		for i, line := range lines {
+			if (i < borderTopLine || i > borderBottomLine) && strings.Contains(line, "Background content") {
+				backgroundVisible = true
+
+				break
+			}
+		}
+		assert.True(t, backgroundVisible, "background should be visible outside overlay region")
+	})
+
+	t.Run("overlay with empty lines and whitespace", func(t *testing.T) {
+		t.Parallel()
+
+		o := overlay.New(theme)
+		o.SetSize(60, 20) // Large enough height to accommodate content
+
+		background := "BG 1\nBG 2\nBG 3\nBG 4\nBG 5\nBG 6\nBG 7\nBG 8\nBG 9\nBG 10\nBG 11\nBG 12\nBG 13\nBG 14\nBG 15\nBG 16\nBG 17\nBG 18\nBG 19\nBG 20"
+		foreground := "Line 1\n\nLine 3\n   Line 4   \n\n"
+
+		// Use border to make overlay structure visible.
+		result := o.Place(background, foreground, 0.6, lipgloss.NewStyle().Border(lipgloss.RoundedBorder()))
+
+		lines := strings.Split(result, "\n")
+		assert.Len(t, lines, 20, "should maintain background line count")
+
+		// Find border region to verify overlay structure.
+		borderTopLine := -1
+		borderBottomLine := -1
+		line1Found := false
+		line3Found := false
+		line4Found := false
+		emptyLinesInBorder := 0
+
+		for i, line := range lines {
+			switch {
+			case strings.Contains(line, "╭") && strings.Contains(line, "╮"):
+				borderTopLine = i
+			case strings.Contains(line, "╰") && strings.Contains(line, "╯"):
+				borderBottomLine = i
+			case strings.Contains(line, "│"):
+				switch {
+				case strings.Contains(line, "Line 1"):
+					line1Found = true
+				case strings.Contains(line, "Line 3"):
+					line3Found = true
+				case strings.Contains(line, "Line 4"):
+					line4Found = true
+				case !strings.Contains(line, "Line") && strings.TrimSpace(strings.Trim(line, "│ ")) == "":
+					// Empty line within border (just side borders and spaces).
+					emptyLinesInBorder++
+				}
+			}
+		}
+
+		assert.NotEqual(t, -1, borderTopLine, "border top should be present")
+		assert.NotEqual(t, -1, borderBottomLine, "border bottom should be present")
+
+		// With adequate height, the specific content should be visible.
+		assert.True(t, line1Found, "Line 1 should appear in overlay")
+		assert.True(t, line3Found, "Line 3 should appear in overlay")
+		assert.True(t, line4Found, "Line 4 should appear in overlay")
+		assert.Positive(t, emptyLinesInBorder, "empty lines should be preserved in overlay")
+
+		// Verify background is visible outside overlay.
+		backgroundVisible := false
+		for i, line := range lines {
+			if (i < borderTopLine || i > borderBottomLine) && strings.Contains(line, "BG") {
+				backgroundVisible = true
+
+				break
+			}
+		}
+		assert.True(t, backgroundVisible, "background should be visible outside overlay")
+	})
+
+	t.Run("very small overlay area", func(t *testing.T) {
+		t.Parallel()
+
+		o := overlay.New(theme)
+		o.SetSize(30, 15) // Larger height even for small terminal
+
+		background := "A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\nM\nN\nO"
+		foreground := "Overlay content that is much longer than available space"
+
+		// Use background color to make overlay visible in small space.
+		result := o.Place(background, foreground, 0.8, lipgloss.NewStyle().Background(lipgloss.Color("blue")))
+
+		lines := strings.Split(result, "\n")
+		assert.Len(t, lines, 15, "should maintain background line count")
+
+		// Find overlay region by looking for styled area or content.
+		overlayFound := false
+		overlayContentFound := false
+
+		for _, line := range lines {
+			// Look for overlay content or styled space (background creates visible area).
+			if strings.Contains(line, "Overlay") {
+				overlayFound = true
+				overlayContentFound = true
+				// Line should fit within terminal width.
+				assert.LessOrEqual(t, len(line), 30, "overlay line should not exceed terminal width")
+			} else if len(line) > 15 && strings.TrimSpace(line) == "" {
+				// Styled empty space.
+				overlayFound = true
+			}
+		}
+
+		assert.True(t, overlayFound, "overlay region should be present even in small space")
+		assert.True(t, overlayContentFound, "overlay content should be visible with adequate height")
+
+		// Background should still be partially visible.
+		backgroundFound := false
+		for _, line := range lines {
+			isBackgroundChar := line != "" && (strings.Contains(line, "A") || strings.Contains(line, "B") ||
+				strings.Contains(line, "C") || strings.Contains(line, "D") ||
+				strings.Contains(line, "E") || strings.Contains(line, "F"))
+			if isBackgroundChar && !strings.Contains(line, "Overlay") {
+				backgroundFound = true
+
+				break
+			}
+		}
+
+		assert.True(t, backgroundFound, "background should be visible outside overlay")
+	})
+}
+
+// Helper function for absolute difference.
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+
+	return x
 }
