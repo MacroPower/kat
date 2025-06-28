@@ -91,7 +91,7 @@ func NewModel(c Config) PagerModel {
 
 	// Initialize search input.
 	si := textinput.New()
-	si.Prompt = "Find:"
+	si.Prompt = "Search:"
 	si.PromptStyle = c.CommonModel.Theme.FilterStyle.MarginRight(1)
 	si.Cursor.Style = c.CommonModel.Theme.CursorStyle.MarginRight(1)
 	si.Focus()
@@ -248,7 +248,7 @@ func (m *PagerModel) Unload() {
 	}
 	// Clear search state.
 	if m.ViewState == StateSearching {
-		m.exitSearch()
+		m.ExitSearch()
 	}
 	if m.chromaRenderer != nil {
 		m.chromaRenderer.SetSearchTerm("")
@@ -294,6 +294,7 @@ func (m PagerModel) searchBarView() string {
 func (m *PagerModel) startSearch() tea.Cmd {
 	m.ViewState = StateSearching
 
+	m.searchInput.Reset()
 	m.searchInput.CursorEnd()
 	m.searchInput.Focus()
 
@@ -311,7 +312,7 @@ func (m PagerModel) handleSearchMode(msg tea.Msg) (PagerModel, tea.Cmd) {
 		switch {
 		case m.cm.KeyBinds.Escape.Match(key):
 			// Exit search mode.
-			m.exitSearch()
+			m.ExitSearch()
 
 			return m, nil
 
@@ -321,7 +322,7 @@ func (m PagerModel) handleSearchMode(msg tea.Msg) (PagerModel, tea.Cmd) {
 			if searchTerm != "" {
 				m.applySearch(searchTerm)
 			}
-			m.exitSearch()
+			m.ExitSearch()
 
 			return m, m.Render(m.CurrentDocument.Body)
 		}
@@ -335,10 +336,11 @@ func (m PagerModel) handleSearchMode(msg tea.Msg) (PagerModel, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// exitSearch exits search mode.
-func (m *PagerModel) exitSearch() {
+// ExitSearch exits search mode.
+func (m *PagerModel) ExitSearch() {
 	m.ViewState = StateReady
 	m.searchInput.Blur()
+	m.searchInput.Reset()
 }
 
 // applySearch applies the search term to the content.

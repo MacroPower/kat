@@ -10,6 +10,7 @@ import (
 	"github.com/alecthomas/chroma/v2/formatters"
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/cellbuf"
 	"github.com/muesli/termenv"
 	"github.com/sahilm/fuzzy"
@@ -34,6 +35,7 @@ type MatchPosition struct {
 type ChromaRenderer struct {
 	lexer               chroma.Lexer
 	formatter           chroma.Formatter
+	highlightStyle      lipgloss.Style
 	theme               *themes.Theme
 	style               *chroma.Style
 	searchTerm          string
@@ -60,11 +62,14 @@ func NewChromaRenderer(theme *themes.Theme, lineNumbersDisabled bool) *ChromaRen
 
 	formatter := formatters.Get(formatterName)
 
+	highlightStyle := theme.SelectedStyle.Underline(true).Bold(true)
+
 	return &ChromaRenderer{
 		theme:               theme,
 		lexer:               lexer,
 		formatter:           formatter,
 		style:               theme.ChromaStyle,
+		highlightStyle:      highlightStyle,
 		lineNumbersDisabled: lineNumbersDisabled,
 	}
 }
@@ -84,7 +89,7 @@ func (gr *ChromaRenderer) RenderContent(yaml string, width int) (string, error) 
 
 	// Apply search highlighting to the chroma-styled content.
 	if gr.searchTerm != "" && len(gr.matches) > 0 {
-		content = gr.applySearchHighlightingToStyledContent(content, yaml)
+		content = gr.applySearchHighlightingToStyledContent(content)
 	}
 
 	return gr.postProcessContent(content, width), nil
@@ -203,25 +208,76 @@ func (gr *ChromaRenderer) findMatches(content string) {
 			normalizedLine = line
 		}
 
-		fuzzyMatches := fuzzy.Find(normalizedTerm, []string{normalizedLine})
-		if len(fuzzyMatches) == 0 {
-			continue
-		}
-
-		// Convert fuzzy match indexes to line positions.
-		match := fuzzyMatches[0]
-		for _, matchIdx := range match.MatchedIndexes {
-			gr.matches = append(gr.matches, MatchPosition{
-				Line:   lineNum,
-				Start:  matchIdx,
-				End:    matchIdx + 1,
-				Length: 1,
-			})
+		// For exact character searches, use simple string search instead of fuzzy matching.
+		if len(normalizedTerm) == 1 {
+			gr.findExactMatches(normalizedLine, normalizedTerm, lineNum)
+		} else {
+			gr.findFuzzyMatches(normalizedLine, normalizedTerm, lineNum)
 		}
 	}
 
 	// Group consecutive matches.
 	gr.groupConsecutiveMatches()
+}
+
+// findExactMatches finds all exact occurrences of a single character.
+func (gr *ChromaRenderer) findExactMatches(line, term string, lineNum int) {
+	runes := []rune(line)
+	for i, char := range runes {
+		if string(char) == term {
+			gr.matches = append(gr.matches, MatchPosition{
+				Line:   lineNum,
+				Start:  i,
+				End:    i + 1,
+				Length: 1,
+			})
+		}
+	}
+}
+
+// findFuzzyMatches finds fuzzy matches for longer search terms.
+func (gr *ChromaRenderer) findFuzzyMatches(line, term string, lineNum int) {
+	fuzzyMatches := fuzzy.Find(term, []string{line})
+	if len(fuzzyMatches) == 0 {
+		return
+	}
+
+	// Convert fuzzy match indexes to line positions.
+	match := fuzzyMatches[0]
+	lineRunes := []rune(line)
+
+	for _, matchIdx := range match.MatchedIndexes {
+		// Convert byte index to rune index.
+		runeIdx := gr.byteIndexToRuneIndex(line, matchIdx)
+		if runeIdx >= 0 && runeIdx < len(lineRunes) {
+			gr.matches = append(gr.matches, MatchPosition{
+				Line:   lineNum,
+				Start:  runeIdx,
+				End:    runeIdx + 1,
+				Length: 1,
+			})
+		}
+	}
+}
+
+// byteIndexToRuneIndex converts a byte index to a rune index.
+func (gr *ChromaRenderer) byteIndexToRuneIndex(s string, byteIdx int) int {
+	if byteIdx >= len(s) {
+		return -1
+	}
+
+	runeIdx := 0
+	for i := range s {
+		if i == byteIdx {
+			return runeIdx
+		}
+		if i > byteIdx {
+			return -1
+		}
+		runeIdx++
+	}
+
+	return runeIdx
 }
 
 // groupConsecutiveMatches groups consecutive character matches into larger matches.
@@ -266,22 +322,16 @@ func (gr *ChromaRenderer) getLineMatches(lineNum int) []MatchPosition {
 }
 
 // applySearchHighlightingToStyledContent applies search highlighting to content that already has chroma styling.
-func (gr *ChromaRenderer) applySearchHighlightingToStyledContent(styledContent, originalContent string) string {
+func (gr *ChromaRenderer) applySearchHighlightingToStyledContent(styledContent string) string {
 	if gr.searchTerm == "" || len(gr.matches) == 0 {
 		return styledContent
 	}
 
 	styledLines := strings.Split(styledContent, "\n")
-	originalLines := strings.Split(originalContent, "\n")
 	var result strings.Builder
 
 	for i, styledLine := range styledLines {
-		var originalLine string
-		if i < len(originalLines) {
-			originalLine = originalLines[i]
-		}
-
-		highlightedLine := gr.applySearchToStyledLine(styledLine, originalLine, i)
+		highlightedLine := gr.applySearchToStyledLine(styledLine, i)
 		result.WriteString(highlightedLine)
 
 		// Don't add an artificial newline after the last line.
@@ -294,29 +344,86 @@ func (gr *ChromaRenderer) applySearchHighlightingToStyledContent(styledContent, 
 }
 
 // applySearchToStyledLine applies search highlighting to a styled line by finding the original text positions.
-func (gr *ChromaRenderer) applySearchToStyledLine(styledLine, originalLine string, lineNum int) string {
+func (gr *ChromaRenderer) applySearchToStyledLine(styledLine string, lineNum int) string {
 	lineMatches := gr.getLineMatches(lineNum)
 	if len(lineMatches) == 0 {
 		return styledLine
 	}
 
-	// For each match, we need to find where that text appears in the styled line
-	// and wrap it with our highlight style.
-	result := styledLine
+	// Use ANSI-aware approach to preserve styling.
+	return gr.highlightMatchesInStyledText(styledLine, lineMatches)
+}
 
-	// Process matches in reverse order to avoid offset issues when inserting.
-	for i := len(lineMatches) - 1; i >= 0; i-- {
-		match := lineMatches[i]
-		if match.Start >= 0 && match.End <= len(originalLine) {
-			matchText := originalLine[match.Start:match.End]
-			highlightStyle := gr.theme.SelectedStyle.Underline(true).Bold(true)
-			highlightedText := highlightStyle.Render(matchText)
+// highlightMatchesInStyledText applies search highlighting while preserving ANSI sequences.
+func (gr *ChromaRenderer) highlightMatchesInStyledText(styledText string, matches []MatchPosition) string {
+	if len(matches) == 0 {
+		return styledText
+	}
 
-			// Replace the first occurrence of the match text in the styled line.
-			// This is a simple approach that works for most cases.
-			result = strings.Replace(result, matchText, highlightedText, 1)
+	// Strip ANSI codes to get plain text positions.
+	plainText := ansi.Strip(styledText)
+
+	// Use a more robust approach: parse the styled text and rebuild it with highlights.
+	return gr.rebuildStyledTextWithHighlights(styledText, plainText, matches)
+}
+
+// rebuildStyledTextWithHighlights rebuilds styled text with search highlights applied.
+func (gr *ChromaRenderer) rebuildStyledTextWithHighlights(styledText, plainText string, matches []MatchPosition) string {
+	// Create a map for quick lookup of which positions should be highlighted.
+	highlightMap := make(map[int]bool)
+	for _, match := range matches {
+		for i := match.Start; i < match.End; i++ {
+			highlightMap[i] = true
 		}
 	}
 
-	return result
+	var result strings.Builder
+
+	plainIdx := 0
+	inEscape := false
+	var escapeBuffer strings.Builder
+	currentStyle := ""
+
+	for _, r := range styledText {
+		switch {
+		case r == '\x1b':
+			inEscape = true
+			escapeBuffer.Reset()
+			escapeBuffer.WriteRune(r)
+		case inEscape:
+			escapeBuffer.WriteRune(r)
+			if r == 'm' {
+				inEscape = false
+				escapeSeq := escapeBuffer.String()
+				result.WriteString(escapeSeq)
+
+				// Update current style context.
+				if escapeSeq != "\x1b[0m" {
+					currentStyle = escapeSeq
+				} else {
+					currentStyle = ""
+				}
+			}
+		default:
+			// This is a regular character.
+			shouldHighlight := plainIdx < len([]rune(plainText)) && highlightMap[plainIdx]
+
+			if shouldHighlight {
+				// Apply highlight to this character and restore styling afterward.
+				highlightText := gr.highlightStyle.Render(string(r))
+				result.WriteString(highlightText)
+				// Restore the current styling context if there was one.
+				if currentStyle != "" {
+					result.WriteString(currentStyle)
+				}
+			} else {
+				// Normal character.
+				result.WriteRune(r)
+			}
+
+			plainIdx++
+		}
+	}
+
+	return result.String()
 }
