@@ -5,7 +5,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/MacroPower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/themes"
 )
 
 type KeyBindRenderer interface {

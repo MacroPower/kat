@@ -6,8 +6,8 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/MacroPower/kat/pkg/ui/overlay"
-	"github.com/MacroPower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/overlay"
+	"github.com/macropower/kat/pkg/ui/themes"
 )
 
 // Benchmark data to test different scenarios.

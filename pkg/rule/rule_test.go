@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/MacroPower/kat/pkg/rule"
+	"github.com/macropower/kat/pkg/rule"
 )
 
 func TestNew(t *testing.T) {

@@ -12,9 +12,9 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/MacroPower/kat/pkg/kube"
-	"github.com/MacroPower/kat/pkg/profile"
-	"github.com/MacroPower/kat/pkg/rule"
+	"github.com/macropower/kat/pkg/kube"
+	"github.com/macropower/kat/pkg/profile"
+	"github.com/macropower/kat/pkg/rule"
 )
 
 var (

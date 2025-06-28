@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/MacroPower/kat/pkg/ui/yamldoc"
+	"github.com/macropower/kat/pkg/ui/yamldoc"
 )
 
 func sortYAMLs(mds []*yamldoc.YAMLDocument) {

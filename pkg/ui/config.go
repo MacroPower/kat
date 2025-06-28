@@ -6,10 +6,10 @@ import (
 	"github.com/alecthomas/chroma/v2"
 	"github.com/hashicorp/go-multierror"
 
-	"github.com/MacroPower/kat/pkg/keys"
-	"github.com/MacroPower/kat/pkg/ui/common"
-	"github.com/MacroPower/kat/pkg/ui/list"
-	"github.com/MacroPower/kat/pkg/ui/pager"
+	"github.com/macropower/kat/pkg/keys"
+	"github.com/macropower/kat/pkg/ui/common"
+	"github.com/macropower/kat/pkg/ui/list"
+	"github.com/macropower/kat/pkg/ui/pager"
 )
 
 var DefaultConfig = NewConfig()

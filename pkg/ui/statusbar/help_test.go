@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/MacroPower/kat/pkg/keys"
-	"github.com/MacroPower/kat/pkg/ui"
-	"github.com/MacroPower/kat/pkg/ui/statusbar"
-	"github.com/MacroPower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/keys"
+	"github.com/macropower/kat/pkg/ui"
+	"github.com/macropower/kat/pkg/ui/statusbar"
+	"github.com/macropower/kat/pkg/ui/themes"
 )
 
 func TestNewHelpRenderer(t *testing.T) {

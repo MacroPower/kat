@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/MacroPower/kat/pkg/ui/statusbar"
-	"github.com/MacroPower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/statusbar"
+	"github.com/macropower/kat/pkg/ui/themes"
 )
 
 func TestNewStatusBarRenderer(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/MacroPower/kat/pkg/kube"
+	"github.com/macropower/kat/pkg/kube"
 )
 
 const deploymentObject = `

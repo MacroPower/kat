@@ -4,7 +4,7 @@ import (
 	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/muesli/reflow/ansi"
 
-	"github.com/MacroPower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/themes"
 )
 
 func newListPaginator(theme *themes.Theme) paginator.Model {

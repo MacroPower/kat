@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/MacroPower/kat/pkg/expr"
+	"github.com/macropower/kat/pkg/expr"
 )
 
 func TestCELFilepathFunctions(t *testing.T) {

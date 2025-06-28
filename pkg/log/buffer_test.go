@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/MacroPower/kat/pkg/log"
+	"github.com/macropower/kat/pkg/log"
 )
 
 func TestCircularBuffer_NewCircularBuffer(t *testing.T) {

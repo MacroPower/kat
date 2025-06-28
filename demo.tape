@@ -65,7 +65,7 @@ Set Height 600
 
 Hide
 
-  Type `go build -o dist/kat -ldflags="-X github.com/MacroPower/kat/pkg/version.Version=0.x" cmd/kat/main.go`  Enter
+  Type `go build -o dist/kat -ldflags="-X github.com/macropower/kat/pkg/version.Version=0.x" cmd/kat/main.go`  Enter
   Type "alias kat=./dist/kat"  Enter
   Type "export KAT_UI_GLAMOUR_STYLE=dark"  Enter
 

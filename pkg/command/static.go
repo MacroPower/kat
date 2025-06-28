@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/MacroPower/kat/pkg/kube"
-	"github.com/MacroPower/kat/pkg/profile"
+	"github.com/macropower/kat/pkg/kube"
+	"github.com/macropower/kat/pkg/profile"
 )
 
 type Static struct {

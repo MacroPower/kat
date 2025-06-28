@@ -1,4 +1,4 @@
-module github.com/MacroPower/kat
+module github.com/macropower/kat
 
 go 1.24.0
 

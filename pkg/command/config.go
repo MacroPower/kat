@@ -5,8 +5,8 @@ import (
 
 	"github.com/goccy/go-yaml"
 
-	"github.com/MacroPower/kat/pkg/profile"
-	"github.com/MacroPower/kat/pkg/rule"
+	"github.com/macropower/kat/pkg/profile"
+	"github.com/macropower/kat/pkg/rule"
 )
 
 var (

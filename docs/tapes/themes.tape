@@ -64,7 +64,7 @@ Set Width 900
 Set Height 600
 
 Hide
-  Type 'go run -ldflags="-X github.com/MacroPower/kat/pkg/version.Version=0.10.0" cmd/kat/main.go example/helm --ui-theme="dracula"'  Enter
+  Type 'go run -ldflags="-X github.com/macropower/kat/pkg/version.Version=0.10.0" cmd/kat/main.go example/helm --ui-theme="dracula"'  Enter
   Sleep 4s
 Show
 
@@ -74,7 +74,7 @@ Sleep 1s
 
 Hide
   Type "q"
-  Type 'go run -ldflags="-X github.com/MacroPower/kat/pkg/version.Version=0.10.0" cmd/kat/main.go example/helm --ui-theme="github-dark"'  Enter
+  Type 'go run -ldflags="-X github.com/macropower/kat/pkg/version.Version=0.10.0" cmd/kat/main.go example/helm --ui-theme="github-dark"'  Enter
   Sleep 4s
 Show
 
@@ -84,7 +84,7 @@ Sleep 1s
 
 Hide
   Type "q"
-  Type 'go run -ldflags="-X github.com/MacroPower/kat/pkg/version.Version=0.10.0" cmd/kat/main.go example/helm --ui-theme="tokyonight-storm"'  Enter
+  Type 'go run -ldflags="-X github.com/macropower/kat/pkg/version.Version=0.10.0" cmd/kat/main.go example/helm --ui-theme="tokyonight-storm"'  Enter
   Sleep 4s
 Show
 
@@ -94,7 +94,7 @@ Sleep 1s
 
 Hide
   Type "q"
-  Type 'go run -ldflags="-X github.com/MacroPower/kat/pkg/version.Version=0.10.0" cmd/kat/main.go example/helm --ui-theme="onedark"'  Enter
+  Type 'go run -ldflags="-X github.com/macropower/kat/pkg/version.Version=0.10.0" cmd/kat/main.go example/helm --ui-theme="onedark"'  Enter
   Sleep 4s
 Show
 
@@ -104,7 +104,7 @@ Sleep 1s
 
 Hide
   Type "q"
-  Type 'go run -ldflags="-X github.com/MacroPower/kat/pkg/version.Version=0.10.0" cmd/kat/main.go example/helm --ui-theme="base16-snazzy"'  Enter
+  Type 'go run -ldflags="-X github.com/macropower/kat/pkg/version.Version=0.10.0" cmd/kat/main.go example/helm --ui-theme="base16-snazzy"'  Enter
   Sleep 4s
 Show
 
@@ -114,7 +114,7 @@ Sleep 1s
 
 Hide
   Type "q"
-  Type 'go run -ldflags="-X github.com/MacroPower/kat/pkg/version.Version=0.10.0" cmd/kat/main.go example/helm --ui-theme="vulcan"'  Enter
+  Type 'go run -ldflags="-X github.com/macropower/kat/pkg/version.Version=0.10.0" cmd/kat/main.go example/helm --ui-theme="vulcan"'  Enter
   Sleep 4s
 Show
 

@@ -1,6 +1,6 @@
 package pager
 
-import "github.com/MacroPower/kat/pkg/keys"
+import "github.com/macropower/kat/pkg/keys"
 
 type KeyBinds struct {
 	Copy *keys.KeyBind

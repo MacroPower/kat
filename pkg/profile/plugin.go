@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"os/exec"
 
-	"github.com/MacroPower/kat/pkg/keys"
+	"github.com/macropower/kat/pkg/keys"
 )
 
 // Plugin represents a command plugin that can be executed on demand with keybinds.

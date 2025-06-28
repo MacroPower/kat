@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/MacroPower/kat/pkg/kube"
+	"github.com/macropower/kat/pkg/kube"
 )
 
 func TestObject_GetAPIVersion(t *testing.T) {

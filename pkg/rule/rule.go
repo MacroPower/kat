@@ -14,8 +14,8 @@ import (
 
 	"github.com/google/cel-go/cel"
 
-	"github.com/MacroPower/kat/pkg/expr"
-	"github.com/MacroPower/kat/pkg/profile"
+	"github.com/macropower/kat/pkg/expr"
+	"github.com/macropower/kat/pkg/profile"
 )
 
 // Rule uses a CEL matcher to determine if its profile should be applied.

@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/MacroPower/kat/pkg/ui/pager"
-	"github.com/MacroPower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/pager"
+	"github.com/macropower/kat/pkg/ui/themes"
 )
 
 // testTheme creates a basic theme for testing.

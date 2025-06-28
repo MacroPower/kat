@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/MacroPower/kat/pkg/config"
+	"github.com/macropower/kat/pkg/config"
 )
 
 func TestNewConfig(t *testing.T) {

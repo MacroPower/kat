@@ -1,6 +1,6 @@
 package command
 
-import "github.com/MacroPower/kat/pkg/kube"
+import "github.com/macropower/kat/pkg/kube"
 
 type Type int
 

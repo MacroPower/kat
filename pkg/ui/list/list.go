@@ -11,10 +11,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/MacroPower/kat/pkg/keys"
-	"github.com/MacroPower/kat/pkg/ui/common"
-	"github.com/MacroPower/kat/pkg/ui/statusbar"
-	"github.com/MacroPower/kat/pkg/ui/yamldoc"
+	"github.com/macropower/kat/pkg/keys"
+	"github.com/macropower/kat/pkg/ui/common"
+	"github.com/macropower/kat/pkg/ui/statusbar"
+	"github.com/macropower/kat/pkg/ui/yamldoc"
 )
 
 const (

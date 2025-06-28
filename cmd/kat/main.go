@@ -10,13 +10,13 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/goccy/go-yaml"
 
-	"github.com/MacroPower/kat/pkg/command"
-	"github.com/MacroPower/kat/pkg/config"
-	"github.com/MacroPower/kat/pkg/log"
-	"github.com/MacroPower/kat/pkg/profile"
-	"github.com/MacroPower/kat/pkg/ui"
-	"github.com/MacroPower/kat/pkg/ui/common"
-	"github.com/MacroPower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/command"
+	"github.com/macropower/kat/pkg/config"
+	"github.com/macropower/kat/pkg/log"
+	"github.com/macropower/kat/pkg/profile"
+	"github.com/macropower/kat/pkg/ui"
+	"github.com/macropower/kat/pkg/ui/common"
+	"github.com/macropower/kat/pkg/ui/themes"
 )
 
 const (

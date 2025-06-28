@@ -8,8 +8,8 @@ import (
 	"github.com/muesli/reflow/ansi"
 	"github.com/muesli/reflow/truncate"
 
-	"github.com/MacroPower/kat/pkg/ui/themes"
-	"github.com/MacroPower/kat/pkg/version"
+	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/version"
 )
 
 const (

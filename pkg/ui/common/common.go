@@ -5,11 +5,11 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/MacroPower/kat/pkg/command"
-	"github.com/MacroPower/kat/pkg/keys"
-	"github.com/MacroPower/kat/pkg/profile"
-	"github.com/MacroPower/kat/pkg/ui/statusbar"
-	"github.com/MacroPower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/command"
+	"github.com/macropower/kat/pkg/keys"
+	"github.com/macropower/kat/pkg/profile"
+	"github.com/macropower/kat/pkg/ui/statusbar"
+	"github.com/macropower/kat/pkg/ui/themes"
 )
 
 type Commander interface {

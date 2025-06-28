@@ -7,7 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/MacroPower/kat/pkg/ui/yamldoc"
+	"github.com/macropower/kat/pkg/ui/yamldoc"
 )
 
 func FilterYAMLs(m ListModel) tea.Cmd {

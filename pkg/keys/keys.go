@@ -6,7 +6,7 @@ import (
 
 	"github.com/muesli/reflow/ansi"
 
-	"github.com/MacroPower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/themes"
 )
 
 type Key struct {

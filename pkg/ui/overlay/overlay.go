@@ -13,7 +13,7 @@ import (
 
 	charmansi "github.com/charmbracelet/x/ansi"
 
-	"github.com/MacroPower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/themes"
 )
 
 const (

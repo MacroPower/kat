@@ -11,15 +11,15 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/MacroPower/kat/pkg/command"
-	"github.com/MacroPower/kat/pkg/kube"
-	"github.com/MacroPower/kat/pkg/ui/common"
-	"github.com/MacroPower/kat/pkg/ui/list"
-	"github.com/MacroPower/kat/pkg/ui/overlay"
-	"github.com/MacroPower/kat/pkg/ui/pager"
-	"github.com/MacroPower/kat/pkg/ui/statusbar"
-	"github.com/MacroPower/kat/pkg/ui/themes"
-	"github.com/MacroPower/kat/pkg/ui/yamldoc"
+	"github.com/macropower/kat/pkg/command"
+	"github.com/macropower/kat/pkg/kube"
+	"github.com/macropower/kat/pkg/ui/common"
+	"github.com/macropower/kat/pkg/ui/list"
+	"github.com/macropower/kat/pkg/ui/overlay"
+	"github.com/macropower/kat/pkg/ui/pager"
+	"github.com/macropower/kat/pkg/ui/statusbar"
+	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/yamldoc"
 )
 
 // NewProgram returns a new Tea program.

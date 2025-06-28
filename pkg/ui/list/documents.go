@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/MacroPower/kat/pkg/ui/themes"
-	"github.com/MacroPower/kat/pkg/ui/yamldoc"
+	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/yamldoc"
 )
 
 // DocumentListRenderer handles rendering of document lists.

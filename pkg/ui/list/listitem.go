@@ -9,8 +9,8 @@ import (
 	"github.com/muesli/reflow/truncate"
 	"github.com/sahilm/fuzzy"
 
-	"github.com/MacroPower/kat/pkg/ui/themes"
-	"github.com/MacroPower/kat/pkg/ui/yamldoc"
+	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/yamldoc"
 )
 
 // listItemDisplayState represents the visual state of a list item.

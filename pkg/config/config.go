@@ -17,8 +17,8 @@ import (
 
 	yaml "github.com/goccy/go-yaml"
 
-	"github.com/MacroPower/kat/pkg/command"
-	"github.com/MacroPower/kat/pkg/ui"
+	"github.com/macropower/kat/pkg/command"
+	"github.com/macropower/kat/pkg/ui"
 )
 
 var (

@@ -7,8 +7,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/MacroPower/kat/pkg/ui/overlay"
-	"github.com/MacroPower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/overlay"
+	"github.com/macropower/kat/pkg/ui/themes"
 )
 
 func TestNew(t *testing.T) {
