@@ -8,7 +8,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -25,7 +24,7 @@ import (
 
 // NewProgram returns a new Tea program.
 func NewProgram(cfg *Config, cmd common.Commander) *tea.Program {
-	log.Debug("starting kat")
+	slog.Debug("starting kat ui")
 
 	opts := []tea.ProgramOption{tea.WithAltScreen()}
 	m := newModel(cfg, cmd)
@@ -504,7 +503,8 @@ func kubeResourceToYAML(res *kube.Resource) *yamldoc.YAMLDocument {
 
 // LogKeyPress logs key presses for debugging (optional, can be enabled via config).
 func LogKeyPress(key, context string) {
-	if log.GetLevel() == log.DebugLevel {
-		log.Debug("key pressed", "key", key, "context", context)
-	}
+	slog.Debug("key pressed",
+		slog.String("key", key),
+		slog.String("context", context),
+	)
 }

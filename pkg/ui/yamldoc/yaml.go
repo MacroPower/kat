@@ -2,9 +2,9 @@ package yamldoc
 
 import (
 	"fmt"
+	"log/slog"
 	"unicode"
 
-	"github.com/charmbracelet/log"
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
@@ -33,7 +33,10 @@ func (m *YAMLDocument) BuildFilterValue() {
 	if err == nil {
 		m.FilterValue += title
 	} else {
-		log.Error("error normalizing", "title", m.Title, "error", err)
+		slog.Error("error normalizing",
+			slog.String("title", m.Title),
+			slog.Any("error", err),
+		)
 		m.FilterValue += m.Title
 	}
 
@@ -41,7 +44,10 @@ func (m *YAMLDocument) BuildFilterValue() {
 	if err == nil {
 		m.FilterValue += desc
 	} else {
-		log.Error("error normalizing", "desc", m.Desc, "error", err)
+		slog.Error("error normalizing",
+			slog.String("desc", m.Desc),
+			slog.Any("error", err),
+		)
 		m.FilterValue += m.Desc
 	}
 }

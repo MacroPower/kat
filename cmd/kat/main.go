@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"strings"
 	"time"
@@ -106,6 +107,7 @@ func main() {
 	slog.Debug("parsed args",
 		slog.String("path", cli.Path),
 		slog.Any("command", cli.Command),
+		slog.Any("args", cli.Args),
 	)
 
 	if cli.ShowConfig {
@@ -136,8 +138,30 @@ func main() {
 		}
 	}
 
+	logBuf := log.NewCircularBuffer(100)
+	logHandler, err = log.CreateHandlerWithStrings(logBuf, cli.Log.Level, cli.Log.Format)
+	if err != nil {
+		cliCtx.Fatalf("failed to create log handler: %v", err)
+	}
+	slog.SetDefault(slog.New(logHandler))
+
 	if err := runUI(cfg.UI, cr); err != nil {
+		slog.Error("run UI", slog.Any("err", err))
+		flushLogs(cliCtx.Stderr, logBuf)
 		cliCtx.FatalIfErrorf(fmt.Errorf("ui program failure: %w", err))
+	}
+
+	flushLogs(cliCtx.Stderr, logBuf)
+}
+
+func flushLogs(w io.Writer, buf *log.CircularBuffer) {
+	slog.Debug("flush logs to console",
+		slog.Int("count", buf.Size()),
+		slog.Int("max", buf.Capacity()),
+		slog.Bool("truncated", buf.IsFull()),
+	)
+	if _, err := buf.WriteTo(w); err != nil {
+		panic(err)
 	}
 }
 

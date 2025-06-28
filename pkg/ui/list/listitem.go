@@ -2,10 +2,10 @@ package list
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 	"github.com/muesli/reflow/truncate"
 	"github.com/sahilm/fuzzy"
 
@@ -120,7 +120,10 @@ func styleFilteredText(haystack, needles string, defaultStyle, matchedStyle lipg
 
 	normalizedHay, err := yamldoc.Normalize(haystack)
 	if err != nil {
-		log.Error("error normalizing", "haystack", haystack, "error", err)
+		slog.Error("error normalizing",
+			slog.String("haystack", haystack),
+			slog.Any("error", err),
+		)
 	}
 
 	matches := fuzzy.Find(needles, []string{normalizedHay})

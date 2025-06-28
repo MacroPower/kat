@@ -1,10 +1,11 @@
 package pager
 
 import (
+	"log/slog"
+
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 	"github.com/muesli/termenv"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -181,7 +182,9 @@ func (m PagerModel) Render(yaml string) tea.Cmd {
 
 		s, err := m.chromaRenderer.RenderContent(yaml, max(0, m.viewport.Width))
 		if err != nil {
-			log.Debug("error rendering with Chroma", "error", err)
+			slog.Debug("error rendering with Chroma",
+				slog.Any("error", err),
+			)
 
 			return common.ErrMsg{Err: err}
 		}
@@ -191,7 +194,7 @@ func (m PagerModel) Render(yaml string) tea.Cmd {
 }
 
 func (m *PagerModel) Unload() {
-	log.Debug("unload")
+	slog.Debug("unload pager document")
 	if m.ShowHelp {
 		m.toggleHelp()
 	}
