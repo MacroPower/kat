@@ -9,9 +9,10 @@ dist/
 # Test binary, built with `go test -c`
 *.test
 
-# Test output directory
+# Test output
 .test/
 **/testdata/got/
+coverage.txt
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
