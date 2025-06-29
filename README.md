@@ -41,6 +41,42 @@ brew install macropower/tap/kat --cask
 go install github.com/macropower/kat/cmd/kat@latest
 ```
 
+### Docker
+
+Run the latest image:
+
+```sh
+docker run -it ghcr.io/macropower/kat:latest
+```
+
+Note that this image does _not_ contain any additional tools (e.g. helm, kustomize). You must create your own image to include any tools you need, for example:
+
+```dockerfile
+FROM alpine:latest
+COPY --from=ghcr.io/macropower/kat:latest /kat /usr/local/bin/kat
+RUN apk add --no-cache helm kustomize kubeconform
+```
+
+### Nix Flakes
+
+Add my NUR to your `flake.nix`:
+
+```nix
+{
+  inputs = {
+    macropower.url = "github:macropower/nur-packages";
+  };
+}
+```
+
+You can reference the package as `inputs.macropower.packages.<system>.kat`.
+
+### Nix Devbox
+
+```sh
+devbox add github:macropower/nur-packages#kat
+```
+
 ### Releases
 
 Binaries are posted in [releases](https://github.com/macropower/kat/releases).
