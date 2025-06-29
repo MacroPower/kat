@@ -39,3 +39,11 @@ cosign verify -o text \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
   ghcr.io/macropower/kat:$KAT_IMAGE_TAG
 ```
+
+## SBOM
+
+Releases are accompanied by `.sbom.json` files, which can be used with [syft](https://github.com/anchore/syft).
+
+```sh
+syft convert *.sbom.json -o syft-table
+```
