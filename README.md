@@ -114,6 +114,12 @@ And then move `kat` to a directory in your `PATH`.
 
 You can download binaries from [releases](https://github.com/macropower/kat/releases).
 
+## 🔐 Verification
+
+You can verify the authenticity and integrity of `kat` releases.
+
+See [verification](docs/verification.md) for more details.
+
 ## 🚀 Usage
 
 Show help:
