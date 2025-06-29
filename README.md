@@ -57,21 +57,34 @@ COPY --from=ghcr.io/macropower/kat:latest /kat /usr/local/bin/kat
 RUN apk add --no-cache helm kustomize kubeconform
 ```
 
-### Nix Flakes
+### Nix
 
-Add my NUR to your `flake.nix`:
+You can install `kat` using my [NUR](https://github.com/MacroPower/nur-packages).
+
+With `nix-env`:
+
+```sh
+nix-env -iA kat -f https://github.com/macropower/nur-packages/archive/main.tar.gz
+```
+
+With `nix-shell`:
+
+```sh
+nix-shell -A kat https://github.com/macropower/nur-packages/archive/main.tar.gz
+```
+
+With your `flake.nix`:
 
 ```nix
 {
   inputs = {
     macropower.url = "github:macropower/nur-packages";
   };
+  # Reference the package as `inputs.macropower.packages.<system>.kat`
 }
 ```
 
-You can reference the package as `inputs.macropower.packages.<system>.kat`.
-
-### Nix Devbox
+With [`devbox`](https://www.jetify.com/docs/devbox/):
 
 ```sh
 devbox add github:macropower/nur-packages#kat
