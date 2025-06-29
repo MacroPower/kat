@@ -55,6 +55,11 @@ checksum:
 source:
   enabled: true
 
+sboms:
+  - artifacts: archive
+  - id: source
+    artifacts: source
+
 # https://goreleaser.com/customization/sign
 signs:
   - cmd: cosign

@@ -537,6 +537,54 @@
         }
       }
     },
+    "syft@1.27.0": {
+      "last_modified": "2025-06-20T02:24:11Z",
+      "resolved": "github:NixOS/nixpkgs/076e8c6678d8c54204abcb4b1b14c366835a58bb#syft",
+      "source": "devbox-search",
+      "version": "1.27.0",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/5cnslg26lldmm464ilaz5sjvh0nbkpvy-syft-1.27.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/5cnslg26lldmm464ilaz5sjvh0nbkpvy-syft-1.27.0"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/wyb4wl0cdm5fjail0wgil45996njk00n-syft-1.27.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/wyb4wl0cdm5fjail0wgil45996njk00n-syft-1.27.0"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/bx1k9ng53rafbrgpk2nwp778vaq45if3-syft-1.27.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/bx1k9ng53rafbrgpk2nwp778vaq45if3-syft-1.27.0"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/1r4zydf4zvh87kjpic2lw9bckarpc5j9-syft-1.27.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/1r4zydf4zvh87kjpic2lw9bckarpc5j9-syft-1.27.0"
+        }
+      }
+    },
     "tmux@3.5": {
       "last_modified": "2025-05-16T20:19:48Z",
       "resolved": "github:NixOS/nixpkgs/12a55407652e04dcf2309436eb06fef0d3713ef3#tmux",
