@@ -4,6 +4,14 @@
 </p>
 
 <p align="center">
+  <a href="https://pkg.go.dev/github.com/macropower/kat"><img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/macropower/kat.svg"></a>
+  <a href="https://goreportcard.com/report/github.com/macropower/kat"><img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/macropower/kat"></a>
+  <a href="#-installation"><img alt="GitHub Downloads" src="https://img.shields.io/github/downloads/macropower/kat/total"></a>
+  <a href="#-installation"><img alt="Latest tag" src="https://img.shields.io/github/v/tag/macropower/kat?label=version&sort=semver"></a>
+  <a href="https://github.com/macropower/kat/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/macropower/kat"></a>
+</p>
+
+<p align="center">
   <code>kat</code> provides a <b>terminal UI</b> for rendering, validating, and displaying <b>local Kubernetes manifests</b>. It eliminates the frustrating cycle of manually running commands, scrolling through endless output, and constantly losing context when working with Helm charts, Kustomize overlays, and other manifest generators.
 </p>
 
