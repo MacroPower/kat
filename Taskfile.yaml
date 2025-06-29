@@ -115,14 +115,14 @@ tasks:
   go-build:
     desc: Builds Go binaries
     vars:
-      FLAGS: '{{.FLAGS | default "--skip=docker,homebrew,nix"}}'
+      FLAGS: '{{.FLAGS | default "--skip=docker,homebrew,nix,sign"}}'
     cmds:
       - goreleaser release --snapshot --clean {{ .FLAGS }}
 
   go-build-images:
     desc: Builds Go binaries and Docker images
     vars:
-      FLAGS: '{{.FLAGS | default "--skip=homebrew,nix"}}'
+      FLAGS: '{{.FLAGS | default "--skip=homebrew,nix,sign"}}'
     cmds:
       - goreleaser release --snapshot --clean {{ .FLAGS }}
 

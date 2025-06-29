@@ -16,7 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
       packages: write
+      attestations: write
     steps:
       - name: Generate Token
         uses: actions/create-github-app-token@v2
@@ -60,3 +62,8 @@ jobs:
         run: devbox run -- task go-release
         env:
           GITHUB_TOKEN: "${{ steps.app-token.outputs.token }}"
+
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-checksums: ./dist/checksums.txt
