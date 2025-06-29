@@ -196,7 +196,7 @@ func GetPath() string {
 		return filepath.Join(xdgHome, "kat", "config.yaml")
 	}
 
-	if usr, err := user.Current(); err != nil {
+	if usr, err := user.Current(); err != nil && usr != nil {
 		return filepath.Join(usr.HomeDir, ".config", "kat", "config.yaml")
 	}
 
