@@ -30,7 +30,6 @@ builds:
       - -X github.com/macropower/kat/pkg/version.BuildDate={{.Date}}
     flags:
       - -trimpath
-    buildmode: pie
 
 archives:
   - formats: [tar.gz]
