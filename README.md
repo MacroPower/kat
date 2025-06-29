@@ -77,9 +77,29 @@ You can reference the package as `inputs.macropower.packages.<system>.kat`.
 devbox add github:macropower/nur-packages#kat
 ```
 
-### Releases
+### GitHub CLI
 
-Binaries are posted in [releases](https://github.com/macropower/kat/releases).
+```sh
+gh release download -R macropower/kat -p "kat_$(uname -s)_$(uname -m).tar.gz" -O - | tar -xz
+```
+
+And then move `kat` to a directory in your `PATH`.
+
+### Curl
+
+```sh
+curl -s https://api.github.com/repos/macropower/kat/releases/latest | \
+  jq -r ".assets[] |
+    select(.name | test(\"kat_$(uname -s)_$(uname -m).tar.gz\")) |
+    .browser_download_url" | \
+  xargs curl -L | tar -xz
+```
+
+And then move `kat` to a directory in your `PATH`.
+
+### Manual
+
+You can download binaries from [releases](https://github.com/macropower/kat/releases).
 
 ## 🚀 Usage
 
