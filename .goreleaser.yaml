@@ -82,7 +82,7 @@ homebrew_casks:
       email: 168950816+botty-mcbottington[bot]@users.noreply.github.com
     homepage: &homepage "https://github.com/MacroPower/kat/"
     description: &description "TUI for rendering, validating, and displaying local Kubernetes manifests"
-    license: &license "Apache License"
+    license: "Apache 2.0"
     skip_upload: false
 
 nix:
@@ -95,5 +95,5 @@ nix:
     commit_author: *commitAuthor
     homepage: *homepage
     description: *description
-    license: *license
+    license: "asl20"
     skip_upload: false
