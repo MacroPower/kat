@@ -52,18 +52,33 @@ go install github.com/macropower/kat/cmd/kat@latest
 
 ### Docker
 
-Run the latest image:
+Docker images are published to [ghcr.io/macropower](https://github.com/MacroPower/kat/pkgs/container/kat).
+
+Run the latest alpine image:
+
+```sh
+docker run -it ghcr.io/macropower/kat:latest-alpine
+```
+
+Run the latest debian image:
+
+```sh
+docker run -it ghcr.io/macropower/kat:latest-debian
+```
+
+Run the latest scratch image:
 
 ```sh
 docker run -it ghcr.io/macropower/kat:latest
 ```
 
-Note that this image does _not_ contain any additional tools (e.g. helm, kustomize). You must create your own image to include any tools you need, for example:
+If you need additional tools, or want to use particular versions of tools, you can easily create your own Dockerfile based on the scratch image:
 
 ```dockerfile
 FROM alpine:latest
 COPY --from=ghcr.io/macropower/kat:latest /kat /usr/local/bin/kat
-RUN apk add --no-cache helm kustomize kubeconform
+# Add whatever tools you need here.
+ENTRYPOINT ["/usr/local/bin/kat"]
 ```
 
 ### Nix

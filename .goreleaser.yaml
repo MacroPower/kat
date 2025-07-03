@@ -144,30 +144,46 @@ nix:
 
 docker_manifests:
   - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:latest'
-    image_templates:
+    image_templates: &baseImageTemplates
       - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-amd64'
       - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-arm64'
   - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}'
-    image_templates:
-      - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-amd64'
-      - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-arm64'
+    image_templates: *baseImageTemplates
   - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}'
-    image_templates:
-      - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-amd64'
-      - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-arm64'
+    image_templates: *baseImageTemplates
   - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}'
-    image_templates:
-      - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-amd64'
-      - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-arm64'
+    image_templates: *baseImageTemplates
+
+  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:latest-alpine'
+    image_templates: &alpineImageTemplates
+      - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-alpine-amd64'
+      - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-alpine-arm64'
+  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-alpine'
+    image_templates: *alpineImageTemplates
+  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}-alpine'
+    image_templates: *alpineImageTemplates
+  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-alpine'
+    image_templates: *alpineImageTemplates
+
+  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:latest-debian'
+    image_templates: &debianImageTemplates
+      - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-debian-amd64'
+      - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-debian-arm64'
+  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-debian'
+    image_templates: *debianImageTemplates
+  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}-debian'
+    image_templates: *debianImageTemplates
+  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-debian'
+    image_templates: *debianImageTemplates
 
 dockers:
   - goos: linux
     goarch: amd64
-    dockerfile: Dockerfile
+    dockerfile: docker/Dockerfile
     use: buildx
     image_templates:
       - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-amd64"
-    build_flag_templates:
+    build_flag_templates: &amd64DockerBuildFlags
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
       - "--label=org.opencontainers.image.version={{ .Tag }}"
@@ -176,17 +192,45 @@ dockers:
       - "--label=org.opencontainers.image.source={{ .GitURL }}"
   - goos: linux
     goarch: arm64
-    dockerfile: Dockerfile
+    dockerfile: docker/Dockerfile
     use: buildx
     image_templates:
       - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-arm64"
-    build_flag_templates:
+    build_flag_templates: &arm64DockerBuildFlags
       - "--platform=linux/arm64"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
       - "--label=org.opencontainers.image.version={{ .Tag }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.created={{ .Date }}"
       - "--label=org.opencontainers.image.source={{ .GitURL }}"
+  - goos: linux
+    goarch: arm64
+    dockerfile: docker/Dockerfile.alpine
+    use: buildx
+    image_templates:
+      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-alpine-arm64"
+    build_flag_templates: *arm64DockerBuildFlags
+  - goos: linux
+    goarch: amd64
+    dockerfile: docker/Dockerfile.alpine
+    use: buildx
+    image_templates:
+      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-alpine-amd64"
+    build_flag_templates: *amd64DockerBuildFlags
+  - goos: linux
+    goarch: arm64
+    dockerfile: docker/Dockerfile.debian
+    use: buildx
+    image_templates:
+      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-debian-arm64"
+    build_flag_templates: *arm64DockerBuildFlags
+  - goos: linux
+    goarch: amd64
+    dockerfile: docker/Dockerfile.debian
+    use: buildx
+    image_templates:
+      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-debian-amd64"
+    build_flag_templates: *amd64DockerBuildFlags
 
 docker_signs:
   - cmd: cosign
