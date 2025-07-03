@@ -59,13 +59,13 @@ All images are configured with `WORKDIR=/data`, so you can mount your current di
 Run the latest alpine image:
 
 ```sh
-docker run -it -v .:/data ghcr.io/macropower/kat:latest-alpine
+docker run -it -v .:/data -e TERM=$TERM ghcr.io/macropower/kat:latest-alpine
 ```
 
 Run the latest debian image:
 
 ```sh
-docker run -it -v .:/data ghcr.io/macropower/kat:latest-debian
+docker run -it -v .:/data -e TERM=$TERM ghcr.io/macropower/kat:latest-debian
 ```
 
 The default config is located at `/config/kat/config.yaml`, and you can override it by mounting your own configuration file at that path.
