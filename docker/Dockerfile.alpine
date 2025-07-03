@@ -3,6 +3,8 @@ FROM alpine:latest
 ARG TARGETOS
 ARG TARGETARCH
 
+ENV XDG_CONFIG_HOME=/config
+
 # Install dependencies
 RUN apk add --no-cache \
     curl \

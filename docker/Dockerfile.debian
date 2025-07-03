@@ -3,6 +3,8 @@ FROM debian:latest
 ARG TARGETOS
 ARG TARGETARCH
 
+ENV XDG_CONFIG_HOME=/config
+
 # Install dependencies
 RUN apt-get update && apt-get install -y \
     curl \

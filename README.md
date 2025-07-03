@@ -54,6 +54,8 @@ go install github.com/macropower/kat/cmd/kat@latest
 
 Docker images are published to [ghcr.io/macropower](https://github.com/MacroPower/kat/pkgs/container/kat).
 
+All images are configured with `WORKDIR=/data`, so you can mount your current directory there to run `kat` against your local files.
+
 Run the latest alpine image:
 
 ```sh
@@ -65,6 +67,8 @@ Run the latest debian image:
 ```sh
 docker run -it -v .:/data ghcr.io/macropower/kat:latest-debian
 ```
+
+The default config is located at `/config/kat/config.yaml`, and you can override it by mounting your own configuration file at that path.
 
 There is also a scratch image that contains only the `kat` binary, which is useful when you want to build your own image (which I generally recommend doing):
 
