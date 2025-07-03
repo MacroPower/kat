@@ -57,27 +57,21 @@ Docker images are published to [ghcr.io/macropower](https://github.com/MacroPowe
 Run the latest alpine image:
 
 ```sh
-docker run -it ghcr.io/macropower/kat:latest-alpine
+docker run -it -v .:/data ghcr.io/macropower/kat:latest-alpine
 ```
 
 Run the latest debian image:
 
 ```sh
-docker run -it ghcr.io/macropower/kat:latest-debian
+docker run -it -v .:/data ghcr.io/macropower/kat:latest-debian
 ```
 
-Run the latest scratch image:
-
-```sh
-docker run -it ghcr.io/macropower/kat:latest
-```
-
-If you need additional tools, or want to use particular versions of tools, you can easily create your own Dockerfile based on the scratch image:
+There is also a scratch image that contains only the `kat` binary, which is useful when you want to build your own image (which I generally recommend doing):
 
 ```dockerfile
 FROM alpine:latest
 COPY --from=ghcr.io/macropower/kat:latest /kat /usr/local/bin/kat
-# Add whatever tools you need here.
+# Add whatever customization you need here.
 ENTRYPOINT ["/usr/local/bin/kat"]
 ```
 

@@ -28,4 +28,6 @@ COPY kat /usr/local/bin/kat
 # Write the default configuration
 RUN kat --write-config
 
+WORKDIR /data
+
 ENTRYPOINT ["/usr/local/bin/kat"]
