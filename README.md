@@ -123,7 +123,7 @@ And then move `kat` to a directory in your `PATH`.
 
 You can download binaries from [releases](https://github.com/macropower/kat/releases).
 
-## 🔐 Verification
+## 🔏 Verification
 
 You can verify the authenticity and integrity of `kat` releases.
 

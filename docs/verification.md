@@ -47,3 +47,11 @@ Releases are accompanied by `.sbom.json` files, which can be used with [syft](ht
 ```sh
 syft convert *.sbom.json -o syft-table
 ```
+
+## Notarization
+
+macOS releases are notarized. You can verify the notarization with:
+
+```sh
+spctl -a -t install -vv kat
+```
