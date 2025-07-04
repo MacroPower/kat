@@ -55,7 +55,7 @@ func TestNew(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, p)
-				assert.Equal(t, tt.command, p.Command)
+				assert.Equal(t, tt.command, p.Command.Command)
 			}
 		})
 	}
@@ -69,8 +69,8 @@ func TestMustNew(t *testing.T) {
 
 		p := profile.MustNew("echo", profile.WithArgs("test"))
 		require.NotNil(t, p)
-		assert.Equal(t, "echo", p.Command)
-		assert.Equal(t, []string{"test"}, p.Args)
+		assert.Equal(t, "echo", p.Command.Command)
+		assert.Equal(t, []string{"test"}, p.Command.Args)
 	})
 
 	t.Run("invalid profile panics", func(t *testing.T) {

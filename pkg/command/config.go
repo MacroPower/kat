@@ -116,7 +116,7 @@ func (c *Config) Validate() *ConfigError {
 				Err:  fmt.Errorf("invalid source: %w", err),
 			}
 		}
-		for i, env := range p.Environment.Env {
+		for i, env := range p.Command.Env {
 			if env.ValueFrom == nil || env.ValueFrom.CallerRef == nil || env.ValueFrom.CallerRef.Pattern == "" {
 				continue // Skip if no pattern is defined.
 			}
@@ -128,7 +128,7 @@ func (c *Config) Validate() *ConfigError {
 				}
 			}
 		}
-		for i, envFrom := range p.Environment.EnvFrom {
+		for i, envFrom := range p.Command.EnvFrom {
 			if envFrom.CallerRef == nil || envFrom.CallerRef.Pattern == "" {
 				continue // Skip if no pattern is defined.
 			}

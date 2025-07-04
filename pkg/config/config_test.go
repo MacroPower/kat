@@ -383,12 +383,12 @@ func TestDefaultConfigYAMLIsValid(t *testing.T) {
 
 	// Verify that key profiles have expected commands.
 	ksProfile := cfg.Command.Profiles["ks"]
-	assert.Equal(t, "kustomize", ksProfile.Command)
-	assert.Contains(t, ksProfile.Args, "build")
+	assert.Equal(t, "kustomize", ksProfile.Command.Command)
+	assert.Contains(t, ksProfile.Command.Args, "build")
 
 	helmProfile := cfg.Command.Profiles["helm"]
-	assert.Equal(t, "helm", helmProfile.Command)
-	assert.Contains(t, helmProfile.Args, "template")
+	assert.Equal(t, "helm", helmProfile.Command.Command)
+	assert.Contains(t, helmProfile.Command.Args, "template")
 }
 
 func TestConfig_MarshalYAML(t *testing.T) {
@@ -554,8 +554,8 @@ func TestUnmarshalAndValidateDefaultConfig(t *testing.T) {
 	for _, profileName := range expectedProfiles {
 		profile, exists := cfg.Command.Profiles[profileName]
 		assert.True(t, exists, "profile %q should exist in default config", profileName)
-		assert.NotEmpty(t, profile.Command, "profile %q should have a command", profileName)
-		assert.NotEmpty(t, profile.Args, "profile %q should have args", profileName)
+		assert.NotEmpty(t, profile.Command.Command, "profile %q should have a command", profileName)
+		assert.NotEmpty(t, profile.Command.Args, "profile %q should have args", profileName)
 	}
 
 	// Verify that rules exist and can be evaluated.

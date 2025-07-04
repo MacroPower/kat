@@ -10,7 +10,6 @@ package rule
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/google/cel-go/cel"
 
@@ -141,5 +140,5 @@ func (r *Rule) SetProfile(p *profile.Profile) {
 func (r *Rule) String() string {
 	p := r.GetProfile()
 
-	return fmt.Sprintf("%s: %s %s", r.Profile, p.Command, strings.Join(p.Args, " "))
+	return fmt.Sprintf("%s: %s", r.Profile, p.Command.String())
 }

@@ -1,7 +1,11 @@
 package profile
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"log/slog"
+	"os/exec"
 	"regexp"
 	"slices"
 	"strings"
@@ -45,17 +49,19 @@ func (c *CallerRef) Compile() error {
 	return nil
 }
 
-// Environment manages environment variables for command execution.
-type Environment struct {
+// Command manages common command execution properties.
+type Command struct {
 	baseEnv map[string]string
+	Command string          `validate:"required,alphanum" yaml:"command"`
+	Args    []string        `yaml:"args,flow"`
 	Env     []EnvVar        `yaml:"env,omitempty"`
-	EnvFrom []EnvFromSource `validate:"dive"      yaml:"envFrom,omitempty"`
+	EnvFrom []EnvFromSource `validate:"dive"              yaml:"envFrom,omitempty"`
 }
 
-// NewEnvironment creates a new [Environment].
+// NewCommand creates a new [Command].
 // It accepts a base environment, which usually will be from [os.Environ].
-func NewEnvironment(baseEnv []string) Environment {
-	e := Environment{
+func NewCommand(baseEnv []string) Command {
+	e := Command{
 		Env:     []EnvVar{},
 		EnvFrom: []EnvFromSource{},
 	}
@@ -64,7 +70,7 @@ func NewEnvironment(baseEnv []string) Environment {
 	return e
 }
 
-func (e *Environment) SetBaseEnv(baseEnv []string) {
+func (e *Command) SetBaseEnv(baseEnv []string) {
 	// Reset base environment.
 	e.baseEnv = make(map[string]string)
 	// Parse new base environment into map.
@@ -78,17 +84,17 @@ func (e *Environment) SetBaseEnv(baseEnv []string) {
 }
 
 // AddEnvVar adds a single environment variable.
-func (e *Environment) AddEnvVar(envVar EnvVar) {
+func (e *Command) AddEnvVar(envVar EnvVar) {
 	e.Env = append(e.Env, envVar)
 }
 
 // AddEnvFrom adds environment variable sources.
-func (e *Environment) AddEnvFrom(envFrom []EnvFromSource) {
+func (e *Command) AddEnvFrom(envFrom []EnvFromSource) {
 	e.EnvFrom = append(e.EnvFrom, envFrom...)
 }
 
-// Build constructs the environment variables for command execution.
-func (e *Environment) Build() []string {
+// GetEnv constructs environment variables for command execution.
+func (e *Command) GetEnv() []string {
 	// Start with a map to track environment variables.
 	envMap := make(map[string]string)
 
@@ -116,8 +122,53 @@ func (e *Environment) Build() []string {
 	return env
 }
 
+func (e *Command) Exec(ctx context.Context, dir string) ExecResult {
+	return e.ExecWithStdin(ctx, dir, nil)
+}
+
+func (e *Command) ExecWithStdin(ctx context.Context, dir string, stdin []byte) ExecResult {
+	if e.Command == "" {
+		return ExecResult{Error: fmt.Errorf("%w: %w", ErrCommandExecution, ErrEmptyCommand)}
+	}
+
+	// Get environment variables for command execution.
+	env := e.GetEnv()
+
+	// Prepare the command to execute.
+	cmd := exec.CommandContext(ctx, e.Command, e.Args...) //nolint:gosec // G204: Subprocess launched with a potential tainted input or cmd arguments.
+	cmd.Dir = dir
+	cmd.Env = env
+	cmd.Stdin = bytes.NewReader(stdin)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	result := ExecResult{
+		Stdout: stdout.String(),
+		Stderr: stderr.String(),
+	}
+
+	if err != nil {
+		if stderr.Len() > 0 {
+			result.Error = fmt.Errorf("%s\n%w: %w", stderr.String(), ErrCommandExecution, err)
+
+			return result
+		}
+
+		result.Error = fmt.Errorf("%w: %w", ErrCommandExecution, err)
+
+		return result
+	}
+
+	slog.DebugContext(ctx, "command executed successfully")
+
+	return result
+}
+
 // CompilePatterns compiles all regex patterns.
-func (e *Environment) CompilePatterns() error {
+func (e *Command) CompilePatterns() error {
 	for i, envVar := range e.Env {
 		if envVar.ValueFrom != nil && envVar.ValueFrom.CallerRef != nil {
 			if err := envVar.ValueFrom.CallerRef.Compile(); err != nil {
@@ -136,8 +187,12 @@ func (e *Environment) CompilePatterns() error {
 	return nil
 }
 
+func (e *Command) String() string {
+	return fmt.Sprintf("%s %s", e.Command, strings.Join(e.Args, " "))
+}
+
 // applyEnvFrom applies all envFrom sources to the environment map.
-func (e *Environment) applyEnvFrom(envMap map[string]string) {
+func (e *Command) applyEnvFrom(envMap map[string]string) {
 	for _, envFromSource := range e.EnvFrom {
 		if envFromSource.CallerRef == nil {
 			continue
@@ -164,7 +219,7 @@ func (e *Environment) applyEnvFrom(envMap map[string]string) {
 }
 
 // applyEnv applies environment variables from the env field.
-func (e *Environment) applyEnv(envMap map[string]string) {
+func (e *Command) applyEnv(envMap map[string]string) {
 	for _, envVar := range e.Env {
 		if envVar.Name == "" {
 			continue

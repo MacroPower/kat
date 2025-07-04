@@ -7,13 +7,11 @@
 package profile
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types/ref"
@@ -34,6 +32,9 @@ var (
 
 	// ErrHookExecution is returned when hook execution fails.
 	ErrHookExecution = errors.New("hook execution")
+
+	// ErrPluginExecution is returned when plugin execution fails.
+	ErrPluginExecution = errors.New("plugin execution")
 )
 
 // Profile represents a command profile with optional source filtering.
@@ -54,15 +55,12 @@ var (
 //
 // If no Source expression is provided, the profile will use default file filtering.
 type Profile struct {
-	sourceProgram cel.Program // Compiled CEL program for source matching.
-
-	Environment Environment        `yaml:",inline"`
-	Hooks       *Hooks             `yaml:"hooks,omitempty"`
-	UI          *UIConfig          `yaml:"ui,omitempty"` // UI configuration for the profile.
-	Plugins     map[string]*Plugin `yaml:"plugins,omitempty"`
-	Source      string             `yaml:"source,omitempty"`
-	Command     string             `validate:"required,alphanum" yaml:"command"`
-	Args        []string           `yaml:"args,flow"`
+	sourceProgram cel.Program
+	Hooks         *Hooks             `yaml:"hooks,omitempty"`
+	UI            *UIConfig          `yaml:"ui,omitempty"`
+	Plugins       map[string]*Plugin `yaml:"plugins,omitempty"`
+	Source        string             `yaml:"source,omitempty"`
+	Command       Command            `yaml:",inline"`
 }
 
 // ProfileOpt is a functional option for configuring a Profile.
@@ -70,7 +68,7 @@ type ProfileOpt func(*Profile)
 
 // New creates a new profile with the given command and options.
 func New(command string, opts ...ProfileOpt) (*Profile, error) {
-	p := &Profile{Command: command}
+	p := &Profile{Command: Command{Command: command}}
 	for _, opt := range opts {
 		opt(p)
 	}
@@ -94,7 +92,7 @@ func MustNew(command string, opts ...ProfileOpt) *Profile {
 // WithArgs sets the command arguments for the profile.
 func WithArgs(args ...string) ProfileOpt {
 	return func(p *Profile) {
-		p.Args = args
+		p.Command.Args = args
 	}
 }
 
@@ -116,14 +114,14 @@ func WithSource(source string) ProfileOpt {
 // Call multiple times to set multiple environment variables.
 func WithEnvVar(envVar EnvVar) ProfileOpt {
 	return func(p *Profile) {
-		p.Environment.AddEnvVar(envVar)
+		p.Command.AddEnvVar(envVar)
 	}
 }
 
 // WithEnvFrom sets the envFrom sources for the profile.
 func WithEnvFrom(envFrom []EnvFromSource) ProfileOpt {
 	return func(p *Profile) {
-		p.Environment.AddEnvFrom(envFrom)
+		p.Command.AddEnvFrom(envFrom)
 	}
 }
 
@@ -135,7 +133,7 @@ func WithPlugins(plugins map[string]*Plugin) ProfileOpt {
 }
 
 func (p *Profile) Build() error {
-	p.Environment.SetBaseEnv(os.Environ())
+	p.Command.SetBaseEnv(os.Environ())
 	if p.Hooks != nil {
 		if err := p.Hooks.Build(); err != nil {
 			return fmt.Errorf("build hooks: %w", err)
@@ -144,14 +142,14 @@ func (p *Profile) Build() error {
 	if p.Plugins != nil {
 		for _, plugin := range p.Plugins {
 			if err := plugin.Build(); err != nil {
-				return fmt.Errorf("build plugin %q: %w", plugin.Command, err)
+				return fmt.Errorf("build plugin %q: %w", plugin.Command.Command, err)
 			}
 		}
 	}
 	if err := p.CompileSource(); err != nil {
 		return fmt.Errorf("compile source: %w", err)
 	}
-	if err := p.Environment.CompilePatterns(); err != nil {
+	if err := p.Command.CompilePatterns(); err != nil {
 		return fmt.Errorf("compile patterns: %w", err)
 	}
 
@@ -233,45 +231,20 @@ type ExecResult struct {
 // Exec runs the profile in the specified directory.
 // Returns ExecResult with the command output and any post-render hooks.
 func (p *Profile) Exec(ctx context.Context, dir string) ExecResult {
-	if p.Command == "" {
-		return ExecResult{Error: fmt.Errorf("%w: %w", ErrCommandExecution, ErrEmptyCommand)}
-	}
-
-	// Build environment variables for command execution.
-	env := p.Environment.Build()
-
 	// Execute preRender hooks, if any.
 	if p.Hooks != nil {
 		for _, hook := range p.Hooks.PreRender {
-			if err := hook.Exec(ctx, dir, nil); err != nil {
-				return ExecResult{Error: fmt.Errorf("%w: %w", ErrHookExecution, err)}
+			if hr := hook.Exec(ctx, dir, nil); hr.Error != nil {
+				hr.Error = fmt.Errorf("%w: %w", ErrHookExecution, hr.Error)
+
+				return hr
 			}
 		}
 	}
 
-	// Execute main command.
-	cmd := exec.CommandContext(ctx, p.Command, p.Args...) //nolint:gosec // G204: Subprocess launched with a potential tainted input or cmd arguments.
-	cmd.Dir = dir
-	cmd.Env = env
-
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-	result := ExecResult{
-		Stdout: stdout.String(),
-		Stderr: stderr.String(),
-	}
-
-	if err != nil {
-		if stderr.Len() > 0 {
-			result.Error = fmt.Errorf("%s\n%w: %w", stderr.String(), ErrCommandExecution, err)
-
-			return result
-		}
-
-		result.Error = fmt.Errorf("%w: %w", ErrCommandExecution, err)
+	result := p.Command.Exec(ctx, dir)
+	if result.Error != nil {
+		result.Error = fmt.Errorf("%w: %w", ErrCommandExecution, result.Error)
 
 		return result
 	}
@@ -279,15 +252,13 @@ func (p *Profile) Exec(ctx context.Context, dir string) ExecResult {
 	// Execute postRender hooks, passing the main command's output as stdin.
 	if p.Hooks != nil {
 		for _, hook := range p.Hooks.PostRender {
-			if err := hook.Exec(ctx, dir, stdout.Bytes()); err != nil {
-				result.Error = err
+			if hr := hook.Exec(ctx, dir, []byte(result.Stdout)); hr.Error != nil {
+				hr.Error = fmt.Errorf("%w: %w", ErrHookExecution, hr.Error)
 
-				return result
+				return hr
 			}
 		}
 	}
-
-	slog.DebugContext(ctx, "profile executed successfully", slog.String("command", p.Command))
 
 	return result
 }

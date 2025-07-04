@@ -74,8 +74,8 @@ func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
 	p := cr.rule.GetProfile()
 	if p.Hooks != nil {
 		for _, hook := range p.Hooks.Init {
-			if err := hook.Exec(context.Background(), cr.path, nil); err != nil {
-				return nil, fmt.Errorf("%w: init: %w", ErrHookExecution, err)
+			if hr := hook.Exec(context.Background(), cr.path, nil); hr.Error != nil {
+				return nil, fmt.Errorf("%w: init: %w", ErrHookExecution, hr.Error)
 			}
 		}
 	}
@@ -312,8 +312,8 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 	var (
 		path = cr.path
 		p    = cr.rule.GetProfile()
-		cmd  = p.Command
-		args = p.Args
+		cmd  = p.Command.Command
+		args = p.Command.Args
 	)
 
 	// Cancel any currently running command.

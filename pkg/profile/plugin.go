@@ -1,29 +1,26 @@
 package profile
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
-	"os/exec"
 
 	"github.com/macropower/kat/pkg/keys"
 )
 
 // Plugin represents a command plugin that can be executed on demand with keybinds.
 type Plugin struct {
-	Environment Environment `yaml:",inline"`
-	Description string      `yaml:"description"`
-	Keys        []keys.Key  `yaml:"keys,omitempty"`
-	Command     string      `validate:"required,alphanum" yaml:"command"`
-	Args        []string    `yaml:"args,flow"`
+	Command     Command    `yaml:",inline"`
+	Description string     `yaml:"description"`
+	Keys        []keys.Key `yaml:"keys,omitempty"`
 }
 
 // NewPlugin creates a new plugin with the given command and options.
 func NewPlugin(command, description string, opts ...PluginOpt) (*Plugin, error) {
 	p := &Plugin{
-		Command:     command,
+		Command: Command{
+			Command: command,
+		},
 		Description: description,
 	}
 	for _, opt := range opts {
@@ -52,7 +49,7 @@ type PluginOpt func(*Plugin)
 // WithPluginArgs sets the command arguments for the plugin.
 func WithPluginArgs(a ...string) PluginOpt {
 	return func(p *Plugin) {
-		p.Args = a
+		p.Command.Args = a
 	}
 }
 
@@ -66,21 +63,21 @@ func WithPluginKeys(k ...keys.Key) PluginOpt {
 // WithPluginEnvVar sets a single environment variable for the plugin.
 func WithPluginEnvVar(envVar EnvVar) PluginOpt {
 	return func(p *Plugin) {
-		p.Environment.AddEnvVar(envVar)
+		p.Command.AddEnvVar(envVar)
 	}
 }
 
 // WithPluginEnvFrom sets the envFrom sources for the plugin.
 func WithPluginEnvFrom(envFrom []EnvFromSource) PluginOpt {
 	return func(p *Plugin) {
-		p.Environment.AddEnvFrom(envFrom)
+		p.Command.AddEnvFrom(envFrom)
 	}
 }
 
 func (p *Plugin) Build() error {
-	p.Environment.SetBaseEnv(os.Environ())
+	p.Command.SetBaseEnv(os.Environ())
 
-	if err := p.Environment.CompilePatterns(); err != nil {
+	if err := p.Command.CompilePatterns(); err != nil {
 		return fmt.Errorf("compile patterns: %w", err)
 	}
 
@@ -89,40 +86,10 @@ func (p *Plugin) Build() error {
 
 // Exec executes the plugin command in the specified directory.
 func (p *Plugin) Exec(ctx context.Context, dir string) ExecResult {
-	if p.Command == "" {
-		return ExecResult{Error: fmt.Errorf("%w: %w", ErrCommandExecution, ErrEmptyCommand)}
+	result := p.Command.Exec(ctx, dir)
+	if result.Error != nil {
+		result.Error = fmt.Errorf("%w: %w", ErrPluginExecution, result.Error)
 	}
-
-	// Build environment variables for command execution.
-	env := p.Environment.Build()
-
-	cmd := exec.CommandContext(ctx, p.Command, p.Args...) //nolint:gosec // G204: Subprocess launched with a potential tainted input or cmd arguments.
-	cmd.Dir = dir
-	cmd.Env = env
-
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-	result := ExecResult{
-		Stdout: stdout.String(),
-		Stderr: stderr.String(),
-	}
-
-	if err != nil {
-		if stderr.Len() > 0 {
-			result.Error = fmt.Errorf("%s\n%w: %w", stderr.String(), ErrCommandExecution, err)
-
-			return result
-		}
-
-		result.Error = fmt.Errorf("%w: %w", ErrCommandExecution, err)
-
-		return result
-	}
-
-	slog.DebugContext(ctx, "plugin executed successfully", slog.String("command", p.Command))
 
 	return result
 }

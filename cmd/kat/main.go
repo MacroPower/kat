@@ -177,7 +177,7 @@ func getProfile(cfg *config.Config, cmd string, args []string) (*profile.Profile
 		}
 	} else if len(args) > 0 {
 		slog.Debug("overwriting profile arguments", slog.String("name", cmd))
-		p.Args = args
+		p.Command.Args = args
 	}
 
 	return p, nil

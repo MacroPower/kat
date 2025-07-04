@@ -9,20 +9,20 @@ import (
 	"github.com/macropower/kat/pkg/profile"
 )
 
-func TestNewEnvironment(t *testing.T) {
+func TestNewCommand(t *testing.T) {
 	t.Parallel()
 
 	baseEnv := []string{"PATH=/usr/bin", "HOME=/home/test"}
-	env := profile.NewEnvironment(baseEnv)
+	env := profile.NewCommand(baseEnv)
 	assert.NotNil(t, env)
 	assert.Empty(t, env.Env)
 	assert.Empty(t, env.EnvFrom)
 }
 
-func TestEnvironment_AddEnvVar(t *testing.T) {
+func TestCommand_AddEnvVar(t *testing.T) {
 	t.Parallel()
 
-	env := profile.NewEnvironment([]string{})
+	env := profile.NewCommand([]string{})
 	envVar := profile.EnvVar{
 		Name:  "TEST_VAR",
 		Value: "test_value",
@@ -35,10 +35,10 @@ func TestEnvironment_AddEnvVar(t *testing.T) {
 	assert.Equal(t, "test_value", env.Env[0].Value)
 }
 
-func TestEnvironment_AddEnvFrom(t *testing.T) {
+func TestCommand_AddEnvFrom(t *testing.T) {
 	t.Parallel()
 
-	env := profile.NewEnvironment([]string{})
+	env := profile.NewCommand([]string{})
 	callerRef := &profile.CallerRef{
 		Name: "HOME",
 	}
@@ -52,16 +52,16 @@ func TestEnvironment_AddEnvFrom(t *testing.T) {
 	assert.Equal(t, "HOME", env.EnvFrom[0].CallerRef.Name)
 }
 
-func TestEnvironment_SetBaseEnv(t *testing.T) {
+func TestCommand_SetBaseEnv(t *testing.T) {
 	t.Parallel()
 
-	env := profile.NewEnvironment([]string{"INITIAL=value"})
+	env := profile.NewCommand([]string{"INITIAL=value"})
 
 	// Change the base environment.
 	newBaseEnv := []string{"NEW_VAR=new_value", "PATH=/usr/bin"}
 	env.SetBaseEnv(newBaseEnv)
 
-	result := env.Build()
+	result := env.GetEnv()
 
 	// Should contain the new base environment variables (essential ones).
 	assert.Contains(t, result, "PATH=/usr/bin")
@@ -71,19 +71,19 @@ func TestEnvironment_SetBaseEnv(t *testing.T) {
 	}
 }
 
-func TestEnvironment_Build(t *testing.T) {
+func TestCommand_Build(t *testing.T) {
 	t.Parallel()
 
 	tcs := map[string]struct {
-		setupEnv func() profile.Environment
+		setupEnv func() profile.Command
 		validate func(t *testing.T, result []string)
 	}{
 		"empty environment with base env": {
-			setupEnv: func() profile.Environment {
+			setupEnv: func() profile.Command {
 				t.Helper()
 				baseEnv := []string{"PATH=/usr/bin", "HOME=/home/test", "NON_ESSENTIAL=value"}
 
-				return profile.NewEnvironment(baseEnv)
+				return profile.NewCommand(baseEnv)
 			},
 			validate: func(t *testing.T, result []string) {
 				t.Helper()
@@ -97,9 +97,9 @@ func TestEnvironment_Build(t *testing.T) {
 			},
 		},
 		"static environment variable": {
-			setupEnv: func() profile.Environment {
+			setupEnv: func() profile.Command {
 				t.Helper()
-				env := profile.NewEnvironment([]string{})
+				env := profile.NewCommand([]string{})
 				env.AddEnvVar(profile.EnvVar{
 					Name:  "STATIC_VAR",
 					Value: "static_value",
@@ -113,9 +113,9 @@ func TestEnvironment_Build(t *testing.T) {
 			},
 		},
 		"environment variable from caller reference - nonexistent": {
-			setupEnv: func() profile.Environment {
+			setupEnv: func() profile.Command {
 				// Test case where the caller reference doesn't exist in baseEnv or envMap.
-				env := profile.NewEnvironment([]string{})
+				env := profile.NewCommand([]string{})
 				env.AddEnvVar(profile.EnvVar{
 					Name: "FROM_CALLER",
 					ValueFrom: &profile.EnvVarSource{
@@ -136,10 +136,10 @@ func TestEnvironment_Build(t *testing.T) {
 			},
 		},
 		"environment variable from caller reference - exists in base": {
-			setupEnv: func() profile.Environment {
+			setupEnv: func() profile.Command {
 				// Test with a caller reference to an essential variable.
 				baseEnv := []string{"PATH=/usr/bin", "HOME=/home/test"}
-				env := profile.NewEnvironment(baseEnv)
+				env := profile.NewCommand(baseEnv)
 				env.AddEnvVar(profile.EnvVar{
 					Name: "FROM_CALLER",
 					ValueFrom: &profile.EnvVarSource{
@@ -158,11 +158,11 @@ func TestEnvironment_Build(t *testing.T) {
 			},
 		},
 		"environment variable from caller reference - PATH": {
-			setupEnv: func() profile.Environment {
+			setupEnv: func() profile.Command {
 				t.Helper()
 				// Test referencing PATH which is provided in base environment.
 				baseEnv := []string{"PATH=/usr/bin:/bin"}
-				env := profile.NewEnvironment(baseEnv)
+				env := profile.NewCommand(baseEnv)
 				env.AddEnvVar(profile.EnvVar{
 					Name: "COPIED_PATH",
 					ValueFrom: &profile.EnvVarSource{
@@ -183,10 +183,10 @@ func TestEnvironment_Build(t *testing.T) {
 			},
 		},
 		"envFrom with name reference": {
-			setupEnv: func() profile.Environment {
+			setupEnv: func() profile.Command {
 				t.Helper()
 				baseEnv := []string{"TEST_ENVFROM_VAR=envfrom_value", "PATH=/usr/bin"}
-				env := profile.NewEnvironment(baseEnv)
+				env := profile.NewCommand(baseEnv)
 				env.AddEnvFrom([]profile.EnvFromSource{
 					{
 						CallerRef: &profile.CallerRef{
@@ -203,7 +203,7 @@ func TestEnvironment_Build(t *testing.T) {
 			},
 		},
 		"envFrom with pattern reference": {
-			setupEnv: func() profile.Environment {
+			setupEnv: func() profile.Command {
 				t.Helper()
 				baseEnv := []string{
 					"TEST_PATTERN_VAR1=pattern_value1",
@@ -211,7 +211,7 @@ func TestEnvironment_Build(t *testing.T) {
 					"OTHER_VAR=other_value",
 					"PATH=/usr/bin",
 				}
-				env := profile.NewEnvironment(baseEnv)
+				env := profile.NewCommand(baseEnv)
 				callerRef := &profile.CallerRef{
 					Pattern: "TEST_PATTERN_.*",
 				}
@@ -236,10 +236,10 @@ func TestEnvironment_Build(t *testing.T) {
 			},
 		},
 		"static variable overrides base environment": {
-			setupEnv: func() profile.Environment {
+			setupEnv: func() profile.Command {
 				t.Helper()
 				baseEnv := []string{"OVERRIDE_VAR=old_value", "PATH=/usr/bin"}
-				env := profile.NewEnvironment(baseEnv)
+				env := profile.NewCommand(baseEnv)
 				env.AddEnvVar(profile.EnvVar{
 					Name:  "OVERRIDE_VAR",
 					Value: "new_value",
@@ -257,9 +257,9 @@ func TestEnvironment_Build(t *testing.T) {
 			},
 		},
 		"missing caller reference": {
-			setupEnv: func() profile.Environment {
+			setupEnv: func() profile.Command {
 				t.Helper()
-				env := profile.NewEnvironment([]string{})
+				env := profile.NewCommand([]string{})
 				env.AddEnvVar(profile.EnvVar{
 					Name: "MISSING_REF",
 					ValueFrom: &profile.EnvVarSource{
@@ -280,10 +280,10 @@ func TestEnvironment_Build(t *testing.T) {
 			},
 		},
 		"envFrom with missing name reference": {
-			setupEnv: func() profile.Environment {
+			setupEnv: func() profile.Command {
 				t.Helper()
 				baseEnv := []string{"PATH=/usr/bin"}
-				env := profile.NewEnvironment(baseEnv)
+				env := profile.NewCommand(baseEnv)
 				env.AddEnvFrom([]profile.EnvFromSource{
 					{
 						CallerRef: &profile.CallerRef{
@@ -309,35 +309,35 @@ func TestEnvironment_Build(t *testing.T) {
 			t.Parallel()
 
 			env := tc.setupEnv()
-			result := env.Build()
+			result := env.GetEnv()
 			tc.validate(t, result)
 		})
 	}
 }
 
-func TestEnvironment_CompilePatterns(t *testing.T) {
+func TestCommand_CompilePatterns(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		setup   func() profile.Environment
+		setup   func() profile.Command
 		name    string
 		errMsg  string
 		wantErr bool
 	}{
 		{
 			name: "no patterns to compile",
-			setup: func() profile.Environment {
+			setup: func() profile.Command {
 				t.Helper()
 
-				return profile.NewEnvironment([]string{})
+				return profile.NewCommand([]string{})
 			},
 			wantErr: false,
 		},
 		{
 			name: "valid env pattern",
-			setup: func() profile.Environment {
+			setup: func() profile.Command {
 				t.Helper()
-				env := profile.NewEnvironment([]string{})
+				env := profile.NewCommand([]string{})
 				env.AddEnvVar(profile.EnvVar{
 					Name: "TEST_VAR",
 					ValueFrom: &profile.EnvVarSource{
@@ -353,9 +353,9 @@ func TestEnvironment_CompilePatterns(t *testing.T) {
 		},
 		{
 			name: "valid envFrom pattern",
-			setup: func() profile.Environment {
+			setup: func() profile.Command {
 				t.Helper()
-				env := profile.NewEnvironment([]string{})
+				env := profile.NewCommand([]string{})
 				env.AddEnvFrom([]profile.EnvFromSource{
 					{
 						CallerRef: &profile.CallerRef{
@@ -370,9 +370,9 @@ func TestEnvironment_CompilePatterns(t *testing.T) {
 		},
 		{
 			name: "invalid env pattern",
-			setup: func() profile.Environment {
+			setup: func() profile.Command {
 				t.Helper()
-				env := profile.NewEnvironment([]string{})
+				env := profile.NewCommand([]string{})
 				env.AddEnvVar(profile.EnvVar{
 					Name: "TEST_VAR",
 					ValueFrom: &profile.EnvVarSource{
@@ -389,9 +389,9 @@ func TestEnvironment_CompilePatterns(t *testing.T) {
 		},
 		{
 			name: "invalid envFrom pattern",
-			setup: func() profile.Environment {
+			setup: func() profile.Command {
 				t.Helper()
-				env := profile.NewEnvironment([]string{})
+				env := profile.NewCommand([]string{})
 				env.AddEnvFrom([]profile.EnvFromSource{
 					{
 						CallerRef: &profile.CallerRef{
@@ -407,9 +407,9 @@ func TestEnvironment_CompilePatterns(t *testing.T) {
 		},
 		{
 			name: "nil caller ref in env",
-			setup: func() profile.Environment {
+			setup: func() profile.Command {
 				t.Helper()
-				env := profile.NewEnvironment([]string{})
+				env := profile.NewCommand([]string{})
 				env.AddEnvVar(profile.EnvVar{
 					Name:      "TEST_VAR",
 					ValueFrom: &profile.EnvVarSource{},
@@ -421,9 +421,9 @@ func TestEnvironment_CompilePatterns(t *testing.T) {
 		},
 		{
 			name: "nil caller ref in envFrom",
-			setup: func() profile.Environment {
+			setup: func() profile.Command {
 				t.Helper()
-				env := profile.NewEnvironment([]string{})
+				env := profile.NewCommand([]string{})
 				env.AddEnvFrom([]profile.EnvFromSource{
 					{CallerRef: nil},
 				})
@@ -453,7 +453,7 @@ func TestEnvironment_CompilePatterns(t *testing.T) {
 	}
 }
 
-func TestEnvironment_Build_EssentialVars(t *testing.T) {
+func TestCommand_Build_EssentialVars(t *testing.T) {
 	t.Parallel()
 
 	// Create a base environment with both essential and non-essential vars.
@@ -466,8 +466,8 @@ func TestEnvironment_Build_EssentialVars(t *testing.T) {
 		"NON_ESSENTIAL=should_not_appear",
 	}
 
-	env := profile.NewEnvironment(baseEnv)
-	result := env.Build()
+	env := profile.NewCommand(baseEnv)
+	result := env.GetEnv()
 
 	// Essential variables should be present.
 	essentialVars := []string{"PATH", "HOME", "USER", "TERM", "COLORTERM"}
@@ -489,16 +489,16 @@ func TestEnvironment_Build_EssentialVars(t *testing.T) {
 	}
 }
 
-func TestEnvironment_Build_EmptyVariableName(t *testing.T) {
+func TestCommand_Build_EmptyVariableName(t *testing.T) {
 	t.Parallel()
 
-	env := profile.NewEnvironment([]string{})
+	env := profile.NewCommand([]string{})
 	env.AddEnvVar(profile.EnvVar{
 		Name:  "", // Empty name should be skipped.
 		Value: "some_value",
 	})
 
-	result := env.Build()
+	result := env.GetEnv()
 
 	// Should not contain any variable with empty name.
 	for _, envVar := range result {
@@ -506,7 +506,7 @@ func TestEnvironment_Build_EmptyVariableName(t *testing.T) {
 	}
 }
 
-func TestEnvironment_Build_ComplexScenario(t *testing.T) {
+func TestCommand_Build_ComplexScenario(t *testing.T) {
 	t.Parallel()
 
 	// Create a complex base environment.
@@ -519,7 +519,7 @@ func TestEnvironment_Build_ComplexScenario(t *testing.T) {
 		"BASE_VAR=base_value",
 	}
 
-	env := profile.NewEnvironment(baseEnv)
+	env := profile.NewCommand(baseEnv)
 
 	// Add static env var.
 	env.AddEnvVar(profile.EnvVar{
@@ -557,7 +557,7 @@ func TestEnvironment_Build_ComplexScenario(t *testing.T) {
 		{CallerRef: patternRef},
 	})
 
-	result := env.Build()
+	result := env.GetEnv()
 
 	// Verify all expected variables are present.
 	assert.Contains(t, result, "PATH=/usr/bin")
@@ -573,21 +573,21 @@ func TestEnvironment_Build_ComplexScenario(t *testing.T) {
 	}
 }
 
-func TestEnvironment_Build_EdgeCases(t *testing.T) {
+func TestCommand_Build_EdgeCases(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		setupEnv func() profile.Environment
+		setupEnv func() profile.Command
 		validate func(t *testing.T, result []string)
 		name     string
 	}{
 		{
 			name: "base environment with malformed entry",
-			setupEnv: func() profile.Environment {
+			setupEnv: func() profile.Command {
 				t.Helper()
 				baseEnv := []string{"VALID_VAR=value", "MALFORMED_NO_EQUALS", "PATH=/usr/bin", "ANOTHER_VALID=another"}
 
-				return profile.NewEnvironment(baseEnv)
+				return profile.NewCommand(baseEnv)
 			},
 			validate: func(t *testing.T, result []string) {
 				t.Helper()
@@ -606,9 +606,9 @@ func TestEnvironment_Build_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "environment variable with empty value",
-			setupEnv: func() profile.Environment {
+			setupEnv: func() profile.Command {
 				t.Helper()
-				env := profile.NewEnvironment([]string{})
+				env := profile.NewCommand([]string{})
 				env.AddEnvVar(profile.EnvVar{
 					Name:  "EMPTY_VAR",
 					Value: "",
@@ -631,13 +631,13 @@ func TestEnvironment_Build_EdgeCases(t *testing.T) {
 			t.Parallel()
 
 			env := tt.setupEnv()
-			result := env.Build()
+			result := env.GetEnv()
 			tt.validate(t, result)
 		})
 	}
 }
 
-func TestEnvironment_Build_ApplyEnvFromEdgeCases(t *testing.T) {
+func TestCommand_Build_ApplyEnvFromEdgeCases(t *testing.T) {
 	t.Parallel()
 
 	// Test case with pattern matching against base environment.
@@ -648,7 +648,7 @@ func TestEnvironment_Build_ApplyEnvFromEdgeCases(t *testing.T) {
 		"PATH=/usr/bin",
 	}
 
-	env := profile.NewEnvironment(baseEnv)
+	env := profile.NewCommand(baseEnv)
 
 	// Set up a pattern that would match TEST_MATCH_.
 	callerRef := &profile.CallerRef{
@@ -661,7 +661,7 @@ func TestEnvironment_Build_ApplyEnvFromEdgeCases(t *testing.T) {
 		{CallerRef: callerRef},
 	})
 
-	result := env.Build()
+	result := env.GetEnv()
 
 	// Should contain the matched variables.
 	assert.Contains(t, result, "TEST_MATCH_VAR1=value1")
@@ -673,7 +673,7 @@ func TestEnvironment_Build_ApplyEnvFromEdgeCases(t *testing.T) {
 	}
 }
 
-func TestEnvironment_Build_EnvFromMakesVariableAvailableForCallerRef(t *testing.T) {
+func TestCommand_Build_EnvFromMakesVariableAvailableForCallerRef(t *testing.T) {
 	t.Parallel()
 
 	// Test that envFrom can make non-essential variables available for caller references.
@@ -683,7 +683,7 @@ func TestEnvironment_Build_EnvFromMakesVariableAvailableForCallerRef(t *testing.
 		"CUSTOM_VAR=custom_value", // This is not essential, but will be added via envFrom.
 	}
 
-	env := profile.NewEnvironment(baseEnv)
+	env := profile.NewCommand(baseEnv)
 
 	// First, add the non-essential variable via envFrom.
 	env.AddEnvFrom([]profile.EnvFromSource{
@@ -704,7 +704,7 @@ func TestEnvironment_Build_EnvFromMakesVariableAvailableForCallerRef(t *testing.
 		},
 	})
 
-	result := env.Build()
+	result := env.GetEnv()
 
 	// Both the original and the copied variable should be present.
 	assert.Contains(t, result, "CUSTOM_VAR=custom_value")
