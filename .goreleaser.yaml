@@ -6,6 +6,9 @@ project_name: kat
 env:
   - DOCKER_REGISTRY=ghcr.io/macropower
 
+release:
+  prerelease: auto
+
 before:
   hooks:
     # You may remove this if you don't use go modules.
@@ -128,7 +131,7 @@ homebrew_casks:
     homepage: &homepage "https://github.com/MacroPower/kat/"
     description: &description "TUI for rendering, validating, and displaying local Kubernetes manifests"
     license: "Apache 2.0"
-    skip_upload: false
+    skip_upload: auto
 
 nix:
   - name: kat
@@ -141,7 +144,7 @@ nix:
     homepage: *homepage
     description: *description
     license: "asl20"
-    skip_upload: false
+    skip_upload: auto
 
 docker_manifests:
   - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:latest'
