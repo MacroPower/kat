@@ -54,6 +54,7 @@ checksum:
 
 source:
   enabled: true
+  name_template: "{{ .ProjectName }}"
 
 sboms:
   - artifacts: archive
