@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"os/exec"
 
 	"github.com/google/cel-go/cel"
@@ -55,12 +56,13 @@ var (
 type Profile struct {
 	sourceProgram cel.Program // Compiled CEL program for source matching.
 
-	Hooks   *Hooks             `yaml:"hooks,omitempty"`
-	UI      *UIConfig          `yaml:"ui,omitempty"` // UI configuration for the profile.
-	Plugins map[string]*Plugin `yaml:"plugins,omitempty"`
-	Source  string             `yaml:"source,omitempty"`
-	Command string             `validate:"required,alphanum" yaml:"command"`
-	Args    []string           `yaml:"args,flow"`
+	Environment Environment        `yaml:",inline"`
+	Hooks       *Hooks             `yaml:"hooks,omitempty"`
+	UI          *UIConfig          `yaml:"ui,omitempty"` // UI configuration for the profile.
+	Plugins     map[string]*Plugin `yaml:"plugins,omitempty"`
+	Source      string             `yaml:"source,omitempty"`
+	Command     string             `validate:"required,alphanum" yaml:"command"`
+	Args        []string           `yaml:"args,flow"`
 }
 
 // ProfileOpt is a functional option for configuring a Profile.
@@ -68,13 +70,11 @@ type ProfileOpt func(*Profile)
 
 // New creates a new profile with the given command and options.
 func New(command string, opts ...ProfileOpt) (*Profile, error) {
-	p := &Profile{
-		Command: command,
-	}
+	p := &Profile{Command: command}
 	for _, opt := range opts {
 		opt(p)
 	}
-	if err := p.CompileSource(); err != nil {
+	if err := p.Build(); err != nil {
 		return nil, fmt.Errorf("profile %q: %w", command, err)
 	}
 
@@ -112,11 +112,50 @@ func WithSource(source string) ProfileOpt {
 	}
 }
 
+// WithEnvVar sets a single environment variable for the profile.
+// Call multiple times to set multiple environment variables.
+func WithEnvVar(envVar EnvVar) ProfileOpt {
+	return func(p *Profile) {
+		p.Environment.AddEnvVar(envVar)
+	}
+}
+
+// WithEnvFrom sets the envFrom sources for the profile.
+func WithEnvFrom(envFrom []EnvFromSource) ProfileOpt {
+	return func(p *Profile) {
+		p.Environment.AddEnvFrom(envFrom)
+	}
+}
+
 // WithPlugins sets the plugins for the profile.
 func WithPlugins(plugins map[string]*Plugin) ProfileOpt {
 	return func(p *Profile) {
 		p.Plugins = plugins
 	}
+}
+
+func (p *Profile) Build() error {
+	p.Environment.SetBaseEnv(os.Environ())
+	if p.Hooks != nil {
+		if err := p.Hooks.Build(); err != nil {
+			return fmt.Errorf("build hooks: %w", err)
+		}
+	}
+	if p.Plugins != nil {
+		for _, plugin := range p.Plugins {
+			if err := plugin.Build(); err != nil {
+				return fmt.Errorf("build plugin %q: %w", plugin.Command, err)
+			}
+		}
+	}
+	if err := p.CompileSource(); err != nil {
+		return fmt.Errorf("compile source: %w", err)
+	}
+	if err := p.Environment.CompilePatterns(); err != nil {
+		return fmt.Errorf("compile patterns: %w", err)
+	}
+
+	return nil
 }
 
 // CompileSource compiles the profile's source expression into a CEL program.
@@ -198,6 +237,9 @@ func (p *Profile) Exec(ctx context.Context, dir string) ExecResult {
 		return ExecResult{Error: fmt.Errorf("%w: %w", ErrCommandExecution, ErrEmptyCommand)}
 	}
 
+	// Build environment variables for command execution.
+	env := p.Environment.Build()
+
 	// Execute preRender hooks, if any.
 	if p.Hooks != nil {
 		for _, hook := range p.Hooks.PreRender {
@@ -210,6 +252,7 @@ func (p *Profile) Exec(ctx context.Context, dir string) ExecResult {
 	// Execute main command.
 	cmd := exec.CommandContext(ctx, p.Command, p.Args...) //nolint:gosec // G204: Subprocess launched with a potential tainted input or cmd arguments.
 	cmd.Dir = dir
+	cmd.Env = env
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -249,6 +292,7 @@ func (p *Profile) Exec(ctx context.Context, dir string) ExecResult {
 	return result
 }
 
+// setEnvFrom applies all envFrom sources to the environment map.
 // GetPlugin returns the plugin with the given name, or nil if not found.
 func (p *Profile) GetPlugin(name string) *Plugin {
 	if p.Plugins == nil {

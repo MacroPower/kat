@@ -238,6 +238,8 @@ rules:
 
 - `command` (required): The command to execute
 - `args`: Arguments to pass to the command
+- `env`: List of environment variables for the command
+- `envFrom`: List of sources for environment variables
 - `source`: Define which files to watch for changes (when watch is enabled)
 - `ui`: UI configuration overrides
 - `hooks`: Initialization and rendering hooks
@@ -259,6 +261,9 @@ profiles:
     args: [template, ., --generate-name]
     source: >-
       files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])
+    envFrom:
+      - callerRef:
+          pattern: "^HELM_.+"
     ui:
       theme: dracula
     hooks:
@@ -268,6 +273,9 @@ profiles:
       preRender:
         - command: helm
           args: [dependency, build]
+          envFrom:
+            - callerRef:
+                pattern: "^HELM_.+"
       postRender:
         # Pass the rendered manifests via stdin to `kubeconform`.
         - command: kubeconform
@@ -276,16 +284,22 @@ profiles:
       dry-run:
         command: helm
         args: [install, ., -g, --dry-run]
+        envFrom:
+          - callerRef:
+              pattern: "^HELM_.+"
         description: invoke helm dry-run
         keys:
-          - code: shift+h
-            alias: ⇧+h
+          - code: ctrl+r
+            alias: ⌃r
 
   ks:
     command: kustomize
     args: [build, .]
     source: >-
       files.filter(f, pathExt(f) in [".yaml", ".yml"])
+    env:
+      - name: KUSTOMIZE_ENABLE_ALPHA_COMMANDS
+        value: "true"
     ui:
       compact: true
       theme: tokyonight-storm
@@ -353,6 +367,9 @@ profiles:
     args: [template, ., --generate-name]
     source: >-
       files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])
+    envFrom:
+      - callerRef:
+          pattern: "^HELM_.+"
     hooks:
       postRender:
         - *kubeconform
@@ -379,6 +396,9 @@ profiles:
     args: [run, .]
     source: >-
       files.filter(f, pathExt(f) == ".k")
+    envFrom:
+      - callerRef:
+          pattern: "^KCL_.+"
 ```
 
 **Content-based detection** - Match based on file content, not just names:

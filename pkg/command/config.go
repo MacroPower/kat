@@ -15,22 +15,29 @@ var (
 			profile.WithArgs("build", "."),
 			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`),
 			profile.WithHooks(
-				profile.NewHooks(
+				profile.MustNewHooks(
 					profile.WithInit(
-						profile.NewHookCommand("kustomize", "version"),
+						profile.MustNewHookCommand("kustomize", profile.WithHookArgs("version")),
 					),
 				),
 			)),
 		"helm": profile.MustNew("helm",
 			profile.WithArgs("template", ".", "--generate-name"),
 			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])`),
+			profile.WithEnvFrom([]profile.EnvFromSource{
+				{
+					CallerRef: &profile.CallerRef{
+						Pattern: "^HELM_.+",
+					},
+				},
+			}),
 			profile.WithHooks(
-				profile.NewHooks(
+				profile.MustNewHooks(
 					profile.WithInit(
-						profile.NewHookCommand("helm", "version", "--short"),
+						profile.MustNewHookCommand("helm", profile.WithHookArgs("version", "--short")),
 					),
 					profile.WithPreRender(
-						profile.NewHookCommand("helm", "dependency", "build"),
+						profile.MustNewHookCommand("helm", profile.WithHookArgs("dependency", "build")),
 					),
 				),
 			)),
@@ -38,9 +45,9 @@ var (
 			profile.WithArgs("-c", "yq eval-all '.' *.yaml"),
 			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`),
 			profile.WithHooks(
-				profile.NewHooks(
+				profile.MustNewHooks(
 					profile.WithInit(
-						profile.NewHookCommand("yq", "-V"),
+						profile.MustNewHookCommand("yq", profile.WithHookArgs("-V")),
 					),
 				),
 			)),
@@ -107,6 +114,37 @@ func (c *Config) Validate() *ConfigError {
 			return &ConfigError{
 				Path: pb.Root().Child("profiles").Child(name).Child("source").Build(),
 				Err:  fmt.Errorf("invalid source: %w", err),
+			}
+		}
+		for i, env := range p.Environment.Env {
+			if env.ValueFrom == nil || env.ValueFrom.CallerRef == nil || env.ValueFrom.CallerRef.Pattern == "" {
+				continue // Skip if no pattern is defined.
+			}
+			uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
+			if err := env.ValueFrom.CallerRef.Compile(); err != nil {
+				return &ConfigError{
+					Path: pb.Root().Child("profiles").Child(name).Child("env").Index(uIdx).Child("valueFrom").Child("callerRef").Child("pattern").Build(),
+					Err:  fmt.Errorf("invalid env pattern: %w", err),
+				}
+			}
+		}
+		for i, envFrom := range p.Environment.EnvFrom {
+			if envFrom.CallerRef == nil || envFrom.CallerRef.Pattern == "" {
+				continue // Skip if no pattern is defined.
+			}
+			uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
+			if err := envFrom.CallerRef.Compile(); err != nil {
+				return &ConfigError{
+					Path: pb.Root().Child("profiles").Child(name).Child("envFrom").Index(uIdx).Child("callerRef").Child("pattern").Build(),
+					Err:  fmt.Errorf("invalid envFrom pattern: %w", err),
+				}
+			}
+		}
+		// TODO: Build should return *ConfigError to avoid the duplicate validation above.
+		if err := p.Build(); err != nil {
+			return &ConfigError{
+				Path: pb.Root().Child("profiles").Child(name).Build(),
+				Err:  fmt.Errorf("invalid profile: %w", err),
 			}
 		}
 	}
