@@ -41,7 +41,7 @@
 ### Homebrew
 
 ```sh
-brew install macropower/tap/kat --cask
+brew install macropower/tap/kat
 ```
 
 ### Go
