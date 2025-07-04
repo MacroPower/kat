@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"os/exec"
 
 	"github.com/macropower/kat/pkg/keys"
@@ -12,20 +13,34 @@ import (
 
 // Plugin represents a command plugin that can be executed on demand with keybinds.
 type Plugin struct {
-	Description string     `yaml:"description"`
-	Keys        []keys.Key `yaml:"keys,omitempty"`
-	Command     string     `validate:"required,alphanum" yaml:"command"`
-	Args        []string   `yaml:"args,flow"`
+	Environment Environment `yaml:",inline"`
+	Description string      `yaml:"description"`
+	Keys        []keys.Key  `yaml:"keys,omitempty"`
+	Command     string      `validate:"required,alphanum" yaml:"command"`
+	Args        []string    `yaml:"args,flow"`
 }
 
 // NewPlugin creates a new plugin with the given command and options.
-func NewPlugin(command, description string, opts ...PluginOpt) *Plugin {
+func NewPlugin(command, description string, opts ...PluginOpt) (*Plugin, error) {
 	p := &Plugin{
 		Command:     command,
 		Description: description,
 	}
 	for _, opt := range opts {
 		opt(p)
+	}
+	if err := p.Build(); err != nil {
+		return nil, fmt.Errorf("plugin %q: %w", command, err)
+	}
+
+	return p, nil
+}
+
+// MustNewPlugin creates a new plugin and panics if there's an error.
+func MustNewPlugin(command, description string, opts ...PluginOpt) *Plugin {
+	p, err := NewPlugin(command, description, opts...)
+	if err != nil {
+		panic(err)
 	}
 
 	return p
@@ -48,14 +63,42 @@ func WithPluginKeys(k ...keys.Key) PluginOpt {
 	}
 }
 
+// WithPluginEnvVar sets a single environment variable for the plugin.
+func WithPluginEnvVar(envVar EnvVar) PluginOpt {
+	return func(p *Plugin) {
+		p.Environment.AddEnvVar(envVar)
+	}
+}
+
+// WithPluginEnvFrom sets the envFrom sources for the plugin.
+func WithPluginEnvFrom(envFrom []EnvFromSource) PluginOpt {
+	return func(p *Plugin) {
+		p.Environment.AddEnvFrom(envFrom)
+	}
+}
+
+func (p *Plugin) Build() error {
+	p.Environment.SetBaseEnv(os.Environ())
+
+	if err := p.Environment.CompilePatterns(); err != nil {
+		return fmt.Errorf("compile patterns: %w", err)
+	}
+
+	return nil
+}
+
 // Exec executes the plugin command in the specified directory.
 func (p *Plugin) Exec(ctx context.Context, dir string) ExecResult {
 	if p.Command == "" {
 		return ExecResult{Error: fmt.Errorf("%w: %w", ErrCommandExecution, ErrEmptyCommand)}
 	}
 
+	// Build environment variables for command execution.
+	env := p.Environment.Build()
+
 	cmd := exec.CommandContext(ctx, p.Command, p.Args...) //nolint:gosec // G204: Subprocess launched with a potential tainted input or cmd arguments.
 	cmd.Dir = dir
+	cmd.Env = env
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

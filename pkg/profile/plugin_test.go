@@ -16,8 +16,9 @@ func TestPlugin_Exec(t *testing.T) {
 	t.Run("successful plugin execution", func(t *testing.T) {
 		t.Parallel()
 
-		plugin := profile.NewPlugin("echo", "test plugin",
+		plugin, err := profile.NewPlugin("echo", "test plugin",
 			profile.WithPluginArgs("hello", "world"))
+		require.NoError(t, err)
 
 		result := plugin.Exec(t.Context(), "/tmp")
 
@@ -29,7 +30,8 @@ func TestPlugin_Exec(t *testing.T) {
 	t.Run("failed plugin execution", func(t *testing.T) {
 		t.Parallel()
 
-		plugin := profile.NewPlugin("false", "failing plugin") // command that always fails
+		plugin, err := profile.NewPlugin("false", "failing plugin") // command that always fails
+		require.NoError(t, err)
 
 		result := plugin.Exec(t.Context(), "/tmp")
 
@@ -52,11 +54,12 @@ func TestPlugin_Exec(t *testing.T) {
 func TestPlugin_MatchKeys(t *testing.T) {
 	t.Parallel()
 
-	plugin := profile.NewPlugin("test", "test plugin",
+	plugin, err := profile.NewPlugin("test", "test plugin",
 		profile.WithPluginKeys(
 			keys.New("H"),
 			keys.New("ctrl+d"),
 		))
+	require.NoError(t, err)
 
 	tests := []struct {
 		name     string
@@ -99,8 +102,8 @@ func TestProfile_GetPlugin(t *testing.T) {
 	t.Parallel()
 
 	plugins := map[string]*profile.Plugin{
-		"dry-run": profile.NewPlugin("helm", "helm dry run"),
-		"lint":    profile.NewPlugin("helm", "helm lint"),
+		"dry-run": profile.MustNewPlugin("helm", "helm dry run"),
+		"lint":    profile.MustNewPlugin("helm", "helm lint"),
 	}
 
 	p := profile.MustNew("helm",
@@ -134,9 +137,9 @@ func TestProfile_GetPluginNameByKey(t *testing.T) {
 	t.Parallel()
 
 	plugins := map[string]*profile.Plugin{
-		"dry-run": profile.NewPlugin("helm", "helm dry run",
+		"dry-run": profile.MustNewPlugin("helm", "helm dry run",
 			profile.WithPluginKeys(keys.New("H"))),
-		"lint": profile.NewPlugin("helm", "helm lint",
+		"lint": profile.MustNewPlugin("helm", "helm lint",
 			profile.WithPluginKeys(keys.New("L"))),
 	}
 

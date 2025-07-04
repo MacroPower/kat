@@ -31,6 +31,17 @@ profiles:
       files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])
     command: helm
     args: [template, ., --generate-name]
+    # env:
+    #   - name: EXAMPLE_VAR
+    #     value: "true"
+    #   - name: EXAMPLE_VAR_FROM_CALLER
+    #     valueFrom:
+    #       callerRef:
+    #         name: EXAMPLE_VAR
+    envFrom: &helmEnvFrom
+      # Inherit environment variables from the caller process.
+      - callerRef:
+          pattern: ^HELM_.+
     hooks:
       init:
         - command: helm
@@ -38,6 +49,7 @@ profiles:
       preRender:
         - command: helm
           args: [dependency, build]
+          envFrom: *helmEnvFrom
     # plugins:
     #   dry-run:
     #     description: invoke helm dry-run
@@ -46,6 +58,7 @@ profiles:
     #         alias: ⌃r
     #     command: helm
     #     args: [install, ., -g, --dry-run]
+    #     envFrom: *helmEnvFrom
 
   # ks is a profile for Kustomize.
   ks: &ks
