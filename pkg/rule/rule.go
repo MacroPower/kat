@@ -1,10 +1,3 @@
-// Package rules provides functionality for matching files and directories
-// using CEL (Common Expression Language) expressions.
-//
-// Rules use CEL expressions to determine if a profile should be applied
-// to a given set of files in a directory. The expressions have access
-// to file paths and directory information, allowing for flexible
-// matching logic.
 package rule
 
 import (

@@ -1,9 +1,3 @@
-// Package profile provides command profile functionality for executing
-// commands with optional source filtering using CEL expressions.
-//
-// Profiles define how to execute commands against sets of files,
-// with support for hooks (pre/post execution commands) and source
-// filtering to determine which files should be processed.
 package profile
 
 import (
