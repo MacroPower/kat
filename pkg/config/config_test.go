@@ -366,29 +366,17 @@ func TestDefaultConfigYAMLIsValid(t *testing.T) {
 	cfg, err := config.LoadConfig(data)
 	require.NoError(t, err)
 
-	// Validate the loaded config.
-	assert.Equal(t, "kat.jacobcolvin.com/v1beta1", cfg.APIVersion)
-	assert.Equal(t, "Configuration", cfg.Kind)
-	assert.NotNil(t, cfg.Command)
-	assert.NotNil(t, cfg.UI)
+	// Re-marshal the config to get only public fields.
+	cfg.UI.KeyBinds.Common.Help.Keys[0].Code = "ctrl+h" // Hack since "?" doesn't unmarshal correctly in YAMLEq.
+	cfgYAML, err := cfg.MarshalYAML()
+	require.NoError(t, err)
 
-	// Ensure the config has expected profiles.
-	assert.Contains(t, cfg.Command.Profiles, "ks")
-	assert.Contains(t, cfg.Command.Profiles, "helm")
-	assert.Contains(t, cfg.Command.Profiles, "yaml")
+	defaultCfg := config.NewConfig()
+	defaultCfg.UI.KeyBinds.Common.Help.Keys[0].Code = "ctrl+h" // Hack since "?" doesn't unmarshal correctly in YAMLEq.
+	defaultCfgYAML, err := defaultCfg.MarshalYAML()
+	require.NoError(t, err)
 
-	// Ensure the config has expected rules.
-	assert.NotEmpty(t, cfg.Command.Rules)
-	assert.Len(t, cfg.Command.Rules, 3) // Based on the config.yaml content.
-
-	// Verify that key profiles have expected commands.
-	ksProfile := cfg.Command.Profiles["ks"]
-	assert.Equal(t, "kustomize", ksProfile.Command.Command)
-	assert.Contains(t, ksProfile.Command.Args, "build")
-
-	helmProfile := cfg.Command.Profiles["helm"]
-	assert.Equal(t, "helm", helmProfile.Command.Command)
-	assert.Contains(t, helmProfile.Command.Args, "template")
+	assert.YAMLEq(t, string(defaultCfgYAML), string(cfgYAML), "Default config should match the loaded config")
 }
 
 func TestConfig_MarshalYAML(t *testing.T) {

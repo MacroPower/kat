@@ -10,11 +10,36 @@ import (
 	"github.com/macropower/kat/pkg/rule"
 )
 
+const (
+	filterYAMLFiles = `files.filter(f, pathExt(f) in [".yaml", ".yml"])`
+	filterHelmFiles = `files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])`
+
+	existsKustomizeProject = `files.exists(f,
+  pathBase(f) in ["kustomization.yaml", "kustomization.yml"])`
+
+	existsHelmV3Project = `files.exists(f,
+  pathBase(f) in ["Chart.yaml", "Chart.yml"] &&
+  yamlPath(f, "$.apiVersion") == "v2")`
+
+	existsYAMLFiles = `files.exists(f,
+  pathExt(f) in [".yaml", ".yml"])`
+)
+
 var (
 	defaultProfiles = map[string]*profile.Profile{
 		"ks": profile.MustNew("kustomize",
 			profile.WithArgs("build", "."),
-			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`),
+			profile.WithSource(filterYAMLFiles),
+			profile.WithHooks(
+				profile.MustNewHooks(
+					profile.WithInit(
+						profile.MustNewHookCommand("kustomize", profile.WithHookArgs("version")),
+					),
+				),
+			)),
+		"ks-helm": profile.MustNew("kustomize",
+			profile.WithArgs("build", ".", "--enable-helm"),
+			profile.WithSource(filterYAMLFiles),
 			profile.WithHooks(
 				profile.MustNewHooks(
 					profile.WithInit(
@@ -24,7 +49,7 @@ var (
 			)),
 		"helm": profile.MustNew("helm",
 			profile.WithArgs("template", ".", "--generate-name"),
-			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])`),
+			profile.WithSource(filterHelmFiles),
 			profile.WithEnvFrom([]execs.EnvFromSource{
 				{
 					CallerRef: &execs.CallerRef{
@@ -38,13 +63,22 @@ var (
 						profile.MustNewHookCommand("helm", profile.WithHookArgs("version", "--short")),
 					),
 					profile.WithPreRender(
-						profile.MustNewHookCommand("helm", profile.WithHookArgs("dependency", "build")),
+						profile.MustNewHookCommand("helm",
+							profile.WithHookArgs("dependency", "build"),
+							profile.WithHookEnvFrom([]execs.EnvFromSource{
+								{
+									CallerRef: &execs.CallerRef{
+										Pattern: "^HELM_.+",
+									},
+								},
+							}),
+						),
 					),
 				),
 			)),
 		"yaml": profile.MustNew("sh",
 			profile.WithArgs("-c", "yq eval-all '.' *.yaml"),
-			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`),
+			profile.WithSource(filterYAMLFiles),
 			profile.WithHooks(
 				profile.MustNewHooks(
 					profile.WithInit(
@@ -55,9 +89,9 @@ var (
 	}
 
 	defaultRules = []*rule.Rule{
-		rule.MustNew("ks", `files.exists(f, pathBase(f) in ["kustomization.yaml", "kustomization.yml"])`),
-		rule.MustNew("helm", `files.exists(f, pathBase(f) in ["Chart.yaml", "Chart.yml"])`),
-		rule.MustNew("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`),
+		rule.MustNew("ks", existsKustomizeProject),
+		rule.MustNew("helm", existsHelmV3Project),
+		rule.MustNew("yaml", existsYAMLFiles),
 	}
 
 	DefaultConfig = MustNewConfig(defaultProfiles, defaultRules)
