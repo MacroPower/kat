@@ -3,20 +3,20 @@ package pager
 import "github.com/macropower/kat/pkg/keys"
 
 type KeyBinds struct {
-	Copy *keys.KeyBind
+	Copy *keys.KeyBind `json:"copy,omitempty"`
 
 	// Navigation.
-	Home         *keys.KeyBind `yaml:"home"`
-	End          *keys.KeyBind `yaml:"end"`
-	PageUp       *keys.KeyBind `yaml:"pageUp"`
-	PageDown     *keys.KeyBind `yaml:"pageDown"`
-	HalfPageUp   *keys.KeyBind `yaml:"halfPageUp"`
-	HalfPageDown *keys.KeyBind `yaml:"halfPageDown"`
+	Home         *keys.KeyBind `json:"home,omitempty"`
+	End          *keys.KeyBind `json:"end,omitempty"`
+	PageUp       *keys.KeyBind `json:"pageUp,omitempty"`
+	PageDown     *keys.KeyBind `json:"pageDown,omitempty"`
+	HalfPageUp   *keys.KeyBind `json:"halfPageUp,omitempty"`
+	HalfPageDown *keys.KeyBind `json:"halfPageDown,omitempty"`
 
 	// Search.
-	Search    *keys.KeyBind `yaml:"search"`
-	NextMatch *keys.KeyBind `yaml:"nextMatch"`
-	PrevMatch *keys.KeyBind `yaml:"prevMatch"`
+	Search    *keys.KeyBind `json:"search,omitempty"`
+	NextMatch *keys.KeyBind `json:"nextMatch,omitempty"`
+	PrevMatch *keys.KeyBind `json:"prevMatch,omitempty"`
 }
 
 func (kb *KeyBinds) EnsureDefaults() {

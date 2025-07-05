@@ -9,12 +9,12 @@ import (
 )
 
 type KeyBinds struct {
-	Open     *keys.KeyBind `yaml:"open"`
-	Find     *keys.KeyBind `yaml:"find"`
-	Home     *keys.KeyBind `yaml:"home"`
-	End      *keys.KeyBind `yaml:"end"`
-	PageUp   *keys.KeyBind `yaml:"pageUp"`
-	PageDown *keys.KeyBind `yaml:"pageDown"`
+	Open     *keys.KeyBind `json:"open,omitempty"`
+	Find     *keys.KeyBind `json:"find,omitempty"`
+	Home     *keys.KeyBind `json:"home,omitempty"`
+	End      *keys.KeyBind `json:"end,omitempty"`
+	PageUp   *keys.KeyBind `json:"pageUp,omitempty"`
+	PageDown *keys.KeyBind `json:"pageDown,omitempty"`
 }
 
 func (kb *KeyBinds) EnsureDefaults() {

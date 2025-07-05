@@ -10,9 +10,9 @@ import (
 
 // Hooks represents the different types of hooks that can be executed.
 type Hooks struct {
-	Init       []*HookCommand `yaml:"init,omitempty"`
-	PreRender  []*HookCommand `yaml:"preRender,omitempty"`
-	PostRender []*HookCommand `yaml:"postRender,omitempty"`
+	Init       []*HookCommand `json:"init,omitempty"`
+	PreRender  []*HookCommand `json:"preRender,omitempty"`
+	PostRender []*HookCommand `json:"postRender,omitempty"`
 }
 
 // NewHooks creates a new Hooks instance with the given options.
@@ -87,7 +87,7 @@ func (h *Hooks) Build() error {
 
 // HookCommand represents a single hook command to execute.
 type HookCommand struct {
-	Command execs.Command `yaml:",inline"`
+	Command execs.Command `json:",inline"`
 }
 
 // NewHookCommand creates a new hook command with the given command and options.

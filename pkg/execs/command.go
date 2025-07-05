@@ -28,27 +28,27 @@ type Result struct {
 
 // EnvFromSource represents a source for inheriting environment variables.
 type EnvFromSource struct {
-	CallerRef *CallerRef `yaml:"callerRef,omitempty"`
+	CallerRef *CallerRef `json:"callerRef,omitempty"`
 }
 
 // CallerRef represents a reference to environment variables from the caller process.
 type CallerRef struct {
 	compiledPattern *regexp.Regexp // Compiled regex pattern for matching environment variables.
 
-	Pattern string `yaml:"pattern,omitempty"`
-	Name    string `yaml:"name,omitempty"`
+	Pattern string `json:"pattern,omitempty"`
+	Name    string `json:"name,omitempty"`
 }
 
 // EnvVar represents an environment variable definition.
 type EnvVar struct {
-	ValueFrom *EnvVarSource `yaml:"valueFrom,omitempty"`
-	Name      string        `validate:"required"        yaml:"name"`
-	Value     string        `yaml:"value,omitempty"`
+	ValueFrom *EnvVarSource `json:"valueFrom,omitempty"`
+	Name      string        `json:"name"`
+	Value     string        `json:"value,omitempty"`
 }
 
 // EnvVarSource represents a source for an environment variable value.
 type EnvVarSource struct {
-	CallerRef *CallerRef `yaml:"callerRef,omitempty"`
+	CallerRef *CallerRef `json:"callerRef,omitempty"`
 }
 
 // Compile compiles the caller reference pattern into a regex if a pattern is provided.
@@ -67,10 +67,11 @@ func (c *CallerRef) Compile() error {
 // Command manages common command execution properties.
 type Command struct {
 	baseEnv map[string]string
-	Command string          `validate:"required,alphanum" yaml:"command"`
-	Args    []string        `yaml:"args,flow"`
-	Env     []EnvVar        `yaml:"env,omitempty"`
-	EnvFrom []EnvFromSource `validate:"dive"              yaml:"envFrom,omitempty"`
+	// Command is the command to execute.
+	Command string          `json:"command"           validate:"alphanum"`
+	Args    []string        `json:"args,omitempty"    yaml:"args,flow,omitempty"`
+	Env     []EnvVar        `json:"env,omitempty"`
+	EnvFrom []EnvFromSource `json:"envFrom,omitempty"`
 }
 
 // NewCommand creates a new [Command].

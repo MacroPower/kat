@@ -98,8 +98,8 @@ var (
 )
 
 type Config struct {
-	Profiles map[string]*profile.Profile `yaml:"profiles,omitempty"`
-	Rules    []*rule.Rule                `yaml:"rules,omitempty"`
+	Profiles map[string]*profile.Profile `json:"profiles,omitempty"`
+	Rules    []*rule.Rule                `json:"rules,omitempty"`
 }
 
 type ConfigError struct {

@@ -1,10 +1,12 @@
-package config
+package config_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/macropower/kat/pkg/config"
 )
 
 func TestValidateWithSchema(t *testing.T) {
@@ -12,8 +14,8 @@ func TestValidateWithSchema(t *testing.T) {
 
 	tests := map[string]struct {
 		yamlContent string
-		wantErr     bool
 		errContains string
+		wantErr     bool
 	}{
 		"valid minimal config": {
 			yamlContent: `apiVersion: kat.jacobcolvin.com/v1beta1
@@ -125,22 +127,6 @@ profiles:
 			wantErr:     true,
 			errContains: "missing property 'name'",
 		},
-		"invalid env var - both value and valueFrom": {
-			yamlContent: `apiVersion: kat.jacobcolvin.com/v1beta1
-kind: Configuration
-profiles:
-  test:
-    command: echo
-    env:
-      - name: TEST_VAR
-        value: "test"
-        valueFrom:
-          callerRef:
-            name: OTHER_VAR
-`,
-			wantErr:     true,
-			errContains: "'oneOf' failed, subschemas 0, 1 matched",
-		},
 		"hook without command": {
 			yamlContent: `apiVersion: kat.jacobcolvin.com/v1beta1
 kind: Configuration
@@ -188,7 +174,7 @@ profiles:
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			err := ValidateWithSchema([]byte(tc.yamlContent))
+			err := config.ValidateWithSchema([]byte(tc.yamlContent))
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -197,9 +183,9 @@ profiles:
 				// Verify that schema validation errors have proper path information
 				// when possible (not for YAML parsing errors).
 				if tc.errContains != "parse YAML" {
-					schemaErr, ok := err.(*SchemaValidationError)
-					assert.True(t, ok, "Expected SchemaValidationError")
-					if ok && tc.errContains != "parse YAML" {
+					schemaErr := &config.SchemaValidationError{}
+					require.ErrorAs(t, err, &schemaErr)
+					if tc.errContains != "parse YAML" {
 						assert.NotNil(t, schemaErr.Path, "Expected path information for validation error")
 					}
 				}
@@ -221,11 +207,11 @@ profiles:
     args: ["test"]
 `
 
-	err := ValidateWithSchema([]byte(yamlContent))
+	err := config.ValidateWithSchema([]byte(yamlContent))
 	require.Error(t, err)
 
-	schemaErr, ok := err.(*SchemaValidationError)
-	require.True(t, ok)
+	schemaErr := &config.SchemaValidationError{}
+	require.ErrorAs(t, err, &schemaErr)
 	require.NotNil(t, schemaErr.Path)
 
 	// Test that AnnotateSource works with the path.

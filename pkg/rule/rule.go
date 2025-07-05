@@ -39,8 +39,8 @@ type Rule struct {
 	matchProgram cel.Program      // Compiled CEL program for matching file paths.
 	pfl          *profile.Profile // Profile associated with the rule.
 
-	Match   string `validate:"required" yaml:"match"`   // CEL expression to match file paths.
-	Profile string `validate:"required" yaml:"profile"` // Profile name.
+	Match   string `json:"match"`   // CEL expression to match file paths.
+	Profile string `json:"profile"` // Profile name.
 }
 
 // New creates a new rule with the given profile name and match expression.

@@ -5,6 +5,7 @@ import (
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/hashicorp/go-multierror"
+	"github.com/invopop/jsonschema"
 
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/ui/common"
@@ -16,9 +17,9 @@ var DefaultConfig = NewConfig()
 
 // Config contains TUI-specific configuration.
 type Config struct {
-	KeyBinds *KeyBinds              `yaml:"keybinds"`
-	Themes   map[string]ThemeConfig `validate:"dive"     yaml:"themes,omitempty"`
-	UI       *UIConfig              `yaml:"ui,omitempty"`
+	KeyBinds *KeyBinds              `json:"keybinds,omitempty"`
+	Themes   map[string]ThemeConfig `json:"themes,omitempty"`
+	UI       *UIConfig              `json:"ui,omitempty"`
 }
 
 func NewConfig() *Config {
@@ -29,12 +30,12 @@ func NewConfig() *Config {
 }
 
 type UIConfig struct {
-	MinimumDelay    *time.Duration `yaml:"minimumDelay"`
-	Compact         *bool          `yaml:"compact"`
-	WordWrap        *bool          `yaml:"wordWrap"`
-	ChromaRendering *bool          `yaml:"chromaRendering"`
-	LineNumbers     *bool          `yaml:"lineNumbers"`
-	Theme           string         `yaml:"theme"`
+	MinimumDelay    *time.Duration `json:"minimumDelay,omitempty"`
+	Compact         *bool          `json:"compact,omitempty"`
+	WordWrap        *bool          `json:"wordWrap,omitempty"`
+	ChromaRendering *bool          `json:"chromaRendering,omitempty"`
+	LineNumbers     *bool          `json:"lineNumbers,omitempty"`
+	Theme           string         `json:"theme,omitempty"`
 }
 
 func (c *UIConfig) EnsureDefaults() {
@@ -44,8 +45,19 @@ func (c *UIConfig) EnsureDefaults() {
 	}
 }
 
+func (c UIConfig) JSONSchemaExtend(schema *jsonschema.Schema) {
+	minimumDelay, ok := schema.Properties.Get("minimumDelay")
+	if !ok {
+		panic("minimumDelay property not found in UIConfig schema")
+	}
+	minimumDelay.Type = "string"
+	minimumDelay.Default = "200ms"
+	minimumDelay.Pattern = `^([1-9]\d{0,2}ms|[1-9]\d{0,5}us|[1-9]\d{0,8}ns)$`
+	schema.Properties.Set("minimumDelay", minimumDelay)
+}
+
 type ThemeConfig struct {
-	Styles chroma.StyleEntries `yaml:"styles,omitempty"`
+	Styles chroma.StyleEntries `json:"styles,omitempty"`
 }
 
 func (c *Config) EnsureDefaults() {
@@ -78,9 +90,9 @@ func setDefaultBool(b **bool, value bool) {
 }
 
 type KeyBinds struct {
-	Common *common.KeyBinds `yaml:"common"`
-	List   *list.KeyBinds   `yaml:"list"`
-	Pager  *pager.KeyBinds  `yaml:"pager"`
+	Common *common.KeyBinds `json:"common,omitempty"`
+	List   *list.KeyBinds   `json:"list,omitempty"`
+	Pager  *pager.KeyBinds  `json:"pager,omitempty"`
 }
 
 func NewKeyBinds() *KeyBinds {

@@ -42,11 +42,11 @@ var (
 // If no Source expression is provided, the profile will use default file filtering.
 type Profile struct {
 	sourceProgram cel.Program
-	Hooks         *Hooks             `yaml:"hooks,omitempty"`
-	UI            *UIConfig          `yaml:"ui,omitempty"`
-	Plugins       map[string]*Plugin `yaml:"plugins,omitempty"`
-	Source        string             `yaml:"source,omitempty"`
-	Command       execs.Command      `yaml:",inline"`
+	Hooks         *Hooks             `json:"hooks,omitempty"`
+	UI            *UIConfig          `json:"ui,omitempty"`
+	Plugins       map[string]*Plugin `json:"plugins,omitempty"`
+	Source        string             `json:"source,omitempty"`
+	Command       execs.Command      `json:",inline"`
 }
 
 // ProfileOpt is a functional option for configuring a Profile.

@@ -10,9 +10,9 @@ import (
 )
 
 type Key struct {
-	Code   string `validate:"required"     yaml:"code"`
-	Alias  string `yaml:"alias,omitempty"`
-	Hidden bool   `yaml:"hidden,omitempty"`
+	Code   string `json:"code"`
+	Alias  string `json:"alias,omitempty"`
+	Hidden bool   `json:"hidden,omitempty"`
 }
 
 type KeyOpt func(k *Key)
@@ -49,8 +49,8 @@ func (k Key) String() string {
 }
 
 type KeyBind struct {
-	Description string
-	Keys        []Key
+	Description string `json:"description"`
+	Keys        []Key  `json:"keys"`
 }
 
 func NewBind(description string, keys ...Key) KeyBind {

@@ -1,19 +1,20 @@
 package config
 
 import (
-	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/goccy/go-yaml"
 	"github.com/santhosh-tekuri/jsonschema/v6"
+
+	_ "embed"
 )
 
-var (
-	//go:embed schema.json
-	schemaJSON []byte
-)
+//go:generate go run ../../internal/schema_gen/main.go
+
+//go:embed schema.json
+var schemaJSON []byte
 
 // SchemaValidationError represents a validation error from JSON schema validation.
 // It wraps the original validation result and provides path information for [yaml.Path.AnnotateSource].
@@ -28,14 +29,15 @@ func (e SchemaValidationError) Error() string {
 	if e.Path != nil {
 		return fmt.Sprintf("validation error at %s: %s", e.Path.String(), e.Detail)
 	}
-	return fmt.Sprintf("validation error: %s", e.Detail)
+
+	return "validation error: " + e.Detail
 }
 
 // ValidateWithSchema validates the given YAML data against the embedded JSON schema.
 // It returns a [SchemaValidationError] that can be used with [yaml.Path.AnnotateSource] for precise error reporting.
 func ValidateWithSchema(data []byte) error {
 	// Parse the schema.
-	var schemaData interface{}
+	var schemaData any
 	if err := json.Unmarshal(schemaJSON, &schemaData); err != nil {
 		return fmt.Errorf("parse schema: %w", err)
 	}
@@ -53,7 +55,7 @@ func ValidateWithSchema(data []byte) error {
 	}
 
 	// Convert YAML to JSON for validation.
-	var yamlData interface{}
+	var yamlData any
 	if err := yaml.Unmarshal(data, &yamlData); err != nil {
 		return fmt.Errorf("parse YAML: %w", err)
 	}
@@ -75,14 +77,14 @@ func ValidateWithSchema(data []byte) error {
 	if pathErr != nil {
 		// If we can't build the path, still return a useful error.
 		return &SchemaValidationError{
-			Err:    fmt.Errorf("schema validation"),
+			Err:    errors.New("schema validation"),
 			Detail: validationErr.Error(),
 		}
 	}
 
 	return &SchemaValidationError{
 		Path:   path,
-		Err:    fmt.Errorf("schema validation"),
+		Err:    errors.New("schema validation"),
 		Detail: validationErr.Error(),
 	}
 }
@@ -92,12 +94,13 @@ func ValidateWithSchema(data []byte) error {
 func buildYAMLPathFromError(validationErr *jsonschema.ValidationError) (*yaml.Path, error) {
 	// Find the cause with the most specific (longest) InstanceLocation.
 	mostSpecificLocation := findMostSpecificLocation(validationErr)
+
 	return buildPathFromLocation(mostSpecificLocation)
 }
 
 // findMostSpecificLocation recursively searches through all causes to find the one with the longest InstanceLocation.
 func findMostSpecificLocation(err *jsonschema.ValidationError) []string {
-	var longest []string = err.InstanceLocation
+	longest := err.InstanceLocation
 
 	// Recursively check all causes.
 	for _, cause := range err.Causes {
@@ -115,6 +118,7 @@ func buildPathFromLocation(location []string) (*yaml.Path, error) {
 	if len(location) == 0 {
 		// Root level error.
 		pb := yaml.PathBuilder{}
+
 		return pb.Root().Build(), nil
 	}
 

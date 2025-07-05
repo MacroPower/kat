@@ -8,8 +8,8 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"slices"
-	"strings"
+
+	"github.com/invopop/jsonschema"
 
 	_ "embed"
 
@@ -31,11 +31,12 @@ var (
 	}
 )
 
+//nolint:recvcheck // Must satisfy the jsonschema interface.
 type Config struct {
-	Command    *command.Config `yaml:",inline"`
-	UI         *ui.Config      `yaml:",inline"`
-	APIVersion string          `validate:"required" yaml:"apiVersion"`
-	Kind       string          `validate:"required" yaml:"kind"`
+	Command    *command.Config `json:",inline"`
+	UI         *ui.Config      `json:",inline"`
+	APIVersion string          `json:"apiVersion"`
+	Kind       string          `json:"kind"`
 }
 
 func NewConfig() *Config {
@@ -62,15 +63,32 @@ func (c *Config) EnsureDefaults() {
 	}
 }
 
-func (c *Config) Validate() error {
-	if !slices.Contains(ValidAPIVersions, c.APIVersion) {
-		return fmt.Errorf("unsupported apiVersion %q, expected one of [%s]", c.APIVersion, strings.Join(ValidAPIVersions, ", "))
+func (c Config) JSONSchemaExtend(schema *jsonschema.Schema) {
+	apiVersion, ok := schema.Properties.Get("apiVersion")
+	if !ok {
+		panic("apiVersion property not found in schema")
 	}
-	if !slices.Contains(ValidKinds, c.Kind) {
-		return fmt.Errorf("unsupported kind %q, expected one of [%s]", c.Kind, strings.Join(ValidKinds, ", "))
+	for _, version := range ValidAPIVersions {
+		apiVersion.OneOf = append(apiVersion.OneOf, &jsonschema.Schema{
+			Type:  "string",
+			Const: version,
+			Title: "API Version",
+		})
 	}
+	_, _ = schema.Properties.Set("apiVersion", apiVersion)
 
-	return nil
+	kind, ok := schema.Properties.Get("kind")
+	if !ok {
+		panic("kind property not found in schema")
+	}
+	for _, kindValue := range ValidKinds {
+		kind.OneOf = append(kind.OneOf, &jsonschema.Schema{
+			Type:  "string",
+			Const: kindValue,
+			Title: "Kind",
+		})
+	}
+	_, _ = schema.Properties.Set("kind", kind)
 }
 
 func ReadConfig(path string) ([]byte, error) {
@@ -96,15 +114,18 @@ func ReadConfig(path string) ([]byte, error) {
 }
 
 func LoadConfig(data []byte) (*Config, error) {
-	// First validate against JSON schema.
+	// Validate against JSON schema.
 	if err := ValidateWithSchema(data); err != nil {
-		if schemaErr, ok := err.(*SchemaValidationError); ok && schemaErr.Path != nil {
+		schemaErr := &SchemaValidationError{}
+		if errors.As(err, &schemaErr) {
 			source, srcErr := schemaErr.Path.AnnotateSource(data, true)
 			if srcErr != nil {
 				return nil, fmt.Errorf("schema validation: %w", err)
 			}
+
 			return nil, fmt.Errorf("schema validation: %w\n%s", err, source)
 		}
+
 		return nil, fmt.Errorf("schema validation: %w", err)
 	}
 
@@ -115,11 +136,7 @@ func LoadConfig(data []byte) (*Config, error) {
 	if err := dec.Decode(c); err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("decode yaml config: %w", err)
 	}
-
 	c.EnsureDefaults()
-	if err := c.Validate(); err != nil {
-		return nil, err
-	}
 	if err := c.Command.Validate(); err != nil {
 		source, srcErr := err.Path.AnnotateSource(data, true)
 		if srcErr != nil {
