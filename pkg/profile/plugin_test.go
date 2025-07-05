@@ -20,9 +20,10 @@ func TestPlugin_Exec(t *testing.T) {
 			profile.WithPluginArgs("hello", "world"))
 		require.NoError(t, err)
 
-		result := plugin.Exec(t.Context(), "/tmp")
+		result, err := plugin.Exec(t.Context(), "/tmp")
 
-		require.NoError(t, result.Error)
+		require.NoError(t, err)
+		require.NotNil(t, result)
 		assert.Contains(t, result.Stdout, "hello world")
 		assert.Empty(t, result.Stderr)
 	})
@@ -33,10 +34,11 @@ func TestPlugin_Exec(t *testing.T) {
 		plugin, err := profile.NewPlugin("false", "failing plugin") // command that always fails
 		require.NoError(t, err)
 
-		result := plugin.Exec(t.Context(), "/tmp")
+		result, err := plugin.Exec(t.Context(), "/tmp")
 
-		require.Error(t, result.Error)
-		assert.Contains(t, result.Error.Error(), "command execution")
+		require.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "command execution")
 	})
 
 	t.Run("empty command", func(t *testing.T) {
@@ -44,10 +46,11 @@ func TestPlugin_Exec(t *testing.T) {
 
 		plugin := &profile.Plugin{Description: "empty"} // empty command
 
-		result := plugin.Exec(t.Context(), "/tmp")
+		result, err := plugin.Exec(t.Context(), "/tmp")
 
-		require.Error(t, result.Error)
-		assert.Contains(t, result.Error.Error(), "empty command")
+		require.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "empty command")
 	})
 }
 

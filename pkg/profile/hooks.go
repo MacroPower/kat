@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+
+	"github.com/macropower/kat/pkg/execs"
 )
 
 // Hooks represents the different types of hooks that can be executed.
@@ -85,13 +87,13 @@ func (h *Hooks) Build() error {
 
 // HookCommand represents a single hook command to execute.
 type HookCommand struct {
-	Command Command `yaml:",inline"`
+	Command execs.Command `yaml:",inline"`
 }
 
 // NewHookCommand creates a new hook command with the given command and options.
 func NewHookCommand(command string, opts ...HookCommandOpt) (*HookCommand, error) {
 	hc := &HookCommand{
-		Command: Command{
+		Command: execs.Command{
 			Command: command,
 		},
 	}
@@ -126,14 +128,14 @@ func WithHookArgs(args ...string) HookCommandOpt {
 }
 
 // WithHookEnvVar sets a single environment variable for the hook command.
-func WithHookEnvVar(envVar EnvVar) HookCommandOpt {
+func WithHookEnvVar(envVar execs.EnvVar) HookCommandOpt {
 	return func(hc *HookCommand) {
 		hc.Command.AddEnvVar(envVar)
 	}
 }
 
 // WithHookEnvFrom sets the envFrom sources for the hook command.
-func WithHookEnvFrom(envFrom []EnvFromSource) HookCommandOpt {
+func WithHookEnvFrom(envFrom []execs.EnvFromSource) HookCommandOpt {
 	return func(hc *HookCommand) {
 		hc.Command.AddEnvFrom(envFrom)
 	}
@@ -149,12 +151,16 @@ func (hc *HookCommand) Build() error {
 	return nil
 }
 
-// Exec executes the hook command in the given directory with optional stdin.
-func (hc *HookCommand) Exec(ctx context.Context, dir string, stdin []byte) ExecResult {
-	result := hc.Command.ExecWithStdin(ctx, dir, stdin)
-	if result.Error != nil {
-		result.Error = fmt.Errorf("%w: %w", ErrHookExecution, result.Error)
+// Exec executes the hook command in the given directory.
+func (hc *HookCommand) Exec(ctx context.Context, dir string) (*execs.Result, error) {
+	return hc.ExecWithStdin(ctx, dir, nil)
+}
+
+func (hc *HookCommand) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (*execs.Result, error) {
+	result, err := hc.Command.ExecWithStdin(ctx, dir, stdin)
+	if err != nil {
+		return result, fmt.Errorf("%w: %w", ErrHookExecution, err)
 	}
 
-	return result
+	return result, nil
 }

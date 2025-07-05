@@ -5,6 +5,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 
+	"github.com/macropower/kat/pkg/execs"
 	"github.com/macropower/kat/pkg/profile"
 	"github.com/macropower/kat/pkg/rule"
 )
@@ -24,9 +25,9 @@ var (
 		"helm": profile.MustNew("helm",
 			profile.WithArgs("template", ".", "--generate-name"),
 			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])`),
-			profile.WithEnvFrom([]profile.EnvFromSource{
+			profile.WithEnvFrom([]execs.EnvFromSource{
 				{
-					CallerRef: &profile.CallerRef{
+					CallerRef: &execs.CallerRef{
 						Pattern: "^HELM_.+",
 					},
 				},

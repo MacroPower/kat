@@ -74,8 +74,12 @@ func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
 	p := cr.rule.GetProfile()
 	if p.Hooks != nil {
 		for _, hook := range p.Hooks.Init {
-			if hr := hook.Exec(context.Background(), cr.path, nil); hr.Error != nil {
-				return nil, fmt.Errorf("%w: init: %w", ErrHookExecution, hr.Error)
+			if hr, err := hook.Exec(context.Background(), cr.path); err != nil {
+				if hr != nil {
+					return nil, fmt.Errorf("%w: init: %w\n%s\n%s", ErrHookExecution, err, hr.Stdout, hr.Stderr)
+				}
+
+				return nil, fmt.Errorf("%w: init: %w", ErrHookExecution, err)
 			}
 		}
 	}
@@ -190,8 +194,8 @@ func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 		return co
 	}
 
-	result := plugin.Exec(ctx, path)
-	co.Error = result.Error
+	result, err := plugin.Exec(ctx, path)
+	co.Error = err
 	co.Stdout = result.Stdout
 	co.Stderr = result.Stderr
 
@@ -347,10 +351,12 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 		return co
 	}
 
-	result := p.Exec(ctx, path)
-	co.Error = result.Error
-	co.Stdout = result.Stdout
-	co.Stderr = result.Stderr
+	result, err := p.Exec(ctx, path)
+	co.Error = err
+	if result != nil {
+		co.Stdout = result.Stdout
+		co.Stderr = result.Stderr
+	}
 
 	// Check if the command was canceled.
 	if co.Error != nil && errors.Is(ctx.Err(), context.Canceled) {

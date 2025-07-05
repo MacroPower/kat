@@ -1,8 +1,9 @@
-package profile
+package execs
 
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os/exec"
@@ -10,6 +11,20 @@ import (
 	"slices"
 	"strings"
 )
+
+var (
+	// ErrCommandExecution is returned when command execution fails.
+	ErrCommandExecution = errors.New("command execution")
+
+	// ErrEmptyCommand is returned when a command is empty.
+	ErrEmptyCommand = errors.New("empty command")
+)
+
+// Result represents the result of a command execution.
+type Result struct {
+	Stdout string
+	Stderr string
+}
 
 // EnvFromSource represents a source for inheriting environment variables.
 type EnvFromSource struct {
@@ -122,13 +137,13 @@ func (e *Command) GetEnv() []string {
 	return env
 }
 
-func (e *Command) Exec(ctx context.Context, dir string) ExecResult {
+func (e *Command) Exec(ctx context.Context, dir string) (*Result, error) {
 	return e.ExecWithStdin(ctx, dir, nil)
 }
 
-func (e *Command) ExecWithStdin(ctx context.Context, dir string, stdin []byte) ExecResult {
+func (e *Command) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (*Result, error) {
 	if e.Command == "" {
-		return ExecResult{Error: fmt.Errorf("%w: %w", ErrCommandExecution, ErrEmptyCommand)}
+		return nil, fmt.Errorf("%w: %w", ErrCommandExecution, ErrEmptyCommand)
 	}
 
 	// Get environment variables for command execution.
@@ -145,26 +160,22 @@ func (e *Command) ExecWithStdin(ctx context.Context, dir string, stdin []byte) E
 	cmd.Stderr = &stderr
 
 	err := cmd.Run()
-	result := ExecResult{
+	result := &Result{
 		Stdout: stdout.String(),
 		Stderr: stderr.String(),
 	}
 
 	if err != nil {
-		if stderr.Len() > 0 {
-			result.Error = fmt.Errorf("%s\n%w: %w", stderr.String(), ErrCommandExecution, err)
-
-			return result
+		if stdout.Len() > 0 || stderr.Len() > 0 {
+			return result, fmt.Errorf("%w: %w", ErrCommandExecution, err)
 		}
 
-		result.Error = fmt.Errorf("%w: %w", ErrCommandExecution, err)
-
-		return result
+		return nil, fmt.Errorf("%w: %w", ErrCommandExecution, err)
 	}
 
 	slog.DebugContext(ctx, "command executed successfully")
 
-	return result
+	return result, nil
 }
 
 // CompilePatterns compiles all regex patterns.

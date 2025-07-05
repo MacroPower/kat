@@ -16,20 +16,12 @@ import (
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types/ref"
 
+	"github.com/macropower/kat/pkg/execs"
 	"github.com/macropower/kat/pkg/expr"
 	"github.com/macropower/kat/pkg/keys"
 )
 
 var (
-	// ErrNoCommandForPath is returned when no command is found for a path.
-	ErrNoCommandForPath = errors.New("no command for path")
-
-	// ErrCommandExecution is returned when command execution fails.
-	ErrCommandExecution = errors.New("command execution")
-
-	// ErrEmptyCommand is returned when a command is empty.
-	ErrEmptyCommand = errors.New("empty command")
-
 	// ErrHookExecution is returned when hook execution fails.
 	ErrHookExecution = errors.New("hook execution")
 
@@ -60,7 +52,7 @@ type Profile struct {
 	UI            *UIConfig          `yaml:"ui,omitempty"`
 	Plugins       map[string]*Plugin `yaml:"plugins,omitempty"`
 	Source        string             `yaml:"source,omitempty"`
-	Command       Command            `yaml:",inline"`
+	Command       execs.Command      `yaml:",inline"`
 }
 
 // ProfileOpt is a functional option for configuring a Profile.
@@ -68,7 +60,7 @@ type ProfileOpt func(*Profile)
 
 // New creates a new profile with the given command and options.
 func New(command string, opts ...ProfileOpt) (*Profile, error) {
-	p := &Profile{Command: Command{Command: command}}
+	p := &Profile{Command: execs.Command{Command: command}}
 	for _, opt := range opts {
 		opt(p)
 	}
@@ -112,14 +104,14 @@ func WithSource(source string) ProfileOpt {
 
 // WithEnvVar sets a single environment variable for the profile.
 // Call multiple times to set multiple environment variables.
-func WithEnvVar(envVar EnvVar) ProfileOpt {
+func WithEnvVar(envVar execs.EnvVar) ProfileOpt {
 	return func(p *Profile) {
 		p.Command.AddEnvVar(envVar)
 	}
 }
 
 // WithEnvFrom sets the envFrom sources for the profile.
-func WithEnvFrom(envFrom []EnvFromSource) ProfileOpt {
+func WithEnvFrom(envFrom []execs.EnvFromSource) ProfileOpt {
 	return func(p *Profile) {
 		p.Command.AddEnvFrom(envFrom)
 	}
@@ -221,46 +213,35 @@ func (p *Profile) MatchFiles(dirPath string, files []string) (bool, []string) {
 	return false, nil
 }
 
-// ExecResult represents the result of executing a profile.
-type ExecResult struct {
-	Error  error
-	Stdout string
-	Stderr string
-}
-
 // Exec runs the profile in the specified directory.
 // Returns ExecResult with the command output and any post-render hooks.
-func (p *Profile) Exec(ctx context.Context, dir string) ExecResult {
+func (p *Profile) Exec(ctx context.Context, dir string) (*execs.Result, error) {
 	// Execute preRender hooks, if any.
 	if p.Hooks != nil {
 		for _, hook := range p.Hooks.PreRender {
-			if hr := hook.Exec(ctx, dir, nil); hr.Error != nil {
-				hr.Error = fmt.Errorf("%w: %w", ErrHookExecution, hr.Error)
-
-				return hr
+			hr, err := hook.Exec(ctx, dir)
+			if err != nil {
+				return hr, fmt.Errorf("%w: preRender: %w", ErrHookExecution, err)
 			}
 		}
 	}
 
-	result := p.Command.Exec(ctx, dir)
-	if result.Error != nil {
-		result.Error = fmt.Errorf("%w: %w", ErrCommandExecution, result.Error)
-
-		return result
+	result, err := p.Command.Exec(ctx, dir)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // Primary command does not need additional context.
 	}
 
 	// Execute postRender hooks, passing the main command's output as stdin.
 	if p.Hooks != nil {
 		for _, hook := range p.Hooks.PostRender {
-			if hr := hook.Exec(ctx, dir, []byte(result.Stdout)); hr.Error != nil {
-				hr.Error = fmt.Errorf("%w: %w", ErrHookExecution, hr.Error)
-
-				return hr
+			hr, err := hook.ExecWithStdin(ctx, dir, []byte(result.Stdout))
+			if err != nil {
+				return hr, fmt.Errorf("%w: postRender: %w", ErrHookExecution, err)
 			}
 		}
 	}
 
-	return result
+	return result, nil
 }
 
 // setEnvFrom applies all envFrom sources to the environment map.

@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/macropower/kat/pkg/execs"
 	"github.com/macropower/kat/pkg/profile"
 )
 
@@ -145,9 +146,10 @@ func TestProfile_Exec(t *testing.T) {
 		t.Parallel()
 
 		p := profile.MustNew("echo", profile.WithArgs("hello", "world"))
-		result := p.Exec(t.Context(), "/tmp")
+		result, err := p.Exec(t.Context(), "/tmp")
 
-		require.NoError(t, result.Error)
+		require.NoError(t, err)
+		require.NotNil(t, result)
 		assert.Contains(t, result.Stdout, "hello world")
 		assert.Empty(t, result.Stderr)
 	})
@@ -156,20 +158,22 @@ func TestProfile_Exec(t *testing.T) {
 		t.Parallel()
 
 		p := profile.MustNew("false") // command that always fails
-		result := p.Exec(t.Context(), "/tmp")
+		result, err := p.Exec(t.Context(), "/tmp")
 
-		require.Error(t, result.Error)
-		assert.Contains(t, result.Error.Error(), "command execution")
+		require.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "command execution")
 	})
 
 	t.Run("empty command", func(t *testing.T) {
 		t.Parallel()
 
 		p := &profile.Profile{} // empty command
-		result := p.Exec(t.Context(), "/tmp")
+		result, err := p.Exec(t.Context(), "/tmp")
 
-		require.Error(t, result.Error)
-		assert.Contains(t, result.Error.Error(), "empty command")
+		require.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "empty command")
 	})
 }
 
@@ -191,8 +195,8 @@ func TestProfile_WithHooks(t *testing.T) {
 			profile.WithHooks(hooks),
 		)
 
-		result := p.Exec(t.Context(), "/tmp")
-		require.NoError(t, result.Error)
+		result, err := p.Exec(t.Context(), "/tmp")
+		require.NoError(t, err)
 		assert.Contains(t, result.Stdout, "main command")
 	})
 
@@ -211,10 +215,10 @@ func TestProfile_WithHooks(t *testing.T) {
 			profile.WithHooks(hooks),
 		)
 
-		result := p.Exec(t.Context(), "/tmp")
-		require.Error(t, result.Error)
-		assert.Contains(t, result.Error.Error(), "hook execution")
-		assert.Empty(t, result.Stdout) // main command should not have executed
+		result, err := p.Exec(t.Context(), "/tmp")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "hook execution")
+		assert.Nil(t, result) // main command should not have executed
 	})
 
 	t.Run("successful post-render hook", func(t *testing.T) {
@@ -232,8 +236,8 @@ func TestProfile_WithHooks(t *testing.T) {
 			profile.WithHooks(hooks),
 		)
 
-		result := p.Exec(t.Context(), "/tmp")
-		require.NoError(t, result.Error)
+		result, err := p.Exec(t.Context(), "/tmp")
+		require.NoError(t, err)
 		assert.Contains(t, result.Stdout, "main command output")
 	})
 }
@@ -245,9 +249,9 @@ func TestNewHookCommandError(t *testing.T) {
 	// Test that invalid regex patterns in envFrom cause an error
 	_, err := profile.NewHookCommand("echo",
 		profile.WithHookArgs("test"),
-		profile.WithHookEnvFrom([]profile.EnvFromSource{
+		profile.WithHookEnvFrom([]execs.EnvFromSource{
 			{
-				CallerRef: &profile.CallerRef{
+				CallerRef: &execs.CallerRef{
 					Pattern: "[invalid regex",
 				},
 			},
@@ -266,9 +270,9 @@ func TestMustNewHookCommandPanic(t *testing.T) {
 	assert.Panics(t, func() {
 		profile.MustNewHookCommand("echo",
 			profile.WithHookArgs("test"),
-			profile.WithHookEnvFrom([]profile.EnvFromSource{
+			profile.WithHookEnvFrom([]execs.EnvFromSource{
 				{
-					CallerRef: &profile.CallerRef{
+					CallerRef: &execs.CallerRef{
 						Pattern: "[invalid regex",
 					},
 				},
@@ -281,7 +285,7 @@ func TestMustNewHookCommandPanic(t *testing.T) {
 func TestProfile_EnvironmentIntegration(t *testing.T) {
 	tcs := map[string]struct {
 		setupEnv      func(t *testing.T)
-		validateEnv   func(t *testing.T, result profile.ExecResult)
+		validateEnv   func(t *testing.T, result *execs.Result)
 		profileOpts   []profile.ProfileOpt
 		expectedError bool
 	}{
@@ -289,15 +293,14 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
 				// No OS environment setup needed.
-			},
-			profileOpts: []profile.ProfileOpt{
+			}, profileOpts: []profile.ProfileOpt{
 				profile.WithArgs("-c", "echo ${STATIC_VAR:-not_found}"),
-				profile.WithEnvVar(profile.EnvVar{
+				profile.WithEnvVar(execs.EnvVar{
 					Name:  "STATIC_VAR",
 					Value: "static_value",
 				}),
 			},
-			validateEnv: func(t *testing.T, result profile.ExecResult) {
+			validateEnv: func(t *testing.T, result *execs.Result) {
 				t.Helper()
 				assert.Contains(t, result.Stdout, "static_value")
 			},
@@ -308,18 +311,17 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 				t.Setenv("TEST_PATTERN_VAR1", "pattern_value1")
 				t.Setenv("TEST_PATTERN_VAR2", "pattern_value2")
 				t.Setenv("OTHER_VAR", "other_value")
-			},
-			profileOpts: []profile.ProfileOpt{
+			}, profileOpts: []profile.ProfileOpt{
 				profile.WithArgs("-c", "echo ${TEST_PATTERN_VAR1:-not_found}"),
-				profile.WithEnvFrom([]profile.EnvFromSource{
+				profile.WithEnvFrom([]execs.EnvFromSource{
 					{
-						CallerRef: &profile.CallerRef{
+						CallerRef: &execs.CallerRef{
 							Pattern: "TEST_PATTERN_.*",
 						},
 					},
 				}),
 			},
-			validateEnv: func(t *testing.T, result profile.ExecResult) {
+			validateEnv: func(t *testing.T, result *execs.Result) {
 				t.Helper()
 				assert.Contains(t, result.Stdout, "pattern_value1")
 			},
@@ -331,15 +333,15 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 			},
 			profileOpts: []profile.ProfileOpt{
 				profile.WithArgs("-c", "echo ${CUSTOM_VAR:-not_found}"),
-				profile.WithEnvFrom([]profile.EnvFromSource{
+				profile.WithEnvFrom([]execs.EnvFromSource{
 					{
-						CallerRef: &profile.CallerRef{
+						CallerRef: &execs.CallerRef{
 							Name: "CUSTOM_VAR",
 						},
 					},
 				}),
 			},
-			validateEnv: func(t *testing.T, result profile.ExecResult) {
+			validateEnv: func(t *testing.T, result *execs.Result) {
 				t.Helper()
 				assert.Contains(t, result.Stdout, "custom_value")
 			},
@@ -351,16 +353,16 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 			},
 			profileOpts: []profile.ProfileOpt{
 				profile.WithArgs("-c", "echo ${COPIED_HOME:-not_found}"),
-				profile.WithEnvVar(profile.EnvVar{
+				profile.WithEnvVar(execs.EnvVar{
 					Name: "COPIED_HOME",
-					ValueFrom: &profile.EnvVarSource{
-						CallerRef: &profile.CallerRef{
+					ValueFrom: &execs.EnvVarSource{
+						CallerRef: &execs.CallerRef{
 							Name: "HOME",
 						},
 					},
 				}),
 			},
-			validateEnv: func(t *testing.T, result profile.ExecResult) {
+			validateEnv: func(t *testing.T, result *execs.Result) {
 				t.Helper()
 				assert.Contains(t, result.Stdout, "/custom/home")
 			},
@@ -372,23 +374,23 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 			},
 			profileOpts: []profile.ProfileOpt{
 				profile.WithArgs("-c", "echo ${COPIED_VAR:-not_found}"),
-				profile.WithEnvFrom([]profile.EnvFromSource{
+				profile.WithEnvFrom([]execs.EnvFromSource{
 					{
-						CallerRef: &profile.CallerRef{
+						CallerRef: &execs.CallerRef{
 							Name: "SOURCE_VAR",
 						},
 					},
 				}),
-				profile.WithEnvVar(profile.EnvVar{
+				profile.WithEnvVar(execs.EnvVar{
 					Name: "COPIED_VAR",
-					ValueFrom: &profile.EnvVarSource{
-						CallerRef: &profile.CallerRef{
+					ValueFrom: &execs.EnvVarSource{
+						CallerRef: &execs.CallerRef{
 							Name: "SOURCE_VAR",
 						},
 					},
 				}),
 			},
-			validateEnv: func(t *testing.T, result profile.ExecResult) {
+			validateEnv: func(t *testing.T, result *execs.Result) {
 				t.Helper()
 				assert.Contains(t, result.Stdout, "source_value")
 			},
@@ -400,19 +402,19 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 			},
 			profileOpts: []profile.ProfileOpt{
 				profile.WithArgs("-c", "echo ${OVERRIDE_VAR:-not_found}"),
-				profile.WithEnvFrom([]profile.EnvFromSource{
+				profile.WithEnvFrom([]execs.EnvFromSource{
 					{
-						CallerRef: &profile.CallerRef{
+						CallerRef: &execs.CallerRef{
 							Name: "OVERRIDE_VAR",
 						},
 					},
 				}),
-				profile.WithEnvVar(profile.EnvVar{
+				profile.WithEnvVar(execs.EnvVar{
 					Name:  "OVERRIDE_VAR",
 					Value: "static_override",
 				}),
 			},
-			validateEnv: func(t *testing.T, result profile.ExecResult) {
+			validateEnv: func(t *testing.T, result *execs.Result) {
 				t.Helper()
 				assert.Contains(t, result.Stdout, "static_override")
 				assert.NotContains(t, result.Stdout, "from_env")
@@ -431,37 +433,37 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 			profileOpts: []profile.ProfileOpt{
 				profile.WithArgs("-c", "echo ${STATIC_VAR:-not_found} ${COPIED_HOME:-not_found} ${PATTERN_VAR1:-not_found} ${NAMED_VAR:-not_found}"),
 				// Static variable.
-				profile.WithEnvVar(profile.EnvVar{
+				profile.WithEnvVar(execs.EnvVar{
 					Name:  "STATIC_VAR",
 					Value: "static",
 				}),
 				// Caller reference to essential variable.
-				profile.WithEnvVar(profile.EnvVar{
+				profile.WithEnvVar(execs.EnvVar{
 					Name: "COPIED_HOME",
-					ValueFrom: &profile.EnvVarSource{
-						CallerRef: &profile.CallerRef{
+					ValueFrom: &execs.EnvVarSource{
+						CallerRef: &execs.CallerRef{
 							Name: "HOME",
 						},
 					},
 				}),
 				// EnvFrom with pattern.
-				profile.WithEnvFrom([]profile.EnvFromSource{
+				profile.WithEnvFrom([]execs.EnvFromSource{
 					{
-						CallerRef: &profile.CallerRef{
+						CallerRef: &execs.CallerRef{
 							Pattern: "PATTERN_.*",
 						},
 					},
 				}),
 				// EnvFrom with name.
-				profile.WithEnvFrom([]profile.EnvFromSource{
+				profile.WithEnvFrom([]execs.EnvFromSource{
 					{
-						CallerRef: &profile.CallerRef{
+						CallerRef: &execs.CallerRef{
 							Name: "NAMED_VAR",
 						},
 					},
 				}),
 			},
-			validateEnv: func(t *testing.T, result profile.ExecResult) {
+			validateEnv: func(t *testing.T, result *execs.Result) {
 				t.Helper()
 				assert.Contains(t, result.Stdout, "static")
 				assert.Contains(t, result.Stdout, "/test/home")
@@ -478,16 +480,16 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 			},
 			profileOpts: []profile.ProfileOpt{
 				profile.WithArgs("-c", "echo ${MISSING_VAR:-not_found}"),
-				profile.WithEnvVar(profile.EnvVar{
+				profile.WithEnvVar(execs.EnvVar{
 					Name: "MISSING_VAR",
-					ValueFrom: &profile.EnvVarSource{
-						CallerRef: &profile.CallerRef{
+					ValueFrom: &execs.EnvVarSource{
+						CallerRef: &execs.CallerRef{
 							Name: "NONEXISTENT_VAR",
 						},
 					},
 				}),
 			},
-			validateEnv: func(t *testing.T, result profile.ExecResult) {
+			validateEnv: func(t *testing.T, result *execs.Result) {
 				t.Helper()
 				// The variable should not be set, so should show the default value.
 				assert.Contains(t, result.Stdout, "not_found")
@@ -503,12 +505,12 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 			p, err := profile.New("sh", tc.profileOpts...)
 			require.NoError(t, err)
 
-			result := p.Exec(t.Context(), "/tmp")
+			result, err := p.Exec(t.Context(), "/tmp")
 
 			if tc.expectedError {
-				require.Error(t, result.Error)
+				require.Error(t, err)
 			} else {
-				require.NoError(t, result.Error)
+				require.NoError(t, err)
 				tc.validateEnv(t, result)
 			}
 		})
@@ -526,9 +528,9 @@ func TestProfile_EnvironmentWithHooks(t *testing.T) {
 		// Create a hook that uses an environment variable.
 		preRenderHook, err := profile.NewHookCommand("sh",
 			profile.WithHookArgs("-c", "echo ${HOOK_TEST_VAR:-not_found}"),
-			profile.WithHookEnvFrom([]profile.EnvFromSource{
+			profile.WithHookEnvFrom([]execs.EnvFromSource{
 				{
-					CallerRef: &profile.CallerRef{
+					CallerRef: &execs.CallerRef{
 						Name: "HOOK_TEST_VAR",
 					},
 				},
@@ -546,8 +548,8 @@ func TestProfile_EnvironmentWithHooks(t *testing.T) {
 			profile.WithHooks(hooks),
 		)
 
-		result := p.Exec(t.Context(), "/tmp")
-		require.NoError(t, result.Error)
+		result, err := p.Exec(t.Context(), "/tmp")
+		require.NoError(t, err)
 		assert.Contains(t, result.Stdout, "main command")
 	})
 
@@ -557,7 +559,7 @@ func TestProfile_EnvironmentWithHooks(t *testing.T) {
 		// Create a hook with a static environment variable.
 		postRenderHook, err := profile.NewHookCommand("sh",
 			profile.WithHookArgs("-c", "echo ${HOOK_STATIC_VAR:-not_found}"),
-			profile.WithHookEnvVar(profile.EnvVar{
+			profile.WithHookEnvVar(execs.EnvVar{
 				Name:  "HOOK_STATIC_VAR",
 				Value: "hook_static_value",
 			}),
@@ -574,8 +576,8 @@ func TestProfile_EnvironmentWithHooks(t *testing.T) {
 			profile.WithHooks(hooks),
 		)
 
-		result := p.Exec(t.Context(), "/tmp")
-		require.NoError(t, result.Error)
+		result, err := p.Exec(t.Context(), "/tmp")
+		require.NoError(t, err)
 		assert.Contains(t, result.Stdout, "main output")
 	})
 }
@@ -588,15 +590,15 @@ func TestProfile_EnvironmentEdgeCases(t *testing.T) {
 
 		p, err := profile.New("sh",
 			profile.WithArgs("-c", "echo ${EMPTY_NAME_VAR:-not_found}"),
-			profile.WithEnvVar(profile.EnvVar{
+			profile.WithEnvVar(execs.EnvVar{
 				Name:  "", // Empty name should be ignored.
 				Value: "should_not_appear",
 			}),
 		)
 		require.NoError(t, err)
 
-		result := p.Exec(t.Context(), "/tmp")
-		require.NoError(t, result.Error)
+		result, err := p.Exec(t.Context(), "/tmp")
+		require.NoError(t, err)
 		// Since the empty name variable is ignored, the variable won't be set.
 		assert.Contains(t, result.Stdout, "not_found")
 	})
@@ -606,15 +608,15 @@ func TestProfile_EnvironmentEdgeCases(t *testing.T) {
 
 		p, err := profile.New("sh",
 			profile.WithArgs("-c", "echo ${EMPTY_VAR:-not_found}"),
-			profile.WithEnvVar(profile.EnvVar{
+			profile.WithEnvVar(execs.EnvVar{
 				Name:  "EMPTY_VAR",
 				Value: "", // Empty value should be skipped.
 			}),
 		)
 		require.NoError(t, err)
 
-		result := p.Exec(t.Context(), "/tmp")
-		require.NoError(t, result.Error)
+		result, err := p.Exec(t.Context(), "/tmp")
+		require.NoError(t, err)
 		// Should show the default value since the variable wasn't set due to empty value.
 		assert.Contains(t, result.Stdout, "not_found")
 	})
@@ -629,8 +631,8 @@ func TestProfile_EnvironmentEdgeCases(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		result := p.Exec(t.Context(), "/tmp")
-		require.NoError(t, result.Error)
+		result, err := p.Exec(t.Context(), "/tmp")
+		require.NoError(t, err)
 		assert.Contains(t, result.Stdout, "test")
 	})
 }

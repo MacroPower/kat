@@ -5,20 +5,21 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/macropower/kat/pkg/execs"
 	"github.com/macropower/kat/pkg/keys"
 )
 
 // Plugin represents a command plugin that can be executed on demand with keybinds.
 type Plugin struct {
-	Command     Command    `yaml:",inline"`
-	Description string     `yaml:"description"`
-	Keys        []keys.Key `yaml:"keys,omitempty"`
+	Command     execs.Command `yaml:",inline"`
+	Description string        `yaml:"description"`
+	Keys        []keys.Key    `yaml:"keys,omitempty"`
 }
 
 // NewPlugin creates a new plugin with the given command and options.
 func NewPlugin(command, description string, opts ...PluginOpt) (*Plugin, error) {
 	p := &Plugin{
-		Command: Command{
+		Command: execs.Command{
 			Command: command,
 		},
 		Description: description,
@@ -61,14 +62,14 @@ func WithPluginKeys(k ...keys.Key) PluginOpt {
 }
 
 // WithPluginEnvVar sets a single environment variable for the plugin.
-func WithPluginEnvVar(envVar EnvVar) PluginOpt {
+func WithPluginEnvVar(envVar execs.EnvVar) PluginOpt {
 	return func(p *Plugin) {
 		p.Command.AddEnvVar(envVar)
 	}
 }
 
 // WithPluginEnvFrom sets the envFrom sources for the plugin.
-func WithPluginEnvFrom(envFrom []EnvFromSource) PluginOpt {
+func WithPluginEnvFrom(envFrom []execs.EnvFromSource) PluginOpt {
 	return func(p *Plugin) {
 		p.Command.AddEnvFrom(envFrom)
 	}
@@ -85,13 +86,13 @@ func (p *Plugin) Build() error {
 }
 
 // Exec executes the plugin command in the specified directory.
-func (p *Plugin) Exec(ctx context.Context, dir string) ExecResult {
-	result := p.Command.Exec(ctx, dir)
-	if result.Error != nil {
-		result.Error = fmt.Errorf("%w: %w", ErrPluginExecution, result.Error)
+func (p *Plugin) Exec(ctx context.Context, dir string) (*execs.Result, error) {
+	result, err := p.Command.Exec(ctx, dir)
+	if err != nil {
+		return result, fmt.Errorf("%w: %w", ErrPluginExecution, err)
 	}
 
-	return result
+	return result, nil
 }
 
 // MatchKeys checks if any of the plugin's keys match the given key code.
