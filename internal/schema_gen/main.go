@@ -5,15 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
-	"go/doc"
-	"go/parser"
-	"go/token"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 
 	"github.com/invopop/jsonschema"
+	"golang.org/x/tools/go/packages"
 
 	"github.com/macropower/kat/pkg/config"
 )
@@ -25,31 +23,38 @@ func main() {
 		panic(fmt.Errorf("find module root: %w", err))
 	}
 
-	// Parse all relevant packages to extract struct field comments.
-	fset := token.NewFileSet()
 	commentMap := make(map[string]string)
 
 	// List of packages to parse for comments (relative to module root).
 	packagePaths := []string{
-		"pkg/config",
-		"pkg/command",
-		"pkg/ui",
-		"pkg/profile",
-		"pkg/rule",
-		"pkg/execs",
-		"pkg/keys",
+		"github.com/macropower/kat/pkg/config",
+		"github.com/macropower/kat/pkg/command",
+		"github.com/macropower/kat/pkg/ui",
+		"github.com/macropower/kat/pkg/profile",
+		"github.com/macropower/kat/pkg/rule",
+		"github.com/macropower/kat/pkg/execs",
+		"github.com/macropower/kat/pkg/keys",
 	}
 
-	for _, pkgPath := range packagePaths {
-		fullPath := filepath.Join(moduleRoot, pkgPath)
-		pkgs, err := parser.ParseDir(fset, fullPath, nil, parser.ParseComments)
-		if err != nil {
-			// Skip packages that don't exist or can't be parsed.
+	// Load packages using the modern packages API.
+	cfg := &packages.Config{
+		Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes,
+		Dir:  moduleRoot,
+	}
+
+	pkgs, err := packages.Load(cfg, packagePaths...)
+	if err != nil {
+		panic(fmt.Errorf("load packages: %w", err))
+	}
+
+	// Check for package loading errors.
+	for _, pkg := range pkgs {
+		if len(pkg.Errors) > 0 {
+			// Skip packages with errors.
 			continue
 		}
-
 		// Build comment map for this package.
-		buildCommentMapForPackage(fset, pkgs, commentMap)
+		buildCommentMapForPackage(pkg, commentMap)
 	}
 
 	r := new(jsonschema.Reflector)
@@ -127,44 +132,46 @@ func findModuleRoot() (string, error) {
 }
 
 // buildCommentMapForPackage parses Go packages and builds a map of comments for types and fields.
-func buildCommentMapForPackage(fset *token.FileSet, pkgs map[string]*ast.Package, commentMap map[string]string) {
-	for _, pkg := range pkgs {
-		// Create documentation from the package.
-		docPkg := doc.New(pkg, "./", 0)
+func buildCommentMapForPackage(pkg *packages.Package, commentMap map[string]string) {
+	// Walk through all syntax files to extract type and field comments directly.
+	for _, file := range pkg.Syntax {
+		ast.Inspect(file, func(n ast.Node) bool {
+			switch node := n.(type) {
+			case *ast.GenDecl:
+				// Extract type comments from general declarations.
+				if node.Doc != nil {
+					for _, spec := range node.Specs {
+						if typeSpec, ok := spec.(*ast.TypeSpec); ok {
+							key := pkg.Name + "." + typeSpec.Name.Name
+							commentMap[key] = cleanComment(node.Doc.Text())
+						}
+					}
+				}
+			case *ast.TypeSpec:
+				// Extract type comments from individual type specs.
+				if node.Doc != nil {
+					key := pkg.Name + "." + node.Name.Name
+					commentMap[key] = cleanComment(node.Doc.Text())
+				}
 
-		// Extract type comments.
-		for _, typ := range docPkg.Types {
-			if typ.Doc != "" {
-				key := pkg.Name + "." + typ.Name
-				commentMap[key] = cleanComment(typ.Doc)
-			}
-		}
-
-		// Walk through all files to extract field comments.
-		for _, file := range pkg.Files {
-			ast.Inspect(file, func(n ast.Node) bool {
-				switch node := n.(type) {
-				case *ast.TypeSpec:
-					if structType, ok := node.Type.(*ast.StructType); ok {
-						typeName := node.Name.Name
-
-						// Extract field comments.
-						for _, field := range structType.Fields.List {
-							if field.Comment != nil && len(field.Names) > 0 {
-								fieldName := field.Names[0].Name
-								comment := field.Comment.Text()
-								if comment != "" {
-									key := pkg.Name + "." + typeName + "." + fieldName
-									commentMap[key] = cleanComment(comment)
-								}
+				// Extract field comments from struct types.
+				if structType, ok := node.Type.(*ast.StructType); ok {
+					typeName := node.Name.Name
+					for _, field := range structType.Fields.List {
+						if field.Comment != nil && len(field.Names) > 0 {
+							fieldName := field.Names[0].Name
+							comment := field.Comment.Text()
+							if comment != "" {
+								key := pkg.Name + "." + typeName + "." + fieldName
+								commentMap[key] = cleanComment(comment)
 							}
 						}
 					}
 				}
+			}
 
-				return true
-			})
-		}
+			return true
+		})
 	}
 }
 
