@@ -1,0 +1,313 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Kat Configuration Schema",
+  "description": "JSON schema for validating kat configuration files",
+  "required": ["apiVersion", "kind"],
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "enum": ["kat.jacobcolvin.com/v1beta1"],
+      "description": "API version of the configuration"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["Configuration"],
+      "description": "Kind of the configuration object"
+    },
+    "ui": {
+      "$ref": "#/definitions/uiConfig"
+    },
+    "profiles": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/profile"
+      },
+      "description": "Map of profile name to profile configuration"
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/rule"
+      },
+      "description": "List of rules for profile selection"
+    }
+  },
+  "definitions": {
+    "uiConfig": {
+      "type": "object",
+      "properties": {
+        "theme": {
+          "type": "string",
+          "description": "UI theme name"
+        },
+        "compact": {
+          "type": "boolean",
+          "description": "Enable compact UI mode"
+        },
+        "hideHelp": {
+          "type": "boolean",
+          "description": "Hide help panel"
+        },
+        "pagination": {
+          "$ref": "#/definitions/pagination"
+        },
+        "keybinds": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Custom keybind configuration"
+        }
+      }
+    },
+    "pagination": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of items per page"
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "required": ["command"],
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Command to execute"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Arguments to pass to the command"
+        },
+        "source": {
+          "type": "string",
+          "description": "CEL expression to filter source files"
+        },
+        "env": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/envVar"
+          },
+          "description": "Environment variables"
+        },
+        "envFrom": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/envFromSource"
+          },
+          "description": "Environment variable sources"
+        },
+        "hooks": {
+          "$ref": "#/definitions/hooks"
+        },
+        "plugins": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/plugin"
+          },
+          "description": "Map of plugin name to plugin configuration"
+        },
+        "ui": {
+          "$ref": "#/definitions/uiConfig"
+        }
+      }
+    },
+    "envVar": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Environment variable name"
+        },
+        "value": {
+          "type": "string",
+          "description": "Environment variable value"
+        },
+        "valueFrom": {
+          "$ref": "#/definitions/envVarSource"
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["value"]
+        },
+        {
+          "required": ["valueFrom"]
+        }
+      ]
+    },
+    "envVarSource": {
+      "type": "object",
+      "properties": {
+        "callerRef": {
+          "$ref": "#/definitions/callerRef"
+        }
+      }
+    },
+    "envFromSource": {
+      "type": "object",
+      "properties": {
+        "callerRef": {
+          "$ref": "#/definitions/callerRef"
+        }
+      }
+    },
+    "callerRef": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the environment variable to reference"
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Regex pattern to match environment variable names"
+        }
+      }
+    },
+    "hooks": {
+      "type": "object",
+      "properties": {
+        "init": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/hookCommand"
+          },
+          "description": "Commands to run during initialization"
+        },
+        "preRender": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/hookCommand"
+          },
+          "description": "Commands to run before rendering"
+        },
+        "postRender": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/hookCommand"
+          },
+          "description": "Commands to run after rendering"
+        }
+      }
+    },
+    "hookCommand": {
+      "type": "object",
+      "required": ["command"],
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Command to execute"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Arguments to pass to the command"
+        },
+        "env": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/envVar"
+          },
+          "description": "Environment variables"
+        },
+        "envFrom": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/envFromSource"
+          },
+          "description": "Environment variable sources"
+        }
+      }
+    },
+    "plugin": {
+      "type": "object",
+      "required": ["command"],
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Command to execute"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Arguments to pass to the command"
+        },
+        "description": {
+          "type": "string",
+          "description": "Plugin description"
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/keyBinding"
+          },
+          "description": "Key bindings for the plugin"
+        },
+        "env": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/envVar"
+          },
+          "description": "Environment variables"
+        },
+        "envFrom": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/envFromSource"
+          },
+          "description": "Environment variable sources"
+        }
+      }
+    },
+    "keyBinding": {
+      "type": "object",
+      "required": ["code"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Key code for the binding"
+        },
+        "alias": {
+          "type": "string",
+          "description": "Display alias for the key"
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "Hide this key binding from help"
+        }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "required": ["match", "profile"],
+      "properties": {
+        "match": {
+          "type": "string",
+          "minLength": 1,
+          "description": "CEL expression that returns true if the rule should be applied"
+        },
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the profile to use when this rule matches"
+        }
+      }
+    }
+  }
+}

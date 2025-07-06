@@ -178,7 +178,7 @@ kind: Configuration
 invalid: [unclosed
 `,
 			wantErr: true,
-			errMsg:  "decode yaml config",
+			errMsg:  "parse YAML",
 		},
 		"missing required fields": {
 			yamlContent: `profiles:
@@ -186,7 +186,7 @@ invalid: [unclosed
     command: echo
 `,
 			wantErr: true,
-			errMsg:  "Field validation",
+			errMsg:  "missing properties 'apiVersion', 'kind'",
 		},
 	}
 

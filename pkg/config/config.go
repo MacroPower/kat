@@ -11,8 +11,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/go-playground/validator/v10"
-
 	_ "embed"
 
 	yaml "github.com/goccy/go-yaml"
@@ -98,10 +96,20 @@ func ReadConfig(path string) ([]byte, error) {
 }
 
 func LoadConfig(data []byte) (*Config, error) {
+	// First validate against JSON schema.
+	if err := ValidateWithSchema(data); err != nil {
+		if schemaErr, ok := err.(*SchemaValidationError); ok && schemaErr.Path != nil {
+			source, srcErr := schemaErr.Path.AnnotateSource(data, true)
+			if srcErr != nil {
+				return nil, fmt.Errorf("schema validation: %w", err)
+			}
+			return nil, fmt.Errorf("schema validation: %w\n%s", err, source)
+		}
+		return nil, fmt.Errorf("schema validation: %w", err)
+	}
+
 	c := &Config{}
-	validate := validator.New(validator.WithRequiredStructEnabled())
 	dec := yaml.NewDecoder(bytes.NewReader(data),
-		yaml.Validator(validate),
 		yaml.AllowDuplicateMapKey(),
 	)
 	if err := dec.Decode(c); err != nil && !errors.Is(err, io.EOF) {
