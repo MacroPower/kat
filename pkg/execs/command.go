@@ -28,27 +28,34 @@ type Result struct {
 
 // EnvFromSource represents a source for inheriting environment variables.
 type EnvFromSource struct {
-	CallerRef *CallerRef `json:"callerRef,omitempty"`
+	// CallerRef specifies how to inherit environment variables from the caller process.
+	CallerRef *CallerRef `json:"callerRef,omitempty" jsonschema:"title=Caller Reference"`
 }
 
 // CallerRef represents a reference to environment variables from the caller process.
 type CallerRef struct {
 	compiledPattern *regexp.Regexp // Compiled regex pattern for matching environment variables.
 
-	Pattern string `json:"pattern,omitempty"`
-	Name    string `json:"name,omitempty"`
+	// Pattern is a regex pattern for matching environment variable names.
+	Pattern string `json:"pattern,omitempty" jsonschema:"title=Pattern"`
+	// Name is the specific environment variable name to inherit.
+	Name string `json:"name,omitempty" jsonschema:"title=Name"`
 }
 
 // EnvVar represents an environment variable definition.
 type EnvVar struct {
-	ValueFrom *EnvVarSource `json:"valueFrom,omitempty"`
-	Name      string        `json:"name"`
-	Value     string        `json:"value,omitempty"`
+	// ValueFrom specifies a source for the environment variable value.
+	ValueFrom *EnvVarSource `json:"valueFrom,omitempty" jsonschema:"title=Value From"`
+	// Name is the environment variable name.
+	Name string `json:"name" jsonschema:"title=Name"`
+	// Value is the environment variable value.
+	Value string `json:"value,omitempty" jsonschema:"title=Value"`
 }
 
 // EnvVarSource represents a source for an environment variable value.
 type EnvVarSource struct {
-	CallerRef *CallerRef `json:"callerRef,omitempty"`
+	// CallerRef specifies how to get the value from the caller process environment.
+	CallerRef *CallerRef `json:"callerRef,omitempty" jsonschema:"title=Caller Reference"`
 }
 
 // Compile compiles the caller reference pattern into a regex if a pattern is provided.
@@ -68,10 +75,13 @@ func (c *CallerRef) Compile() error {
 type Command struct {
 	baseEnv map[string]string
 	// Command is the command to execute.
-	Command string          `json:"command"           validate:"alphanum"`
-	Args    []string        `json:"args,omitempty"    yaml:"args,flow,omitempty"`
-	Env     []EnvVar        `json:"env,omitempty"`
-	EnvFrom []EnvFromSource `json:"envFrom,omitempty"`
+	Command string `json:"command" jsonschema:"title=Command" validate:"alphanum"`
+	// Args contains the command line arguments.
+	Args []string `json:"args,omitempty" jsonschema:"title=Arguments" yaml:"args,flow,omitempty"`
+	// Env contains environment variable definitions.
+	Env []EnvVar `json:"env,omitempty" jsonschema:"title=Environment Variables"`
+	// EnvFrom contains sources for inheriting environment variables.
+	EnvFrom []EnvFromSource `json:"envFrom,omitempty" jsonschema:"title=Environment Variables From"`
 }
 
 // NewCommand creates a new [Command].

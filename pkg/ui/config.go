@@ -17,9 +17,13 @@ var DefaultConfig = NewConfig()
 
 // Config contains TUI-specific configuration.
 type Config struct {
-	KeyBinds *KeyBinds              `json:"keybinds,omitempty"`
-	Themes   map[string]ThemeConfig `json:"themes,omitempty"`
-	UI       *UIConfig              `json:"ui,omitempty"`
+	// KeyBinds contains key binding configurations for different UI components.
+	KeyBinds *KeyBinds `json:"keybinds,omitempty" jsonschema:"title=Key Binds"`
+	// Themes defines custom color for the UI, defined as a map of theme name to theme config.
+	// Themes can be referenced by name in the global and/or profile UI configs.
+	Themes map[string]ThemeConfig `json:"themes,omitempty" jsonschema:"title=Themes"`
+	// UI contains general UI display settings.
+	UI *UIConfig `json:"ui,omitempty" jsonschema:"title=UI"`
 }
 
 func NewConfig() *Config {
@@ -30,12 +34,19 @@ func NewConfig() *Config {
 }
 
 type UIConfig struct {
-	MinimumDelay    *time.Duration `json:"minimumDelay,omitempty"`
-	Compact         *bool          `json:"compact,omitempty"`
-	WordWrap        *bool          `json:"wordWrap,omitempty"`
-	ChromaRendering *bool          `json:"chromaRendering,omitempty"`
-	LineNumbers     *bool          `json:"lineNumbers,omitempty"`
-	Theme           string         `json:"theme,omitempty"`
+	// MinimumDelay specifies the minimum delay before updating the display.
+	MinimumDelay *time.Duration `json:"minimumDelay,omitempty" jsonschema:"title=Minimum Delay,type=string,default=200ms"`
+	// Compact enables compact display mode with reduced spacing.
+	Compact *bool `json:"compact,omitempty" jsonschema:"title=Enable Compact Display,default=false"`
+	// WordWrap enables automatic word wrapping for long text.
+	WordWrap *bool `json:"wordWrap,omitempty" jsonschema:"title=Enable Word Wrap,default=true"`
+	// ChromaRendering enables syntax highlighting using Chroma.
+	ChromaRendering *bool `json:"chromaRendering,omitempty" jsonschema:"title=Enable Chroma Rendering,default=true"`
+	// LineNumbers enables line numbers in the display.
+	LineNumbers *bool `json:"lineNumbers,omitempty" jsonschema:"title=Enable Line Numbers,default=true"`
+	// Theme specifies the theme name to use. This can be a custom theme added under `themes`,
+	// or a theme from the Chroma Style Gallery: https://xyproto.github.io/splash/docs/
+	Theme string `json:"theme,omitempty" jsonschema:"title=Theme Name"`
 }
 
 func (c *UIConfig) EnsureDefaults() {
@@ -50,14 +61,16 @@ func (c UIConfig) JSONSchemaExtend(schema *jsonschema.Schema) {
 	if !ok {
 		panic("minimumDelay property not found in UIConfig schema")
 	}
-	minimumDelay.Type = "string"
-	minimumDelay.Default = "200ms"
 	minimumDelay.Pattern = `^([1-9]\d{0,2}ms|[1-9]\d{0,5}us|[1-9]\d{0,8}ns)$`
 	schema.Properties.Set("minimumDelay", minimumDelay)
 }
 
+// ThemeConfig defines custom theme configuration.
 type ThemeConfig struct {
-	Styles chroma.StyleEntries `json:"styles,omitempty"`
+	// Styles contains the style entries for Chroma rendering, which uses the same syntax as Pygments.
+	// Define a map of Pygments Tokens (https://pygments.org/docs/tokens/)
+	// to Pygments Styles (http://pygments.org/docs/styles/).
+	Styles chroma.StyleEntries `json:"styles,omitempty" jsonschema:"title=Styles"`
 }
 
 func (c *Config) EnsureDefaults() {
@@ -89,10 +102,14 @@ func setDefaultBool(b **bool, value bool) {
 	}
 }
 
+// KeyBinds contains key binding configurations for different UI components.
 type KeyBinds struct {
-	Common *common.KeyBinds `json:"common,omitempty"`
-	List   *list.KeyBinds   `json:"list,omitempty"`
-	Pager  *pager.KeyBinds  `json:"pager,omitempty"`
+	// Common contains key bindings that apply across all UI components.
+	Common *common.KeyBinds `json:"common,omitempty" jsonschema:"title=Common Key Binds"`
+	// List contains key bindings specific to list views.
+	List *list.KeyBinds `json:"list,omitempty" jsonschema:"title=List Key Binds"`
+	// Pager contains key bindings specific to the pager view.
+	Pager *pager.KeyBinds `json:"pager,omitempty" jsonschema:"title=Pager Key Binds"`
 }
 
 func NewKeyBinds() *KeyBinds {

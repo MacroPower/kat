@@ -10,9 +10,12 @@ import (
 
 // Hooks represents the different types of hooks that can be executed.
 type Hooks struct {
-	Init       []*HookCommand `json:"init,omitempty"`
-	PreRender  []*HookCommand `json:"preRender,omitempty"`
-	PostRender []*HookCommand `json:"postRender,omitempty"`
+	// Init contains commands to run during initialization.
+	Init []*HookCommand `json:"init,omitempty" jsonschema:"title=Init Hooks"`
+	// PreRender contains commands to run before rendering.
+	PreRender []*HookCommand `json:"preRender,omitempty" jsonschema:"title=Pre Render Hooks"`
+	// PostRender contains commands to run after rendering.
+	PostRender []*HookCommand `json:"postRender,omitempty" jsonschema:"title=Post Render Hooks"`
 }
 
 // NewHooks creates a new Hooks instance with the given options.
@@ -87,6 +90,7 @@ func (h *Hooks) Build() error {
 
 // HookCommand represents a single hook command to execute.
 type HookCommand struct {
+	// Command contains the command execution configuration.
 	Command execs.Command `json:",inline"`
 }
 

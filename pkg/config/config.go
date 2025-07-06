@@ -33,10 +33,12 @@ var (
 
 //nolint:recvcheck // Must satisfy the jsonschema interface.
 type Config struct {
-	Command    *command.Config `json:",inline"`
-	UI         *ui.Config      `json:",inline"`
-	APIVersion string          `json:"apiVersion"`
-	Kind       string          `json:"kind"`
+	Command *command.Config `json:",inline"`
+	UI      *ui.Config      `json:",inline"`
+	// APIVersion specifies the API version for this configuration.
+	APIVersion string `json:"apiVersion" jsonschema:"title=API Version"`
+	// Kind defines the type of configuration.
+	Kind string `json:"kind" jsonschema:"title=Kind"`
 }
 
 func NewConfig() *Config {

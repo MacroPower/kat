@@ -12,6 +12,7 @@
                   "properties": {
                     "command": {
                       "type": "string",
+                      "title": "Command",
                       "description": "Command.Command: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     },
                     "args": {
@@ -19,6 +20,7 @@
                         "type": "string"
                       },
                       "type": "array",
+                      "title": "Arguments",
                       "description": "Command.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     },
                     "env": {
@@ -30,28 +32,34 @@
                                 "properties": {
                                   "pattern": {
                                     "type": "string",
+                                    "title": "Pattern",
                                     "description": "CallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                                   },
                                   "name": {
                                     "type": "string",
+                                    "title": "Name",
                                     "description": "CallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                                   }
                                 },
                                 "additionalProperties": false,
                                 "type": "object",
+                                "title": "Caller Reference",
                                 "description": "EnvVarSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVarSource"
                               }
                             },
                             "additionalProperties": false,
                             "type": "object",
+                            "title": "Value From",
                             "description": "EnvVar.ValueFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                           },
                           "name": {
                             "type": "string",
+                            "title": "Name",
                             "description": "EnvVar.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                           },
                           "value": {
                             "type": "string",
+                            "title": "Value",
                             "description": "EnvVar.Value: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                           }
                         },
@@ -63,6 +71,7 @@
                         "description": "EnvVar represents an environment variable definition.\n\nEnvVar: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                       },
                       "type": "array",
+                      "title": "Environment Variables",
                       "description": "Command.Env: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     },
                     "envFrom": {
@@ -72,15 +81,18 @@
                             "properties": {
                               "pattern": {
                                 "type": "string",
+                                "title": "Pattern",
                                 "description": "CallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                               },
                               "name": {
                                 "type": "string",
+                                "title": "Name",
                                 "description": "CallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                               }
                             },
                             "additionalProperties": false,
                             "type": "object",
+                            "title": "Caller Reference",
                             "description": "EnvFromSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
                           }
                         },
@@ -89,6 +101,7 @@
                         "description": "EnvFromSource represents a source for inheriting environment variables.\n\nEnvFromSource: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
                       },
                       "type": "array",
+                      "title": "Environment Variables From",
                       "description": "Command.EnvFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     }
                   },
@@ -100,6 +113,7 @@
                   "description": "HookCommand represents a single hook command to execute.\n\nHookCommand: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#HookCommand"
                 },
                 "type": "array",
+                "title": "Init Hooks",
                 "description": "Hooks.Init: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Hooks"
               },
               "preRender": {
@@ -107,6 +121,7 @@
                   "properties": {
                     "command": {
                       "type": "string",
+                      "title": "Command",
                       "description": "Command.Command: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     },
                     "args": {
@@ -114,6 +129,7 @@
                         "type": "string"
                       },
                       "type": "array",
+                      "title": "Arguments",
                       "description": "Command.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     },
                     "env": {
@@ -125,28 +141,34 @@
                                 "properties": {
                                   "pattern": {
                                     "type": "string",
+                                    "title": "Pattern",
                                     "description": "CallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                                   },
                                   "name": {
                                     "type": "string",
+                                    "title": "Name",
                                     "description": "CallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                                   }
                                 },
                                 "additionalProperties": false,
                                 "type": "object",
+                                "title": "Caller Reference",
                                 "description": "EnvVarSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVarSource"
                               }
                             },
                             "additionalProperties": false,
                             "type": "object",
+                            "title": "Value From",
                             "description": "EnvVar.ValueFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                           },
                           "name": {
                             "type": "string",
+                            "title": "Name",
                             "description": "EnvVar.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                           },
                           "value": {
                             "type": "string",
+                            "title": "Value",
                             "description": "EnvVar.Value: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                           }
                         },
@@ -158,6 +180,7 @@
                         "description": "EnvVar represents an environment variable definition.\n\nEnvVar: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                       },
                       "type": "array",
+                      "title": "Environment Variables",
                       "description": "Command.Env: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     },
                     "envFrom": {
@@ -167,15 +190,18 @@
                             "properties": {
                               "pattern": {
                                 "type": "string",
+                                "title": "Pattern",
                                 "description": "CallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                               },
                               "name": {
                                 "type": "string",
+                                "title": "Name",
                                 "description": "CallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                               }
                             },
                             "additionalProperties": false,
                             "type": "object",
+                            "title": "Caller Reference",
                             "description": "EnvFromSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
                           }
                         },
@@ -184,6 +210,7 @@
                         "description": "EnvFromSource represents a source for inheriting environment variables.\n\nEnvFromSource: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
                       },
                       "type": "array",
+                      "title": "Environment Variables From",
                       "description": "Command.EnvFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     }
                   },
@@ -195,6 +222,7 @@
                   "description": "HookCommand represents a single hook command to execute.\n\nHookCommand: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#HookCommand"
                 },
                 "type": "array",
+                "title": "Pre Render Hooks",
                 "description": "Hooks.PreRender: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Hooks"
               },
               "postRender": {
@@ -202,6 +230,7 @@
                   "properties": {
                     "command": {
                       "type": "string",
+                      "title": "Command",
                       "description": "Command.Command: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     },
                     "args": {
@@ -209,6 +238,7 @@
                         "type": "string"
                       },
                       "type": "array",
+                      "title": "Arguments",
                       "description": "Command.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     },
                     "env": {
@@ -220,28 +250,34 @@
                                 "properties": {
                                   "pattern": {
                                     "type": "string",
+                                    "title": "Pattern",
                                     "description": "CallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                                   },
                                   "name": {
                                     "type": "string",
+                                    "title": "Name",
                                     "description": "CallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                                   }
                                 },
                                 "additionalProperties": false,
                                 "type": "object",
+                                "title": "Caller Reference",
                                 "description": "EnvVarSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVarSource"
                               }
                             },
                             "additionalProperties": false,
                             "type": "object",
+                            "title": "Value From",
                             "description": "EnvVar.ValueFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                           },
                           "name": {
                             "type": "string",
+                            "title": "Name",
                             "description": "EnvVar.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                           },
                           "value": {
                             "type": "string",
+                            "title": "Value",
                             "description": "EnvVar.Value: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                           }
                         },
@@ -253,6 +289,7 @@
                         "description": "EnvVar represents an environment variable definition.\n\nEnvVar: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                       },
                       "type": "array",
+                      "title": "Environment Variables",
                       "description": "Command.Env: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     },
                     "envFrom": {
@@ -262,15 +299,18 @@
                             "properties": {
                               "pattern": {
                                 "type": "string",
+                                "title": "Pattern",
                                 "description": "CallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                               },
                               "name": {
                                 "type": "string",
+                                "title": "Name",
                                 "description": "CallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                               }
                             },
                             "additionalProperties": false,
                             "type": "object",
+                            "title": "Caller Reference",
                             "description": "EnvFromSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
                           }
                         },
@@ -279,6 +319,7 @@
                         "description": "EnvFromSource represents a source for inheriting environment variables.\n\nEnvFromSource: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
                       },
                       "type": "array",
+                      "title": "Environment Variables From",
                       "description": "Command.EnvFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     }
                   },
@@ -290,34 +331,41 @@
                   "description": "HookCommand represents a single hook command to execute.\n\nHookCommand: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#HookCommand"
                 },
                 "type": "array",
+                "title": "Post Render Hooks",
                 "description": "Hooks.PostRender: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Hooks"
               }
             },
             "additionalProperties": false,
             "type": "object",
+            "title": "Hooks",
             "description": "Profile.Hooks: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
           },
           "ui": {
             "properties": {
               "compact": {
                 "type": "boolean",
+                "title": "Enable Compact Display",
                 "description": "UIConfig.Compact: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#UIConfig"
               },
               "wordWrap": {
                 "type": "boolean",
+                "title": "Enable Word Wrap",
                 "description": "UIConfig.WordWrap: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#UIConfig"
               },
               "lineNumbers": {
                 "type": "boolean",
+                "title": "Enable Line Numbers",
                 "description": "UIConfig.LineNumbers: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#UIConfig"
               },
               "theme": {
                 "type": "string",
+                "title": "Theme Name",
                 "description": "UIConfig.Theme: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#UIConfig"
               }
             },
             "additionalProperties": false,
             "type": "object",
+            "title": "UI Overrides",
             "description": "Profile.UI: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
           },
           "plugins": {
@@ -325,6 +373,7 @@
               "properties": {
                 "command": {
                   "type": "string",
+                  "title": "Command",
                   "description": "Command.Command: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                 },
                 "args": {
@@ -332,6 +381,7 @@
                     "type": "string"
                   },
                   "type": "array",
+                  "title": "Arguments",
                   "description": "Command.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                 },
                 "env": {
@@ -343,28 +393,34 @@
                             "properties": {
                               "pattern": {
                                 "type": "string",
+                                "title": "Pattern",
                                 "description": "CallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                               },
                               "name": {
                                 "type": "string",
+                                "title": "Name",
                                 "description": "CallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                               }
                             },
                             "additionalProperties": false,
                             "type": "object",
+                            "title": "Caller Reference",
                             "description": "EnvVarSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVarSource"
                           }
                         },
                         "additionalProperties": false,
                         "type": "object",
+                        "title": "Value From",
                         "description": "EnvVar.ValueFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                       },
                       "name": {
                         "type": "string",
+                        "title": "Name",
                         "description": "EnvVar.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                       },
                       "value": {
                         "type": "string",
+                        "title": "Value",
                         "description": "EnvVar.Value: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                       }
                     },
@@ -376,6 +432,7 @@
                     "description": "EnvVar represents an environment variable definition.\n\nEnvVar: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                   },
                   "type": "array",
+                  "title": "Environment Variables",
                   "description": "Command.Env: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                 },
                 "envFrom": {
@@ -385,15 +442,18 @@
                         "properties": {
                           "pattern": {
                             "type": "string",
+                            "title": "Pattern",
                             "description": "CallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                           },
                           "name": {
                             "type": "string",
+                            "title": "Name",
                             "description": "CallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                           }
                         },
                         "additionalProperties": false,
                         "type": "object",
+                        "title": "Caller Reference",
                         "description": "EnvFromSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
                       }
                     },
@@ -402,10 +462,12 @@
                     "description": "EnvFromSource represents a source for inheriting environment variables.\n\nEnvFromSource: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
                   },
                   "type": "array",
+                  "title": "Environment Variables From",
                   "description": "Command.EnvFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                 },
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "Plugin.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Plugin"
                 },
                 "keys": {
@@ -413,14 +475,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -429,9 +494,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "Plugin.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Plugin"
                 }
               },
@@ -444,14 +510,17 @@
               "description": "Plugin represents a command plugin that can be executed on demand with keybinds.\n\nPlugin: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Plugin"
             },
             "type": "object",
+            "title": "Plugins",
             "description": "Profile.Plugins: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
           },
           "source": {
             "type": "string",
+            "title": "Source",
             "description": "Profile.Source: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
           },
           "command": {
             "type": "string",
+            "title": "Command",
             "description": "Command.Command: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
           },
           "args": {
@@ -459,6 +528,7 @@
               "type": "string"
             },
             "type": "array",
+            "title": "Arguments",
             "description": "Command.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
           },
           "env": {
@@ -470,28 +540,34 @@
                       "properties": {
                         "pattern": {
                           "type": "string",
+                          "title": "Pattern",
                           "description": "CallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                         },
                         "name": {
                           "type": "string",
+                          "title": "Name",
                           "description": "CallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                         }
                       },
                       "additionalProperties": false,
                       "type": "object",
+                      "title": "Caller Reference",
                       "description": "EnvVarSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVarSource"
                     }
                   },
                   "additionalProperties": false,
                   "type": "object",
+                  "title": "Value From",
                   "description": "EnvVar.ValueFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                 },
                 "name": {
                   "type": "string",
+                  "title": "Name",
                   "description": "EnvVar.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                 },
                 "value": {
                   "type": "string",
+                  "title": "Value",
                   "description": "EnvVar.Value: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
                 }
               },
@@ -503,6 +579,7 @@
               "description": "EnvVar represents an environment variable definition.\n\nEnvVar: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
             },
             "type": "array",
+            "title": "Environment Variables",
             "description": "Command.Env: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
           },
           "envFrom": {
@@ -512,15 +589,18 @@
                   "properties": {
                     "pattern": {
                       "type": "string",
+                      "title": "Pattern",
                       "description": "CallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                     },
                     "name": {
                       "type": "string",
+                      "title": "Name",
                       "description": "CallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                     }
                   },
                   "additionalProperties": false,
                   "type": "object",
+                  "title": "Caller Reference",
                   "description": "EnvFromSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
                 }
               },
@@ -529,6 +609,7 @@
               "description": "EnvFromSource represents a source for inheriting environment variables.\n\nEnvFromSource: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
             },
             "type": "array",
+            "title": "Environment Variables From",
             "description": "Command.EnvFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
           }
         },
@@ -540,6 +621,7 @@
         "description": "Profile represents a command profile with optional source filtering.\n\nThe Source field contains a CEL expression that determines which files\nshould be processed by this profile. The expression has access to:\n  - `files` (list\u003cstring\u003e): All file paths in directory\n  - `dir` (string): The directory path being processed\n\nSource CEL expressions must return a list of files:\n  - `files.filter(f, pathExt(f) in [\".yaml\", \".yml\"])` - returns all YAML files\n  - `files.filter(f, pathBase(f) in [\"Chart.yaml\", \"values.yaml\"])` - returns Chart and values files\n  - `files.filter(f, pathBase(f) == \"Chart.yaml\")` - returns files named Chart.yaml\n  - `files.filter(f, !pathBase(f).matches(\".*test.*\")) - returns non-test files\n  - `files.filter(f, pathBase(f) == \"Chart.yaml\" \u0026\u0026 yamlPath(f, \"$.apiVersion\") == \"v2\")` - returns charts with apiVersion v2\n  - `files` - unfiltered list means all files should be processed\n  - `[]` - empty list means no files should be processed\n\nIf no Source expression is provided, the profile will use default file filtering.\n\nProfile: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
       },
       "type": "object",
+      "title": "Profiles",
       "description": "Config.Profiles: https://pkg.go.dev/github.com/macropower/kat/pkg/command#Config"
     },
     "rules": {
@@ -547,11 +629,13 @@
         "properties": {
           "match": {
             "type": "string",
-            "description": "CEL expression to match file paths.\n\nRule.Match: https://pkg.go.dev/github.com/macropower/kat/pkg/rule#Rule"
+            "title": "Match Expression",
+            "description": "Rule.Match: https://pkg.go.dev/github.com/macropower/kat/pkg/rule#Rule"
           },
           "profile": {
             "type": "string",
-            "description": "Profile name.\n\nRule.Profile: https://pkg.go.dev/github.com/macropower/kat/pkg/rule#Rule"
+            "title": "Profile Name",
+            "description": "Rule.Profile: https://pkg.go.dev/github.com/macropower/kat/pkg/rule#Rule"
           }
         },
         "additionalProperties": false,
@@ -563,6 +647,7 @@
         "description": "Rule uses a CEL matcher to determine if its profile should be applied.\n\nCEL expressions have access to variables:\n  - `files` (list\u003cstring\u003e): All file paths in directory\n  - `dir` (string): The directory path being processed\n\nCEL expressions must return a boolean value:\n  - files.exists(f, pathExt(f) in [\".yaml\", \".yml\"]) - true if any YAML files exist\n  - files.exists(f, pathBase(f) in [\"Chart.yaml\", \"values.yaml\"]) - true if Chart or values files exist\n  - files.exists(f, pathBase(f) == \"Chart.yaml\") - true if Chart.yaml exists\n  - files.exists(f, !pathBase(f).matches(\".*test.*\")) - true if non-test files exist\n  - files.exists(f, pathBase(f) == \"Chart.yaml\" \u0026\u0026 yamlPath(f, \"$.apiVersion\") == \"v2\") - true if Helm v2 charts exist\n  - false - rule doesn't match\n\nCEL path functions available:\n  - pathBase(string): Returns the last element of the path (filename)\n  - pathDir(string): Returns all but the last element of the path (directory)\n  - pathExt(string): Returns the file extension including the dot\n  - yamlPath(file, path): Reads a YAML file and extracts value at path (returns null if not found)\n\nCEL also provides standard functions like `endsWith`, `contains`,\n`startsWith`, `matches`, along with list functions like `filter`, `exists`, `in`, and\nlogical operators like `\u0026\u0026`, `||`, and `!`.\n\nUse the `in` operator to check membership in lists, e.g.: pathBase(f) in [\"Chart.yaml\"].\n\nRule: https://pkg.go.dev/github.com/macropower/kat/pkg/rule#Rule"
       },
       "type": "array",
+      "title": "Rules",
       "description": "Config.Rules: https://pkg.go.dev/github.com/macropower/kat/pkg/command#Config"
     },
     "keybinds": {
@@ -573,6 +658,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -580,14 +666,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -596,9 +685,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -614,6 +704,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -621,14 +712,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -637,9 +731,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -655,6 +750,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -662,14 +758,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -678,9 +777,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -696,6 +796,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -703,14 +804,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -719,9 +823,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -737,6 +842,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -744,14 +850,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -760,9 +869,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -778,6 +888,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -785,14 +896,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -801,9 +915,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -819,6 +934,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -826,14 +942,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -842,9 +961,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -860,6 +980,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -867,14 +988,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -883,9 +1007,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -901,6 +1026,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -908,14 +1034,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -924,9 +1053,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -942,6 +1072,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -949,14 +1080,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -965,9 +1099,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -983,6 +1118,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -990,14 +1126,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1006,9 +1145,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1024,6 +1164,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1031,14 +1172,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1047,9 +1191,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1064,6 +1209,7 @@
           },
           "additionalProperties": false,
           "type": "object",
+          "title": "Common Key Binds",
           "description": "KeyBinds.Common: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#KeyBinds"
         },
         "list": {
@@ -1072,6 +1218,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1079,14 +1226,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1095,9 +1245,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1113,6 +1264,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1120,14 +1272,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1136,9 +1291,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1154,6 +1310,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1161,14 +1318,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1177,9 +1337,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1195,6 +1356,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1202,14 +1364,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1218,9 +1383,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1236,6 +1402,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1243,14 +1410,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1259,9 +1429,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1277,6 +1448,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1284,14 +1456,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1300,9 +1475,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1317,6 +1493,7 @@
           },
           "additionalProperties": false,
           "type": "object",
+          "title": "List Key Binds",
           "description": "KeyBinds.List: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#KeyBinds"
         },
         "pager": {
@@ -1325,6 +1502,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1332,14 +1510,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1348,9 +1529,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1366,6 +1548,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1373,14 +1556,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1389,9 +1575,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1407,6 +1594,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1414,14 +1602,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1430,9 +1621,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1448,6 +1640,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1455,14 +1648,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1471,9 +1667,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1489,6 +1686,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1496,14 +1694,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1512,9 +1713,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1530,6 +1732,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1537,14 +1740,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1553,9 +1759,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1571,6 +1778,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1578,14 +1786,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1594,9 +1805,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1612,6 +1824,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1619,14 +1832,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1635,9 +1851,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1653,6 +1870,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1660,14 +1878,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1676,9 +1897,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1694,6 +1916,7 @@
               "properties": {
                 "description": {
                   "type": "string",
+                  "title": "Description",
                   "description": "KeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 },
                 "keys": {
@@ -1701,14 +1924,17 @@
                     "properties": {
                       "code": {
                         "type": "string",
+                        "title": "Code",
                         "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "alias": {
                         "type": "string",
+                        "title": "Alias",
                         "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       },
                       "hidden": {
                         "type": "boolean",
+                        "title": "Hidden",
                         "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                       }
                     },
@@ -1717,9 +1943,10 @@
                     "required": [
                       "code"
                     ],
-                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
                   },
                   "type": "array",
+                  "title": "Keys",
                   "description": "KeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
                 }
               },
@@ -1734,11 +1961,13 @@
           },
           "additionalProperties": false,
           "type": "object",
+          "title": "Pager Key Binds",
           "description": "KeyBinds.Pager: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#KeyBinds"
         }
       },
       "additionalProperties": false,
       "type": "object",
+      "title": "Key Binds",
       "description": "Config.KeyBinds: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#Config"
     },
     "themes": {
@@ -1752,14 +1981,16 @@
             },
             "additionalProperties": false,
             "type": "object",
+            "title": "Styles",
             "description": "ThemeConfig.Styles: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#ThemeConfig"
           }
         },
         "additionalProperties": false,
         "type": "object",
-        "description": "ThemeConfig: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#ThemeConfig"
+        "description": "ThemeConfig defines custom theme configuration.\n\nThemeConfig: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#ThemeConfig"
       },
       "type": "object",
+      "title": "Themes",
       "description": "Config.Themes: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#Config"
     },
     "ui": {
@@ -1767,32 +1998,43 @@
         "minimumDelay": {
           "type": "string",
           "pattern": "^([1-9]\\d{0,2}ms|[1-9]\\d{0,5}us|[1-9]\\d{0,8}ns)$",
+          "title": "Minimum Delay",
           "description": "UIConfig.MinimumDelay: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#UIConfig",
           "default": "200ms"
         },
         "compact": {
           "type": "boolean",
-          "description": "UIConfig.Compact: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#UIConfig"
+          "title": "Enable Compact Display",
+          "description": "UIConfig.Compact: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#UIConfig",
+          "default": false
         },
         "wordWrap": {
           "type": "boolean",
-          "description": "UIConfig.WordWrap: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#UIConfig"
+          "title": "Enable Word Wrap",
+          "description": "UIConfig.WordWrap: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#UIConfig",
+          "default": true
         },
         "chromaRendering": {
           "type": "boolean",
-          "description": "UIConfig.ChromaRendering: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#UIConfig"
+          "title": "Enable Chroma Rendering",
+          "description": "UIConfig.ChromaRendering: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#UIConfig",
+          "default": true
         },
         "lineNumbers": {
           "type": "boolean",
-          "description": "UIConfig.LineNumbers: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#UIConfig"
+          "title": "Enable Line Numbers",
+          "description": "UIConfig.LineNumbers: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#UIConfig",
+          "default": true
         },
         "theme": {
           "type": "string",
+          "title": "Theme Name",
           "description": "UIConfig.Theme: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#UIConfig"
         }
       },
       "additionalProperties": false,
       "type": "object",
+      "title": "UI",
       "description": "Config.UI: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#Config"
     },
     "apiVersion": {
@@ -1804,6 +2046,7 @@
         }
       ],
       "type": "string",
+      "title": "API Version",
       "description": "Config.APIVersion: https://pkg.go.dev/github.com/macropower/kat/pkg/config#Config"
     },
     "kind": {
@@ -1815,6 +2058,7 @@
         }
       ],
       "type": "string",
+      "title": "Kind",
       "description": "Config.Kind: https://pkg.go.dev/github.com/macropower/kat/pkg/config#Config"
     }
   },
