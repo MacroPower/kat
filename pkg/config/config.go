@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -197,16 +198,17 @@ func (c *Config) Write(path string) error {
 // WriteDefaultConfig writes the embedded default config.yaml and jsonschema to
 // the specified path.
 func WriteDefaultConfig(path string) error {
+	configExists := false
 	pathInfo, err := os.Stat(path)
 	if pathInfo != nil {
-		if err == nil && pathInfo.Mode().IsRegular() {
-			return nil // Config already exists.
-		}
-		if pathInfo.IsDir() {
+		switch {
+		case err == nil && pathInfo.Mode().IsRegular():
+			configExists = true
+		case pathInfo.IsDir():
 			return fmt.Errorf("%s: path is a directory", path)
+		default:
+			return fmt.Errorf("%s: unknown file state", path)
 		}
-
-		return fmt.Errorf("%s: unknown file state", path)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
@@ -214,8 +216,17 @@ func WriteDefaultConfig(path string) error {
 	}
 
 	// Write the default config file.
-	if err := os.WriteFile(path, defaultConfigYAML, 0o600); err != nil {
-		return fmt.Errorf("write config file: %w", err)
+	if !configExists {
+		if err := os.WriteFile(path, defaultConfigYAML, 0o600); err != nil {
+			return fmt.Errorf("write config file: %w", err)
+		}
+		slog.Info("write default configuration",
+			slog.String("path", path),
+		)
+	} else {
+		slog.Warn("configuration file already exists, skipping write",
+			slog.String("path", path),
+		)
 	}
 
 	// Write the JSON schema file alongside the config file.
@@ -223,6 +234,9 @@ func WriteDefaultConfig(path string) error {
 	if err := os.WriteFile(schemaPath, schemaJSON, 0o600); err != nil {
 		return fmt.Errorf("write schema file: %w", err)
 	}
+	slog.Info("write JSON schema",
+		slog.String("path", schemaPath),
+	)
 
 	return nil
 }
