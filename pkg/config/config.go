@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -16,6 +15,7 @@ import (
 	yaml "github.com/goccy/go-yaml"
 
 	"github.com/macropower/kat/pkg/command"
+	"github.com/macropower/kat/pkg/schema"
 	"github.com/macropower/kat/pkg/ui"
 )
 
@@ -63,8 +63,8 @@ func (c *Config) EnsureDefaults() {
 	}
 }
 
-func (c Config) JSONSchemaExtend(schema *jsonschema.Schema) {
-	apiVersion, ok := schema.Properties.Get("apiVersion")
+func (c Config) JSONSchemaExtend(jss *jsonschema.Schema) {
+	apiVersion, ok := jss.Properties.Get("apiVersion")
 	if !ok {
 		panic("apiVersion property not found in schema")
 	}
@@ -75,9 +75,9 @@ func (c Config) JSONSchemaExtend(schema *jsonschema.Schema) {
 			Title: "API Version",
 		})
 	}
-	_, _ = schema.Properties.Set("apiVersion", apiVersion)
+	_, _ = jss.Properties.Set("apiVersion", apiVersion)
 
-	kind, ok := schema.Properties.Get("kind")
+	kind, ok := jss.Properties.Get("kind")
 	if !ok {
 		panic("kind property not found in schema")
 	}
@@ -88,7 +88,7 @@ func (c Config) JSONSchemaExtend(schema *jsonschema.Schema) {
 			Title: "Kind",
 		})
 	}
-	_, _ = schema.Properties.Set("kind", kind)
+	_, _ = jss.Properties.Set("kind", kind)
 }
 
 func ReadConfig(path string) ([]byte, error) {
@@ -114,29 +114,43 @@ func ReadConfig(path string) ([]byte, error) {
 }
 
 func LoadConfig(data []byte) (*Config, error) {
+	reader := bytes.NewReader(data)
+
+	// Decode into interface{} for schema validation.
+	var anyConfig any
+	dec := yaml.NewDecoder(reader, yaml.AllowDuplicateMapKey())
+	if err := dec.Decode(&anyConfig); err != nil {
+		return nil, fmt.Errorf("decode yaml config: %w", err)
+	}
+
 	// Validate against JSON schema.
-	if err := ValidateWithSchema(data); err != nil {
-		schemaErr := &SchemaValidationError{}
+	if err := ValidateWithSchema(anyConfig); err != nil {
+		schemaErr := &schema.ValidationError{}
 		if errors.As(err, &schemaErr) {
 			source, srcErr := schemaErr.Path.AnnotateSource(data, true)
 			if srcErr != nil {
-				return nil, fmt.Errorf("schema validation: %w", err)
+				return nil, fmt.Errorf("path annotation failed: %w; caused by: %w", srcErr, err)
 			}
 
-			return nil, fmt.Errorf("schema validation: %w\n%s", err, source)
+			return nil, fmt.Errorf("%w\n%s", err, source)
 		}
 
-		return nil, fmt.Errorf("schema validation: %w", err)
+		return nil, fmt.Errorf("schema: %w", err)
 	}
 
+	// Validation passed; reset reader and decode into a Config struct.
+	_, err := reader.Seek(0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("prepare reader for decoding yaml config: %w", err)
+	}
 	c := &Config{}
-	dec := yaml.NewDecoder(bytes.NewReader(data),
-		yaml.AllowDuplicateMapKey(),
-	)
-	if err := dec.Decode(c); err != nil && !errors.Is(err, io.EOF) {
+	dec = yaml.NewDecoder(reader, yaml.AllowDuplicateMapKey())
+	if err := dec.Decode(c); err != nil {
 		return nil, fmt.Errorf("decode yaml config: %w", err)
 	}
 	c.EnsureDefaults()
+
+	// Run Go validation on the config (for requirements that can't be represented in the schema).
 	if err := c.Command.Validate(); err != nil {
 		source, srcErr := err.Path.AnnotateSource(data, true)
 		if srcErr != nil {

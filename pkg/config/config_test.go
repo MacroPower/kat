@@ -129,7 +129,7 @@ kind: Configuration
 invalid: [unclosed
 `,
 			wantErr: true,
-			errMsg:  "parse YAML",
+			errMsg:  "decode yaml config",
 		},
 		"missing required fields": {
 			yamlContent: `profiles:
@@ -523,11 +523,11 @@ func TestDefaultConfigFullPipeline(t *testing.T) {
 	err := config.WriteDefaultConfig(configPath)
 	require.NoError(t, err)
 
-	// Read the config (simulating config.ReadConfig).
+	// Read the config.
 	cfgData, err := config.ReadConfig(configPath)
 	require.NoError(t, err)
 
-	// Load the config (simulating config.LoadConfig).
+	// Load the config.
 	cfg, err := config.LoadConfig(cfgData)
 	require.NoError(t, err)
 
