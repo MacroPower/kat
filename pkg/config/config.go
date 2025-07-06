@@ -194,7 +194,8 @@ func (c *Config) Write(path string) error {
 	return nil
 }
 
-// WriteDefaultConfig writes the embedded default config.yaml to the specified path.
+// WriteDefaultConfig writes the embedded default config.yaml and jsonschema to
+// the specified path.
 func WriteDefaultConfig(path string) error {
 	pathInfo, err := os.Stat(path)
 	if pathInfo != nil {
@@ -212,8 +213,15 @@ func WriteDefaultConfig(path string) error {
 		return fmt.Errorf("create directories: %w", err)
 	}
 
+	// Write the default config file.
 	if err := os.WriteFile(path, defaultConfigYAML, 0o600); err != nil {
-		return fmt.Errorf("write file: %w", err)
+		return fmt.Errorf("write config file: %w", err)
+	}
+
+	// Write the JSON schema file alongside the config file.
+	schemaPath := filepath.Join(filepath.Dir(path), "config.v1beta1.json")
+	if err := os.WriteFile(schemaPath, schemaJSON, 0o600); err != nil {
+		return fmt.Errorf("write schema file: %w", err)
 	}
 
 	return nil
