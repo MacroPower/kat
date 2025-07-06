@@ -12,6 +12,7 @@
                   "properties": {
                     "command": {
                       "type": "string",
+                      "pattern": "^\\S+$",
                       "title": "Command",
                       "description": "Command is the command to execute.\n\nCommand.Command: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     },
@@ -121,6 +122,7 @@
                   "properties": {
                     "command": {
                       "type": "string",
+                      "pattern": "^\\S+$",
                       "title": "Command",
                       "description": "Command is the command to execute.\n\nCommand.Command: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     },
@@ -230,6 +232,7 @@
                   "properties": {
                     "command": {
                       "type": "string",
+                      "pattern": "^\\S+$",
                       "title": "Command",
                       "description": "Command is the command to execute.\n\nCommand.Command: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     },
@@ -373,6 +376,7 @@
               "properties": {
                 "command": {
                   "type": "string",
+                  "pattern": "^\\S+$",
                   "title": "Command",
                   "description": "Command is the command to execute.\n\nCommand.Command: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                 },
@@ -520,6 +524,7 @@
           },
           "command": {
             "type": "string",
+            "pattern": "^\\S+$",
             "title": "Command",
             "description": "Command is the command to execute.\n\nCommand.Command: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
           },

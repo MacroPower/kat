@@ -75,7 +75,7 @@ func (c *CallerRef) Compile() error {
 type Command struct {
 	baseEnv map[string]string
 	// Command is the command to execute.
-	Command string `json:"command" jsonschema:"title=Command" validate:"alphanum"`
+	Command string `json:"command" jsonschema:"title=Command,pattern=^\\S+$"`
 	// Args contains the command line arguments.
 	Args []string `json:"args,omitempty" jsonschema:"title=Arguments" yaml:"args,flow,omitempty"`
 	// Env contains environment variable definitions.
