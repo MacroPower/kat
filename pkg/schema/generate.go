@@ -24,6 +24,7 @@ type Generator struct {
 	LookupCommentFunc LookupCommentFunc
 	reflectTarget     any
 	packagePaths      []string
+	Tests             bool // Include test files.
 }
 
 // NewGenerator creates a new [Generator].
@@ -65,8 +66,9 @@ func (g *Generator) addLookupComment() error {
 
 	// Load packages using the modern packages API.
 	cfg := &packages.Config{
-		Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes,
-		Dir:  moduleRoot,
+		Mode:  packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes,
+		Dir:   moduleRoot,
+		Tests: g.Tests,
 	}
 
 	pkgs, err := packages.Load(cfg, g.packagePaths...)
@@ -182,13 +184,18 @@ func buildCommentMapForPackage(pkg *packages.Package, commentMap map[string]stri
 				if structType, ok := node.Type.(*ast.StructType); ok {
 					typeName := node.Name.Name
 					for _, field := range structType.Fields.List {
-						if field.Comment != nil && len(field.Names) > 0 {
+						// Check both Doc (leading comments) and Comment (trailing comments).
+						var comment string
+						if field.Doc != nil {
+							comment = field.Doc.Text()
+						} else if field.Comment != nil {
+							comment = field.Comment.Text()
+						}
+
+						if comment != "" && len(field.Names) > 0 {
 							fieldName := field.Names[0].Name
-							comment := field.Comment.Text()
-							if comment != "" {
-								key := pkg.Name + "." + typeName + "." + fieldName
-								commentMap[key] = cleanComment(comment)
-							}
+							key := pkg.Name + "." + typeName + "." + fieldName
+							commentMap[key] = cleanComment(comment)
 						}
 					}
 				}
