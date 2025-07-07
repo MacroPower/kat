@@ -157,7 +157,12 @@ func LoadConfig(data []byte) (*Config, error) {
 	if err := c.Command.Validate(); err != nil {
 		source, srcErr := err.Path.AnnotateSource(data, true)
 		if srcErr != nil {
-			panic(srcErr)
+			slog.Warn("failed to annotate config with error",
+				slog.String("path", err.Path.String()),
+				slog.Any("error", srcErr),
+			)
+
+			return nil, fmt.Errorf("validate config: %w", err)
 		}
 
 		return nil, fmt.Errorf("validate config: %w\n%s", err, source)
