@@ -33,6 +33,7 @@
                                 "properties": {
                                   "pattern": {
                                     "type": "string",
+                                    "format": "regex",
                                     "title": "Pattern",
                                     "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                                   },
@@ -82,6 +83,7 @@
                             "properties": {
                               "pattern": {
                                 "type": "string",
+                                "format": "regex",
                                 "title": "Pattern",
                                 "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                               },
@@ -143,6 +145,7 @@
                                 "properties": {
                                   "pattern": {
                                     "type": "string",
+                                    "format": "regex",
                                     "title": "Pattern",
                                     "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                                   },
@@ -192,6 +195,7 @@
                             "properties": {
                               "pattern": {
                                 "type": "string",
+                                "format": "regex",
                                 "title": "Pattern",
                                 "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                               },
@@ -253,6 +257,7 @@
                                 "properties": {
                                   "pattern": {
                                     "type": "string",
+                                    "format": "regex",
                                     "title": "Pattern",
                                     "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                                   },
@@ -302,6 +307,7 @@
                             "properties": {
                               "pattern": {
                                 "type": "string",
+                                "format": "regex",
                                 "title": "Pattern",
                                 "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                               },
@@ -397,6 +403,7 @@
                             "properties": {
                               "pattern": {
                                 "type": "string",
+                                "format": "regex",
                                 "title": "Pattern",
                                 "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                               },
@@ -446,6 +453,7 @@
                         "properties": {
                           "pattern": {
                             "type": "string",
+                            "format": "regex",
                             "title": "Pattern",
                             "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                           },
@@ -545,6 +553,7 @@
                       "properties": {
                         "pattern": {
                           "type": "string",
+                          "format": "regex",
                           "title": "Pattern",
                           "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                         },
@@ -594,6 +603,7 @@
                   "properties": {
                     "pattern": {
                       "type": "string",
+                      "format": "regex",
                       "title": "Pattern",
                       "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
                     },

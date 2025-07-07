@@ -37,7 +37,7 @@ type CallerRef struct {
 	compiledPattern *regexp.Regexp // Compiled regex pattern for matching environment variables.
 
 	// Pattern is a regex pattern for matching environment variable names.
-	Pattern string `json:"pattern,omitempty" jsonschema:"title=Pattern"`
+	Pattern string `json:"pattern,omitempty" jsonschema:"title=Pattern,format=regex"`
 	// Name is the specific environment variable name to inherit.
 	Name string `json:"name,omitempty" jsonschema:"title=Name"`
 }
