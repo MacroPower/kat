@@ -14,7 +14,7 @@ import (
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/statusbar"
-	"github.com/macropower/kat/pkg/ui/yamldoc"
+	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
 const (
@@ -25,11 +25,11 @@ const (
 )
 
 type (
-	FilteredYAMLMsg []*yamldoc.YAMLDocument
-	FetchedYAMLMsg  *yamldoc.YAMLDocument
+	FilteredYAMLMsg []*yamls.Document
+	FetchedYAMLMsg  *yamls.Document
 )
 
-func LoadYAML(md *yamldoc.YAMLDocument) tea.Cmd {
+func LoadYAML(md *yamls.Document) tea.Cmd {
 	return func() tea.Msg {
 		return FetchedYAMLMsg(md)
 	}
@@ -74,7 +74,7 @@ type ListModel struct {
 	keyHandler   *KeyHandler
 
 	// The master set of yaml documents we're working with.
-	YAMLs []*yamldoc.YAMLDocument
+	YAMLs []*yamls.Document
 
 	// Available document sections we can cycle through. We use a slice, rather
 	// than a map, because order is important.
@@ -83,7 +83,7 @@ type ListModel struct {
 	// YAML documents we're currently displaying. Filtering, toggles and so
 	// on will alter this slice so we can show what is relevant. For that
 	// reason, this field should be considered ephemeral.
-	filteredYAMLs []*yamldoc.YAMLDocument
+	filteredYAMLs []*yamls.Document
 
 	filterInput textinput.Model
 	ViewState   ViewState
@@ -216,12 +216,12 @@ func (m ListModel) View() string {
 }
 
 // Adds yaml documents to the model.
-func (m *ListModel) AddYAMLs(yamls ...*yamldoc.YAMLDocument) {
-	if len(yamls) == 0 {
+func (m *ListModel) AddYAMLs(yaml ...*yamls.Document) {
+	if len(yaml) == 0 {
 		return
 	}
 
-	m.YAMLs = append(m.YAMLs, yamls...)
+	m.YAMLs = append(m.YAMLs, yaml...)
 	if !m.FilterApplied() {
 		sortYAMLs(m.YAMLs)
 	}
@@ -343,7 +343,7 @@ func (m ListModel) yamlIndex() int {
 }
 
 // Return the current selected yaml in the list.
-func (m ListModel) selectedYAML() *yamldoc.YAMLDocument {
+func (m ListModel) selectedYAML() *yamls.Document {
 	i := m.yamlIndex()
 
 	mds := m.getVisibleYAMLs()
@@ -355,7 +355,7 @@ func (m ListModel) selectedYAML() *yamldoc.YAMLDocument {
 }
 
 // Returns the yamls that should be currently shown.
-func (m ListModel) getVisibleYAMLs() []*yamldoc.YAMLDocument {
+func (m ListModel) getVisibleYAMLs() []*yamls.Document {
 	if m.FilterState == Filtering || m.currentSection().key == SectionFilter {
 		return m.filteredYAMLs
 	}
@@ -365,7 +365,7 @@ func (m ListModel) getVisibleYAMLs() []*yamldoc.YAMLDocument {
 
 // Command for opening a yaml document in the pager. Note that this also
 // alters the model.
-func (m *ListModel) openYAML(md *yamldoc.YAMLDocument) tea.Cmd {
+func (m *ListModel) openYAML(md *yamls.Document) tea.Cmd {
 	cmd := LoadYAML(md)
 
 	return cmd

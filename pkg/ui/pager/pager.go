@@ -16,7 +16,7 @@ import (
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/statusbar"
-	"github.com/macropower/kat/pkg/ui/yamldoc"
+	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
 const statusBarHeight = 1
@@ -38,12 +38,12 @@ const (
 type PagerModel struct {
 	cm             *common.CommonModel
 	helpRenderer   *statusbar.HelpRenderer
-	chromaRenderer *ChromaRenderer
+	chromaRenderer *yamls.ChromaRenderer
 	kb             *KeyBinds
 
 	// Current document being rendered, sans-chroma rendering. We cache
 	// it here so we can re-render it on resize.
-	CurrentDocument yamldoc.YAMLDocument
+	CurrentDocument yamls.Document
 
 	viewport        viewport.Model
 	searchInput     textinput.Model
@@ -102,7 +102,7 @@ func NewModel(c Config) PagerModel {
 		cm:              c.CommonModel,
 		kb:              c.KeyBinds,
 		helpRenderer:    statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr),
-		chromaRenderer:  NewChromaRenderer(c.CommonModel.Theme, !c.ShowLineNumbers),
+		chromaRenderer:  yamls.NewChromaRenderer(c.CommonModel.Theme, !c.ShowLineNumbers),
 		ViewState:       StateReady,
 		viewport:        vp,
 		searchInput:     si,

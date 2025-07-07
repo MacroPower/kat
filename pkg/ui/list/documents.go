@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/macropower/kat/pkg/ui/themes"
-	"github.com/macropower/kat/pkg/ui/yamldoc"
+	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
 // DocumentListRenderer handles rendering of document lists.
@@ -36,7 +36,7 @@ func (dlr *DocumentListRenderer) GetItemHeight() int {
 }
 
 // RenderDocumentList renders a list of documents with pagination and empty states.
-func (dlr *DocumentListRenderer) RenderDocumentList(docs []*yamldoc.YAMLDocument, m ListModel) string {
+func (dlr *DocumentListRenderer) RenderDocumentList(docs []*yamls.Document, m ListModel) string {
 	var b strings.Builder
 
 	// Handle empty states.

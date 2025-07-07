@@ -1,4 +1,4 @@
-package pager_test
+package yamls_test
 
 import (
 	"strings"
@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/macropower/kat/pkg/ui/pager"
 	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
 // testTheme creates a basic theme for testing.
@@ -97,7 +97,7 @@ func TestNewChromaRenderer(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := pager.NewChromaRenderer(tc.theme, tc.lineNumbersDisabled)
+			renderer := yamls.NewChromaRenderer(tc.theme, tc.lineNumbersDisabled)
 			assert.NotNil(t, renderer)
 
 			// Test that the renderer can render basic content.
@@ -111,7 +111,7 @@ func TestNewChromaRenderer(t *testing.T) {
 func TestChromaRenderer_SetAndGetMethods(t *testing.T) {
 	t.Parallel()
 
-	renderer := pager.NewChromaRenderer(testTheme(), true)
+	renderer := yamls.NewChromaRenderer(testTheme(), true)
 
 	// Test SetSearchTerm and GetMatches.
 	assert.Empty(t, renderer.GetMatches())
@@ -195,7 +195,7 @@ data:
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := pager.NewChromaRenderer(testTheme(), false)
+			renderer := yamls.NewChromaRenderer(testTheme(), false)
 			renderer.SetFormatter("terminal16m")
 
 			result, err := renderer.RenderContent(tc.yaml, tc.width)
@@ -280,7 +280,7 @@ func TestChromaRenderer_SearchHighlighting(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := pager.NewChromaRenderer(testTheme(), true)
+			renderer := yamls.NewChromaRenderer(testTheme(), true)
 			renderer.SetFormatter("terminal16m")
 			renderer.SetSearchTerm(tc.searchTerm)
 
@@ -328,7 +328,7 @@ func TestChromaRenderer_LineNumbers(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := pager.NewChromaRenderer(testTheme(), tc.lineNumbersDisabled)
+			renderer := yamls.NewChromaRenderer(testTheme(), tc.lineNumbersDisabled)
 			renderer.SetFormatter("terminal16m")
 
 			result, err := renderer.RenderContent(tc.yaml, 80)
@@ -348,7 +348,7 @@ func TestChromaRenderer_LineNumbers(t *testing.T) {
 func TestChromaRenderer_MatchPositioning(t *testing.T) {
 	t.Parallel()
 
-	renderer := pager.NewChromaRenderer(testTheme(), true)
+	renderer := yamls.NewChromaRenderer(testTheme(), true)
 	renderer.SetFormatter("terminal16m")
 
 	// Test specific match positioning.
@@ -382,7 +382,7 @@ func TestChromaRenderer_MatchPositioning(t *testing.T) {
 func TestChromaRenderer_ConsecutiveMatches(t *testing.T) {
 	t.Parallel()
 
-	renderer := pager.NewChromaRenderer(testTheme(), true)
+	renderer := yamls.NewChromaRenderer(testTheme(), true)
 	renderer.SetFormatter("terminal16m")
 
 	// Test consecutive character matching and grouping.
@@ -405,7 +405,7 @@ func TestChromaRenderer_ConsecutiveMatches(t *testing.T) {
 func TestChromaRenderer_MultiLineSearch(t *testing.T) {
 	t.Parallel()
 
-	renderer := pager.NewChromaRenderer(testTheme(), true)
+	renderer := yamls.NewChromaRenderer(testTheme(), true)
 	renderer.SetFormatter("terminal16m")
 
 	yaml := `line1: test
@@ -429,7 +429,7 @@ func TestChromaRenderer_ANSIHandling(t *testing.T) {
 
 	lipgloss.SetColorProfile(termenv.TrueColor)
 
-	renderer := pager.NewChromaRenderer(testTheme(), true)
+	renderer := yamls.NewChromaRenderer(testTheme(), true)
 	renderer.SetFormatter("terminal16m")
 
 	text := "key: value"
@@ -495,7 +495,7 @@ func TestChromaRenderer_EdgeCases(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := pager.NewChromaRenderer(testTheme(), true)
+			renderer := yamls.NewChromaRenderer(testTheme(), true)
 			renderer.SetFormatter("terminal16m")
 			renderer.SetSearchTerm(tc.searchTerm)
 
@@ -533,7 +533,7 @@ func TestChromaRenderer_DifferentFormatters(t *testing.T) {
 		t.Run(formatter, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := pager.NewChromaRenderer(testTheme(), true)
+			renderer := yamls.NewChromaRenderer(testTheme(), true)
 			renderer.SetFormatter(formatter)
 
 			result, err := renderer.RenderContent(yaml, 80)
@@ -557,7 +557,7 @@ func TestChromaRenderer(t *testing.T) {
 	}
 
 	// Create a ChromaRenderer instance with the theme.
-	renderer := pager.NewChromaRenderer(theme, true)
+	renderer := yamls.NewChromaRenderer(theme, true)
 	renderer.SetFormatter("terminal16m")
 
 	// Test case that reproduces the bug: searching for "o" in "text: hello world"
@@ -593,30 +593,30 @@ func TestChromaRenderer_ErrorScenarios(t *testing.T) {
 	t.Parallel()
 
 	testCases := map[string]struct {
-		setupFunc   func() *pager.ChromaRenderer
+		setupFunc   func() *yamls.ChromaRenderer
 		yaml        string
 		description string
 		expectError bool
 	}{
 		"malformed yaml": {
-			setupFunc: func() *pager.ChromaRenderer {
-				return pager.NewChromaRenderer(testTheme(), true)
+			setupFunc: func() *yamls.ChromaRenderer {
+				return yamls.NewChromaRenderer(testTheme(), true)
 			},
 			yaml:        "key: [\ninvalid",
 			expectError: false, // Chroma should handle malformed YAML gracefully
 			description: "Should handle malformed YAML without error",
 		},
 		"very large content": {
-			setupFunc: func() *pager.ChromaRenderer {
-				return pager.NewChromaRenderer(testTheme(), true)
+			setupFunc: func() *yamls.ChromaRenderer {
+				return yamls.NewChromaRenderer(testTheme(), true)
 			},
 			yaml:        strings.Repeat("key: value\n", 10000),
 			expectError: false,
 			description: "Should handle very large content",
 		},
 		"binary content": {
-			setupFunc: func() *pager.ChromaRenderer {
-				return pager.NewChromaRenderer(testTheme(), true)
+			setupFunc: func() *yamls.ChromaRenderer {
+				return yamls.NewChromaRenderer(testTheme(), true)
 			},
 			yaml:        string([]byte{0x00, 0x01, 0x02, 0x03, 0xFF}),
 			expectError: false,
@@ -648,7 +648,7 @@ func TestChromaRenderer_ConcurrentAccess(t *testing.T) {
 	t.Parallel()
 
 	// Test that the renderer is safe for concurrent read access.
-	renderer := pager.NewChromaRenderer(testTheme(), true)
+	renderer := yamls.NewChromaRenderer(testTheme(), true)
 	renderer.SetFormatter("terminal16m")
 
 	// Prepare the renderer with initial content.
@@ -705,7 +705,7 @@ func TestChromaRenderer_SearchTermNormalization(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := pager.NewChromaRenderer(testTheme(), true)
+			renderer := yamls.NewChromaRenderer(testTheme(), true)
 			renderer.SetFormatter("terminal16m")
 			renderer.SetSearchTerm(tc.searchTerm)
 
@@ -747,7 +747,7 @@ func TestChromaRenderer_LineWrapping(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := pager.NewChromaRenderer(testTheme(), true)
+			renderer := yamls.NewChromaRenderer(testTheme(), true)
 			renderer.SetFormatter("terminal16m")
 
 			result, err := renderer.RenderContent(tc.yaml, tc.width)
@@ -805,7 +805,7 @@ message: "This is a quoted string with special chars: !@#$%"
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := pager.NewChromaRenderer(testTheme(), false)
+			renderer := yamls.NewChromaRenderer(testTheme(), false)
 			renderer.SetFormatter("terminal16m")
 
 			result, err := renderer.RenderContent(tc.yaml, 80)

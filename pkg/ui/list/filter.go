@@ -7,7 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/macropower/kat/pkg/ui/yamldoc"
+	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
 func FilterYAMLs(m ListModel) tea.Cmd {
@@ -26,7 +26,7 @@ func FilterYAMLs(m ListModel) tea.Cmd {
 		ranks := fuzzy.Find(m.filterInput.Value(), targets)
 		sort.Stable(ranks)
 
-		filtered := []*yamldoc.YAMLDocument{}
+		filtered := []*yamls.Document{}
 		for _, r := range ranks {
 			filtered = append(filtered, mds[r.Index])
 		}

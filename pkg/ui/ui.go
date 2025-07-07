@@ -19,7 +19,7 @@ import (
 	"github.com/macropower/kat/pkg/ui/pager"
 	"github.com/macropower/kat/pkg/ui/statusbar"
 	"github.com/macropower/kat/pkg/ui/themes"
-	"github.com/macropower/kat/pkg/ui/yamldoc"
+	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
 // NewProgram returns a new Tea program.
@@ -240,7 +240,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		body += "# Stdout\n" + msg.Stdout + "\n---\n# Stderr\n" + msg.Stderr
 
-		m.fullResult.CurrentDocument = yamldoc.YAMLDocument{
+		m.fullResult.CurrentDocument = yamls.Document{
 			Body:  body,
 			Title: "output",
 		}
@@ -514,8 +514,8 @@ func (m *model) runPlugin(name string) tea.Cmd {
 }
 
 // Convert a [kube.Resource] to an internal representation of a YAML document.
-func kubeResourceToYAML(res *kube.Resource) *yamldoc.YAMLDocument {
-	return &yamldoc.YAMLDocument{
+func kubeResourceToYAML(res *kube.Resource) *yamls.Document {
+	return &yamls.Document{
 		Object: res.Object,
 		Body:   res.YAML,
 		Title:  res.Object.GetNamespacedName(),

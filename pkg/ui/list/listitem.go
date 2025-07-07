@@ -10,7 +10,7 @@ import (
 	"github.com/sahilm/fuzzy"
 
 	"github.com/macropower/kat/pkg/ui/themes"
-	"github.com/macropower/kat/pkg/ui/yamldoc"
+	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
 // listItemDisplayState represents the visual state of a list item.
@@ -21,7 +21,7 @@ type listItemDisplayState struct {
 	separator string
 }
 
-func listItemView(b *strings.Builder, m ListModel, index int, compact bool, y *yamldoc.YAMLDocument) {
+func listItemView(b *strings.Builder, m ListModel, index int, compact bool, y *yamls.Document) {
 	var (
 		// Calculate truncation width based on available space.
 		truncateTo = uint(max(0, m.cm.Width-listViewHorizontalPadding*2)) //nolint:gosec // Uses max.
@@ -118,7 +118,7 @@ func renderListItem(b *strings.Builder, state listItemDisplayState) {
 func styleFilteredText(haystack, needles string, defaultStyle, matchedStyle lipgloss.Style) string {
 	b := strings.Builder{}
 
-	normalizedHay, err := yamldoc.Normalize(haystack)
+	normalizedHay, err := yamls.Normalize(haystack)
 	if err != nil {
 		slog.Error("error normalizing",
 			slog.String("haystack", haystack),

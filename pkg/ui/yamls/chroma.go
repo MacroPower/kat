@@ -1,4 +1,4 @@
-package pager
+package yamls
 
 import (
 	"bytes"
@@ -16,7 +16,6 @@ import (
 	"github.com/sahilm/fuzzy"
 
 	"github.com/macropower/kat/pkg/ui/themes"
-	"github.com/macropower/kat/pkg/ui/yamldoc"
 )
 
 const (
@@ -191,7 +190,7 @@ func (gr *ChromaRenderer) findMatches(content string) {
 		return
 	}
 
-	normalizedTerm, err := yamldoc.Normalize(gr.searchTerm)
+	normalizedTerm, err := Normalize(gr.searchTerm)
 	if err != nil {
 		slog.Debug("error normalizing search term",
 			slog.Any("error", err),
@@ -203,7 +202,7 @@ func (gr *ChromaRenderer) findMatches(content string) {
 
 	// Find matches line by line for better accuracy.
 	for lineNum, line := range lines {
-		normalizedLine, err := yamldoc.Normalize(line)
+		normalizedLine, err := Normalize(line)
 		if err != nil {
 			normalizedLine = line
 		}

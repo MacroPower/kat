@@ -1,4 +1,4 @@
-package yamldoc
+package yamls
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	"github.com/macropower/kat/pkg/kube"
 )
 
-type YAMLDocument struct {
+type Document struct {
 	Object *kube.Object
 
 	// Value we filter against. This exists so that we can maintain positions
@@ -26,7 +26,7 @@ type YAMLDocument struct {
 }
 
 // Generate the value we're doing to filter against.
-func (m *YAMLDocument) BuildFilterValue() {
+func (m *Document) BuildFilterValue() {
 	m.FilterValue = ""
 
 	title, err := Normalize(m.Title)
