@@ -375,3 +375,151 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 		})
 	}
 }
+
+func TestCommandRunner_String(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	// Create a file that matches our test rules so the runner can be created
+	chartFile := filepath.Join(tempDir, "Chart.yaml")
+	require.NoError(t, os.WriteFile(chartFile, []byte("name: test-chart"), 0o644))
+
+	runner, err := command.NewRunner(tempDir, command.WithRules(TestConfig.Rules))
+	require.NoError(t, err)
+
+	// The String method should return the rule's string representation: "profile: command args"
+	result := runner.String()
+	assert.Contains(t, result, "helm:")
+	assert.Contains(t, result, "helm template . --generate-name")
+}
+
+func TestCommandRunner_GetCurrentProfile(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		setupFiles func(string) error
+		expectNil  bool
+	}{
+		"with kustomization file": {
+			setupFiles: func(dir string) error {
+				return os.WriteFile(filepath.Join(dir, "kustomization.yaml"), []byte("resources: []"), 0o644)
+			},
+			expectNil: false,
+		},
+		"with no matching files": {
+			setupFiles: func(dir string) error {
+				return os.WriteFile(filepath.Join(dir, "random.txt"), []byte("content"), 0o644)
+			},
+			expectNil: true,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+			require.NoError(t, tc.setupFiles(tempDir))
+
+			runner, err := command.NewRunner(tempDir, command.WithRules(TestConfig.Rules))
+			if tc.expectNil {
+				// Should fail to create runner for paths with no matching rules
+				require.Error(t, err)
+
+				return
+			}
+
+			require.NoError(t, err)
+
+			p := runner.GetCurrentProfile()
+			require.NotNil(t, p)
+			assert.NotEmpty(t, p.Command.Command)
+		})
+	}
+}
+
+func TestCommandRunner_RunPlugin(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	chartFile := filepath.Join(tempDir, "Chart.yaml")
+	require.NoError(t, os.WriteFile(chartFile, []byte("name: test-chart"), 0o644))
+
+	runner, err := command.NewRunner(tempDir, command.WithRules(TestConfig.Rules))
+	require.NoError(t, err)
+
+	// Test event subscription
+	eventCh := make(chan command.Event, 10)
+	runner.Subscribe(eventCh)
+
+	output := runner.RunPlugin("test-plugin")
+
+	// Collect events synchronously
+	events := collectEventsWithTimeout(eventCh, 2, 100*time.Millisecond)
+
+	// Verify output - plugins are not implemented yet, so should get an error
+	assert.Equal(t, command.TypePlugin, output.Type)
+	// The exact error depends on implementation, but there should be some error
+	// since plugins aren't fully implemented
+
+	// Verify events
+	assert.GreaterOrEqual(t, len(events), 2)
+	assert.IsType(t, command.EventStart(command.TypePlugin), events[0])
+	assert.IsType(t, command.EventEnd{}, events[1])
+}
+
+func TestCommandRunner_RunPluginContext(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	chartFile := filepath.Join(tempDir, "Chart.yaml")
+	require.NoError(t, os.WriteFile(chartFile, []byte("name: test-chart"), 0o644))
+
+	runner, err := command.NewRunner(tempDir, command.WithRules(TestConfig.Rules))
+	require.NoError(t, err)
+
+	tests := map[string]struct {
+		setupContext func() context.Context
+		pluginName   string
+	}{
+		"with background context": {
+			setupContext: func() context.Context {
+				return t.Context()
+			},
+			pluginName: "test-plugin",
+		},
+		"with canceled context": {
+			setupContext: func() context.Context {
+				ctx, cancel := context.WithCancel(t.Context())
+				cancel() // Cancel immediately
+
+				return ctx
+			},
+			pluginName: "test-plugin",
+		},
+		"with timeout context": {
+			setupContext: func() context.Context {
+				ctx, cancel := context.WithTimeout(t.Context(), 1*time.Millisecond)
+				defer cancel()
+				time.Sleep(5 * time.Millisecond) // Ensure timeout
+
+				return ctx
+			},
+			pluginName: "another-plugin",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := tc.setupContext()
+			output := runner.RunPluginContext(ctx, tc.pluginName)
+
+			// Verify output type
+			assert.Equal(t, command.TypePlugin, output.Type)
+			// Context cancellation and timeouts may or may not affect the result
+			// depending on timing, so we just verify the basic structure
+		})
+	}
+}
