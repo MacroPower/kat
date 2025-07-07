@@ -194,9 +194,9 @@ cat ./example/kustomize/resources.yaml | kat -f -
 
 ## ⚙️ Configuration
 
-You can use `kat --write-config` to generate a default configuration file at `~/.config/kat/config.yaml`. This file allows you to customize the behavior of `kat`, such as the UI style, keybindings, rules for project detection, and profiles for rendering different types of projects.
+You can use `kat --write-config` to generate a default configuration file at `~/.config/kat/config.yaml`. This file allows you to customize the behavior of `kat`, such as the UI style, keybindings, rules for project detection, and profiles for rendering different types of projects. This will also write a JSON schema to the same location, for use with your editor's YAML language server.
 
-Alternatively, you can find the default configuration file in [pkg/config/config.yaml](pkg/config/config.yaml).
+Alternatively, you can find the default configuration file as well as JSON schemas in [pkg/config](pkg/config).
 
 ## 🛠️ Rules and Profiles
 

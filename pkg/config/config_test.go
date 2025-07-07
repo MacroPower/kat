@@ -43,55 +43,6 @@ func TestConfig_EnsureDefaults(t *testing.T) {
 	assert.NotNil(t, cfg.Command)
 }
 
-func TestConfig_Validate(t *testing.T) {
-	t.Parallel()
-
-	tests := map[string]struct {
-		apiVersion string
-		kind       string
-		errMsg     string
-		wantErr    bool
-	}{
-		"valid config": {
-			apiVersion: "kat.jacobcolvin.com/v1beta1",
-			kind:       "Configuration",
-			wantErr:    false,
-		},
-		"invalid apiVersion": {
-			apiVersion: "invalid/v1",
-			kind:       "Configuration",
-			wantErr:    true,
-			errMsg:     "unsupported apiVersion",
-		},
-		"invalid kind": {
-			apiVersion: "kat.jacobcolvin.com/v1beta1",
-			kind:       "InvalidKind",
-			wantErr:    true,
-			errMsg:     "unsupported kind",
-		},
-	}
-
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			cfg := &config.Config{
-				APIVersion: tc.apiVersion,
-				Kind:       tc.kind,
-			}
-
-			err := cfg.Validate()
-
-			if tc.wantErr {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tc.errMsg)
-			} else {
-				require.NoError(t, err)
-			}
-		})
-	}
-}
-
 func TestReadConfig(t *testing.T) {
 	t.Parallel()
 
@@ -186,7 +137,7 @@ invalid: [unclosed
     command: echo
 `,
 			wantErr: true,
-			errMsg:  "Field validation",
+			errMsg:  "missing properties 'apiVersion', 'kind'",
 		},
 	}
 
@@ -519,10 +470,6 @@ func TestUnmarshalAndValidateDefaultConfig(t *testing.T) {
 	cfg, err := config.LoadConfig(configData)
 	require.NoError(t, err, "embedded default config should load without errors")
 
-	// Validate the config structure.
-	err = cfg.Validate()
-	require.NoError(t, err, "embedded default config should pass validation")
-
 	// Validate the Kube configuration.
 	kubeErr := cfg.Command.Validate()
 	assert.Nil(t, kubeErr, "embedded default config Kube section should pass validation")
@@ -576,11 +523,11 @@ func TestDefaultConfigFullPipeline(t *testing.T) {
 	err := config.WriteDefaultConfig(configPath)
 	require.NoError(t, err)
 
-	// Read the config (simulating config.ReadConfig).
+	// Read the config.
 	cfgData, err := config.ReadConfig(configPath)
 	require.NoError(t, err)
 
-	// Load the config (simulating config.LoadConfig).
+	// Load the config.
 	cfg, err := config.LoadConfig(cfgData)
 	require.NoError(t, err)
 

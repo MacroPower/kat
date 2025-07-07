@@ -97,9 +97,12 @@ var (
 	DefaultConfig = MustNewConfig(defaultProfiles, defaultRules)
 )
 
+// Config defines the core (non-UI) kat configuration.
 type Config struct {
-	Profiles map[string]*profile.Profile `validate:"dive" yaml:"profiles,omitempty"`
-	Rules    []*rule.Rule                `validate:"dive" yaml:"rules,omitempty"`
+	// Profiles contains a map of profile names to profile configurations.
+	Profiles map[string]*profile.Profile `json:"profiles,omitempty" jsonschema:"title=Profiles"`
+	// Rules defines the rules for matching files to profiles.
+	Rules []*rule.Rule `json:"rules,omitempty" jsonschema:"title=Rules"`
 }
 
 type ConfigError struct {

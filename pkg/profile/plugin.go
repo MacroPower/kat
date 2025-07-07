@@ -11,9 +11,12 @@ import (
 
 // Plugin represents a command plugin that can be executed on demand with keybinds.
 type Plugin struct {
-	Command     execs.Command `yaml:",inline"`
-	Description string        `yaml:"description"`
-	Keys        []keys.Key    `yaml:"keys,omitempty"`
+	// Command contains the command execution configuration.
+	Command execs.Command `json:",inline"`
+	// Description provides a description of what the plugin does.
+	Description string `json:"description" jsonschema:"title=Description"`
+	// Keys defines the key bindings that trigger this plugin.
+	Keys []keys.Key `json:"keys,omitempty" jsonschema:"title=Keys"`
 }
 
 // NewPlugin creates a new plugin with the given command and options.

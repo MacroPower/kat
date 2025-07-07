@@ -9,10 +9,14 @@ import (
 	"github.com/macropower/kat/pkg/ui/themes"
 )
 
+// Key represents a keyboard key with optional alias and visibility settings.
 type Key struct {
-	Code   string `validate:"required"     yaml:"code"`
-	Alias  string `yaml:"alias,omitempty"`
-	Hidden bool   `yaml:"hidden,omitempty"`
+	// Code is the key code identifier.
+	Code string `json:"code" jsonschema:"title=Code"`
+	// Alias is an alternative display name for the key.
+	Alias string `json:"alias,omitempty" jsonschema:"title=Alias"`
+	// Hidden determines if the key should be hidden from display.
+	Hidden bool `json:"hidden,omitempty" jsonschema:"title=Hidden"`
 }
 
 type KeyOpt func(k *Key)
@@ -48,9 +52,12 @@ func (k Key) String() string {
 	return k.Code
 }
 
+// KeyBind represents a key binding with its description and associated keys.
 type KeyBind struct {
-	Description string
-	Keys        []Key
+	// Description provides a description of what the key binding does.
+	Description string `json:"description" jsonschema:"title=Description"`
+	// Keys contains the list of keys that trigger this binding.
+	Keys []Key `json:"keys" jsonschema:"title=Keys"`
 }
 
 func NewBind(description string, keys ...Key) KeyBind {

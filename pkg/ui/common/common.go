@@ -89,20 +89,20 @@ func WaitForStatusMessageTimeout(appCtx ApplicationContext, t *time.Timer) tea.C
 }
 
 type KeyBinds struct {
-	Quit    *keys.KeyBind `yaml:"quit"`
-	Suspend *keys.KeyBind `yaml:"suspend"`
-	Reload  *keys.KeyBind `yaml:"reload"`
-	Help    *keys.KeyBind `yaml:"help"`
-	Error   *keys.KeyBind `yaml:"error"`
-	Escape  *keys.KeyBind `yaml:"escape"`
+	Quit    *keys.KeyBind `json:"quit,omitempty"`
+	Suspend *keys.KeyBind `json:"suspend,omitempty"`
+	Reload  *keys.KeyBind `json:"reload,omitempty"`
+	Help    *keys.KeyBind `json:"help,omitempty"`
+	Error   *keys.KeyBind `json:"error,omitempty"`
+	Escape  *keys.KeyBind `json:"escape,omitempty"`
 
 	// Navigation.
-	Up    *keys.KeyBind `yaml:"up"`
-	Down  *keys.KeyBind `yaml:"down"`
-	Left  *keys.KeyBind `yaml:"left"`
-	Right *keys.KeyBind `yaml:"right"`
-	Prev  *keys.KeyBind `yaml:"prev"`
-	Next  *keys.KeyBind `yaml:"next"`
+	Up    *keys.KeyBind `json:"up,omitempty"`
+	Down  *keys.KeyBind `json:"down,omitempty"`
+	Left  *keys.KeyBind `json:"left,omitempty"`
+	Right *keys.KeyBind `json:"right,omitempty"`
+	Prev  *keys.KeyBind `json:"prev,omitempty"`
+	Next  *keys.KeyBind `json:"next,omitempty"`
 }
 
 func (kb *KeyBinds) EnsureDefaults() {

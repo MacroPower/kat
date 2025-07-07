@@ -82,7 +82,6 @@ func main() {
 			slog.Error("write config", slog.Any("err", err))
 			cliCtx.Fatalf(cmdInitErr)
 		}
-		slog.Info("configuration written", slog.String("path", configPath))
 		cliCtx.Exit(0)
 	}
 

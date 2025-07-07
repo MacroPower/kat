@@ -42,11 +42,16 @@ var (
 // If no Source expression is provided, the profile will use default file filtering.
 type Profile struct {
 	sourceProgram cel.Program
-	Hooks         *Hooks             `yaml:"hooks,omitempty"`
-	UI            *UIConfig          `yaml:"ui,omitempty"`
-	Plugins       map[string]*Plugin `yaml:"plugins,omitempty"`
-	Source        string             `yaml:"source,omitempty"`
-	Command       execs.Command      `yaml:",inline"`
+	// Hooks contains lifecycle hooks for the profile.
+	Hooks *Hooks `json:"hooks,omitempty" jsonschema:"title=Hooks"`
+	// UI contains UI configuration overrides for this profile.
+	UI *UIConfig `json:"ui,omitempty" jsonschema:"title=UI Overrides"`
+	// Plugins contains a map of plugin names to Plugin configurations.
+	Plugins map[string]*Plugin `json:"plugins,omitempty" jsonschema:"title=Plugins"`
+	// Source contains the CEL expression source code for the profile.
+	Source string `json:"source,omitempty" jsonschema:"title=Source"`
+	// Command contains the command execution configuration.
+	Command execs.Command `json:",inline"`
 }
 
 // ProfileOpt is a functional option for configuring a Profile.
