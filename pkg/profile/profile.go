@@ -150,19 +150,9 @@ func (p *Profile) Build() error {
 // CompileSource compiles the profile's source expression into a CEL program.
 func (p *Profile) CompileSource() error {
 	if p.sourceProgram == nil && p.Source != "" {
-		env, err := expr.CreateEnvironment()
+		program, err := expr.DefaultEnvironment.Compile(p.Source)
 		if err != nil {
-			return fmt.Errorf("create CEL environment: %w", err)
-		}
-
-		ast, issues := env.Compile(p.Source)
-		if issues != nil && issues.Err() != nil {
-			return fmt.Errorf("compile source expression: %w", issues.Err())
-		}
-
-		program, err := env.Program(ast)
-		if err != nil {
-			return fmt.Errorf("create CEL program: %w", err)
+			return fmt.Errorf("compile source expression: %w", err)
 		}
 
 		p.sourceProgram = program

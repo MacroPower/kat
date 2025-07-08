@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/goccy/go-yaml"
 	"github.com/google/cel-go/cel"
@@ -14,9 +15,46 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 )
 
-// CreateEnvironment creates a CEL environment with functions for filepath operations.
-// These functions provide direct access to Go's filepath package functionality.
-func CreateEnvironment() (*cel.Env, error) {
+var (
+	// Protect CEL environment creation from concurrent access.
+	celMutex sync.Mutex
+
+	// DefaultEnvironment is a shared environment instance for simple use cases.
+	// This allows multiple compilations to reuse the same environment efficiently.
+	DefaultEnvironment = MustNewEnvironment()
+)
+
+// Environment provides a thread-safe wrapper around a [*cel.Env].
+type Environment struct {
+	env *cel.Env
+	mu  sync.Mutex
+}
+
+// NewEnvironment creates a new [Environment].
+func NewEnvironment() (*Environment, error) {
+	env, err := createEnvironment()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Environment{env: env}, nil
+}
+
+// MustNewEnvironment creates a new [Environment] and panics on error.
+func MustNewEnvironment() *Environment {
+	env, err := NewEnvironment()
+	if err != nil {
+		panic(err)
+	}
+
+	return env
+}
+
+// ensureEnvironment creates the [*cel.Env] using the global mutex.
+func createEnvironment() (*cel.Env, error) {
+	celMutex.Lock()
+	defer celMutex.Unlock()
+
 	celEnv, err := cel.NewEnv(
 		cel.Variable("files", cel.ListType(cel.StringType)),
 		cel.Variable("dir", cel.StringType),
@@ -131,6 +169,26 @@ func CreateEnvironment() (*cel.Env, error) {
 	}
 
 	return celEnv, nil
+}
+
+// Compile compiles a CEL expression and returns a program.
+//
+//nolint:ireturn // Following CEL's function signature.
+func (e *Environment) Compile(expression string) (cel.Program, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	ast, issues := e.env.Compile(expression)
+	if issues != nil && issues.Err() != nil {
+		return nil, fmt.Errorf("compile expression: %w", issues.Err())
+	}
+
+	program, err := e.env.Program(ast)
+	if err != nil {
+		return nil, fmt.Errorf("create program: %w", err)
+	}
+
+	return program, nil
 }
 
 // ConvertToCELValue converts a Go value to a CEL value.

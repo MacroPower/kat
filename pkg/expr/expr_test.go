@@ -16,17 +16,15 @@ import (
 func TestCELFilepathFunctions(t *testing.T) {
 	t.Parallel()
 
-	env, err := expr.CreateEnvironment()
+	env, err := expr.NewEnvironment()
 	require.NoError(t, err)
 
-	tests := []struct {
-		name       string
+	tcs := map[string]struct {
 		expression string
 		files      []string
 		expected   bool
 	}{
-		{
-			name:       "pathBase with in operator - exists",
+		"pathBase with in operator - exists": {
 			expression: `files.exists(f, pathBase(f) in ["Chart.yaml", "values.yaml"])`,
 			files: []string{
 				"/k8s/Chart.yaml",
@@ -36,8 +34,7 @@ func TestCELFilepathFunctions(t *testing.T) {
 			},
 			expected: true,
 		},
-		{
-			name:       "pathExt with in operator - exists",
+		"pathExt with in operator - exists": {
 			expression: `files.exists(f, pathExt(f) in [".yaml", ".yml"])`,
 			files: []string{
 				"/k8s/deployment.yaml",
@@ -47,8 +44,7 @@ func TestCELFilepathFunctions(t *testing.T) {
 			},
 			expected: true,
 		},
-		{
-			name:       "pathDir with contains - exists",
+		"pathDir with contains - exists": {
 			expression: `files.exists(f, pathDir(f).contains("/templates"))`,
 			files: []string{
 				"/k8s/templates/deployment.yaml",
@@ -58,8 +54,7 @@ func TestCELFilepathFunctions(t *testing.T) {
 			},
 			expected: true,
 		},
-		{
-			name:       "pathBase equality check - exists",
+		"pathBase equality check - exists": {
 			expression: `files.exists(f, pathBase(f) == "Chart.yaml")`,
 			files: []string{
 				"/k8s/Chart.yaml",
@@ -68,8 +63,7 @@ func TestCELFilepathFunctions(t *testing.T) {
 			},
 			expected: true,
 		},
-		{
-			name:       "combined filepath functions - exists",
+		"combined filepath functions - exists": {
 			expression: `files.exists(f, pathExt(f) in [".yaml", ".yml"] && !pathBase(f).matches(".*test.*"))`,
 			files: []string{
 				"/k8s/deployment.yaml",
@@ -79,8 +73,7 @@ func TestCELFilepathFunctions(t *testing.T) {
 			},
 			expected: true,
 		},
-		{
-			name:       "no matches - false",
+		"no matches - false": {
 			expression: `files.exists(f, pathBase(f) == "nonexistent.yaml")`,
 			files: []string{
 				"/k8s/deployment.yaml",
@@ -90,19 +83,16 @@ func TestCELFilepathFunctions(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
 			// Compile the CEL expression
-			ast, issues := env.Compile(test.expression)
-			require.NoError(t, issues.Err())
-
-			program, err := env.Program(ast)
+			program, err := env.Compile(tc.expression)
 			require.NoError(t, err)
 
 			// Create input data
-			fileList := types.NewStringList(types.DefaultTypeAdapter, test.files)
+			fileList := types.NewStringList(types.DefaultTypeAdapter, tc.files)
 			vars := map[string]any{
 				"files": fileList,
 				"dir":   "/k8s",
@@ -114,7 +104,7 @@ func TestCELFilepathFunctions(t *testing.T) {
 
 			boolResult, ok := result.Value().(bool)
 			require.True(t, ok, "result should be a boolean")
-			require.Equal(t, test.expected, boolResult)
+			require.Equal(t, tc.expected, boolResult)
 		})
 	}
 }
@@ -148,54 +138,46 @@ service:
 	valuesPath := filepath.Join(tempDir, "values.yaml")
 	require.NoError(t, os.WriteFile(valuesPath, []byte(valuesContent), 0o644))
 
-	env, err := expr.CreateEnvironment()
+	env, err := expr.NewEnvironment()
 	require.NoError(t, err)
 
-	tests := []struct {
-		name       string
+	tcs := map[string]struct {
 		expression string
 		files      []string
 		expected   bool
 	}{
-		{
-			name:       "yamlPath function with valid apiVersion",
+		"yamlPath function with valid apiVersion": {
 			expression: `files.exists(f, pathBase(f) == "Chart.yaml" && yamlPath(f, "$.apiVersion") == "v2")`,
 			files:      []string{chartPath, valuesPath},
 			expected:   true,
 		},
-		{
-			name:       "yamlPath function with nested path",
+		"yamlPath function with nested path": {
 			expression: `files.exists(f, pathBase(f) == "values.yaml" && yamlPath(f, "$.image.repository") == "nginx")`,
 			files:      []string{chartPath, valuesPath},
 			expected:   true,
 		},
-		{
-			name:       "yamlPath function with non-existent path",
+		"yamlPath function with non-existent path": {
 			expression: `files.exists(f, pathBase(f) == "Chart.yaml" && yamlPath(f, "$.nonExistent") != null)`,
 			files:      []string{chartPath},
 			expected:   false,
 		},
-		{
-			name:       "yamlPath function with numeric value",
+		"yamlPath function with numeric value": {
 			expression: `files.exists(f, pathBase(f) == "values.yaml" && yamlPath(f, "$.replicaCount") == 1)`,
 			files:      []string{chartPath, valuesPath},
 			expected:   true,
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
 			// Compile the CEL expression
-			ast, issues := env.Compile(test.expression)
-			require.NoError(t, issues.Err())
-
-			program, err := env.Program(ast)
+			program, err := env.Compile(tc.expression)
 			require.NoError(t, err)
 
 			// Create input data
-			fileList := types.NewStringList(types.DefaultTypeAdapter, test.files)
+			fileList := types.NewStringList(types.DefaultTypeAdapter, tc.files)
 			vars := map[string]any{
 				"files": fileList,
 				"dir":   tempDir,
@@ -207,7 +189,7 @@ service:
 
 			boolResult, ok := result.Value().(bool)
 			require.True(t, ok, "result should be a boolean")
-			require.Equal(t, test.expected, boolResult)
+			require.Equal(t, tc.expected, boolResult)
 		})
 	}
 }
@@ -378,7 +360,7 @@ func TestConvertToCELValue_MapStringAny(t *testing.T) {
 func TestCELErrorHandling(t *testing.T) {
 	t.Parallel()
 
-	env, err := expr.CreateEnvironment()
+	env, err := expr.NewEnvironment()
 	require.NoError(t, err)
 
 	tcs := map[string]struct {
@@ -417,16 +399,13 @@ func TestCELErrorHandling(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			ast, issues := env.Compile(tc.expression)
-			if issues.Err() != nil {
+			program, err := env.Compile(tc.expression)
+			if err != nil {
 				if tc.shouldErr {
 					return // Expected compilation error
 				}
-				require.NoError(t, issues.Err())
+				require.NoError(t, err)
 			}
-
-			program, err := env.Program(ast)
-			require.NoError(t, err)
 
 			result, _, err := program.Eval(tc.vars)
 			if tc.shouldErr {
@@ -463,7 +442,7 @@ func TestYamlPathErrorCases(t *testing.T) {
 version: 1.0`
 	require.NoError(t, os.WriteFile(validYAMLPath, []byte(validContent), 0o644))
 
-	env, err := expr.CreateEnvironment()
+	env, err := expr.NewEnvironment()
 	require.NoError(t, err)
 
 	tcs := map[string]struct {
@@ -488,10 +467,7 @@ version: 1.0`
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			ast, issues := env.Compile(tc.expression)
-			require.NoError(t, issues.Err())
-
-			program, err := env.Program(ast)
+			program, err := env.Compile(tc.expression)
 			require.NoError(t, err)
 
 			vars := map[string]any{
@@ -540,7 +516,7 @@ spec:
 	complexPath := filepath.Join(tempDir, "complex.yaml")
 	require.NoError(t, os.WriteFile(complexPath, []byte(complexContent), 0o644))
 
-	env, err := expr.CreateEnvironment()
+	env, err := expr.NewEnvironment()
 	require.NoError(t, err)
 
 	tcs := map[string]struct {
@@ -577,10 +553,7 @@ spec:
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			ast, issues := env.Compile(tc.expression)
-			require.NoError(t, issues.Err())
-
-			program, err := env.Program(ast)
+			program, err := env.Compile(tc.expression)
 			require.NoError(t, err)
 
 			vars := map[string]any{
@@ -617,7 +590,7 @@ func TestCreateEnvironmentError(t *testing.T) {
 	t.Parallel()
 
 	// This test ensures we can create an environment without errors
-	env, err := expr.CreateEnvironment()
+	env, err := expr.NewEnvironment()
 	require.NoError(t, err)
 	assert.NotNil(t, env)
 }
@@ -625,7 +598,7 @@ func TestCreateEnvironmentError(t *testing.T) {
 func TestCELPathFunctionEdgeCases(t *testing.T) {
 	t.Parallel()
 
-	env, err := expr.CreateEnvironment()
+	env, err := expr.NewEnvironment()
 	require.NoError(t, err)
 
 	tcs := map[string]struct {
@@ -666,10 +639,7 @@ func TestCELPathFunctionEdgeCases(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			ast, issues := env.Compile(tc.expression)
-			require.NoError(t, issues.Err())
-
-			program, err := env.Program(ast)
+			program, err := env.Compile(tc.expression)
 			require.NoError(t, err)
 
 			result, _, err := program.Eval(map[string]any{})
@@ -680,4 +650,19 @@ func TestCELPathFunctionEdgeCases(t *testing.T) {
 			assert.Equal(t, tc.expected, strVal)
 		})
 	}
+}
+
+func TestGlobalCompileFunction(t *testing.T) {
+	t.Parallel()
+
+	// Test the shared default environment
+	program, err := expr.DefaultEnvironment.Compile(`pathBase("/test/file.txt")`)
+	require.NoError(t, err)
+
+	result, _, err := program.Eval(map[string]any{})
+	require.NoError(t, err)
+
+	strResult, ok := result.Value().(string)
+	require.True(t, ok)
+	assert.Equal(t, "file.txt", strResult)
 }

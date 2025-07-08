@@ -71,19 +71,9 @@ func MustNew(profileName, match string) *Rule {
 // CompileMatch compiles the rule's match expression into a CEL program.
 func (r *Rule) CompileMatch() error {
 	if r.matchProgram == nil {
-		env, err := expr.CreateEnvironment()
+		program, err := expr.DefaultEnvironment.Compile(r.Match)
 		if err != nil {
-			return fmt.Errorf("create CEL environment: %w", err)
-		}
-
-		ast, issues := env.Compile(r.Match)
-		if issues != nil && issues.Err() != nil {
-			return fmt.Errorf("compile match expression: %w", issues.Err())
-		}
-
-		program, err := env.Program(ast)
-		if err != nil {
-			return fmt.Errorf("create CEL program: %w", err)
+			return fmt.Errorf("compile match expression: %w", err)
 		}
 
 		r.matchProgram = program
