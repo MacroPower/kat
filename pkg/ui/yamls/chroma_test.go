@@ -828,3 +828,84 @@ message: "This is a quoted string with special chars: !@#$%"
 		})
 	}
 }
+
+func TestChromaRenderer_SelectedMatchHighlighting(t *testing.T) {
+	t.Parallel()
+
+	lipgloss.SetColorProfile(termenv.TrueColor)
+
+	renderer := yamls.NewChromaRenderer(testTheme(), true)
+	renderer.SetFormatter("terminal16m")
+
+	yaml := "name: test value test"
+	renderer.SetSearchTerm("test")
+
+	_, err := renderer.RenderContent(yaml, 80)
+	require.NoError(t, err)
+
+	matches := renderer.GetMatches()
+	require.Len(t, matches, 2, "Should find 2 matches of 'test'")
+
+	// First, test with no selected match.
+	assert.Equal(t, -1, renderer.GetCurrentSelectedMatch(), "No match should be selected initially")
+
+	// Render with no selection - all matches should use regular highlight style.
+	resultNoSelection, err := renderer.RenderContent(yaml, 80)
+	require.NoError(t, err)
+
+	// Now select the first match (index 0).
+	renderer.SetCurrentSelectedMatch(0)
+	result1, err := renderer.RenderContent(yaml, 80)
+	require.NoError(t, err)
+
+	// Select the second match (index 1).
+	renderer.SetCurrentSelectedMatch(1)
+	result2, err := renderer.RenderContent(yaml, 80)
+	require.NoError(t, err)
+
+	// All results should be different.
+	assert.NotEqual(t, resultNoSelection, result1, "No selection vs first match selection should be different")
+	assert.NotEqual(t, resultNoSelection, result2, "No selection vs second match selection should be different")
+	assert.NotEqual(t, result1, result2, "Different selected matches should produce different highlighting")
+
+	// All should contain ANSI sequences for highlighting.
+	assert.Contains(t, resultNoSelection, "\x1b[", "Should contain ANSI sequences for highlighting")
+	assert.Contains(t, result1, "\x1b[", "Should contain ANSI sequences for highlighting")
+	assert.Contains(t, result2, "\x1b[", "Should contain ANSI sequences for highlighting")
+
+	// The plain text should be the same across all results.
+	expectedPlainText := yaml
+	assert.Equal(t, expectedPlainText, ansi.Strip(resultNoSelection), "Plain text should match original")
+	assert.Equal(t, expectedPlainText, ansi.Strip(result1), "Plain text should match original")
+	assert.Equal(t, expectedPlainText, ansi.Strip(result2), "Plain text should match original")
+
+	// Test invalid selection index.
+	renderer.SetCurrentSelectedMatch(999)
+	resultInvalid, err := renderer.RenderContent(yaml, 80)
+	require.NoError(t, err)
+	assert.Equal(t, resultNoSelection, resultInvalid, "Invalid selection should behave like no selection")
+}
+
+func TestChromaRenderer_InitialSearchHighlighting(t *testing.T) {
+	t.Parallel()
+
+	lipgloss.SetColorProfile(termenv.TrueColor)
+
+	renderer := yamls.NewChromaRenderer(testTheme(), true)
+	renderer.SetFormatter("terminal16m")
+
+	txt := "name: test"
+	renderer.SetSearchTerm("test")
+
+	// Render without selecting any specific match.
+	result, err := renderer.RenderContent(txt, 80)
+	require.NoError(t, err)
+
+	matches := renderer.GetMatches()
+	require.Len(t, matches, 1, "Should find 1 match of 'test'")
+	assert.Equal(t, -1, renderer.GetCurrentSelectedMatch(), "No match should be selected initially")
+
+	// The result should contain highlighting even with no selection.
+	assert.Contains(t, result, "\x1b[", "Should contain ANSI sequences for highlighting")
+	assert.Equal(t, txt, ansi.Strip(result), "Plain text should match original")
+}

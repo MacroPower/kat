@@ -349,7 +349,19 @@ func (m *PagerModel) ExitSearch() {
 func (m *PagerModel) applySearch(term string) {
 	if m.chromaRenderer != nil {
 		m.chromaRenderer.SetSearchTerm(term)
-		m.currentMatch = -1
+
+		// Trigger match finding immediately by calling findMatches on the current content.
+		m.chromaRenderer.FindMatchesInContent(m.CurrentDocument.Body)
+
+		// Automatically select the first match if any matches are found.
+		matches := m.chromaRenderer.GetMatches()
+		if len(matches) > 0 {
+			m.currentMatch = 0
+			m.chromaRenderer.SetCurrentSelectedMatch(0)
+		} else {
+			m.currentMatch = -1
+			m.chromaRenderer.SetCurrentSelectedMatch(-1)
+		}
 	}
 }
 
@@ -368,6 +380,9 @@ func (m PagerModel) goToNextMatch() (PagerModel, tea.Cmd) {
 	m.currentMatch = (m.currentMatch + 1) % len(matches)
 	match := matches[m.currentMatch]
 
+	// Update the renderer with the current selected match.
+	m.chromaRenderer.SetCurrentSelectedMatch(m.currentMatch)
+
 	// Calculate line height and scroll to match.
 	totalLines := len(strings.Split(m.CurrentDocument.Body, "\n"))
 	if totalLines > 0 {
@@ -375,7 +390,11 @@ func (m PagerModel) goToNextMatch() (PagerModel, tea.Cmd) {
 		m.viewport.SetYOffset(int(scrollPercent * float64(m.viewport.TotalLineCount())))
 	}
 
-	return m, m.cm.SendStatusMessage(fmt.Sprintf("match %d/%d", m.currentMatch+1, len(matches)), statusbar.StyleSuccess)
+	// Re-render the content to apply the new highlight.
+	return m, tea.Batch(
+		m.Render(m.CurrentDocument.Body),
+		m.cm.SendStatusMessage(fmt.Sprintf("match %d/%d", m.currentMatch+1, len(matches)), statusbar.StyleSuccess),
+	)
 }
 
 // goToPrevMatch navigates to the previous search match.
@@ -397,6 +416,9 @@ func (m PagerModel) goToPrevMatch() (PagerModel, tea.Cmd) {
 	}
 	match := matches[m.currentMatch]
 
+	// Update the renderer with the current selected match.
+	m.chromaRenderer.SetCurrentSelectedMatch(m.currentMatch)
+
 	// Calculate line height and scroll to match.
 	totalLines := len(strings.Split(m.CurrentDocument.Body, "\n"))
 	if totalLines > 0 {
@@ -404,5 +426,9 @@ func (m PagerModel) goToPrevMatch() (PagerModel, tea.Cmd) {
 		m.viewport.SetYOffset(int(scrollPercent * float64(m.viewport.TotalLineCount())))
 	}
 
-	return m, m.cm.SendStatusMessage(fmt.Sprintf("match %d/%d", m.currentMatch+1, len(matches)), statusbar.StyleSuccess)
+	// Re-render the content to apply the new highlight.
+	return m, tea.Batch(
+		m.Render(m.CurrentDocument.Body),
+		m.cm.SendStatusMessage(fmt.Sprintf("match %d/%d", m.currentMatch+1, len(matches)), statusbar.StyleSuccess),
+	)
 }

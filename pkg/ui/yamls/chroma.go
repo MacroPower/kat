@@ -31,14 +31,16 @@ type MatchPosition struct {
 
 // ChromaRenderer handles rendering content with chroma styling.
 type ChromaRenderer struct {
-	lexer               chroma.Lexer
-	formatter           chroma.Formatter
-	highlightStyle      lipgloss.Style
-	theme               *theme.Theme
-	style               *chroma.Style
-	searchTerm          string
-	matches             []MatchPosition
-	lineNumbersDisabled bool
+	lexer                  chroma.Lexer
+	formatter              chroma.Formatter
+	highlightStyle         lipgloss.Style
+	selectedHighlightStyle lipgloss.Style
+	theme                  *theme.Theme
+	style                  *chroma.Style
+	searchTerm             string
+	matches                []MatchPosition
+	currentSelectedMatch   int // Index of the currently selected match (-1 if none selected).
+	lineNumbersDisabled    bool
 }
 
 // NewChromaRenderer creates a new ChromaRenderer.
@@ -61,14 +63,17 @@ func NewChromaRenderer(t *theme.Theme, lineNumbersDisabled bool) *ChromaRenderer
 	formatter := formatters.Get(formatterName)
 
 	highlightStyle := t.SelectedStyle.Underline(true).Bold(true)
+	selectedHighlightStyle := t.LogoStyle.Bold(true)
 
 	return &ChromaRenderer{
-		theme:               t,
-		lexer:               lexer,
-		formatter:           formatter,
-		style:               t.ChromaStyle,
-		highlightStyle:      highlightStyle,
-		lineNumbersDisabled: lineNumbersDisabled,
+		theme:                  t,
+		lexer:                  lexer,
+		formatter:              formatter,
+		style:                  t.ChromaStyle,
+		highlightStyle:         highlightStyle,
+		selectedHighlightStyle: selectedHighlightStyle,
+		currentSelectedMatch:   -1,
+		lineNumbersDisabled:    lineNumbersDisabled,
 	}
 }
 
@@ -168,6 +173,17 @@ func (gr *ChromaRenderer) formatLineWithNumber(line string, lineNum, width int) 
 func (gr *ChromaRenderer) SetSearchTerm(term string) {
 	gr.searchTerm = term
 	gr.matches = nil
+	gr.currentSelectedMatch = -1
+}
+
+// SetCurrentSelectedMatch sets the index of the currently selected match.
+func (gr *ChromaRenderer) SetCurrentSelectedMatch(index int) {
+	gr.currentSelectedMatch = index
+}
+
+// GetCurrentSelectedMatch returns the index of the currently selected match.
+func (gr *ChromaRenderer) GetCurrentSelectedMatch() int {
+	return gr.currentSelectedMatch
 }
 
 // GetMatches returns the current search matches.
@@ -179,6 +195,14 @@ func (gr *ChromaRenderer) GetMatches() []MatchPosition {
 // This is primarily useful for testing.
 func (gr *ChromaRenderer) SetFormatter(name string) {
 	gr.formatter = formatters.Get(name)
+}
+
+// FindMatchesInContent finds matches in the given content and stores them.
+// This is useful when you need to find matches immediately rather than waiting for the next render.
+func (gr *ChromaRenderer) FindMatchesInContent(content string) {
+	if gr.searchTerm != "" {
+		gr.findMatches(content)
+	}
 }
 
 // findMatches finds all occurrences of the search term in the content.
@@ -335,11 +359,13 @@ func (gr *ChromaRenderer) highlightMatchesInStyledText(styledText string, matche
 
 // rebuildStyledTextWithHighlights rebuilds styled text with search highlights applied.
 func (gr *ChromaRenderer) rebuildStyledTextWithHighlights(styledText, plainText string, matches []MatchPosition) string {
-	// Create a map for quick lookup of which positions should be highlighted.
-	highlightMap := make(map[int]bool)
+	// Create a map for quick lookup of which positions should be highlighted and which match they belong to.
+	highlightMap := make(map[int]int) // Map of position -> global match index (-1 for regular highlight).
 	for _, match := range matches {
+		// Find the global index of this match in the overall matches slice.
+		globalMatchIdx := gr.getMatchIndex(match)
 		for i := match.Start; i < match.End; i++ {
-			highlightMap[i] = true
+			highlightMap[i] = globalMatchIdx // Store the global index (or -1 if not found).
 		}
 	}
 
@@ -372,11 +398,18 @@ func (gr *ChromaRenderer) rebuildStyledTextWithHighlights(styledText, plainText 
 			}
 		default:
 			// This is a regular character.
-			shouldHighlight := plainIdx < len([]rune(plainText)) && highlightMap[plainIdx]
+			if globalMatchIdx, shouldHighlight := highlightMap[plainIdx]; shouldHighlight && plainIdx < len([]rune(plainText)) {
+				// Determine which style to use based on whether this match is selected.
+				var highlightStyle lipgloss.Style
+				if globalMatchIdx >= 0 && gr.isMatchSelected(globalMatchIdx) {
+					highlightStyle = gr.selectedHighlightStyle
+				} else {
+					// Use regular highlight style for all matches, including those with globalMatchIdx = -1.
+					highlightStyle = gr.highlightStyle
+				}
 
-			if shouldHighlight {
 				// Apply highlight to this character and restore styling afterward.
-				highlightText := gr.highlightStyle.Render(string(r))
+				highlightText := highlightStyle.Render(string(r))
 				result.WriteString(highlightText)
 				// Restore the current styling context if there was one.
 				if currentStyle != "" {
@@ -392,4 +425,22 @@ func (gr *ChromaRenderer) rebuildStyledTextWithHighlights(styledText, plainText 
 	}
 
 	return result.String()
+}
+
+// isMatchSelected returns true if the given match index corresponds to the currently selected match.
+func (gr *ChromaRenderer) isMatchSelected(matchIndex int) bool {
+	return gr.currentSelectedMatch >= 0 && matchIndex == gr.currentSelectedMatch
+}
+
+// getMatchIndex returns the index of a match position in the matches slice.
+func (gr *ChromaRenderer) getMatchIndex(match MatchPosition) int {
+	for i, m := range gr.matches {
+		if m.Line == match.Line && m.Start == match.Start && m.End == match.End {
+			return i
+		}
+	}
+	// If not found, this means it's still a valid match but we couldn't find its global index.
+	// This can happen if the match was created during line processing but doesn't exactly
+	// match the original due to normalization differences.
+	return -1
 }
