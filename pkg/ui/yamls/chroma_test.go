@@ -253,8 +253,8 @@ func TestChromaRenderer_SearchHighlighting(t *testing.T) {
 		"overlapping matches": {
 			yaml:          "aaaaaa",
 			searchTerm:    "a",
-			expectMatches: 1,
-			description:   "Should group consecutive matches",
+			expectMatches: 6,
+			description:   "Should find individual character matches",
 		},
 		"special characters": {
 			yaml:          "key: value-test_123",
@@ -385,7 +385,7 @@ func TestChromaRenderer_ConsecutiveMatches(t *testing.T) {
 	renderer := yamls.NewChromaRenderer(testTheme(), true)
 	renderer.SetFormatter("terminal16m")
 
-	// Test consecutive character matching and grouping.
+	// Test individual character matching.
 	yaml := "hello"
 	renderer.SetSearchTerm("l")
 
@@ -393,13 +393,21 @@ func TestChromaRenderer_ConsecutiveMatches(t *testing.T) {
 	require.NoError(t, err)
 
 	matches := renderer.GetMatches()
-	require.Len(t, matches, 1, "Should group consecutive 'l' characters into one match")
+	require.Len(t, matches, 2, "Should find individual 'l' characters as separate matches")
 
-	match := matches[0]
-	assert.Equal(t, 0, match.Line)
-	assert.Equal(t, 2, match.Start)  // First 'l' in "hello"
-	assert.Equal(t, 4, match.End)    // After last 'l' in "hello"
-	assert.Equal(t, 2, match.Length) // Two consecutive 'l' characters
+	// First 'l' match.
+	match1 := matches[0]
+	assert.Equal(t, 0, match1.Line)
+	assert.Equal(t, 2, match1.Start)  // First 'l' in "hello"
+	assert.Equal(t, 3, match1.End)    // After first 'l' in "hello"
+	assert.Equal(t, 1, match1.Length) // Single character
+
+	// Second 'l' match.
+	match2 := matches[1]
+	assert.Equal(t, 0, match2.Line)
+	assert.Equal(t, 3, match2.Start)  // Second 'l' in "hello"
+	assert.Equal(t, 4, match2.End)    // After second 'l' in "hello"
+	assert.Equal(t, 1, match2.Length) // Single character
 }
 
 func TestChromaRenderer_MultiLineSearch(t *testing.T) {

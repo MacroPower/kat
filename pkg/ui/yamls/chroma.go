@@ -13,7 +13,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/cellbuf"
 	"github.com/muesli/termenv"
-	"github.com/sahilm/fuzzy"
 
 	"github.com/macropower/kat/pkg/ui/theme"
 )
@@ -200,62 +199,59 @@ func (gr *ChromaRenderer) findMatches(content string) {
 
 	lines := strings.Split(content, "\n")
 
-	// Find matches line by line for better accuracy.
+	// Find matches line by line.
 	for lineNum, line := range lines {
 		normalizedLine, err := Normalize(line)
 		if err != nil {
 			normalizedLine = line
 		}
-
-		// For exact character searches, use simple string search instead of fuzzy matching.
-		if len(normalizedTerm) == 1 {
-			gr.findExactMatches(normalizedLine, normalizedTerm, lineNum)
-		} else {
-			gr.findFuzzyMatches(normalizedLine, normalizedTerm, lineNum)
-		}
-	}
-
-	// Group consecutive matches.
-	gr.groupConsecutiveMatches()
-}
-
-// findExactMatches finds all exact occurrences of a single character.
-func (gr *ChromaRenderer) findExactMatches(line, term string, lineNum int) {
-	runes := []rune(line)
-	for i, char := range runes {
-		if string(char) == term {
-			gr.matches = append(gr.matches, MatchPosition{
-				Line:   lineNum,
-				Start:  i,
-				End:    i + 1,
-				Length: 1,
-			})
-		}
+		gr.findSubstringMatches(normalizedLine, normalizedTerm, lineNum)
 	}
 }
 
-// findFuzzyMatches finds fuzzy matches for longer search terms.
-func (gr *ChromaRenderer) findFuzzyMatches(line, term string, lineNum int) {
-	fuzzyMatches := fuzzy.Find(term, []string{line})
-	if len(fuzzyMatches) == 0 {
+// findSubstringMatches finds all substring occurrences.
+func (gr *ChromaRenderer) findSubstringMatches(line, term string, lineNum int) {
+	if term == "" {
 		return
 	}
 
-	// Convert fuzzy match indexes to line positions.
-	match := fuzzyMatches[0]
-	lineRunes := []rune(line)
+	// Convert to lowercase for case-insensitive search (e.g. ignorecase).
+	lowerLine := strings.ToLower(line)
+	lowerTerm := strings.ToLower(term)
 
-	for _, matchIdx := range match.MatchedIndexes {
-		// Convert byte index to rune index.
-		runeIdx := gr.byteIndexToRuneIndex(line, matchIdx)
-		if runeIdx >= 0 && runeIdx < len(lineRunes) {
+	lineRunes := []rune(line)
+	searchIndex := 0
+
+	for searchIndex < len(lowerLine) {
+		// Find the next occurrence.
+		matchStart := strings.Index(lowerLine[searchIndex:], lowerTerm)
+		if matchStart == -1 {
+			break // No more matches.
+		}
+
+		// Convert byte positions to rune positions.
+		absoluteByteStart := searchIndex + matchStart
+		absoluteByteEnd := absoluteByteStart + len(lowerTerm)
+
+		runeStart := gr.byteIndexToRuneIndex(line, absoluteByteStart)
+		runeEnd := gr.byteIndexToRuneIndex(line, absoluteByteEnd)
+
+		// Handle edge case where the term ends at the line boundary.
+		if runeEnd == -1 {
+			runeEnd = len(lineRunes)
+		}
+
+		if runeStart >= 0 && runeEnd > runeStart {
 			gr.matches = append(gr.matches, MatchPosition{
 				Line:   lineNum,
-				Start:  runeIdx,
-				End:    runeIdx + 1,
-				Length: 1,
+				Start:  runeStart,
+				End:    runeEnd,
+				Length: runeEnd - runeStart,
 			})
 		}
+
+		// Move past this match to find the next one.
+		searchIndex = absoluteByteStart + 1
 	}
 }
 
@@ -277,35 +273,6 @@ func (gr *ChromaRenderer) byteIndexToRuneIndex(s string, byteIdx int) int {
 	}
 
 	return runeIdx
-}
-
-// groupConsecutiveMatches groups consecutive character matches into larger matches.
-func (gr *ChromaRenderer) groupConsecutiveMatches() {
-	if len(gr.matches) == 0 {
-		return
-	}
-
-	var grouped []MatchPosition
-	current := gr.matches[0]
-
-	for i := 1; i < len(gr.matches); i++ {
-		match := gr.matches[i]
-
-		// If this match is consecutive to the current one on the same line.
-		if match.Line == current.Line && match.Start == current.End {
-			// Extend the current match.
-			current.End = match.End
-			current.Length = current.End - current.Start
-		} else {
-			// Save the current match and start a new one.
-			grouped = append(grouped, current)
-			current = match
-		}
-	}
-
-	// Don't forget the last match.
-	grouped = append(grouped, current)
-	gr.matches = grouped
 }
 
 // getLineMatches returns all matches for a specific line.
@@ -362,7 +329,7 @@ func (gr *ChromaRenderer) highlightMatchesInStyledText(styledText string, matche
 	// Strip ANSI codes to get plain text positions.
 	plainText := ansi.Strip(styledText)
 
-	// Use a more robust approach: parse the styled text and rebuild it with highlights.
+	// Parse the styled text and rebuild it with highlights.
 	return gr.rebuildStyledTextWithHighlights(styledText, plainText, matches)
 }
 
