@@ -8,7 +8,7 @@ import (
 	"github.com/muesli/reflow/ansi"
 	"github.com/muesli/reflow/truncate"
 
-	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/theme"
 	"github.com/macropower/kat/pkg/version"
 )
 
@@ -27,15 +27,15 @@ const (
 
 // StatusBarRenderer handles status bar rendering for the pager.
 type StatusBarRenderer struct {
-	theme   *themes.Theme
+	theme   *theme.Theme
 	message string
 	width   int
 	style   Style
 }
 
 // NewStatusBarRenderer creates a new StatusBarRenderer.
-func NewStatusBarRenderer(theme *themes.Theme, width int, opts ...StatusBarOpt) *StatusBarRenderer {
-	sb := &StatusBarRenderer{theme: theme, width: width, style: StyleNormal}
+func NewStatusBarRenderer(t *theme.Theme, width int, opts ...StatusBarOpt) *StatusBarRenderer {
+	sb := &StatusBarRenderer{theme: t, width: width, style: StyleNormal}
 	for _, opt := range opts {
 		opt(sb)
 	}

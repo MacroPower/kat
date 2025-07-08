@@ -1,4 +1,4 @@
-package themes
+package theme
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ const (
 	Ellipsis = "…"
 )
 
-var DefaultTheme = NewTheme("github")
+var Default = New("github")
 
 type Theme struct {
 	CursorStyle               lipgloss.Style
@@ -44,7 +44,7 @@ type Theme struct {
 	Ellipsis    string
 }
 
-func NewTheme(theme string) *Theme {
+func New(theme string) *Theme {
 	style := newChromaStyle(theme)
 
 	var (
@@ -140,7 +140,7 @@ func NewTheme(theme string) *Theme {
 	}
 }
 
-func RegisterTheme(name string, entries chroma.StyleEntries) error {
+func Register(name string, entries chroma.StyleEntries) error {
 	customTheme, err := chroma.NewStyle(name, entries)
 	if err != nil {
 		return fmt.Errorf("create chroma style: %w", err)

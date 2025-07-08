@@ -5,7 +5,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/theme"
 )
 
 type KeyBindRenderer interface {
@@ -14,13 +14,13 @@ type KeyBindRenderer interface {
 
 // HelpRenderer handles help view rendering for the pager.
 type HelpRenderer struct {
-	theme    *themes.Theme
+	theme    *theme.Theme
 	keyBinds KeyBindRenderer
 }
 
 // NewHelpRenderer creates a new HelpViewRenderer.
-func NewHelpRenderer(theme *themes.Theme, keyBinds KeyBindRenderer) *HelpRenderer {
-	return &HelpRenderer{theme: theme, keyBinds: keyBinds}
+func NewHelpRenderer(t *theme.Theme, keyBinds KeyBindRenderer) *HelpRenderer {
+	return &HelpRenderer{theme: t, keyBinds: keyBinds}
 }
 
 // RenderHelpView renders the complete help view for the pager.

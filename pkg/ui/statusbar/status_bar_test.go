@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/macropower/kat/pkg/ui/statusbar"
-	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/theme"
 )
 
 func TestNewStatusBarRenderer(t *testing.T) {
@@ -35,7 +35,7 @@ func TestNewStatusBarRenderer(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := statusbar.NewStatusBarRenderer(themes.DefaultTheme, tc.width)
+			renderer := statusbar.NewStatusBarRenderer(theme.Default, tc.width)
 			require.NotNil(t, renderer)
 
 			statusBar := renderer.RenderWithScroll("test", 0)
@@ -102,7 +102,7 @@ func TestRenderStatusBar(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := statusbar.NewStatusBarRenderer(themes.DefaultTheme, tc.width, statusbar.WithMessage(tc.statusMessage, statusbar.StyleSuccess))
+			renderer := statusbar.NewStatusBarRenderer(theme.Default, tc.width, statusbar.WithMessage(tc.statusMessage, statusbar.StyleSuccess))
 
 			result := renderer.RenderWithScroll(tc.title, tc.scrollPercent)
 			tc.checkFunc(t, result)

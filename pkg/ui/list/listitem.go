@@ -9,7 +9,7 @@ import (
 	"github.com/muesli/reflow/truncate"
 	"github.com/sahilm/fuzzy"
 
-	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/theme"
 	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
@@ -62,43 +62,43 @@ func listItemView(b *strings.Builder, m ListModel, index int, compact bool, y *y
 }
 
 // applySelectedStyling applies styling for selected/highlighted items.
-func applySelectedStyling(theme *themes.Theme, title, desc string, showFilter bool, filterValue string) listItemDisplayState {
+func applySelectedStyling(t *theme.Theme, title, desc string, showFilter bool, filterValue string) listItemDisplayState {
 	result := listItemDisplayState{
-		gutter:    theme.SelectedStyle.Render("│"),
-		desc:      theme.SelectedSubtleStyle.Render(desc),
-		separator: theme.SelectedStyle.Render(""),
+		gutter:    t.SelectedStyle.Render("│"),
+		desc:      t.SelectedSubtleStyle.Render(desc),
+		separator: t.SelectedStyle.Render(""),
 	}
 
 	if showFilter {
 		// Apply filtered text styling.
-		result.title = styleFilteredText(title, filterValue, theme.SelectedStyle, theme.SelectedStyle.Underline(true))
-		result.desc = styleFilteredText(desc, filterValue, theme.SelectedSubtleStyle, theme.SelectedSubtleStyle.Underline(true))
+		result.title = styleFilteredText(title, filterValue, t.SelectedStyle, t.SelectedStyle.Underline(true))
+		result.desc = styleFilteredText(desc, filterValue, t.SelectedSubtleStyle, t.SelectedSubtleStyle.Underline(true))
 	} else {
 		// Apply standard selected styling.
-		result.title = theme.SelectedStyle.Render(title)
-		result.desc = theme.SelectedSubtleStyle.Render(desc)
+		result.title = t.SelectedStyle.Render(title)
+		result.desc = t.SelectedSubtleStyle.Render(desc)
 	}
 
 	return result
 }
 
 // applyUnselectedStyling applies styling for unselected items.
-func applyUnselectedStyling(theme *themes.Theme, title, desc string, isFiltering bool, filterValue string) listItemDisplayState {
+func applyUnselectedStyling(t *theme.Theme, title, desc string, isFiltering bool, filterValue string) listItemDisplayState {
 	hasEmptyFilter := isFiltering && filterValue == ""
 
 	result := listItemDisplayState{
 		gutter:    " ",
-		separator: theme.GenericTextStyle.Render(""),
+		separator: t.GenericTextStyle.Render(""),
 	}
 
 	if hasEmptyFilter {
 		// Dimmed styling when filtering with empty input.
-		result.title = theme.SubtleStyle.Render(title)
-		result.desc = theme.SubtleStyle.Render(desc)
+		result.title = t.SubtleStyle.Render(title)
+		result.desc = t.SubtleStyle.Render(desc)
 	} else {
 		// Apply filtered text styling.
-		result.title = styleFilteredText(title, filterValue, theme.GenericTextStyle, theme.GenericTextStyle.Underline(true))
-		result.desc = styleFilteredText(desc, filterValue, theme.SubtleStyle, theme.SubtleStyle.Underline(true))
+		result.title = styleFilteredText(title, filterValue, t.GenericTextStyle, t.GenericTextStyle.Underline(true))
+		result.desc = styleFilteredText(desc, filterValue, t.SubtleStyle, t.SubtleStyle.Underline(true))
 	}
 
 	return result

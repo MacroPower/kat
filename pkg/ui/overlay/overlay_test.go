@@ -8,23 +8,21 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/macropower/kat/pkg/ui/overlay"
-	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/theme"
 )
 
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	theme := themes.DefaultTheme
-
 	tests := []struct {
-		theme    *themes.Theme
+		theme    *theme.Theme
 		expected func(*testing.T, *overlay.Overlay)
 		name     string
 		opts     []overlay.OverlayOpt
 	}{
 		{
 			name:  "default overlay",
-			theme: theme,
+			theme: theme.Default,
 			opts:  nil,
 			expected: func(t *testing.T, o *overlay.Overlay) {
 				t.Helper()
@@ -33,7 +31,7 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name:  "with min width option",
-			theme: theme,
+			theme: theme.Default,
 			opts:  []overlay.OverlayOpt{overlay.WithMinWidth(32)},
 			expected: func(t *testing.T, o *overlay.Overlay) {
 				t.Helper()
@@ -42,7 +40,7 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name:  "with multiple options",
-			theme: theme,
+			theme: theme.Default,
 			opts: []overlay.OverlayOpt{
 				overlay.WithMinWidth(20),
 				overlay.WithMinWidth(40), // Last one should win.
@@ -67,8 +65,6 @@ func TestNew(t *testing.T) {
 func TestWithMinWidth(t *testing.T) {
 	t.Parallel()
 
-	theme := themes.DefaultTheme
-
 	tests := []struct {
 		name     string
 		minWidth int
@@ -91,7 +87,7 @@ func TestWithMinWidth(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			o := overlay.New(theme, overlay.WithMinWidth(tt.minWidth))
+			o := overlay.New(theme.Default, overlay.WithMinWidth(tt.minWidth))
 			assert.NotNil(t, o)
 		})
 	}
@@ -99,8 +95,6 @@ func TestWithMinWidth(t *testing.T) {
 
 func TestOverlay_SetSize(t *testing.T) {
 	t.Parallel()
-
-	theme := themes.DefaultTheme
 
 	tests := []struct {
 		name   string
@@ -134,7 +128,7 @@ func TestOverlay_SetSize(t *testing.T) {
 			t.Parallel()
 
 			// Create a separate overlay instance for each test to avoid data races.
-			o := overlay.New(theme)
+			o := overlay.New(theme.Default)
 			// Should not panic.
 			o.SetSize(tt.width, tt.height)
 		})
@@ -143,8 +137,6 @@ func TestOverlay_SetSize(t *testing.T) {
 
 func TestOverlay_Place(t *testing.T) {
 	t.Parallel()
-
-	theme := themes.DefaultTheme
 
 	tests := []struct {
 		style         lipgloss.Style
@@ -252,7 +244,7 @@ func TestOverlay_Place(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			o := overlay.New(theme, overlay.WithMinWidth(tt.minWidth))
+			o := overlay.New(theme.Default, overlay.WithMinWidth(tt.minWidth))
 			o.SetSize(tt.width, tt.height)
 
 			result := o.Place(tt.bg, tt.fg, tt.widthFraction, tt.style)
@@ -266,8 +258,7 @@ func TestOverlay_Place(t *testing.T) {
 func TestOverlay_PlaceWithTruncation(t *testing.T) {
 	t.Parallel()
 
-	theme := themes.DefaultTheme
-	o := overlay.New(theme)
+	o := overlay.New(theme.Default)
 	o.SetSize(80, 12) // Small height to potentially trigger truncation.
 
 	// Create a long foreground with many lines.
@@ -294,8 +285,6 @@ func TestOverlay_PlaceWithTruncation(t *testing.T) {
 func TestOverlay_PlaceEdgeCases(t *testing.T) {
 	t.Parallel()
 
-	theme := themes.DefaultTheme
-
 	tests := []struct {
 		setup        func() (*overlay.Overlay, string, string, float64, lipgloss.Style)
 		validateFunc func(*testing.T, string)
@@ -304,7 +293,7 @@ func TestOverlay_PlaceEdgeCases(t *testing.T) {
 		{
 			name: "overlay wider than background",
 			setup: func() (*overlay.Overlay, string, string, float64, lipgloss.Style) {
-				o := overlay.New(theme)
+				o := overlay.New(theme.Default)
 				o.SetSize(20, 10)
 
 				return o, "short", "this is a much longer overlay text", 1.0, lipgloss.NewStyle()
@@ -317,7 +306,7 @@ func TestOverlay_PlaceEdgeCases(t *testing.T) {
 		{
 			name: "overlay taller than background",
 			setup: func() (*overlay.Overlay, string, string, float64, lipgloss.Style) {
-				o := overlay.New(theme)
+				o := overlay.New(theme.Default)
 				o.SetSize(80, 20)
 				bg := "line1\nline2"
 				fg := "overlay1\noverlay2\noverlay3\noverlay4\noverlay5\noverlay6"
@@ -332,7 +321,7 @@ func TestOverlay_PlaceEdgeCases(t *testing.T) {
 		{
 			name: "very large width fraction",
 			setup: func() (*overlay.Overlay, string, string, float64, lipgloss.Style) {
-				o := overlay.New(theme)
+				o := overlay.New(theme.Default)
 				o.SetSize(80, 20)
 
 				return o, "background", "overlay", 2.0, lipgloss.NewStyle()
@@ -345,7 +334,7 @@ func TestOverlay_PlaceEdgeCases(t *testing.T) {
 		{
 			name: "negative width fraction",
 			setup: func() (*overlay.Overlay, string, string, float64, lipgloss.Style) {
-				o := overlay.New(theme)
+				o := overlay.New(theme.Default)
 				o.SetSize(80, 20)
 
 				return o, "background", "overlay", -0.5, lipgloss.NewStyle()
@@ -371,8 +360,7 @@ func TestOverlay_PlaceEdgeCases(t *testing.T) {
 func TestOverlay_PlaceWithUnicodeContent(t *testing.T) {
 	t.Parallel()
 
-	theme := themes.DefaultTheme
-	o := overlay.New(theme)
+	o := overlay.New(theme.Default)
 	o.SetSize(80, 20)
 
 	tests := []struct {
@@ -420,8 +408,7 @@ func TestClamp(t *testing.T) {
 	// Since clamp is not exported, we test it indirectly through Place method behavior.
 	// This test ensures that overlay width calculations work correctly with various inputs.
 
-	theme := themes.DefaultTheme
-	o := overlay.New(theme, overlay.WithMinWidth(10))
+	o := overlay.New(theme.Default, overlay.WithMinWidth(10))
 	o.SetSize(100, 20)
 
 	tests := []struct {
@@ -469,8 +456,7 @@ func TestGetLines(t *testing.T) {
 	// Since getLines is not exported, we test it indirectly through the Place method.
 	// This test ensures that line splitting and width calculation work correctly.
 
-	theme := themes.DefaultTheme
-	o := overlay.New(theme)
+	o := overlay.New(theme.Default)
 	o.SetSize(80, 20)
 
 	tests := []struct {
@@ -540,8 +526,7 @@ func TestWhitespaceRender(t *testing.T) {
 	// Since whitespace.render is not exported, we test it indirectly.
 	// We test scenarios that would exercise the whitespace rendering logic.
 
-	theme := themes.DefaultTheme
-	o := overlay.New(theme)
+	o := overlay.New(theme.Default)
 	o.SetSize(100, 20)
 
 	// Test with content that would require whitespace padding.
@@ -557,14 +542,14 @@ func TestWhitespaceRender(t *testing.T) {
 func TestOverlay_Place_MultiLineContent(t *testing.T) {
 	t.Parallel()
 
-	theme := &themes.Theme{
+	customTheme := &theme.Theme{
 		Ellipsis:    "...",
 		SubtleStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("241")),
 	}
 	t.Run("multi-line background and foreground without border", func(t *testing.T) {
 		t.Parallel()
 
-		o := overlay.New(theme)
+		o := overlay.New(customTheme)
 		o.SetSize(80, 20) // Adequate height for content
 
 		background := "BG Line 1\nBG Line 2\nBG Line 3\nBG Line 4\nBG Line 5\nBG Line 6\nBG Line 7\nBG Line 8\nBG Line 9\nBG Line 10\nBG Line 11\nBG Line 12\nBG Line 13\nBG Line 14\nBG Line 15\nBG Line 16\nBG Line 17\nBG Line 18\nBG Line 19\nBG Line 20"
@@ -629,7 +614,7 @@ func TestOverlay_Place_MultiLineContent(t *testing.T) {
 	t.Run("multi-line background and foreground with border", func(t *testing.T) {
 		t.Parallel()
 
-		o := overlay.New(theme)
+		o := overlay.New(customTheme)
 		o.SetSize(80, 20) // Adequate height for content
 
 		background := "BG Line 1\nBG Line 2\nBG Line 3\nBG Line 4\nBG Line 5\nBG Line 6\nBG Line 7\nBG Line 8\nBG Line 9\nBG Line 10\nBG Line 11\nBG Line 12\nBG Line 13\nBG Line 14\nBG Line 15\nBG Line 16\nBG Line 17\nBG Line 18\nBG Line 19\nBG Line 20"
@@ -679,7 +664,7 @@ func TestOverlay_Place_MultiLineContent(t *testing.T) {
 	t.Run("overlay positioning with different height ratios", func(t *testing.T) {
 		t.Parallel()
 
-		o := overlay.New(theme)
+		o := overlay.New(customTheme)
 		o.SetSize(60, 25) // Adequate height for content and centering
 
 		background := strings.Repeat("Background line\n", 25)
@@ -728,7 +713,7 @@ func TestOverlay_Place_MultiLineContent(t *testing.T) {
 	t.Run("overlay content wrapping behavior", func(t *testing.T) {
 		t.Parallel()
 
-		o := overlay.New(theme)
+		o := overlay.New(customTheme)
 		o.SetSize(50, 15) // Narrow width to test wrapping
 
 		background := strings.Repeat("Background content line\n", 15)
@@ -782,7 +767,7 @@ func TestOverlay_Place_MultiLineContent(t *testing.T) {
 	t.Run("overlay with empty lines and whitespace", func(t *testing.T) {
 		t.Parallel()
 
-		o := overlay.New(theme)
+		o := overlay.New(customTheme)
 		o.SetSize(60, 20) // Large enough height to accommodate content
 
 		background := "BG 1\nBG 2\nBG 3\nBG 4\nBG 5\nBG 6\nBG 7\nBG 8\nBG 9\nBG 10\nBG 11\nBG 12\nBG 13\nBG 14\nBG 15\nBG 16\nBG 17\nBG 18\nBG 19\nBG 20"
@@ -847,7 +832,7 @@ func TestOverlay_Place_MultiLineContent(t *testing.T) {
 	t.Run("very small overlay area", func(t *testing.T) {
 		t.Parallel()
 
-		o := overlay.New(theme)
+		o := overlay.New(customTheme)
 		o.SetSize(30, 15) // Larger height even for small terminal
 
 		background := "A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\nM\nN\nO"

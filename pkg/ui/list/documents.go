@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/theme"
 	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
 // DocumentListRenderer handles rendering of document lists.
 type DocumentListRenderer struct {
-	theme   *themes.Theme
+	theme   *theme.Theme
 	width   int
 	height  int
 	indent  int
@@ -18,8 +18,8 @@ type DocumentListRenderer struct {
 }
 
 // NewDocumentListRenderer creates a new document list renderer.
-func NewDocumentListRenderer(theme *themes.Theme, indent int, compact bool) *DocumentListRenderer {
-	return &DocumentListRenderer{theme: theme, indent: indent, compact: compact}
+func NewDocumentListRenderer(t *theme.Theme, indent int, compact bool) *DocumentListRenderer {
+	return &DocumentListRenderer{theme: t, indent: indent, compact: compact}
 }
 
 func (dlr *DocumentListRenderer) SetSize(width, height int) {

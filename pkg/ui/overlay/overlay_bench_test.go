@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/macropower/kat/pkg/ui/overlay"
-	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/theme"
 )
 
 // Benchmark data to test different scenarios.
@@ -22,8 +22,7 @@ var (
 )
 
 func BenchmarkOverlay_Place_Small(b *testing.B) {
-	theme := themes.DefaultTheme
-	o := overlay.New(theme)
+	o := overlay.New(theme.Default)
 	o.SetSize(80, 24)
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 
@@ -34,8 +33,7 @@ func BenchmarkOverlay_Place_Small(b *testing.B) {
 }
 
 func BenchmarkOverlay_Place_Medium(b *testing.B) {
-	theme := themes.DefaultTheme
-	o := overlay.New(theme)
+	o := overlay.New(theme.Default)
 	o.SetSize(120, 40)
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(1)
 
@@ -46,8 +44,7 @@ func BenchmarkOverlay_Place_Medium(b *testing.B) {
 }
 
 func BenchmarkOverlay_Place_Large(b *testing.B) {
-	theme := themes.DefaultTheme
-	o := overlay.New(theme)
+	o := overlay.New(theme.Default)
 	o.SetSize(200, 80)
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(2)
 
@@ -58,8 +55,7 @@ func BenchmarkOverlay_Place_Large(b *testing.B) {
 }
 
 func BenchmarkOverlay_Place_TruncatedContent(b *testing.B) {
-	theme := themes.DefaultTheme
-	o := overlay.New(theme)
+	o := overlay.New(theme.Default)
 	o.SetSize(80, 10) // Small height to force truncation
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 
@@ -73,8 +69,7 @@ func BenchmarkOverlay_Place_TruncatedContent(b *testing.B) {
 }
 
 func BenchmarkOverlay_Place_WideContent(b *testing.B) {
-	theme := themes.DefaultTheme
-	o := overlay.New(theme)
+	o := overlay.New(theme.Default)
 	o.SetSize(300, 50)
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 
@@ -89,8 +84,7 @@ func BenchmarkOverlay_Place_WideContent(b *testing.B) {
 }
 
 func BenchmarkOverlay_Place_MinimalWidth(b *testing.B) {
-	theme := themes.DefaultTheme
-	o := overlay.New(theme, overlay.WithMinWidth(32))
+	o := overlay.New(theme.Default, overlay.WithMinWidth(32))
 	o.SetSize(80, 24)
 	style := lipgloss.NewStyle()
 
@@ -102,8 +96,7 @@ func BenchmarkOverlay_Place_MinimalWidth(b *testing.B) {
 
 // Benchmark memory allocations specifically
 func BenchmarkOverlay_Place_Allocations(b *testing.B) {
-	theme := themes.DefaultTheme
-	o := overlay.New(theme)
+	o := overlay.New(theme.Default)
 	o.SetSize(120, 40)
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 
@@ -116,8 +109,7 @@ func BenchmarkOverlay_Place_Allocations(b *testing.B) {
 
 // Benchmark with Unicode content to test character width calculations
 func BenchmarkOverlay_Place_Unicode(b *testing.B) {
-	theme := themes.DefaultTheme
-	o := overlay.New(theme)
+	o := overlay.New(theme.Default)
 	o.SetSize(100, 30)
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 

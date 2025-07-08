@@ -9,7 +9,7 @@ import (
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/profile"
 	"github.com/macropower/kat/pkg/ui/statusbar"
-	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/theme"
 )
 
 type Commander interface {
@@ -23,7 +23,7 @@ type Commander interface {
 
 type CommonModel struct {
 	Cmd                Commander
-	Theme              *themes.Theme
+	Theme              *theme.Theme
 	StatusMessageTimer *time.Timer
 	KeyBinds           *KeyBinds
 	StatusMessage      StatusMessage

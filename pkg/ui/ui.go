@@ -18,7 +18,7 @@ import (
 	"github.com/macropower/kat/pkg/ui/overlay"
 	"github.com/macropower/kat/pkg/ui/pager"
 	"github.com/macropower/kat/pkg/ui/statusbar"
-	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/theme"
 	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
@@ -92,11 +92,11 @@ func (m *model) unloadDocument() {
 }
 
 func newModel(cfg *Config, cmd common.Commander) tea.Model {
-	theme := cfg.UI.Theme
+	uiTheme := cfg.UI.Theme
 	profile := cmd.GetCurrentProfile()
 	if profile.UI != nil {
 		if profile.UI.Theme != "" {
-			theme = profile.UI.Theme
+			uiTheme = profile.UI.Theme
 		}
 		if profile.UI.Compact != nil {
 			cfg.UI.Compact = profile.UI.Compact
@@ -111,7 +111,7 @@ func newModel(cfg *Config, cmd common.Commander) tea.Model {
 
 	cm := &common.CommonModel{
 		Cmd:      cmd,
-		Theme:    themes.NewTheme(theme),
+		Theme:    theme.New(uiTheme),
 		KeyBinds: cfg.KeyBinds.Common,
 	}
 

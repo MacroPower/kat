@@ -11,13 +11,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/theme"
 	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
 // testTheme creates a basic theme for testing.
-func testTheme() *themes.Theme {
-	return &themes.Theme{
+func testTheme() *theme.Theme {
+	return &theme.Theme{
 		SelectedStyle:   lipgloss.NewStyle().Background(lipgloss.Color("12")).Underline(true).Bold(true),
 		LineNumberStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("8")),
 		ChromaStyle:     styles.Get("github"),
@@ -80,7 +80,7 @@ func TestNewChromaRenderer(t *testing.T) {
 	t.Parallel()
 
 	testCases := map[string]struct {
-		theme               *themes.Theme
+		theme               *theme.Theme
 		lineNumbersDisabled bool
 	}{
 		"with line numbers enabled": {
@@ -550,14 +550,14 @@ func TestChromaRenderer(t *testing.T) {
 	lipgloss.SetColorProfile(termenv.TrueColor)
 
 	// Create a basic theme for testing.
-	theme := &themes.Theme{
+	basicTheme := &theme.Theme{
 		SelectedStyle:   lipgloss.NewStyle().Background(lipgloss.Color("12")),
 		LineNumberStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("8")),
 		ChromaStyle:     styles.Get("github"),
 	}
 
 	// Create a ChromaRenderer instance with the theme.
-	renderer := yamls.NewChromaRenderer(theme, true)
+	renderer := yamls.NewChromaRenderer(basicTheme, true)
 	renderer.SetFormatter("terminal16m")
 
 	// Test case that reproduces the bug: searching for "o" in "text: hello world"

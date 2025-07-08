@@ -15,7 +15,7 @@ import (
 	"github.com/muesli/termenv"
 	"github.com/sahilm/fuzzy"
 
-	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/theme"
 )
 
 const (
@@ -35,7 +35,7 @@ type ChromaRenderer struct {
 	lexer               chroma.Lexer
 	formatter           chroma.Formatter
 	highlightStyle      lipgloss.Style
-	theme               *themes.Theme
+	theme               *theme.Theme
 	style               *chroma.Style
 	searchTerm          string
 	matches             []MatchPosition
@@ -43,7 +43,7 @@ type ChromaRenderer struct {
 }
 
 // NewChromaRenderer creates a new ChromaRenderer.
-func NewChromaRenderer(theme *themes.Theme, lineNumbersDisabled bool) *ChromaRenderer {
+func NewChromaRenderer(t *theme.Theme, lineNumbersDisabled bool) *ChromaRenderer {
 	lexer := lexers.Get("YAML")
 	lexer = chroma.Coalesce(lexer)
 
@@ -61,13 +61,13 @@ func NewChromaRenderer(theme *themes.Theme, lineNumbersDisabled bool) *ChromaRen
 
 	formatter := formatters.Get(formatterName)
 
-	highlightStyle := theme.SelectedStyle.Underline(true).Bold(true)
+	highlightStyle := t.SelectedStyle.Underline(true).Bold(true)
 
 	return &ChromaRenderer{
-		theme:               theme,
+		theme:               t,
 		lexer:               lexer,
 		formatter:           formatter,
-		style:               theme.ChromaStyle,
+		style:               t.ChromaStyle,
 		highlightStyle:      highlightStyle,
 		lineNumbersDisabled: lineNumbersDisabled,
 	}

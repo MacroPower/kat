@@ -6,7 +6,7 @@ import (
 
 	"github.com/muesli/reflow/ansi"
 
-	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/theme"
 )
 
 // Key represents a keyboard key with optional alias and visibility settings.
@@ -255,17 +255,17 @@ func truncateWithEllipsis(s string, maxWidth int) string {
 			return ""
 		}
 
-		return themes.Ellipsis
+		return theme.Ellipsis
 	}
 	if ansi.PrintableRuneWidth(s) <= maxWidth {
 		return s
 	}
 
-	lenEllipsis := ansi.PrintableRuneWidth(themes.Ellipsis)
+	lenEllipsis := ansi.PrintableRuneWidth(theme.Ellipsis)
 
 	// Reserve space for ellipsis.
 	if maxWidth <= lenEllipsis {
-		return themes.Ellipsis[:maxWidth]
+		return theme.Ellipsis[:maxWidth]
 	}
 
 	// Simple truncation - could be improved with proper text handling.
@@ -282,5 +282,5 @@ func truncateWithEllipsis(s string, maxWidth int) string {
 		currentWidth += runeWidth
 	}
 
-	return truncated + themes.Ellipsis
+	return truncated + theme.Ellipsis
 }

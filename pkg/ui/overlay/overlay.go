@@ -13,7 +13,7 @@ import (
 
 	charmansi "github.com/charmbracelet/x/ansi"
 
-	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/theme"
 )
 
 const (
@@ -30,7 +30,7 @@ const (
 // in terminal applications. It handles sizing, positioning, and text wrapping
 // to create modal-like experiences.
 type Overlay struct {
-	theme *themes.Theme
+	theme *theme.Theme
 
 	width, height int
 
@@ -44,9 +44,9 @@ type Overlay struct {
 // New creates a new [Overlay] with the specified theme and optional configuration.
 // The overlay is initialized with default settings and can be customized using
 // the provided [OverlayOpt]s.
-func New(theme *themes.Theme, opts ...OverlayOpt) *Overlay {
+func New(t *theme.Theme, opts ...OverlayOpt) *Overlay {
 	o := &Overlay{
-		theme:            theme,
+		theme:            t,
 		minWidth:         defaultMinWidth,
 		minHeightPadding: defaultMinHeightPadding,
 	}

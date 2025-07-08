@@ -5,7 +5,7 @@ import (
 
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/ui/common"
-	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/theme"
 )
 
 type KeyBinds struct {
@@ -65,15 +65,15 @@ func (kb *KeyBinds) GetKeyBinds() []keys.KeyBind {
 type KeyHandler struct {
 	kb    *KeyBinds
 	ckb   *common.KeyBinds
-	theme *themes.Theme // TODO: Remove this dependency.
+	theme *theme.Theme // TODO: Remove this dependency.
 }
 
 // NewKeyHandler creates a new ListKeyHandler.
-func NewKeyHandler(kb *KeyBinds, ckb *common.KeyBinds, theme *themes.Theme) *KeyHandler {
+func NewKeyHandler(kb *KeyBinds, ckb *common.KeyBinds, t *theme.Theme) *KeyHandler {
 	return &KeyHandler{
 		kb:    kb,
 		ckb:   ckb,
-		theme: theme,
+		theme: t,
 	}
 }
 

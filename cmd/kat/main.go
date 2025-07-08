@@ -16,7 +16,7 @@ import (
 	"github.com/macropower/kat/pkg/profile"
 	"github.com/macropower/kat/pkg/ui"
 	"github.com/macropower/kat/pkg/ui/common"
-	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/theme"
 )
 
 const (
@@ -232,7 +232,7 @@ func parseArgs(cmdArgs []string) []string {
 // runUI starts the UI program.
 func runUI(cfg *ui.Config, cr common.Commander) error {
 	for name, tc := range cfg.Themes {
-		err := themes.RegisterTheme(name, tc.Styles)
+		err := theme.Register(name, tc.Styles)
 		if err != nil {
 			return fmt.Errorf("theme %q: %w", name, err)
 		}

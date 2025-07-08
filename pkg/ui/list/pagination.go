@@ -4,14 +4,14 @@ import (
 	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/muesli/reflow/ansi"
 
-	"github.com/macropower/kat/pkg/ui/themes"
+	"github.com/macropower/kat/pkg/ui/theme"
 )
 
-func newListPaginator(theme *themes.Theme) paginator.Model {
+func newListPaginator(t *theme.Theme) paginator.Model {
 	p := paginator.New()
 	p.Type = paginator.Dots
-	p.ActiveDot = theme.SelectedStyle.Render("•")
-	p.InactiveDot = theme.SubtleStyle.Render("◦")
+	p.ActiveDot = t.SelectedStyle.Render("•")
+	p.InactiveDot = t.SubtleStyle.Render("◦")
 	p.KeyMap = paginator.KeyMap{}
 
 	return p
@@ -19,13 +19,13 @@ func newListPaginator(theme *themes.Theme) paginator.Model {
 
 // PaginationRenderer handles pagination display.
 type PaginationRenderer struct {
-	theme *themes.Theme
+	theme *theme.Theme
 	width int
 }
 
 // NewPaginationRenderer creates a new pagination renderer.
-func NewPaginationRenderer(theme *themes.Theme, width int) *PaginationRenderer {
-	return &PaginationRenderer{theme: theme, width: width}
+func NewPaginationRenderer(t *theme.Theme, width int) *PaginationRenderer {
+	return &PaginationRenderer{theme: t, width: width}
 }
 
 // RenderPagination renders pagination controls.
