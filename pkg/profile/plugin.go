@@ -30,7 +30,8 @@ func NewPlugin(command, description string, opts ...PluginOpt) (*Plugin, error) 
 	for _, opt := range opts {
 		opt(p)
 	}
-	if err := p.Build(); err != nil {
+	err := p.Build()
+	if err != nil {
 		return nil, fmt.Errorf("plugin %q: %w", command, err)
 	}
 
@@ -81,7 +82,8 @@ func WithPluginEnvFrom(envFrom []execs.EnvFromSource) PluginOpt {
 func (p *Plugin) Build() error {
 	p.Command.SetBaseEnv(os.Environ())
 
-	if err := p.Command.CompilePatterns(); err != nil {
+	err := p.Command.CompilePatterns()
+	if err != nil {
 		return fmt.Errorf("compile patterns: %w", err)
 	}
 

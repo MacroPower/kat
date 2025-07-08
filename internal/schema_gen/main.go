@@ -32,7 +32,8 @@ func main() {
 	}
 
 	// Write schema.json file.
-	if err := os.WriteFile(cli.OutFile, jsData, 0o600); err != nil {
+	err = os.WriteFile(cli.OutFile, jsData, 0o600)
+	if err != nil {
 		cliCtx.FatalIfErrorf(fmt.Errorf("write schema file: %w", err))
 	}
 }

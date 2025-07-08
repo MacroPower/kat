@@ -78,7 +78,8 @@ func main() {
 	configPath := config.GetPath()
 
 	if cli.WriteConfig {
-		if err := config.WriteDefaultConfig(configPath); err != nil {
+		err := config.WriteDefaultConfig(configPath)
+		if err != nil {
 			slog.Error("write config", slog.Any("err", err))
 			cliCtx.Fatalf(cmdInitErr)
 		}
@@ -144,7 +145,8 @@ func main() {
 	}
 	slog.SetDefault(slog.New(logHandler))
 
-	if err := runUI(cfg.UI, cr); err != nil {
+	err = runUI(cfg.UI, cr)
+	if err != nil {
 		slog.Error("run UI", slog.Any("err", err))
 		flushLogs(cliCtx.Stderr, logBuf)
 		cliCtx.FatalIfErrorf(fmt.Errorf("ui program failure: %w", err))
@@ -159,7 +161,8 @@ func flushLogs(w io.Writer, buf *log.CircularBuffer) {
 		slog.Int("max", buf.Capacity()),
 		slog.Bool("truncated", buf.IsFull()),
 	)
-	if _, err := buf.WriteTo(w); err != nil {
+	_, err := buf.WriteTo(w)
+	if err != nil {
 		panic(err)
 	}
 }
@@ -266,7 +269,8 @@ func runUI(cfg *ui.Config, cr common.Commander) error {
 	}()
 	go cr.RunOnEvent()
 
-	if _, err := p.Run(); err != nil {
+	_, err := p.Run()
+	if err != nil {
 		return fmt.Errorf("tea: %w", err)
 	}
 

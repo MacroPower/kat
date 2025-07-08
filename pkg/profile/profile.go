@@ -63,7 +63,8 @@ func New(command string, opts ...ProfileOpt) (*Profile, error) {
 	for _, opt := range opts {
 		opt(p)
 	}
-	if err := p.Build(); err != nil {
+	err := p.Build()
+	if err != nil {
 		return nil, fmt.Errorf("profile %q: %w", command, err)
 	}
 
@@ -126,21 +127,25 @@ func WithPlugins(plugins map[string]*Plugin) ProfileOpt {
 func (p *Profile) Build() error {
 	p.Command.SetBaseEnv(os.Environ())
 	if p.Hooks != nil {
-		if err := p.Hooks.Build(); err != nil {
+		err := p.Hooks.Build()
+		if err != nil {
 			return fmt.Errorf("build hooks: %w", err)
 		}
 	}
 	if p.Plugins != nil {
 		for _, plugin := range p.Plugins {
-			if err := plugin.Build(); err != nil {
+			err := plugin.Build()
+			if err != nil {
 				return fmt.Errorf("build plugin %q: %w", plugin.Command.Command, err)
 			}
 		}
 	}
-	if err := p.CompileSource(); err != nil {
+	err := p.CompileSource()
+	if err != nil {
 		return fmt.Errorf("compile source: %w", err)
 	}
-	if err := p.Command.CompilePatterns(); err != nil {
+	err = p.Command.CompilePatterns()
+	if err != nil {
 		return fmt.Errorf("compile patterns: %w", err)
 	}
 

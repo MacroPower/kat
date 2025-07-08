@@ -39,12 +39,14 @@ type Validator struct {
 // NewValidator creates a new [Validator] with the provided JSON schema data.
 func NewValidator(schemaData []byte) (*Validator, error) {
 	var schema any
-	if err := json.Unmarshal(schemaData, &schema); err != nil {
+	err := json.Unmarshal(schemaData, &schema)
+	if err != nil {
 		return nil, fmt.Errorf("unmarshal schema: %w", err)
 	}
 
 	compiler := jsonschema.NewCompiler()
-	if err := compiler.AddResource("https://raw.githubusercontent.com/macropower/kat/refs/heads/main/pkg/config/config.v1beta1.json", schema); err != nil {
+	err = compiler.AddResource("https://raw.githubusercontent.com/macropower/kat/refs/heads/main/pkg/config/config.v1beta1.json", schema)
+	if err != nil {
 		return nil, fmt.Errorf("add schema resource: %w", err)
 	}
 
@@ -129,7 +131,8 @@ func buildPathFromLocation(location []string) (*yaml.Path, error) {
 	for _, part := range location {
 		// Check if this part is a numeric index.
 		var index uint
-		if _, err := fmt.Sscanf(part, "%d", &index); err == nil {
+		_, err := fmt.Sscanf(part, "%d", &index)
+		if err == nil {
 			// This is an array index.
 			current = current.Index(index)
 		} else {

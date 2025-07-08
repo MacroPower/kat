@@ -193,14 +193,16 @@ func (e *Command) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (
 func (e *Command) CompilePatterns() error {
 	for i, envVar := range e.Env {
 		if envVar.ValueFrom != nil && envVar.ValueFrom.CallerRef != nil {
-			if err := envVar.ValueFrom.CallerRef.Compile(); err != nil {
+			err := envVar.ValueFrom.CallerRef.Compile()
+			if err != nil {
 				return fmt.Errorf("env[%d]: %w", i, err)
 			}
 		}
 	}
 	for i, envFromSource := range e.EnvFrom {
 		if envFromSource.CallerRef != nil {
-			if err := envFromSource.CallerRef.Compile(); err != nil {
+			err := envFromSource.CallerRef.Compile()
+			if err != nil {
 				return fmt.Errorf("envFrom[%d]: %w", i, err)
 			}
 		}

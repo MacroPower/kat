@@ -41,7 +41,8 @@ func NewGenerator(reflectTarget any, packagePaths ...string) *Generator {
 
 func (g *Generator) Generate() ([]byte, error) {
 	if len(g.packagePaths) > 0 {
-		if err := g.addLookupComment(); err != nil {
+		err := g.addLookupComment()
+		if err != nil {
 			return nil, fmt.Errorf("lookup comments: %w", err)
 		}
 	}
@@ -142,7 +143,8 @@ func findModuleRoot() (string, error) {
 	}
 
 	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+		_, err := os.Stat(filepath.Join(dir, "go.mod"))
+		if err == nil {
 			return dir, nil
 		}
 

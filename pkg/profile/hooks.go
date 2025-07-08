@@ -24,7 +24,8 @@ func NewHooks(opts ...HookOpts) (*Hooks, error) {
 	for _, opt := range opts {
 		opt(h)
 	}
-	if err := h.Build(); err != nil {
+	err := h.Build()
+	if err != nil {
 		return nil, fmt.Errorf("build hooks: %w", err)
 	}
 
@@ -104,7 +105,8 @@ func NewHookCommand(command string, opts ...HookCommandOpt) (*HookCommand, error
 	for _, opt := range opts {
 		opt(hc)
 	}
-	if err := hc.Build(); err != nil {
+	err := hc.Build()
+	if err != nil {
 		return nil, fmt.Errorf("hook %q: %w", command, err)
 	}
 
@@ -148,7 +150,8 @@ func WithHookEnvFrom(envFrom []execs.EnvFromSource) HookCommandOpt {
 func (hc *HookCommand) Build() error {
 	hc.Command.SetBaseEnv(os.Environ())
 
-	if err := hc.Command.CompilePatterns(); err != nil {
+	err := hc.Command.CompilePatterns()
+	if err != nil {
 		return fmt.Errorf("compile patterns: %w", err)
 	}
 

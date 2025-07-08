@@ -122,12 +122,14 @@ func LoadConfig(data []byte) (*Config, error) {
 	// Decode into interface{} for schema validation.
 	var anyConfig any
 	dec := yaml.NewDecoder(reader, yaml.AllowDuplicateMapKey())
-	if err := dec.Decode(&anyConfig); err != nil {
+	err := dec.Decode(&anyConfig)
+	if err != nil {
 		return nil, fmt.Errorf("decode yaml config: %w", err)
 	}
 
 	// Validate against JSON schema.
-	if err := ValidateWithSchema(anyConfig); err != nil {
+	err = ValidateWithSchema(anyConfig)
+	if err != nil {
 		schemaErr := &schema.ValidationError{}
 		if errors.As(err, &schemaErr) {
 			source, srcErr := schemaErr.Path.AnnotateSource(data, true)
@@ -142,30 +144,32 @@ func LoadConfig(data []byte) (*Config, error) {
 	}
 
 	// Validation passed; reset reader and decode into a Config struct.
-	_, err := reader.Seek(0, 0)
+	_, err = reader.Seek(0, 0)
 	if err != nil {
 		return nil, fmt.Errorf("prepare reader for decoding yaml config: %w", err)
 	}
 	c := &Config{}
 	dec = yaml.NewDecoder(reader, yaml.AllowDuplicateMapKey())
-	if err := dec.Decode(c); err != nil {
+	err = dec.Decode(c)
+	if err != nil {
 		return nil, fmt.Errorf("decode yaml config: %w", err)
 	}
 	c.EnsureDefaults()
 
 	// Run Go validation on the config (for requirements that can't be represented in the schema).
-	if err := c.Command.Validate(); err != nil {
-		source, srcErr := err.Path.AnnotateSource(data, true)
+	cfgErr := c.Command.Validate()
+	if cfgErr != nil {
+		source, srcErr := cfgErr.Path.AnnotateSource(data, true)
 		if srcErr != nil {
 			slog.Warn("failed to annotate config with error",
-				slog.String("path", err.Path.String()),
+				slog.String("path", cfgErr.Path.String()),
 				slog.Any("error", srcErr),
 			)
 
-			return nil, fmt.Errorf("validate config: %w", err)
+			return nil, fmt.Errorf("validate config: %w", cfgErr)
 		}
 
-		return nil, fmt.Errorf("validate config: %w\n%s", err, source)
+		return nil, fmt.Errorf("validate config: %w\n%s", cfgErr, source)
 	}
 
 	return c, nil
@@ -184,7 +188,8 @@ func (c *Config) Write(path string) error {
 		return fmt.Errorf("%s: unknown file state", path)
 	}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	err = os.MkdirAll(filepath.Dir(path), 0o700)
+	if err != nil {
 		return fmt.Errorf("create directories: %w", err)
 	}
 
@@ -193,7 +198,8 @@ func (c *Config) Write(path string) error {
 		return err
 	}
 
-	if err := os.WriteFile(path, b, 0o600); err != nil {
+	err = os.WriteFile(path, b, 0o600)
+	if err != nil {
 		return fmt.Errorf("write file: %w", err)
 	}
 
@@ -216,13 +222,15 @@ func WriteDefaultConfig(path string) error {
 		}
 	}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	err = os.MkdirAll(filepath.Dir(path), 0o700)
+	if err != nil {
 		return fmt.Errorf("create directories: %w", err)
 	}
 
 	// Write the default config file.
 	if !configExists {
-		if err := os.WriteFile(path, defaultConfigYAML, 0o600); err != nil {
+		err := os.WriteFile(path, defaultConfigYAML, 0o600)
+		if err != nil {
 			return fmt.Errorf("write config file: %w", err)
 		}
 		slog.Info("write default configuration",
@@ -236,7 +244,8 @@ func WriteDefaultConfig(path string) error {
 
 	// Write the JSON schema file alongside the config file.
 	schemaPath := filepath.Join(filepath.Dir(path), "config.v1beta1.json")
-	if err := os.WriteFile(schemaPath, schemaJSON, 0o600); err != nil {
+	err = os.WriteFile(schemaPath, schemaJSON, 0o600)
+	if err != nil {
 		return fmt.Errorf("write schema file: %w", err)
 	}
 	slog.Info("write JSON schema",
@@ -252,7 +261,8 @@ func (c *Config) MarshalYAML() ([]byte, error) {
 		yaml.Indent(2),
 		yaml.IndentSequence(true),
 	)
-	if err := enc.Encode(*c); err != nil {
+	err := enc.Encode(*c)
+	if err != nil {
 		return nil, fmt.Errorf("marshal yaml: %w", err)
 	}
 
@@ -264,7 +274,8 @@ func GetPath() string {
 		return filepath.Join(xdgHome, "kat", "config.yaml")
 	}
 
-	if usr, err := user.Current(); err != nil && usr != nil {
+	usr, err := user.Current()
+	if err != nil && usr != nil {
 		return filepath.Join(usr.HomeDir, ".config", "kat", "config.yaml")
 	}
 

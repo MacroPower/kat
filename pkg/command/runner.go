@@ -62,7 +62,8 @@ func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
 	}
 
 	for _, opt := range opts {
-		if err := opt(cr); err != nil {
+		err := opt(cr)
+		if err != nil {
 			return nil, fmt.Errorf("command option: %w", err)
 		}
 	}
@@ -74,11 +75,10 @@ func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
 	p := cr.rule.GetProfile()
 	if p.Hooks != nil {
 		for _, hook := range p.Hooks.Init {
-			if hr, err := hook.Exec(context.Background(), cr.path); err != nil {
-				if hr != nil {
-					return nil, fmt.Errorf("%w: init: %w\n%s\n%s", ErrHookExecution, err, hr.Stdout, hr.Stderr)
-				}
-
+			hr, err := hook.Exec(context.Background(), cr.path)
+			if err != nil && hr != nil {
+				return nil, fmt.Errorf("%w: init: %w\n%s\n%s", ErrHookExecution, err, hr.Stdout, hr.Stderr)
+			} else if err != nil {
 				return nil, fmt.Errorf("%w: init: %w", ErrHookExecution, err)
 			}
 		}
@@ -238,7 +238,8 @@ func (cr *Runner) Watch() error {
 
 	if ok, matchedFiles := p.MatchFiles(cr.path, files); ok {
 		for _, file := range matchedFiles {
-			if err := cr.watcher.Add(file); err != nil {
+			err := cr.watcher.Add(file)
+			if err != nil {
 				return fmt.Errorf("add path to watcher: %w", err)
 			}
 		}

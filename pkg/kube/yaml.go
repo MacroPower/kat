@@ -48,7 +48,8 @@ func SplitYAML(yamlData []byte) ([]*Resource, error) {
 		dec := yaml.NewDecoder(strings.NewReader(yml), yaml.AllowDuplicateMapKey())
 
 		obj := &Object{}
-		if err := dec.Decode(obj); err != nil {
+		err := dec.Decode(obj)
+		if err != nil {
 			return objs, fmt.Errorf("%w: %w", ErrInvalidKubeResource, err)
 		}
 

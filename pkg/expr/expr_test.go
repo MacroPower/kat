@@ -414,7 +414,8 @@ func TestCELErrorHandling(t *testing.T) {
 					return
 				}
 				// Check if result contains error
-				if errVal, ok := result.(*types.Err); ok {
+				errVal, ok := result.(*types.Err)
+				if ok {
 					assert.Contains(t, errVal.Error(), "invalid")
 
 					return

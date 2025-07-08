@@ -119,7 +119,8 @@ func NewConfig(ps map[string]*profile.Profile, rs []*rule.Rule) (*Config, error)
 		Profiles: ps,
 		Rules:    rs,
 	}
-	if err := c.Validate(); err != nil {
+	err := c.Validate()
+	if err != nil {
 		return nil, fmt.Errorf("validate config: %w", err)
 	}
 
@@ -148,7 +149,8 @@ func (c *Config) Validate() *ConfigError {
 	pb := yaml.PathBuilder{}
 
 	for name, p := range c.Profiles {
-		if err := p.CompileSource(); err != nil {
+		err := p.CompileSource()
+		if err != nil {
 			return &ConfigError{
 				Path: pb.Root().Child("profiles").Child(name).Child("source").Build(),
 				Err:  fmt.Errorf("invalid source: %w", err),
@@ -159,7 +161,8 @@ func (c *Config) Validate() *ConfigError {
 				continue // Skip if no pattern is defined.
 			}
 			uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
-			if err := env.ValueFrom.CallerRef.Compile(); err != nil {
+			err := env.ValueFrom.CallerRef.Compile()
+			if err != nil {
 				return &ConfigError{
 					Path: pb.Root().Child("profiles").Child(name).Child("env").Index(uIdx).Child("valueFrom").Child("callerRef").Child("pattern").Build(),
 					Err:  fmt.Errorf("invalid env pattern: %w", err),
@@ -171,7 +174,8 @@ func (c *Config) Validate() *ConfigError {
 				continue // Skip if no pattern is defined.
 			}
 			uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
-			if err := envFrom.CallerRef.Compile(); err != nil {
+			err := envFrom.CallerRef.Compile()
+			if err != nil {
 				return &ConfigError{
 					Path: pb.Root().Child("profiles").Child(name).Child("envFrom").Index(uIdx).Child("callerRef").Child("pattern").Build(),
 					Err:  fmt.Errorf("invalid envFrom pattern: %w", err),
@@ -179,7 +183,8 @@ func (c *Config) Validate() *ConfigError {
 			}
 		}
 		// TODO: Build should return *ConfigError to avoid the duplicate validation above.
-		if err := p.Build(); err != nil {
+		err = p.Build()
+		if err != nil {
 			return &ConfigError{
 				Path: pb.Root().Child("profiles").Child(name).Build(),
 				Err:  fmt.Errorf("invalid profile: %w", err),
@@ -189,7 +194,8 @@ func (c *Config) Validate() *ConfigError {
 
 	for i, r := range c.Rules {
 		uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
-		if err := r.CompileMatch(); err != nil {
+		err := r.CompileMatch()
+		if err != nil {
 			return &ConfigError{
 				Path: pb.Root().Child("rules").Index(uIdx).Child("match").Build(),
 				Err:  fmt.Errorf("invalid match: %w", err),

@@ -76,6 +76,7 @@ linters:
     - nilnil
     - nlreturn
     - noctx
+    - noinlineerr
     - nonamedreturns
     - nosprintfhostport
     - paralleltest

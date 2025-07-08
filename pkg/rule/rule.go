@@ -51,7 +51,8 @@ func New(profileName, match string) (*Rule, error) {
 		Match:   match,
 		Profile: profileName,
 	}
-	if err := r.CompileMatch(); err != nil {
+	err := r.CompileMatch()
+	if err != nil {
 		return nil, fmt.Errorf("rule %q: %w", match, err)
 	}
 

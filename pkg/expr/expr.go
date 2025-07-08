@@ -149,7 +149,8 @@ func createEnvironment() (*cel.Env, error) {
 
 					// Extract value using YAML path.
 					var value any
-					if err := path.Read(strings.NewReader(string(content)), &value); err != nil {
+					err = path.Read(strings.NewReader(string(content)), &value)
+					if err != nil {
 						// Return null if path doesn't exist or extraction fails.
 						logger.Debug("failed to extract value from YAML, returning null",
 							slog.Any("error", err),
