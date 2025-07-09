@@ -42,6 +42,7 @@ Examples:
 `
 )
 
+//nolint:revive // CLI.
 var cli struct {
 	Log struct {
 		Level  string `default:"info" help:"Log level."`

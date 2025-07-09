@@ -302,7 +302,8 @@ func TestKeyBind_StringRow(t *testing.T) {
 			t.Parallel()
 
 			result := tc.keyBind.StringRow(tc.keyWidth, tc.descWidth)
-			assert.Equal(t, tc.expected, result, "for keybind: %v, keyWidth: %d, descWidth: %d", tc.keyBind, tc.keyWidth, tc.descWidth)
+			assert.Equal(t, tc.expected, result, "for keybind: %v, keyWidth: %d, descWidth: %d",
+				tc.keyBind, tc.keyWidth, tc.descWidth)
 		})
 	}
 }

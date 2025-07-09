@@ -431,7 +431,10 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 				t.Setenv("NON_ESSENTIAL", "should_not_appear")
 			},
 			profileOpts: []profile.ProfileOpt{
-				profile.WithArgs("-c", "echo ${STATIC_VAR:-not_found} ${COPIED_HOME:-not_found} ${PATTERN_VAR1:-not_found} ${NAMED_VAR:-not_found}"),
+				profile.WithArgs(
+					"-c",
+					"echo ${STATIC_VAR:-not_found} ${COPIED_HOME:-not_found} ${PATTERN_VAR1:-not_found} ${NAMED_VAR:-not_found}",
+				),
 				// Static variable.
 				profile.WithEnvVar(execs.EnvVar{
 					Name:  "STATIC_VAR",
@@ -517,12 +520,10 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 	}
 }
 
+//nolint:tparallel // Cannot use t.Parallel() because we use t.Setenv.
 func TestProfile_EnvironmentWithHooks(t *testing.T) {
-	// Note: Cannot use t.Parallel() because we use t.Setenv.
-
+	//nolint:tparallel // Cannot use t.Parallel() because we use t.Setenv.
 	t.Run("environment variables available in hooks", func(t *testing.T) {
-		// Note: Cannot use t.Parallel() because we use t.Setenv.
-
 		t.Setenv("HOOK_TEST_VAR", "hook_value")
 
 		// Create a hook that uses an environment variable.

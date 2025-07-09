@@ -161,7 +161,8 @@ func (e *Command) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (
 	env := e.GetEnv()
 
 	// Prepare the command to execute.
-	cmd := exec.CommandContext(ctx, e.Command, e.Args...) //nolint:gosec // G204: Subprocess launched with a potential tainted input or cmd arguments.
+	//nolint:gosec // G204: Subprocess launched with a potential tainted input or cmd arguments.
+	cmd := exec.CommandContext(ctx, e.Command, e.Args...)
 	cmd.Dir = dir
 	cmd.Env = env
 	cmd.Stdin = bytes.NewReader(stdin)

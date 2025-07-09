@@ -72,7 +72,10 @@ func (sh *SearchHighlighter) ApplyHighlights(text string, matches []MatchPositio
 }
 
 // convertMatchesToStyleRanges converts [MatchPosition] slices to [StyleRange] slices organized by line.
-func (sh *SearchHighlighter) convertMatchesToStyleRanges(matches []MatchPosition, selectedMatch int) map[int][]ansis.StyleRange {
+func (sh *SearchHighlighter) convertMatchesToStyleRanges(
+	matches []MatchPosition,
+	selectedMatch int,
+) map[int][]ansis.StyleRange {
 	lineRanges := map[int][]ansis.StyleRange{}
 
 	for globalIdx, match := range matches {

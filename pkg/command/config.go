@@ -164,8 +164,16 @@ func (c *Config) Validate() *ConfigError {
 			err := env.ValueFrom.CallerRef.Compile()
 			if err != nil {
 				return &ConfigError{
-					Path: pb.Root().Child("profiles").Child(name).Child("env").Index(uIdx).Child("valueFrom").Child("callerRef").Child("pattern").Build(),
-					Err:  fmt.Errorf("invalid env pattern: %w", err),
+					Path: pb.Root().
+						Child("profiles").
+						Child(name).
+						Child("env").
+						Index(uIdx).
+						Child("valueFrom").
+						Child("callerRef").
+						Child("pattern").
+						Build(),
+					Err: fmt.Errorf("invalid env pattern: %w", err),
 				}
 			}
 		}
@@ -177,8 +185,15 @@ func (c *Config) Validate() *ConfigError {
 			err := envFrom.CallerRef.Compile()
 			if err != nil {
 				return &ConfigError{
-					Path: pb.Root().Child("profiles").Child(name).Child("envFrom").Index(uIdx).Child("callerRef").Child("pattern").Build(),
-					Err:  fmt.Errorf("invalid envFrom pattern: %w", err),
+					Path: pb.Root().
+						Child("profiles").
+						Child(name).
+						Child("envFrom").
+						Index(uIdx).
+						Child("callerRef").
+						Child("pattern").
+						Build(),
+					Err: fmt.Errorf("invalid envFrom pattern: %w", err),
 				}
 			}
 		}

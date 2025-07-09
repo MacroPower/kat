@@ -121,7 +121,12 @@ func (o *Overlay) renderOverlay(bg, fg string) string {
 }
 
 // buildCombinedOutput constructs the final output by merging background and foreground content.
-func (o *Overlay) buildCombinedOutput(b *strings.Builder, bgLines, fgLines []string, bgLineWidths, fgLineWidths []int, x, y int) string {
+func (o *Overlay) buildCombinedOutput(
+	b *strings.Builder,
+	bgLines, fgLines []string,
+	bgLineWidths, fgLineWidths []int,
+	x, y int,
+) string {
 	fgHeight := len(fgLines)
 
 	for i, bgLine := range bgLines {

@@ -45,12 +45,17 @@ func NewValidator(schemaData []byte) (*Validator, error) {
 	}
 
 	compiler := jsonschema.NewCompiler()
-	err = compiler.AddResource("https://raw.githubusercontent.com/macropower/kat/refs/heads/main/pkg/config/config.v1beta1.json", schema)
+	err = compiler.AddResource(
+		"https://raw.githubusercontent.com/macropower/kat/refs/heads/main/pkg/config/config.v1beta1.json",
+		schema,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("add schema resource: %w", err)
 	}
 
-	jss, err := compiler.Compile("https://raw.githubusercontent.com/macropower/kat/refs/heads/main/pkg/config/config.v1beta1.json")
+	jss, err := compiler.Compile(
+		"https://raw.githubusercontent.com/macropower/kat/refs/heads/main/pkg/config/config.v1beta1.json",
+	)
 	if err != nil {
 		return nil, fmt.Errorf("compile schema: %w", err)
 	}

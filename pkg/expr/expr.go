@@ -126,7 +126,8 @@ func createEnvironment() (*cel.Env, error) {
 					)
 
 					// Read file content.
-					content, err := os.ReadFile(filePathStr) //nolint:gosec // G304: Potential file inclusion via variable.
+					//nolint:gosec // G304: Potential file inclusion via variable.
+					content, err := os.ReadFile(filePathStr)
 					if err != nil {
 						// Return null if file can't be read, don't error.
 						logger.Debug("failed to read YAML file, returning null",
@@ -194,7 +195,9 @@ func (e *Environment) Compile(expression string) (cel.Program, error) {
 
 // ConvertToCELValue converts a Go value to a CEL value.
 // Handles common YAML types and returns null for unsupported types.
-func ConvertToCELValue(value any) ref.Val { // nolint:ireturn // Following CEL's function signature.
+//
+//nolint:ireturn // Following CEL's function signature.
+func ConvertToCELValue(value any) ref.Val {
 	switch v := value.(type) {
 	case nil:
 		return types.NullValue

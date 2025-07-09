@@ -727,7 +727,9 @@ func TestGenerator_Generate_CommentExtractionPipeline(t *testing.T) {
 				_, hasDescription := nameField["description"]
 
 				if hasDescription {
-					t.Error("Unexpected description found when no package paths provided - should have no descriptions without comment extraction")
+					t.Error(
+						"Unexpected description found when no package paths provided - should have no descriptions without comment extraction",
+					)
 				} else {
 					t.Log("Correctly no description when no package paths provided")
 				}

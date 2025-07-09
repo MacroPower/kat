@@ -381,7 +381,9 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		return m, tea.Suspend, true
 
 	case m.kb.Common.Escape.Match(key):
-		if (m.state == stateShowDocument && m.pager.ViewState != pager.StateSearching) || (m.state == stateShowResult && m.fullResult.ViewState != pager.StateSearching) || !m.cm.Loaded {
+		isShowingDocument := m.state == stateShowDocument && m.pager.ViewState != pager.StateSearching
+		isShowingResult := m.state == stateShowResult && m.fullResult.ViewState != pager.StateSearching
+		if isShowingDocument || isShowingResult || !m.cm.Loaded {
 			m.unloadDocument()
 		}
 		if m.state == stateShowList {

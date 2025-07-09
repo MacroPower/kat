@@ -170,10 +170,10 @@ func (cs chromaStyle) lipglossFromToken(c chroma.TokenType) lipgloss.Color {
 	s := cs.style.Get(c)
 
 	// Convert chroma color to lipgloss.AdaptiveColor.
-	return lipgloss.Color(s.Colour.String()) // nolint:misspell // Chroma naming.
+	return lipgloss.Color(s.Colour.String()) //nolint:misspell // Chroma naming.
 }
 
-// nolint:unparam // Will you shut up man...
+//nolint:unparam // Will you shut up man...
 func (cs chromaStyle) lipglossFromTokenBg(c chroma.TokenType) lipgloss.Color {
 	s := cs.style.Get(c)
 
@@ -184,7 +184,7 @@ func (cs chromaStyle) lipglossFromTokenBg(c chroma.TokenType) lipgloss.Color {
 func (cs chromaStyle) lipglossFromTokenWithFactor(c chroma.TokenType, factor float64) lipgloss.Color {
 	s := cs.style.Get(c)
 
-	sc := s.Colour.BrightenOrDarken(factor) // nolint:misspell // Chroma naming.
+	sc := s.Colour.BrightenOrDarken(factor) //nolint:misspell // Chroma naming.
 
 	// Convert chroma color to lipgloss.AdaptiveColor.
 	return lipgloss.Color(sc.String())

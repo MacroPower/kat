@@ -14,7 +14,10 @@ import (
 var (
 	smallBG  = strings.Repeat("background line\n", 10)
 	mediumBG = strings.Repeat("this is a longer background line with more content\n", 50)
-	largeBG  = strings.Repeat("this is a very long background line with lots of content that will test performance\n", 200)
+	largeBG  = strings.Repeat(
+		"this is a very long background line with lots of content that will test performance\n",
+		200,
+	)
 
 	smallFG  = "overlay content"
 	mediumFG = strings.Repeat("overlay line\n", 20)

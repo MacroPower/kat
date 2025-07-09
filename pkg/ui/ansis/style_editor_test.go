@@ -115,7 +115,8 @@ func TestStyleEditor_ApplyStyles(t *testing.T) {
 				{Style: redStyle, Start: 0, End: 4, Priority: 1},    // "bold"
 				{Style: boldStyle, Start: 11, End: 17, Priority: 1}, // " itali" (positions 11-16)
 			},
-			want: "\x1b[1m" + redStyle.Render("bold") + "\x1b[1m\x1b[0m normal" + boldStyle.Render(" itali") + "c\x1b[0m text",
+			want: "\x1b[1m" + redStyle.Render("bold") + "\x1b[1m\x1b[0m normal" +
+				boldStyle.Render(" itali") + "c\x1b[0m text",
 		},
 		"nested ANSI codes with style application": {
 			text: "\x1b[1m\x1b[4mbold underline\x1b[0m",
@@ -151,7 +152,8 @@ func TestStyleEditor_ApplyStyles(t *testing.T) {
 				{Style: boldStyle, Start: 0, End: 8, Priority: 1},    // "red text"
 				{Style: italicStyle, Start: 4, End: 13, Priority: 2}, // "text here"
 			},
-			want: "\x1b[31m" + boldStyle.Render("red ") + "\x1b[31m" + italicStyle.Render("text here") + "\x1b[31m\x1b[0m",
+			want: "\x1b[31m" + boldStyle.Render("red ") + "\x1b[31m" +
+				italicStyle.Render("text here") + "\x1b[31m\x1b[0m",
 		},
 		"consecutive ANSI regions with styles": {
 			text: "\x1b[1mfirst\x1b[0m\x1b[3msecond\x1b[0m\x1b[4mthird\x1b[0m",

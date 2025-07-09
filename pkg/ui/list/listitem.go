@@ -62,7 +62,12 @@ func listItemView(b *strings.Builder, m ListModel, index int, compact bool, y *y
 }
 
 // applySelectedStyling applies styling for selected/highlighted items.
-func applySelectedStyling(t *theme.Theme, title, desc string, showFilter bool, filterValue string) listItemDisplayState {
+func applySelectedStyling(
+	t *theme.Theme,
+	title, desc string,
+	showFilter bool,
+	filterValue string,
+) listItemDisplayState {
 	result := listItemDisplayState{
 		gutter:    t.SelectedStyle.Render("│"),
 		desc:      t.SelectedSubtleStyle.Render(desc),
@@ -83,7 +88,12 @@ func applySelectedStyling(t *theme.Theme, title, desc string, showFilter bool, f
 }
 
 // applyUnselectedStyling applies styling for unselected items.
-func applyUnselectedStyling(t *theme.Theme, title, desc string, isFiltering bool, filterValue string) listItemDisplayState {
+func applyUnselectedStyling(
+	t *theme.Theme,
+	title, desc string,
+	isFiltering bool,
+	filterValue string,
+) listItemDisplayState {
 	hasEmptyFilter := isFiltering && filterValue == ""
 
 	result := listItemDisplayState{

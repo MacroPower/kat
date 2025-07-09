@@ -14,6 +14,7 @@ formatters:
     - gci
     - gofmt
     - gofumpt
+    - golines
   settings:
     gci:
       sections:
@@ -30,6 +31,9 @@ formatters:
           replacement: "any"
     gofumpt:
       extra-rules: true
+    golines:
+      reformat-tags: false
+      max-len: 120
 
 linters:
   default: none
@@ -41,7 +45,7 @@ linters:
     - canonicalheader
     - containedctx
     - contextcheck
-    - copyloopvar
+    - depguard
     - dupl
     - durationcheck
     - errcheck
@@ -58,9 +62,11 @@ linters:
     - godot
     - goprintffuncname
     - gosec
+    - gosmopolitan
     - govet
     - grouper
     - iface
+    - importas
     - inamedparam
     - ineffassign
     - intrange
@@ -77,6 +83,7 @@ linters:
     - nlreturn
     - noctx
     - noinlineerr
+    - nolintlint
     - nonamedreturns
     - nosprintfhostport
     - paralleltest
@@ -93,6 +100,7 @@ linters:
     - testifylint
     - testpackage
     - thelper
+    - tparallel
     - unconvert
     - unparam
     - unused
@@ -129,6 +137,8 @@ linters:
 
     usetesting:
       os-temp-dir: true
+      context-background: true
+      context-todo: true
 
     testifylint:
       enable-all: true
@@ -149,8 +159,6 @@ linters:
     gocritic:
       enable-all: true
       disabled-checks:
-        - commentedOutCode
-        - filepathJoin
         - unnamedResult
         - singleCaseSwitch
         - hugeParam # TODO: Re-enable this.
@@ -190,22 +198,40 @@ linters:
           disabled: true
         - name: max-public-structs
           disabled: true
+        # Needed for future use.
         - name: unused-receiver
           disabled: true
+        # Fails on private functions.
         - name: flag-parameter
           disabled: true
+        # Requires named results.
         - name: confusing-results
           disabled: true
         - name: exported
           disabled: true
         - name: package-comments
           disabled: true
-        - name: nested-structs
-          disabled: true
         - name: unnecessary-stmt
           disabled: true
+        # Does not work with inline tags.
         - name: struct-tag
           disabled: true
+        - name: var-naming
+          disabled: true
+
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: "golang.org/x/exp/slog"
+              desc: use log/slog
+            - pkg: "github.com/pkg/errors"
+              desc: use errors
+
+    importas:
+      alias:
+        - pkg: github.com/charmbracelet/bubbletea
+          alias: tea
 
   exclusions:
     rules:
@@ -216,6 +242,7 @@ linters:
           - goconst
           - godot
           - gosec
+          - gosmopolitan
       - path: /ui/
         linters:
           - grouper

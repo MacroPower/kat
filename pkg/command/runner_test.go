@@ -175,6 +175,7 @@ func TestCommandRunner_RunContext(t *testing.T) {
 	}
 }
 
+//nolint:tparallel // This test is inherently sequential due to cancellation behavior.
 func TestCommandRunner_CancellationBehavior(t *testing.T) {
 	t.Parallel()
 
