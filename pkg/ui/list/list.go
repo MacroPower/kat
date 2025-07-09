@@ -251,8 +251,6 @@ func (m *ListModel) SetSize(width, height int) {
 		m.helpHeight = m.helpRenderer.CalculateHelpHeight()
 	}
 
-	m.docRenderer.SetSize(width, height)
-
 	m.filterInput.Width = width - listViewHorizontalPadding*2 - ansi.PrintableRuneWidth(
 		m.filterInput.Prompt,
 	)

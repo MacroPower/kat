@@ -11,8 +11,6 @@ import (
 // DocumentListRenderer handles rendering of document lists.
 type DocumentListRenderer struct {
 	theme   *theme.Theme
-	width   int
-	height  int
 	indent  int
 	compact bool
 }
@@ -20,11 +18,6 @@ type DocumentListRenderer struct {
 // NewDocumentListRenderer creates a new document list renderer.
 func NewDocumentListRenderer(t *theme.Theme, indent int, compact bool) *DocumentListRenderer {
 	return &DocumentListRenderer{theme: t, indent: indent, compact: compact}
-}
-
-func (dlr *DocumentListRenderer) SetSize(width, height int) {
-	dlr.width = width
-	dlr.height = height
 }
 
 func (dlr *DocumentListRenderer) GetItemHeight() int {
