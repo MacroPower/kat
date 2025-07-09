@@ -80,7 +80,6 @@ linters:
     - nilerr
     - nilnesserr
     - nilnil
-    - nlreturn
     - noctx
     - noinlineerr
     - nolintlint
@@ -107,8 +106,8 @@ linters:
     - usestdlibvars
     - usetesting
     - wastedassign
-    - whitespace
     - wrapcheck
+    - wsl_v5
 
   settings:
     misspell:
@@ -118,17 +117,17 @@ linters:
     exhaustive:
       default-signifies-exhaustive: true
 
-    wsl:
-      force-err-cuddling: true
-      force-case-trailing-whitespace: 2
+    wsl_v5:
+      allow-whole-block: true
+      case-max-lines: 2
+      default: all
+      disable:
+        - assign-exclusive
+        - if
 
     unused:
       exported-fields-are-used: false
       local-variables-are-used: false
-
-    whitespace:
-      multi-if: true
-      multi-func: true
 
     govet:
       enable-all: true
@@ -250,9 +249,6 @@ linters:
           - recvcheck
           - exhaustive
           - nestif
-      - source: "^\\) .+ \\{$"
-        linters:
-          - whitespace
       - source: "= `"
         linters:
           - grouper

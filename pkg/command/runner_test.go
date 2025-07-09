@@ -58,6 +58,7 @@ func TestCommandRunner_RunForPath(t *testing.T) {
 	// Create a subdirectory with a nested file
 	subDir := filepath.Join(tempDir, "subdir")
 	require.NoError(t, os.MkdirAll(subDir, 0o755))
+
 	nestedChartFile := filepath.Join(subDir, "Chart.yaml")
 	require.NoError(t, os.WriteFile(nestedChartFile, []byte("name: nested-chart"), 0o644))
 
@@ -311,6 +312,7 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 
 			go func() {
 				defer close(collectionDone)
+
 				deadline := time.After(tc.collectDuration)
 
 				for {
@@ -324,6 +326,7 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 						case command.EventCancel:
 							cancelEvents++
 						}
+
 					case <-deadline:
 						return
 					}

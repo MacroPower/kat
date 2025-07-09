@@ -83,13 +83,16 @@ func (cb *CircularBuffer) Entries() [][]byte {
 			if cb.entries[i] != nil {
 				entry := make([]byte, len(cb.entries[i]))
 				copy(entry, cb.entries[i])
+
 				result = append(result, entry)
 			}
 		}
+
 		for i := range cb.head {
 			if cb.entries[i] != nil {
 				entry := make([]byte, len(cb.entries[i]))
 				copy(entry, cb.entries[i])
+
 				result = append(result, entry)
 			}
 		}
@@ -99,6 +102,7 @@ func (cb *CircularBuffer) Entries() [][]byte {
 			if cb.entries[i] != nil {
 				entry := make([]byte, len(cb.entries[i]))
 				copy(entry, cb.entries[i])
+
 				result = append(result, entry)
 			}
 		}
@@ -135,6 +139,7 @@ func (cb *CircularBuffer) Clear() {
 
 	cb.size = 0
 	cb.head = 0
+
 	cb.full = false
 	for i := range cb.entries {
 		cb.entries[i] = nil
@@ -145,6 +150,7 @@ func (cb *CircularBuffer) Clear() {
 // order. It implements [io.WriterTo] for efficient bulk transfers.
 func (cb *CircularBuffer) WriteTo(w io.Writer) (int64, error) {
 	entries := cb.Entries()
+
 	var total int64
 
 	for _, entry := range entries {

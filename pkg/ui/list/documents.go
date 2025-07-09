@@ -55,6 +55,7 @@ func (dlr *DocumentListRenderer) RenderDocumentList(docs []*yamls.Document, m Li
 			default:
 				f("Loading documents...")
 			}
+
 		case SectionFilter:
 			return ""
 		}
@@ -84,8 +85,10 @@ func indent(s string, n int) string {
 	if n <= 0 || s == "" {
 		return s
 	}
+
 	l := strings.Split(s, "\n")
 	b := strings.Builder{}
+
 	i := strings.Repeat(" ", n)
 	for _, v := range l {
 		fmt.Fprintf(&b, "%s%s\n", i, v)

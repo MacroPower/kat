@@ -24,6 +24,7 @@ func NewHooks(opts ...HookOpts) (*Hooks, error) {
 	for _, opt := range opts {
 		opt(h)
 	}
+
 	err := h.Build()
 	if err != nil {
 		return nil, fmt.Errorf("build hooks: %w", err)
@@ -73,12 +74,14 @@ func (h *Hooks) Build() error {
 			return fmt.Errorf("init hook: %w", err)
 		}
 	}
+
 	for _, cmd := range h.PreRender {
 		err := cmd.Build()
 		if err != nil {
 			return fmt.Errorf("preRender hook: %w", err)
 		}
 	}
+
 	for _, cmd := range h.PostRender {
 		err := cmd.Build()
 		if err != nil {
@@ -105,6 +108,7 @@ func NewHookCommand(command string, opts ...HookCommandOpt) (*HookCommand, error
 	for _, opt := range opts {
 		opt(hc)
 	}
+
 	err := hc.Build()
 	if err != nil {
 		return nil, fmt.Errorf("hook %q: %w", command, err)

@@ -297,14 +297,17 @@ func TestConvertToCELValue(t *testing.T) {
 				boolVal, ok := result.Value().(bool)
 				require.True(t, ok)
 				assert.Equal(t, expected, boolVal)
+
 			case int64:
 				intVal, ok := result.Value().(int64)
 				require.True(t, ok)
 				assert.Equal(t, expected, intVal)
+
 			case float64:
 				floatVal, ok := result.Value().(float64)
 				require.True(t, ok)
 				assert.InDelta(t, expected, floatVal, 0.01)
+
 			case string:
 				strVal, ok := result.Value().(string)
 				require.True(t, ok)
@@ -404,6 +407,7 @@ func TestCELErrorHandling(t *testing.T) {
 				if tc.shouldErr {
 					return // Expected compilation error
 				}
+
 				require.NoError(t, err)
 			}
 
@@ -420,6 +424,7 @@ func TestCELErrorHandling(t *testing.T) {
 
 					return
 				}
+
 				t.Error("Expected an error but got none")
 			} else {
 				require.NoError(t, err)
@@ -570,14 +575,17 @@ spec:
 				strVal, ok := result.Value().(string)
 				require.True(t, ok)
 				assert.Equal(t, expected, strVal)
+
 			case int64:
 				intVal, ok := result.Value().(int64)
 				require.True(t, ok)
 				assert.Equal(t, expected, intVal)
+
 			case bool:
 				boolVal, ok := result.Value().(bool)
 				require.True(t, ok)
 				assert.Equal(t, expected, boolVal)
+
 			case float64:
 				floatVal, ok := result.Value().(float64)
 				require.True(t, ok)

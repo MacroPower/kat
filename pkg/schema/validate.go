@@ -39,6 +39,7 @@ type Validator struct {
 // NewValidator creates a new [Validator] with the provided JSON schema data.
 func NewValidator(schemaData []byte) (*Validator, error) {
 	var schema any
+
 	err := json.Unmarshal(schemaData, &schema)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal schema: %w", err)
@@ -136,6 +137,7 @@ func buildPathFromLocation(location []string) (*yaml.Path, error) {
 	for _, part := range location {
 		// Check if this part is a numeric index.
 		var index uint
+
 		_, err := fmt.Sscanf(part, "%d", &index)
 		if err == nil {
 			// This is an array index.

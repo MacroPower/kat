@@ -178,6 +178,7 @@ func TestNewConfig_ValidationErrors(t *testing.T) {
 				if tc.errorPath != "" {
 					assert.Contains(t, err.Error(), tc.errorPath)
 				}
+
 				assert.Nil(t, config)
 			} else {
 				require.NoError(t, err)

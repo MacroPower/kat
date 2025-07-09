@@ -61,6 +61,7 @@ func (c UIConfig) JSONSchemaExtend(schema *jsonschema.Schema) {
 	if !ok {
 		panic("minimumDelay property not found in UIConfig schema")
 	}
+
 	minimumDelay.Pattern = `^([1-9]\d{0,2}ms|[1-9]\d{0,5}us|[1-9]\d{0,8}ns)$`
 	schema.Properties.Set("minimumDelay", minimumDelay)
 }
@@ -87,6 +88,7 @@ func (c *Config) EnsureDefaults() {
 	if c.UI == nil {
 		c.UI = &UIConfig{}
 	}
+
 	c.UI.EnsureDefaults()
 
 	// Set defaults for UIConfig in this Config context only.

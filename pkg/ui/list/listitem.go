@@ -147,6 +147,7 @@ func styleFilteredText(haystack, needles string, defaultStyle, matchedStyle lipg
 		for _, mi := range m.MatchedIndexes {
 			if i == mi {
 				b.WriteString(matchedStyle.Render(string(rune)))
+
 				styled = true
 			}
 		}

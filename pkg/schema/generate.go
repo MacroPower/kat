@@ -153,6 +153,7 @@ func findModuleRoot() (string, error) {
 			// Reached the root directory.
 			break
 		}
+
 		dir = parent
 	}
 
@@ -175,6 +176,7 @@ func buildCommentMapForPackage(pkg *packages.Package, commentMap map[string]stri
 						}
 					}
 				}
+
 			case *ast.TypeSpec:
 				// Extract type comments from individual type specs.
 				if node.Doc != nil {

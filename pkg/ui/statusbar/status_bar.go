@@ -149,6 +149,7 @@ func (r *StatusBarRenderer) renderEmptySpace(components ...string) string {
 	for _, comp := range components {
 		padding -= ansi.PrintableRuneWidth(comp)
 	}
+
 	padding = max(0, padding)
 
 	emptySpace := strings.Repeat(" ", padding)

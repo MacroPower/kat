@@ -390,6 +390,7 @@ func TestKeyBind_AddKey(t *testing.T) {
 		t.Parallel()
 
 		var kb *keys.KeyBind
+
 		newKey := keys.New("a")
 
 		// Should not panic
@@ -592,6 +593,7 @@ func TestSetDefaultBind(t *testing.T) {
 		t.Parallel()
 
 		var kb *keys.KeyBind
+
 		defaultKb := keys.NewBind("default", keys.New("d"))
 
 		keys.SetDefaultBind(&kb, defaultKb)
@@ -674,6 +676,7 @@ func TestKeyBindRenderer_AddColumn(t *testing.T) {
 		t.Parallel()
 
 		var kbr keys.KeyBindRenderer
+
 		kb1 := keys.NewBind("quit", keys.New("q"))
 		kb2 := keys.NewBind("help", keys.New("h"))
 
@@ -691,6 +694,7 @@ func TestKeyBindRenderer_AddColumn(t *testing.T) {
 		t.Parallel()
 
 		var kbr keys.KeyBindRenderer
+
 		col1 := []keys.KeyBind{
 			keys.NewBind("quit", keys.New("q")),
 			keys.NewBind("help", keys.New("h")),
@@ -714,9 +718,11 @@ func TestKeyBindRenderer_AddColumn(t *testing.T) {
 		t.Parallel()
 
 		var kbr keys.KeyBindRenderer
+
 		kb := keys.NewBind("quit", keys.New("q"))
 
 		kbr.AddColumn(kb)
+
 		resultBefore := kbr.Render(40)
 
 		kbr.AddColumn() // Add empty column
@@ -729,6 +735,7 @@ func TestKeyBindRenderer_AddColumn(t *testing.T) {
 		t.Parallel()
 
 		var kbr keys.KeyBindRenderer
+
 		kb := keys.NewBind("quit", keys.New("q"))
 
 		// First AddColumn call should initialize the columns slice

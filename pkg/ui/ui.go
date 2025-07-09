@@ -81,9 +81,12 @@ func (m *model) unloadDocument() {
 	switch m.state {
 	case stateShowDocument:
 		m.pager.Unload()
+
 		m.pager.ShowHelp = false
+
 	case stateShowResult:
 		m.fullResult.Unload()
+
 		m.fullResult.ShowHelp = false
 	}
 
@@ -165,6 +168,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.kb.Common.Error.Match(msg.String()) {
 			if m.state != stateShowResult {
 				m.overlayState = overlayStateNone
+
 				cmds = append(cmds, func() tea.Msg {
 					return ShowResultMsg{}
 				})
@@ -175,6 +179,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = stateShowList
 			m.overlayState = overlayStateNone
 			m.fullResult.Unload()
+
 			m.fullResult.ShowHelp = false
 
 			break
@@ -217,6 +222,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.cm.StatusMessageTimer != nil {
 			m.cm.StatusMessageTimer.Stop()
 		}
+
 		m.overlayState = overlayStateLoading
 		cmds = append(cmds, m.spinner.Tick)
 
@@ -238,6 +244,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.overlayState = overlayStateResult
 		}
+
 		body += "# Stdout\n" + msg.Stdout + "\n---\n# Stderr\n" + msg.Stderr
 
 		m.fullResult.CurrentDocument = yamls.Document{
@@ -272,6 +279,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case spinner.TickMsg:
 		if !m.cm.Loaded {
 			var cmd tea.Cmd
+
 			m.spinner, cmd = m.spinner.Update(msg)
 			cmds = append(cmds, cmd)
 		}
@@ -469,16 +477,19 @@ func (m *model) updateChildModels(msg tea.Msg) []tea.Cmd {
 	case stateShowList:
 		newListModel, cmd := m.list.Update(msg)
 		m.list = newListModel
+
 		cmds = append(cmds, cmd)
 
 	case stateShowDocument:
 		newPagerModel, cmd := m.pager.Update(msg)
 		m.pager = newPagerModel
+
 		cmds = append(cmds, cmd)
 
 	case stateShowResult:
 		newResultModel, cmd := m.fullResult.Update(msg)
 		m.fullResult = newResultModel
+
 		cmds = append(cmds, cmd)
 	}
 

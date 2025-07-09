@@ -73,6 +73,7 @@ func (kb *KeyBind) String() string {
 		if k.Hidden {
 			continue
 		}
+
 		keys = append(keys, k.String())
 	}
 
@@ -176,6 +177,7 @@ func (kbr *KeyBindRenderer) Render(width int) string {
 				// Pad with spaces to match column width.
 				rowContent = strings.Repeat(" ", colWidth)
 			}
+
 			sb.WriteString(" " + rowContent + " ")
 		}
 
@@ -224,6 +226,7 @@ func ValidateBinds(kbs ...[]KeyBind) error {
 				if seen[key.Code] {
 					return fmt.Errorf("duplicate key binding found: %s", key.Code)
 				}
+
 				seen[key.Code] = true
 			}
 		}
@@ -278,6 +281,7 @@ func truncateWithEllipsis(s string, maxWidth int) string {
 		if currentWidth+runeWidth > availableWidth {
 			break
 		}
+
 		truncated += string(r)
 		currentWidth += runeWidth
 	}

@@ -143,8 +143,10 @@ data:
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			var static *command.Static
-			var err error
+			var (
+				static *command.Static
+				err    error
+			)
 
 			if tc.input == "" {
 				// For the "no resources" case, we need to create a static instance
@@ -156,8 +158,10 @@ data:
 			}
 
 			// Test event subscription if needed
-			var events []command.Event
-			var output command.Output
+			var (
+				events []command.Event
+				output command.Output
+			)
 
 			if tc.checkEvents {
 				events, output = runStaticWithEvents(t, static)

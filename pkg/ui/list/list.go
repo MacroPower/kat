@@ -163,6 +163,7 @@ func (m ListModel) Update(msg tea.Msg) (ListModel, tea.Cmd) {
 
 	if isFiltering {
 		var cmd tea.Cmd
+
 		m, cmd = m.keyHandler.HandleFilteringMode(m, msg)
 		cmds = append(cmds, cmd)
 	}
@@ -173,7 +174,9 @@ func (m ListModel) Update(msg tea.Msg) (ListModel, tea.Cmd) {
 			// Don't re-handle filter keys.
 			break
 		}
+
 		var cmd tea.Cmd
+
 		m, cmd = m.keyHandler.HandleDocumentBrowsing(m, msg)
 		cmds = append(cmds, cmd)
 
@@ -197,6 +200,7 @@ func (m ListModel) View() string {
 	if !m.ShowHelp {
 		availableHeight++
 	}
+
 	bottom := lipgloss.PlaceVertical(
 		availableHeight,
 		lipgloss.Bottom,
@@ -284,6 +288,7 @@ func (m *ListModel) toggleHelp() {
 func (m *ListModel) ResetFiltering() {
 	m.FilterState = Unfiltered
 	m.filterInput.Reset()
+
 	m.filteredYAMLs = nil
 	m.ViewState = StateReady
 
@@ -417,6 +422,7 @@ func (m *ListModel) moveCursorDown() {
 
 		return
 	}
+
 	m.setCursor(itemsOnPage - 1)
 }
 
@@ -498,6 +504,7 @@ func (m ListModel) getHeaderSections() ([]string, lipgloss.Style) {
 		} else {
 			s = m.cm.Theme.SubtleStyle.Render(s)
 		}
+
 		sections = append(sections, s)
 	}
 
@@ -524,6 +531,7 @@ func (m *ListModel) startFiltering() tea.Cmd {
 	m.filteredYAMLs = m.YAMLs
 	m.paginator().Page = 0
 	m.setCursor(0)
+
 	m.FilterState = Filtering
 	m.filterInput.CursorEnd()
 	m.filterInput.Focus()

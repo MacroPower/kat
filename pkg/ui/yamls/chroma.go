@@ -109,6 +109,7 @@ func (gr *ChromaRenderer) postProcessContent(content string, width int) string {
 
 	// Trim lines and add line numbers if needed.
 	lines := strings.Split(content, "\n")
+
 	var result strings.Builder
 
 	for i, line := range lines {
@@ -152,6 +153,7 @@ func (gr *ChromaRenderer) formatLineWithNumber(line string, lineNum, width int) 
 			// For subsequent lines, just add spaces for alignment.
 			ln = gr.theme.LineNumberStyle.Render("   -  ") + trunc(ln)
 		}
+
 		fmtLines = append(fmtLines, ln)
 	}
 
@@ -207,6 +209,7 @@ func (gr *ChromaRenderer) findMatches(content string) {
 		slog.Debug("error normalizing search term",
 			slog.Any("error", err),
 		)
+
 		normalizedTerm = gr.searchTerm
 	}
 
@@ -218,6 +221,7 @@ func (gr *ChromaRenderer) findMatches(content string) {
 		if err != nil {
 			normalizedLine = line
 		}
+
 		gr.findSubstringMatches(normalizedLine, normalizedTerm, lineNum)
 	}
 }
@@ -282,6 +286,7 @@ func (gr *ChromaRenderer) byteIndexToRuneIndex(s string, byteIdx int) int {
 		if i > byteIdx {
 			return -1
 		}
+
 		runeIdx++
 	}
 

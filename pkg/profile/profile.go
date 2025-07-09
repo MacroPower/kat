@@ -63,6 +63,7 @@ func New(command string, opts ...ProfileOpt) (*Profile, error) {
 	for _, opt := range opts {
 		opt(p)
 	}
+
 	err := p.Build()
 	if err != nil {
 		return nil, fmt.Errorf("profile %q: %w", command, err)
@@ -140,10 +141,12 @@ func (p *Profile) Build() error {
 			}
 		}
 	}
+
 	err := p.CompileSource()
 	if err != nil {
 		return fmt.Errorf("compile source: %w", err)
 	}
+
 	err = p.Command.CompilePatterns()
 	if err != nil {
 		return fmt.Errorf("compile patterns: %w", err)
@@ -280,6 +283,7 @@ func (p *Profile) GetPluginKeyBinds() []*keys.KeyBind {
 		if desc == "" {
 			desc = fmt.Sprintf("plugin %q", name)
 		}
+
 		binds = append(binds, &keys.KeyBind{
 			Description: desc,
 			Keys:        plugin.Keys,

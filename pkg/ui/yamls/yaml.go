@@ -31,6 +31,7 @@ func (m *Document) BuildFilterValue() {
 			slog.String("title", m.Title),
 			slog.Any("error", err),
 		)
+
 		m.FilterValue += m.Title
 	}
 
@@ -42,6 +43,7 @@ func (m *Document) BuildFilterValue() {
 			slog.String("desc", m.Desc),
 			slog.Any("error", err),
 		)
+
 		m.FilterValue += m.Desc
 	}
 }

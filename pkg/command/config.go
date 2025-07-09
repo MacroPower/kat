@@ -156,10 +156,12 @@ func (c *Config) Validate() *ConfigError {
 				Err:  fmt.Errorf("invalid source: %w", err),
 			}
 		}
+
 		for i, env := range p.Command.Env {
 			if env.ValueFrom == nil || env.ValueFrom.CallerRef == nil || env.ValueFrom.CallerRef.Pattern == "" {
 				continue // Skip if no pattern is defined.
 			}
+
 			uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
 			err := env.ValueFrom.CallerRef.Compile()
 			if err != nil {
@@ -177,10 +179,12 @@ func (c *Config) Validate() *ConfigError {
 				}
 			}
 		}
+
 		for i, envFrom := range p.Command.EnvFrom {
 			if envFrom.CallerRef == nil || envFrom.CallerRef.Pattern == "" {
 				continue // Skip if no pattern is defined.
 			}
+
 			uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
 			err := envFrom.CallerRef.Compile()
 			if err != nil {
@@ -216,6 +220,7 @@ func (c *Config) Validate() *ConfigError {
 				Err:  fmt.Errorf("invalid match: %w", err),
 			}
 		}
+
 		p, ok := c.Profiles[r.Profile]
 		if !ok {
 			return &ConfigError{
@@ -223,6 +228,7 @@ func (c *Config) Validate() *ConfigError {
 				Err:  fmt.Errorf("profile %q not found", r.Profile),
 			}
 		}
+
 		r.SetProfile(p)
 	}
 

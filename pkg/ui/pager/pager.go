@@ -180,6 +180,7 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 	}
 
 	var cmd tea.Cmd
+
 	m.viewport, cmd = m.viewport.Update(msg)
 	cmds = append(cmds, cmd)
 
@@ -255,9 +256,11 @@ func (m *PagerModel) Unload() {
 	if m.chromaRenderer != nil {
 		m.chromaRenderer.SetSearchTerm("")
 	}
+
 	m.currentMatch = -1
 	m.ViewState = StateReady
 	m.viewport.SetContent("")
+
 	m.viewport.YOffset = 0
 }
 
@@ -324,6 +327,7 @@ func (m PagerModel) handleSearchMode(msg tea.Msg) (PagerModel, tea.Cmd) {
 			if searchTerm != "" {
 				m.applySearch(searchTerm)
 			}
+
 			m.ExitSearch()
 
 			return m, m.Render(m.CurrentDocument.Body)
@@ -332,6 +336,7 @@ func (m PagerModel) handleSearchMode(msg tea.Msg) (PagerModel, tea.Cmd) {
 
 	// Update search input.
 	var cmd tea.Cmd
+
 	m.searchInput, cmd = m.searchInput.Update(msg)
 	cmds = append(cmds, cmd)
 
@@ -414,6 +419,7 @@ func (m PagerModel) goToPrevMatch() (PagerModel, tea.Cmd) {
 	} else {
 		m.currentMatch--
 	}
+
 	match := matches[m.currentMatch]
 
 	// Update the renderer with the current selected match.

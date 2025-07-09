@@ -45,6 +45,7 @@ func TestValidationError_Error(t *testing.T) {
 	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
 			got := tc.err.Error()
 			assert.Equal(t, tc.want, got)
 		})
@@ -89,6 +90,7 @@ func TestNewValidator(t *testing.T) {
 	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
 			validator, err := schema.NewValidator(tc.schemaData)
 
 			if tc.wantErr {
@@ -354,10 +356,12 @@ func TestValidator_Validate(t *testing.T) {
 	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
 			err := validator.Validate(tc.data)
 
 			if tc.wantErr {
 				require.Error(t, err)
+
 				var validationErr *schema.ValidationError
 				require.ErrorAs(t, err, &validationErr)
 				assert.NotNil(t, validationErr.Path)
@@ -473,6 +477,7 @@ config:
 
 			// Parse the YAML source
 			var data any
+
 			err := yaml.Unmarshal([]byte(tc.yamlSource), &data)
 			require.NoError(t, err, "YAML should be valid")
 
@@ -507,6 +512,7 @@ config:
 			// Look for the expected line number in the annotated output.
 			expectedLineStr := fmt.Sprintf("%d |", tc.expectedLine)
 			foundExpectedLine := false
+
 			var errorLine string
 
 			for _, line := range lines {

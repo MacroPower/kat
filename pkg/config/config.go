@@ -71,6 +71,7 @@ func (c Config) JSONSchemaExtend(jss *jsonschema.Schema) {
 	if !ok {
 		panic("apiVersion property not found in schema")
 	}
+
 	for _, version := range ValidAPIVersions {
 		apiVersion.OneOf = append(apiVersion.OneOf, &jsonschema.Schema{
 			Type:  "string",
@@ -78,12 +79,14 @@ func (c Config) JSONSchemaExtend(jss *jsonschema.Schema) {
 			Title: "API Version",
 		})
 	}
+
 	_, _ = jss.Properties.Set("apiVersion", apiVersion)
 
 	kind, ok := jss.Properties.Get("kind")
 	if !ok {
 		panic("kind property not found in schema")
 	}
+
 	for _, kindValue := range ValidKinds {
 		kind.OneOf = append(kind.OneOf, &jsonschema.Schema{
 			Type:  "string",
@@ -91,6 +94,7 @@ func (c Config) JSONSchemaExtend(jss *jsonschema.Schema) {
 			Title: "Kind",
 		})
 	}
+
 	_, _ = jss.Properties.Set("kind", kind)
 }
 
@@ -121,6 +125,7 @@ func LoadConfig(data []byte) (*Config, error) {
 
 	// Decode into interface{} for schema validation.
 	var anyConfig any
+
 	dec := yaml.NewDecoder(reader, yaml.AllowDuplicateMapKey())
 	err := dec.Decode(&anyConfig)
 	if err != nil {
@@ -148,12 +153,14 @@ func LoadConfig(data []byte) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("prepare reader for decoding yaml config: %w", err)
 	}
+
 	c := &Config{}
 	dec = yaml.NewDecoder(reader, yaml.AllowDuplicateMapKey())
 	err = dec.Decode(c)
 	if err != nil {
 		return nil, fmt.Errorf("decode yaml config: %w", err)
 	}
+
 	c.EnsureDefaults()
 
 	// Run Go validation on the config (for requirements that can't be represented in the schema).
@@ -233,6 +240,7 @@ func WriteDefaultConfig(path string) error {
 		if err != nil {
 			return fmt.Errorf("write config file: %w", err)
 		}
+
 		slog.Info("write default configuration",
 			slog.String("path", path),
 		)
@@ -248,6 +256,7 @@ func WriteDefaultConfig(path string) error {
 	if err != nil {
 		return fmt.Errorf("write schema file: %w", err)
 	}
+
 	slog.Info("write JSON schema",
 		slog.String("path", schemaPath),
 	)

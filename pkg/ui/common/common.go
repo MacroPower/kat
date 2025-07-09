@@ -71,6 +71,7 @@ func (m *CommonModel) SendStatusMessage(msg string, style statusbar.Style) tea.C
 	if m.StatusMessageTimer != nil {
 		m.StatusMessageTimer.Stop()
 	}
+
 	m.StatusMessageTimer = time.NewTimer(StatusMessageTimeout)
 
 	return WaitForStatusMessageTimeout(ListContext, m.StatusMessageTimer)

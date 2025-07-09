@@ -65,6 +65,7 @@ func (c *CallerRef) Compile() error {
 		if err != nil {
 			return fmt.Errorf("compile pattern %q: %w", c.Pattern, err)
 		}
+
 		c.compiledPattern = pattern
 	}
 
@@ -168,6 +169,7 @@ func (e *Command) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (
 	cmd.Stdin = bytes.NewReader(stdin)
 
 	var stdout, stderr bytes.Buffer
+
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
@@ -200,6 +202,7 @@ func (e *Command) CompilePatterns() error {
 			}
 		}
 	}
+
 	for i, envFromSource := range e.EnvFrom {
 		if envFromSource.CallerRef != nil {
 			err := envFromSource.CallerRef.Compile()

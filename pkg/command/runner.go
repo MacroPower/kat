@@ -51,6 +51,7 @@ func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
 	}
 
 	var err error
+
 	cr.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("create fsnotify watcher: %w", err)
@@ -96,7 +97,9 @@ func WithProfile(name string, p *profile.Profile) RunnerOpt {
 		if err != nil {
 			return fmt.Errorf("invalid match: %w", err)
 		}
+
 		r.SetProfile(p)
+
 		cr.rule = r
 
 		return nil
@@ -220,6 +223,7 @@ func (cr *Runner) Watch() error {
 	p := cr.rule.GetProfile()
 
 	var files []string
+
 	err := filepath.Walk(cr.path, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("walk %q: %w", path, err)
@@ -228,6 +232,7 @@ func (cr *Runner) Watch() error {
 			// Skip directories, we only want to watch files.
 			return nil
 		}
+
 		files = append(files, path)
 
 		return nil
@@ -278,10 +283,12 @@ func (cr *Runner) RunOnEvent() {
 					cr.RunContext(ctx)
 				}()
 			}
+
 		case err, ok := <-cr.watcher.Errors:
 			if !ok {
 				return
 			}
+
 			cr.broadcast(EventEnd(Output{
 				Error: err,
 			}))
@@ -375,6 +382,7 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 	if err != nil {
 		co.Error = fmt.Errorf("%w: %w", err, co.Error)
 	}
+
 	co.Resources = objects
 	cr.broadcast(EventEnd(co))
 

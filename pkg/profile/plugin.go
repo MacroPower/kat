@@ -30,6 +30,7 @@ func NewPlugin(command, description string, opts ...PluginOpt) (*Plugin, error) 
 	for _, opt := range opts {
 		opt(p)
 	}
+
 	err := p.Build()
 	if err != nil {
 		return nil, fmt.Errorf("plugin %q: %w", command, err)

@@ -170,6 +170,7 @@ func TestCreateHandler(t *testing.T) {
 			t.Parallel()
 
 			var buf bytes.Buffer
+
 			handler := log.CreateHandler(&buf, slog.LevelInfo, tc.format)
 			require.NotNil(t, handler)
 
@@ -231,6 +232,7 @@ func TestCreateHandlerWithStrings(t *testing.T) {
 			t.Parallel()
 
 			var buf bytes.Buffer
+
 			handler, err := log.CreateHandlerWithStrings(&buf, tc.levelStr, tc.formatStr)
 
 			if tc.expectError {
@@ -297,6 +299,7 @@ func TestLogLevelFiltering(t *testing.T) {
 			t.Parallel()
 
 			var buf bytes.Buffer
+
 			handler := log.CreateHandler(&buf, tc.level, tc.format)
 			logger := slog.New(handler)
 

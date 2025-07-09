@@ -71,6 +71,7 @@ func TestCircularBuffer_Write(t *testing.T) {
 	// Fill the buffer
 	_, err = cb.Write([]byte("entry2"))
 	require.NoError(t, err)
+
 	_, err = cb.Write([]byte("entry3"))
 	require.NoError(t, err)
 
@@ -107,10 +108,13 @@ func TestCircularBuffer_Entries(t *testing.T) {
 
 	// Add entries
 	var err error
+
 	_, err = cb.Write([]byte("first"))
 	require.NoError(t, err)
+
 	_, err = cb.Write([]byte("second"))
 	require.NoError(t, err)
+
 	_, err = cb.Write([]byte("third"))
 	require.NoError(t, err)
 
@@ -129,6 +133,7 @@ func TestCircularBuffer_Entries(t *testing.T) {
 	// Test overwriting (circular behavior)
 	_, err = cb.Write([]byte("fourth"))
 	require.NoError(t, err)
+
 	_, err = cb.Write([]byte("fifth"))
 	require.NoError(t, err)
 
@@ -159,8 +164,10 @@ func TestCircularBuffer_Clear(t *testing.T) {
 
 	// Add some entries
 	var err error
+
 	_, err = cb.Write([]byte("entry1"))
 	require.NoError(t, err)
+
 	_, err = cb.Write([]byte("entry2"))
 	require.NoError(t, err)
 
@@ -191,6 +198,7 @@ func TestCircularBuffer_WriteTo(t *testing.T) {
 
 	// Test empty buffer
 	var buf bytes.Buffer
+
 	n, err := cb.WriteTo(&buf)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -205,12 +213,15 @@ func TestCircularBuffer_WriteTo(t *testing.T) {
 	// Add entries and test WriteTo
 	_, err = cb.Write([]byte("line1\n"))
 	require.NoError(t, err)
+
 	_, err = cb.Write([]byte("line2\n"))
 	require.NoError(t, err)
+
 	_, err = cb.Write([]byte("line3\n"))
 	require.NoError(t, err)
 
 	buf.Reset()
+
 	n, err = cb.WriteTo(&buf)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -227,10 +238,12 @@ func TestCircularBuffer_WriteTo(t *testing.T) {
 	// Test with circular overwrite
 	_, err = cb.Write([]byte("line4\n"))
 	require.NoError(t, err)
+
 	_, err = cb.Write([]byte("line5\n"))
 	require.NoError(t, err)
 
 	buf.Reset()
+
 	_, err = cb.WriteTo(&buf)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -256,6 +269,7 @@ func TestCircularBuffer_ConcurrentAccess(t *testing.T) {
 				_, err := cb.Write([]byte(strings.Repeat("x", 10)))
 				assert.NoError(t, err)
 			}
+
 			done <- true
 		}()
 	}
@@ -268,6 +282,7 @@ func TestCircularBuffer_ConcurrentAccess(t *testing.T) {
 				cb.Size()
 				cb.IsFull()
 			}
+
 			done <- true
 		}()
 	}

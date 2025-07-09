@@ -43,6 +43,7 @@ func getRevision() string {
 			} else {
 				rev = v.Value
 			}
+
 		case "vcs.modified":
 			if v.Value == "true" {
 				modified = true

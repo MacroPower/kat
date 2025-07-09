@@ -150,6 +150,7 @@ func createEnvironment() (*cel.Env, error) {
 
 					// Extract value using YAML path.
 					var value any
+
 					err = path.Read(strings.NewReader(string(content)), &value)
 					if err != nil {
 						// Return null if path doesn't exist or extraction fails.
@@ -201,18 +202,25 @@ func ConvertToCELValue(value any) ref.Val {
 	switch v := value.(type) {
 	case nil:
 		return types.NullValue
+
 	case bool:
 		return types.Bool(v)
+
 	case int:
 		return types.Int(v)
+
 	case int8:
 		return types.Int(int64(v))
+
 	case int16:
 		return types.Int(int64(v))
+
 	case int32:
 		return types.Int(int64(v))
+
 	case int64:
 		return types.Int(v)
+
 	case uint:
 		// Check for overflow when converting to int64.
 		if v > math.MaxInt64 {
@@ -220,12 +228,16 @@ func ConvertToCELValue(value any) ref.Val {
 		}
 
 		return types.Int(int64(v))
+
 	case uint8:
 		return types.Int(int64(v))
+
 	case uint16:
 		return types.Int(int64(v))
+
 	case uint32:
 		return types.Int(int64(v))
+
 	case uint64:
 		// Check for overflow when converting to int64.
 		if v > math.MaxInt64 {
@@ -233,12 +245,16 @@ func ConvertToCELValue(value any) ref.Val {
 		}
 
 		return types.Int(int64(v))
+
 	case float32:
 		return types.Double(float64(v))
+
 	case float64:
 		return types.Double(v)
+
 	case string:
 		return types.String(v)
+
 	case []any:
 		// Convert slice to CEL list.
 		celValues := make([]ref.Val, len(v))
@@ -247,6 +263,7 @@ func ConvertToCELValue(value any) ref.Val {
 		}
 
 		return types.NewDynamicList(types.DefaultTypeAdapter, celValues)
+
 	case map[any]any:
 		// Convert map to CEL map.
 		celMap := make(map[ref.Val]ref.Val)
@@ -257,6 +274,7 @@ func ConvertToCELValue(value any) ref.Val {
 		}
 
 		return types.NewDynamicMap(types.DefaultTypeAdapter, celMap)
+
 	case map[string]any:
 		// Convert string map to CEL map.
 		celMap := make(map[ref.Val]ref.Val)
@@ -267,6 +285,7 @@ func ConvertToCELValue(value any) ref.Val {
 		}
 
 		return types.NewDynamicMap(types.DefaultTypeAdapter, celMap)
+
 	default:
 		// For unsupported types, return null instead of erroring.
 		return types.NullValue

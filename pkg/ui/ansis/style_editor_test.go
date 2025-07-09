@@ -188,6 +188,7 @@ func TestStyleEditor_ApplyStyles(t *testing.T) {
 	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
 			got := editor.ApplyStyles(tc.text, tc.ranges)
 			assert.Equal(t, tc.want, got)
 		})
@@ -239,6 +240,7 @@ func TestStylesEqual(t *testing.T) {
 	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
 			got := ansis.StylesEqual(tc.styleA, tc.styleB)
 			assert.Equal(t, tc.want, got)
 		})

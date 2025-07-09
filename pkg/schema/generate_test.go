@@ -147,6 +147,7 @@ func TestGenerator_Generate(t *testing.T) {
 
 				// Validate that the result is valid JSON.
 				var schemaData map[string]any
+
 				err = json.Unmarshal(result, &schemaData)
 				require.NoError(t, err)
 
@@ -410,6 +411,7 @@ func TestGenerator_Generate_ComplexStructures(t *testing.T) {
 
 			// Validate that the result is valid JSON.
 			var schemaData map[string]any
+
 			err = json.Unmarshal(result, &schemaData)
 			require.NoError(t, err)
 
@@ -537,6 +539,7 @@ func TestGenerator_Generate_WithPackagePaths(t *testing.T) {
 
 				// Validate JSON structure.
 				var schemaData map[string]any
+
 				err = json.Unmarshal(result, &schemaData)
 				require.NoError(t, err)
 
@@ -606,6 +609,7 @@ func TestGenerator_EdgeCases(t *testing.T) {
 
 			// Validate JSON structure.
 			var schemaData map[string]any
+
 			err = json.Unmarshal(result, &schemaData)
 			require.NoError(t, err, "Generated schema should be valid JSON")
 		})
@@ -750,6 +754,7 @@ func TestGenerator_Generate_CommentExtractionPipeline(t *testing.T) {
 
 			// Validate that the result is valid JSON.
 			var schemaData map[string]any
+
 			err = json.Unmarshal(result, &schemaData)
 			require.NoError(t, err)
 

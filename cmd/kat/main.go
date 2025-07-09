@@ -73,6 +73,7 @@ func main() {
 	if err != nil {
 		cliCtx.Fatalf("failed to create log handler: %v", err)
 	}
+
 	slog.SetDefault(slog.New(logHandler))
 
 	cfg := config.NewConfig()
@@ -84,6 +85,7 @@ func main() {
 			slog.Error("write config", slog.Any("err", err))
 			cliCtx.Fatalf(cmdInitErr)
 		}
+
 		cliCtx.Exit(0)
 	}
 
@@ -118,6 +120,7 @@ func main() {
 			slog.Error("marshal config yaml", slog.Any("err", err))
 			cliCtx.Fatalf(cmdInitErr)
 		}
+
 		slog.Info("active configuration", slog.String("path", configPath))
 		fmt.Printf("%s", yamlConfig)
 		cliCtx.Exit(0)
@@ -144,6 +147,7 @@ func main() {
 	if err != nil {
 		cliCtx.Fatalf("failed to create log handler: %v", err)
 	}
+
 	slog.SetDefault(slog.New(logHandler))
 
 	err = runUI(cfg.UI, cr)
@@ -162,6 +166,7 @@ func flushLogs(w io.Writer, buf *log.CircularBuffer) {
 		slog.Int("max", buf.Capacity()),
 		slog.Bool("truncated", buf.IsFull()),
 	)
+
 	_, err := buf.WriteTo(w)
 	if err != nil {
 		panic(err)
@@ -173,13 +178,16 @@ func getProfile(cfg *config.Config, cmd string, args []string) (*profile.Profile
 	if !ok {
 		// If the command is not a profile, create a new profile with the command.
 		slog.Debug("creating new profile", slog.String("name", cmd))
+
 		var err error
+
 		p, err = profile.New(cmd, profile.WithArgs(args...))
 		if err != nil {
 			return nil, fmt.Errorf("create profile: %w", err)
 		}
 	} else if len(args) > 0 {
 		slog.Debug("overwriting profile arguments", slog.String("name", cmd))
+
 		p.Command.Args = args
 	}
 
@@ -224,10 +232,12 @@ func parseArgs(cmdArgs []string) []string {
 	if len(cmdArgs) == 0 {
 		return []string{}
 	}
+
 	argIdx := 0
 	if cmdArgs[0] == "--" {
 		argIdx = 1
 	}
+
 	args := cmdArgs[argIdx:]
 
 	return args
@@ -260,11 +270,13 @@ func runUI(cfg *ui.Config, cr common.Commander) error {
 					// This prevents the status from flickering in the UI.
 					time.Sleep(*cfg.UI.MinimumDelay - time.Since(lastEventTime))
 				}
+
 				p.Send(e)
 
 			case command.EventCancel:
 				continue
 			}
+
 			lastEventTime = time.Now()
 		}
 	}()

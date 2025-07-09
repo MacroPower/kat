@@ -565,6 +565,7 @@ func TestOverlay_Place_MultiLineContent(t *testing.T) {
 
 		// Find overlay region by looking for styled content or whitespace where overlay should be.
 		overlayStartLine := -1
+
 		overlayEndLine := -1
 		for i, line := range lines {
 			// Look for foreground content or styled area (background color creates visible space).
@@ -572,6 +573,7 @@ func TestOverlay_Place_MultiLineContent(t *testing.T) {
 				if overlayStartLine == -1 {
 					overlayStartLine = i
 				}
+
 				overlayEndLine = i
 			}
 		}
@@ -582,6 +584,7 @@ func TestOverlay_Place_MultiLineContent(t *testing.T) {
 
 		// Verify background content appears before and after overlay.
 		backgroundBefore := false
+
 		backgroundAfter := false
 		for i, line := range lines {
 			if strings.Contains(line, "BG Line") {
@@ -608,6 +611,7 @@ func TestOverlay_Place_MultiLineContent(t *testing.T) {
 				break
 			}
 		}
+
 		assert.True(t, overlayAreaFound, "overlay area should be visible")
 	})
 
@@ -646,6 +650,7 @@ func TestOverlay_Place_MultiLineContent(t *testing.T) {
 				if strings.Contains(line, "FG Line 2") {
 					fgLine2Found = true
 				}
+
 			case strings.Contains(line, "BG Line"):
 				backgroundLinesFound++
 			}
@@ -730,6 +735,7 @@ func TestOverlay_Place_MultiLineContent(t *testing.T) {
 		// Find border region.
 		borderTopLine := -1
 		borderBottomLine := -1
+
 		contentLinesInBorder := 0
 		for i, line := range lines {
 			switch {
@@ -749,6 +755,7 @@ func TestOverlay_Place_MultiLineContent(t *testing.T) {
 
 		// The long content should be wrapped into multiple lines within the border.
 		overlayHeight := borderBottomLine - borderTopLine - 1 // Exclude top and bottom border lines
+
 		assert.Greater(t, contentLinesInBorder, 1, "long content should be wrapped into multiple lines")
 		assert.LessOrEqual(t, contentLinesInBorder, overlayHeight, "content lines should fit within border")
 
@@ -761,6 +768,7 @@ func TestOverlay_Place_MultiLineContent(t *testing.T) {
 				break
 			}
 		}
+
 		assert.True(t, backgroundVisible, "background should be visible outside overlay region")
 	})
 
@@ -826,6 +834,7 @@ func TestOverlay_Place_MultiLineContent(t *testing.T) {
 				break
 			}
 		}
+
 		assert.True(t, backgroundVisible, "background should be visible outside overlay")
 	})
 

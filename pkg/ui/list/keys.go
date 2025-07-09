@@ -100,6 +100,7 @@ func (h *KeyHandler) HandleDocumentBrowsing(m ListModel, msg tea.KeyMsg) (ListMo
 		if len(m.sections) == 0 || m.FilterState == Filtering {
 			return m, nil
 		}
+
 		newPaginatorModel, cmd := m.paginator().Update(msg)
 		m.setPaginator(newPaginatorModel)
 		m.paginator().PrevPage()
@@ -111,6 +112,7 @@ func (h *KeyHandler) HandleDocumentBrowsing(m ListModel, msg tea.KeyMsg) (ListMo
 		if len(m.sections) == 0 || m.FilterState == Filtering {
 			return m, nil
 		}
+
 		newPaginatorModel, cmd := m.paginator().Update(msg)
 		m.setPaginator(newPaginatorModel)
 		m.paginator().NextPage()
@@ -155,6 +157,7 @@ func (h *KeyHandler) HandleFilteringMode(m ListModel, msg tea.Msg) (ListModel, t
 
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		var cmd tea.Cmd
+
 		m, cmd = h.handleFilterKeys(m, keyMsg.String())
 		if cmd != nil {
 			cmds = append(cmds, cmd)
@@ -196,6 +199,7 @@ func (h *KeyHandler) handleFilterKeys(m ListModel, key string) (ListModel, tea.C
 		// When there's only one filtered yaml left we can just "open" it directly.
 		if len(visibleYAMLs) == 1 {
 			m.ResetFiltering()
+
 			cmd := m.openYAML(visibleYAMLs[0])
 
 			return m, cmd
@@ -208,9 +212,11 @@ func (h *KeyHandler) handleFilterKeys(m ListModel, key string) (ListModel, tea.C
 				paginator: newListPaginator(h.theme),
 			})
 		}
+
 		m.sectionIndex = len(m.sections) - 1
 
 		m.filterInput.Blur()
+
 		m.FilterState = FilterApplied
 		if m.filterInput.Value() == "" {
 			m.ResetFiltering()
@@ -228,6 +234,7 @@ func (h *KeyHandler) updateFilterInput(m ListModel, msg tea.Msg) (ListModel, tea
 	currentFilterVal := m.filterInput.Value()
 	newFilterVal := newFilterInputModel.Value()
 	m.filterInput = newFilterInputModel
+
 	cmds = append(cmds, inputCmd)
 
 	// If the filtering input has changed, request updated filtering.

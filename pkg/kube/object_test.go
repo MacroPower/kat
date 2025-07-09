@@ -61,6 +61,7 @@ func TestObject_GetAPIVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			result := tt.object.GetAPIVersion()
 			assert.Equal(t, tt.expected, result)
 		})
@@ -120,6 +121,7 @@ func TestObject_GetGroup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			result := tt.object.GetGroup()
 			assert.Equal(t, tt.expected, result)
 		})
@@ -179,6 +181,7 @@ func TestObject_GetKind(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			result := tt.object.GetKind()
 			assert.Equal(t, tt.expected, result)
 		})
@@ -241,6 +244,7 @@ func TestObject_GetGroupKind(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			result := tt.object.GetGroupKind()
 			assert.Equal(t, tt.expected, result)
 		})
@@ -328,6 +332,7 @@ func TestObject_GetNamespace(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			result := tt.object.GetNamespace()
 			assert.Equal(t, tt.expected, result)
 		})
@@ -412,6 +417,7 @@ func TestObject_GetName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			result := tt.object.GetName()
 			assert.Equal(t, tt.expected, result)
 		})
@@ -482,6 +488,7 @@ func TestObject_GetNamespacedName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			result := tt.object.GetNamespacedName()
 			assert.Equal(t, tt.expected, result)
 		})
@@ -671,6 +678,7 @@ func TestObjectEqual(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			result := kube.ObjectEqual(&tt.objectA, &tt.objectB)
 			assert.Equal(t, tt.expected, result)
 		})

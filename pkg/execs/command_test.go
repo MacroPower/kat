@@ -482,6 +482,7 @@ func TestCommand_Build_EssentialVars(t *testing.T) {
 				break
 			}
 		}
+
 		assert.True(t, found, "Essential variable %s should be present", essential)
 	}
 

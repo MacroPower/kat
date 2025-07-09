@@ -111,6 +111,7 @@ func (o *Overlay) renderOverlay(bg, fg string) string {
 
 	// Pre-allocate builder with estimated capacity to reduce allocations.
 	estimatedSize := len(bg) + len(fg) + (bgHeight * 10)
+
 	var b strings.Builder
 	b.Grow(estimatedSize)
 
@@ -159,6 +160,7 @@ func (o *Overlay) renderOverlappingLine(b *strings.Builder, bgLine, fgLine strin
 
 	// Render the foreground content.
 	b.WriteString(fgLine)
+
 	pos += fgLineWidth
 
 	// Render right background portion if there's remaining content.

@@ -80,13 +80,16 @@ func createStyleMap(sortedRanges []StyleRange, textLength int) map[int]lipgloss.
 // It groups consecutive characters with the same style to reduce output size.
 func rebuildStyledTextWithRanges(styledText, plainText string, styleMap map[int]lipgloss.Style) string {
 	var result strings.Builder
+
 	plainRunes := []rune(plainText)
 	styledRunes := []rune(styledText)
 
 	plainIdx := 0
 	styledIdx := 0
 	inEscape := false
+
 	var escapeBuffer strings.Builder
+
 	currentStyle := ""
 
 	for styledIdx < len(styledRunes) {
@@ -94,9 +97,12 @@ func rebuildStyledTextWithRanges(styledText, plainText string, styleMap map[int]
 		switch {
 		case r == '\x1b':
 			inEscape = true
+
 			escapeBuffer.Reset()
 			escapeBuffer.WriteRune(r)
+
 			styledIdx++
+
 		case inEscape:
 			escapeBuffer.WriteRune(r)
 			if r == 'm' {
@@ -111,7 +117,9 @@ func rebuildStyledTextWithRanges(styledText, plainText string, styleMap map[int]
 					currentStyle = ""
 				}
 			}
+
 			styledIdx++
+
 		default:
 			// This is a regular character.
 			if style, hasStyle := styleMap[plainIdx]; hasStyle && plainIdx < len(plainRunes) {
@@ -125,6 +133,7 @@ func rebuildStyledTextWithRanges(styledText, plainText string, styleMap map[int]
 					if !hasNext || !StylesEqual(style, nextStyle) {
 						break
 					}
+
 					groupEnd++
 				}
 
@@ -157,6 +166,7 @@ func rebuildStyledTextWithRanges(styledText, plainText string, styleMap map[int]
 			} else {
 				// Normal character - no additional styling.
 				result.WriteRune(r)
+
 				plainIdx++
 				styledIdx++
 			}

@@ -145,6 +145,7 @@ func Register(name string, entries chroma.StyleEntries) error {
 	if err != nil {
 		return fmt.Errorf("create chroma style: %w", err)
 	}
+
 	styles.Register(customTheme)
 
 	return nil

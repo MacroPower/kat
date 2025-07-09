@@ -353,6 +353,7 @@ func TestChromaRenderer_MatchPositioning(t *testing.T) {
 
 	// Test specific match positioning.
 	yaml := "text: hello world"
+
 	renderer.SetSearchTerm("o")
 
 	_, err := renderer.RenderContent(yaml, 80)
@@ -387,6 +388,7 @@ func TestChromaRenderer_ConsecutiveMatches(t *testing.T) {
 
 	// Test individual character matching.
 	yaml := "hello"
+
 	renderer.SetSearchTerm("l")
 
 	_, err := renderer.RenderContent(yaml, 80)
@@ -419,6 +421,7 @@ func TestChromaRenderer_MultiLineSearch(t *testing.T) {
 	yaml := `line1: test
 line2: test
 line3: other`
+
 	renderer.SetSearchTerm("test")
 
 	_, err := renderer.RenderContent(yaml, 80)
@@ -441,6 +444,7 @@ func TestChromaRenderer_ANSIHandling(t *testing.T) {
 	renderer.SetFormatter("terminal16m")
 
 	text := "key: value"
+
 	renderer.SetSearchTerm("value")
 
 	result, err := renderer.RenderContent(text, 80)
@@ -570,6 +574,7 @@ func TestChromaRenderer(t *testing.T) {
 
 	// Test case that reproduces the bug: searching for "o" in "text: hello world"
 	yaml := "text: hello world"
+
 	renderer.SetSearchTerm("o")
 
 	result, err := renderer.RenderContent(yaml, 80)
@@ -581,6 +586,7 @@ func TestChromaRenderer(t *testing.T) {
 	// Let's also test the matches
 	matches := renderer.GetMatches()
 	t.Logf("Found %d matches", len(matches))
+
 	for i, match := range matches {
 		t.Logf("Match %d: Line=%d, Start=%d, End=%d, Length=%d",
 			i, match.Line, match.Start, match.End, match.Length)
@@ -822,6 +828,7 @@ message: "This is a quoted string with special chars: !@#$%"
 
 			// Test with search highlighting as well.
 			renderer.SetSearchTerm("test")
+
 			resultWithSearch, err := renderer.RenderContent(tc.yaml, 80)
 			require.NoError(t, err, tc.description)
 			assert.NotEmpty(t, resultWithSearch, tc.description)
@@ -838,6 +845,7 @@ func TestChromaRenderer_SelectedMatchHighlighting(t *testing.T) {
 	renderer.SetFormatter("terminal16m")
 
 	yaml := "name: test value test"
+
 	renderer.SetSearchTerm("test")
 
 	_, err := renderer.RenderContent(yaml, 80)
@@ -855,11 +863,13 @@ func TestChromaRenderer_SelectedMatchHighlighting(t *testing.T) {
 
 	// Now select the first match (index 0).
 	renderer.SetCurrentSelectedMatch(0)
+
 	result1, err := renderer.RenderContent(yaml, 80)
 	require.NoError(t, err)
 
 	// Select the second match (index 1).
 	renderer.SetCurrentSelectedMatch(1)
+
 	result2, err := renderer.RenderContent(yaml, 80)
 	require.NoError(t, err)
 
@@ -881,6 +891,7 @@ func TestChromaRenderer_SelectedMatchHighlighting(t *testing.T) {
 
 	// Test invalid selection index.
 	renderer.SetCurrentSelectedMatch(999)
+
 	resultInvalid, err := renderer.RenderContent(yaml, 80)
 	require.NoError(t, err)
 	assert.Equal(t, resultNoSelection, resultInvalid, "Invalid selection should behave like no selection")
@@ -895,6 +906,7 @@ func TestChromaRenderer_InitialSearchHighlighting(t *testing.T) {
 	renderer.SetFormatter("terminal16m")
 
 	txt := "name: test"
+
 	renderer.SetSearchTerm("test")
 
 	// Render without selecting any specific match.

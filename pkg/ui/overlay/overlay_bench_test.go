@@ -27,9 +27,11 @@ var (
 func BenchmarkOverlay_Place_Small(b *testing.B) {
 	o := overlay.New(theme.Default)
 	o.SetSize(80, 24)
+
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 
 	b.ResetTimer()
+
 	for range b.N {
 		_ = o.Place(smallBG, smallFG, 0.5, style)
 	}
@@ -38,9 +40,11 @@ func BenchmarkOverlay_Place_Small(b *testing.B) {
 func BenchmarkOverlay_Place_Medium(b *testing.B) {
 	o := overlay.New(theme.Default)
 	o.SetSize(120, 40)
+
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(1)
 
 	b.ResetTimer()
+
 	for range b.N {
 		_ = o.Place(mediumBG, mediumFG, 0.6, style)
 	}
@@ -49,9 +53,11 @@ func BenchmarkOverlay_Place_Medium(b *testing.B) {
 func BenchmarkOverlay_Place_Large(b *testing.B) {
 	o := overlay.New(theme.Default)
 	o.SetSize(200, 80)
+
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(2)
 
 	b.ResetTimer()
+
 	for range b.N {
 		_ = o.Place(largeBG, largeFG, 0.7, style)
 	}
@@ -60,12 +66,14 @@ func BenchmarkOverlay_Place_Large(b *testing.B) {
 func BenchmarkOverlay_Place_TruncatedContent(b *testing.B) {
 	o := overlay.New(theme.Default)
 	o.SetSize(80, 10) // Small height to force truncation
+
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 
 	// Large foreground content that will be truncated
 	largeFGForTruncation := strings.Repeat("this line will be truncated\n", 50)
 
 	b.ResetTimer()
+
 	for range b.N {
 		_ = o.Place(mediumBG, largeFGForTruncation, 0.8, style)
 	}
@@ -74,6 +82,7 @@ func BenchmarkOverlay_Place_TruncatedContent(b *testing.B) {
 func BenchmarkOverlay_Place_WideContent(b *testing.B) {
 	o := overlay.New(theme.Default)
 	o.SetSize(300, 50)
+
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 
 	// Wide content to test horizontal performance
@@ -81,6 +90,7 @@ func BenchmarkOverlay_Place_WideContent(b *testing.B) {
 	wideFG := strings.Repeat(strings.Repeat("O", 100)+"\n", 20)
 
 	b.ResetTimer()
+
 	for range b.N {
 		_ = o.Place(wideBG, wideFG, 0.4, style)
 	}
@@ -89,9 +99,11 @@ func BenchmarkOverlay_Place_WideContent(b *testing.B) {
 func BenchmarkOverlay_Place_MinimalWidth(b *testing.B) {
 	o := overlay.New(theme.Default, overlay.WithMinWidth(32))
 	o.SetSize(80, 24)
+
 	style := lipgloss.NewStyle()
 
 	b.ResetTimer()
+
 	for range b.N {
 		_ = o.Place(smallBG, smallFG, 0.1, style) // Small fraction to test min width
 	}
@@ -101,10 +113,12 @@ func BenchmarkOverlay_Place_MinimalWidth(b *testing.B) {
 func BenchmarkOverlay_Place_Allocations(b *testing.B) {
 	o := overlay.New(theme.Default)
 	o.SetSize(120, 40)
+
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 
 	b.ReportAllocs()
 	b.ResetTimer()
+
 	for range b.N {
 		_ = o.Place(mediumBG, mediumFG, 0.5, style)
 	}
@@ -114,12 +128,14 @@ func BenchmarkOverlay_Place_Allocations(b *testing.B) {
 func BenchmarkOverlay_Place_Unicode(b *testing.B) {
 	o := overlay.New(theme.Default)
 	o.SetSize(100, 30)
+
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 
 	unicodeBG := strings.Repeat("背景内容 with 混合 content 🚀\n", 25)
 	unicodeFG := strings.Repeat("覆盖层内容 overlay 🎯\n", 15)
 
 	b.ResetTimer()
+
 	for range b.N {
 		_ = o.Place(unicodeBG, unicodeFG, 0.6, style)
 	}

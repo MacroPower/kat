@@ -52,11 +52,13 @@ func CreateHandler(w io.Writer, logLvl slog.Level, logFmt Format) slog.Handler {
 			AddSource: true,
 			Level:     logLvl,
 		})
+
 	case FormatLogfmt:
 		return slog.NewTextHandler(w, &slog.HandlerOptions{
 			AddSource: true,
 			Level:     logLvl,
 		})
+
 	case FormatText:
 		return newCharmLogHandler(w, logLvl)
 	}
