@@ -235,6 +235,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case GotResultMsg:
 		m.err = msg.Error
+		if msg.Error != nil {
+			if msg.Stderr != "" {
+				m.err = fmt.Errorf("%w\n\n%s", m.err, msg.Stderr)
+			}
+			if msg.Stdout != "" {
+				m.err = fmt.Errorf("%w\n\n%s", m.err, msg.Stdout)
+			}
+		}
+
 		m.result = msg.Stdout
 
 		var body string

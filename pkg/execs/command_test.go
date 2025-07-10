@@ -799,7 +799,6 @@ func TestCommand_Exec(t *testing.T) {
 			validate: func(t *testing.T, result *execs.Result, err error) {
 				t.Helper()
 				require.Error(t, err)
-				require.ErrorIs(t, err, execs.ErrCommandExecution)
 				require.ErrorIs(t, err, execs.ErrEmptyCommand)
 				assert.Nil(t, result)
 			},
@@ -1011,7 +1010,6 @@ func TestCommand_ExecWithStdin(t *testing.T) {
 			validate: func(t *testing.T, result *execs.Result, err error) {
 				t.Helper()
 				require.Error(t, err)
-				require.ErrorIs(t, err, execs.ErrCommandExecution)
 				require.ErrorIs(t, err, execs.ErrEmptyCommand)
 				assert.Nil(t, result)
 			},

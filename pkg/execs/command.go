@@ -14,7 +14,7 @@ import (
 
 var (
 	// ErrCommandExecution is returned when command execution fails.
-	ErrCommandExecution = errors.New("command execution")
+	ErrCommandExecution = errors.New("run")
 
 	// ErrEmptyCommand is returned when a command is empty.
 	ErrEmptyCommand = errors.New("empty command")
@@ -155,7 +155,7 @@ func (e *Command) Exec(ctx context.Context, dir string) (*Result, error) {
 
 func (e *Command) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (*Result, error) {
 	if e.Command == "" {
-		return nil, fmt.Errorf("%w: %w", ErrCommandExecution, ErrEmptyCommand)
+		return nil, ErrEmptyCommand
 	}
 
 	// Get environment variables for command execution.

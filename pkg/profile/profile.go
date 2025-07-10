@@ -225,7 +225,7 @@ func (p *Profile) Exec(ctx context.Context, dir string) (*execs.Result, error) {
 
 	result, err := p.Command.Exec(ctx, dir)
 	if err != nil {
-		return nil, err //nolint:wrapcheck // Primary command does not need additional context.
+		return result, err //nolint:wrapcheck // Primary command does not need additional context.
 	}
 
 	// Execute postRender hooks, passing the main command's output as stdin.

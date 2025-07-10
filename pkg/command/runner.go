@@ -372,7 +372,7 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 
 		return co
 	} else if co.Error != nil {
-		co.Error = fmt.Errorf("%w: %w", ErrCommandExecution, co.Error)
+		co.Error = fmt.Errorf("%w: %s: %w", ErrCommandExecution, cmd, co.Error)
 		cr.broadcast(EventEnd(co))
 
 		return co

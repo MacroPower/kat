@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/macropower/kat/pkg/execs"
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/profile"
 )
@@ -38,7 +39,7 @@ func TestPlugin_Exec(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "command execution")
+		require.ErrorIs(t, err, execs.ErrCommandExecution)
 	})
 
 	t.Run("empty command", func(t *testing.T) {
