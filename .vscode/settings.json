@@ -1,10 +1,18 @@
 {
   "github.copilot.chat.codeGeneration.instructions": [
     {
-      "file": "go.instructions.md"
+      "file": ".github/instructions/go.instructions.md"
     },
     {
-      "file": "test.instructions.md"
+      "file": ".github/instructions/test.instructions.md"
     }
-  ]
+  ],
+  "gopls": { "ui.semanticTokens": true },
+  "go.lintTool": "golangci-lint-v2",
+  "go.lintFlags": ["--path-mode=abs", "--fast-only"],
+  "go.formatTool": "custom",
+  "go.alternateTools": {
+    "customFormatter": "golangci-lint-v2"
+  },
+  "go.formatFlags": ["fmt", "--stdin"]
 }
