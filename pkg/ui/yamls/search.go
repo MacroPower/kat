@@ -36,7 +36,6 @@ type MatchPosition struct {
 
 // SearchHighlighter handles search-specific highlighting via [*ansis.StyleEditor].
 type SearchHighlighter struct {
-	editor                 *ansis.StyleEditor
 	highlightStyle         lipgloss.Style
 	selectedHighlightStyle lipgloss.Style
 }
@@ -44,7 +43,6 @@ type SearchHighlighter struct {
 // NewSearchHighlighter creates a new [SearchHighlighter].
 func NewSearchHighlighter(highlightStyle, selectedHighlightStyle lipgloss.Style) *SearchHighlighter {
 	return &SearchHighlighter{
-		editor:                 ansis.NewStyleEditor(),
 		highlightStyle:         highlightStyle,
 		selectedHighlightStyle: selectedHighlightStyle,
 	}
@@ -62,7 +60,8 @@ func (sh *SearchHighlighter) ApplyHighlights(text string, matches []MatchPositio
 	result := []string{}
 	for i, line := range strings.Split(text, "\n") {
 		if ranges, exists := lineRanges[i]; exists {
-			result = append(result, sh.editor.ApplyStyles(line, ranges))
+			editor := ansis.NewStyleEditor(line)
+			result = append(result, editor.ApplyStyles(ranges))
 		} else {
 			result = append(result, line)
 		}

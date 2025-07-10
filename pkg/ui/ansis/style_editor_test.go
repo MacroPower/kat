@@ -14,7 +14,7 @@ import (
 func TestNewStyleEditor(t *testing.T) {
 	t.Parallel()
 
-	editor := ansis.NewStyleEditor()
+	editor := ansis.NewStyleEditor("hello world")
 	require.NotNil(t, editor)
 	assert.IsType(t, &ansis.StyleEditor{}, editor)
 }
@@ -24,7 +24,6 @@ func TestStyleEditor_ApplyStyles(t *testing.T) {
 
 	lipgloss.SetColorProfile(termenv.TrueColor)
 
-	editor := ansis.NewStyleEditor()
 	boldStyle := lipgloss.NewStyle().Bold(true)
 	italicStyle := lipgloss.NewStyle().Italic(true)
 	redStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("red"))
@@ -189,8 +188,46 @@ func TestStyleEditor_ApplyStyles(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			got := editor.ApplyStyles(tc.text, tc.ranges)
+			editor := ansis.NewStyleEditor(tc.text)
+			got := editor.ApplyStyles(tc.ranges)
 			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestStyleEditor_ApplyStyles_Panics(t *testing.T) {
+	t.Parallel()
+
+	boldStyle := lipgloss.NewStyle().Bold(true)
+
+	tcs := map[string]struct {
+		ranges []ansis.StyleRange
+	}{
+		"negative start": {
+			ranges: []ansis.StyleRange{
+				{Style: boldStyle, Start: -1, End: 5, Priority: 1},
+			},
+		},
+		"negative end": {
+			ranges: []ansis.StyleRange{
+				{Style: boldStyle, Start: 0, End: -1, Priority: 1},
+			},
+		},
+		"start greater than end": {
+			ranges: []ansis.StyleRange{
+				{Style: boldStyle, Start: 10, End: 5, Priority: 1},
+			},
+		},
+	}
+
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			editor := ansis.NewStyleEditor("hello world")
+			assert.Panics(t, func() {
+				editor.ApplyStyles(tc.ranges)
+			})
 		})
 	}
 }
