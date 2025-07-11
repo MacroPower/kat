@@ -19,7 +19,7 @@ func (o Object) GetAPIVersion() string {
 }
 
 // GetGroup returns the group of the object, which is the first part of the apiVersion.
-// If the group is not set, it returns an empty string.
+// If the group is not set, it assumes "core".
 func (o Object) GetGroup() string {
 	if apiVersion := o.GetAPIVersion(); apiVersion != "" {
 		parts := strings.Split(apiVersion, "/")
@@ -28,7 +28,7 @@ func (o Object) GetGroup() string {
 		}
 	}
 
-	return ""
+	return "core"
 }
 
 // GetKind returns the kind of the object.

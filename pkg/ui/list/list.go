@@ -18,10 +18,11 @@ import (
 )
 
 const (
-	listIndent                = 1
-	listViewTopPadding        = 1 // Padding at the top of the list view.
-	listViewBottomPadding     = 6 // Pagination and gaps, but not help.
-	listViewHorizontalPadding = 6
+	listIndent                    = 1
+	listViewTopPadding            = 1 // Padding at the top of the list view.
+	listViewBottomPadding         = 6 // Pagination and gaps, but not help.
+	listViewHorizontalPadding     = 6
+	compactExtraHorizontalPadding = 2 // Extra horizontal padding for compact mode.
 )
 
 type (
@@ -70,7 +71,7 @@ const (
 type ListModel struct {
 	cm           *common.CommonModel
 	helpRenderer *statusbar.HelpRenderer
-	docRenderer  *DocumentListRenderer
+	docRenderer  *DocumentList
 	keyHandler   *KeyHandler
 
 	// The master set of yaml documents we're working with.
@@ -163,7 +164,7 @@ func NewModel(c Config) ListModel {
 		filterInput:  si,
 		sections:     s,
 		helpRenderer: statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr),
-		docRenderer:  NewDocumentListRenderer(c.CommonModel.Theme, listIndent, c.Compact),
+		docRenderer:  NewDocumentList(c.CommonModel.Theme, listIndent, c.Compact),
 		keyHandler:   NewKeyHandler(kb, ckb, c.CommonModel.Theme),
 		compact:      c.Compact,
 	}
@@ -447,7 +448,20 @@ func (m *ListModel) enforcePaginationBounds() {
 }
 
 func (m ListModel) documentListView() string {
-	return m.docRenderer.RenderDocumentList(m.getVisibleYAMLs(), m)
+	docs := m.getVisibleYAMLs()
+
+	params := DocumentListConfig{
+		Documents:   docs,
+		Paginator:   m.paginator(),
+		Cursor:      m.cursor(),
+		Width:       m.cm.Width,
+		FilterState: m.FilterState,
+		SectionKey:  m.currentSection().key,
+		IsLoaded:    m.cm.Loaded,
+		FilterValue: m.filterInput.Value(),
+	}
+
+	return m.docRenderer.Render(params)
 }
 
 func (m ListModel) paginationView() string {
