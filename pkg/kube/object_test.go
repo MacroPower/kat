@@ -11,59 +11,52 @@ import (
 func TestObject_GetAPIVersion(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name     string
-		object   kube.Object
-		expected string
+	tcs := map[string]struct {
+		input kube.Object
+		want  string
 	}{
-		{
-			name: "valid apiVersion",
-			object: kube.Object{
+		"valid apiVersion": {
+			input: kube.Object{
 				"apiVersion": "apps/v1",
 			},
-			expected: "apps/v1",
+			want: "apps/v1",
 		},
-		{
-			name: "core v1 apiVersion",
-			object: kube.Object{
+		"core v1 apiVersion": {
+			input: kube.Object{
 				"apiVersion": "v1",
 			},
-			expected: "v1",
+			want: "v1",
 		},
-		{
-			name: "missing apiVersion",
-			object: kube.Object{
+		"missing apiVersion": {
+			input: kube.Object{
 				"kind": "Pod",
 			},
-			expected: "",
+			want: "",
 		},
-		{
-			name: "nil apiVersion",
-			object: kube.Object{
+		"nil apiVersion": {
+			input: kube.Object{
 				"apiVersion": nil,
 			},
-			expected: "",
+			want: "",
 		},
-		{
-			name: "non-string apiVersion",
-			object: kube.Object{
+		"non-string apiVersion": {
+			input: kube.Object{
 				"apiVersion": 123,
 			},
-			expected: "",
+			want: "",
 		},
-		{
-			name:     "empty object",
-			object:   kube.Object{},
-			expected: "",
+		"empty object": {
+			input: kube.Object{},
+			want:  "",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			result := tt.object.GetAPIVersion()
-			assert.Equal(t, tt.expected, result)
+			got := tc.input.GetAPIVersion()
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -124,59 +117,52 @@ func TestObject_GetGroup(t *testing.T) {
 func TestObject_GetKind(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name     string
-		object   kube.Object
-		expected string
+	tcs := map[string]struct {
+		input kube.Object
+		want  string
 	}{
-		{
-			name: "valid kind",
-			object: kube.Object{
+		"valid kind": {
+			input: kube.Object{
 				"kind": "Pod",
 			},
-			expected: "Pod",
+			want: "Pod",
 		},
-		{
-			name: "deployment kind",
-			object: kube.Object{
+		"deployment kind": {
+			input: kube.Object{
 				"kind": "Deployment",
 			},
-			expected: "Deployment",
+			want: "Deployment",
 		},
-		{
-			name: "missing kind",
-			object: kube.Object{
+		"missing kind": {
+			input: kube.Object{
 				"apiVersion": "v1",
 			},
-			expected: "<empty>",
+			want: "<empty>",
 		},
-		{
-			name: "nil kind",
-			object: kube.Object{
+		"nil kind": {
+			input: kube.Object{
 				"kind": nil,
 			},
-			expected: "<empty>",
+			want: "<empty>",
 		},
-		{
-			name: "non-string kind",
-			object: kube.Object{
+		"non-string kind": {
+			input: kube.Object{
 				"kind": 123,
 			},
-			expected: "<empty>",
+			want: "<empty>",
 		},
-		{
-			name:     "empty object",
-			object:   kube.Object{},
-			expected: "<empty>",
+		"empty object": {
+			input: kube.Object{},
+			want:  "<empty>",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			result := tt.object.GetKind()
-			assert.Equal(t, tt.expected, result)
+			got := tc.input.GetKind()
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -240,87 +226,78 @@ func TestObject_GetGroupKind(t *testing.T) {
 func TestObject_GetNamespace(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name     string
-		object   kube.Object
-		expected string
+	tcs := map[string]struct {
+		input kube.Object
+		want  string
 	}{
-		{
-			name: "valid namespace",
-			object: kube.Object{
+		"valid namespace": {
+			input: kube.Object{
 				"metadata": map[string]any{
 					"namespace": "default",
 					"name":      "test-pod",
 				},
 			},
-			expected: "default",
+			want: "default",
 		},
-		{
-			name: "custom namespace",
-			object: kube.Object{
+		"custom namespace": {
+			input: kube.Object{
 				"metadata": map[string]any{
 					"namespace": "kube-system",
 					"name":      "test-pod",
 				},
 			},
-			expected: "kube-system",
+			want: "kube-system",
 		},
-		{
-			name: "missing namespace",
-			object: kube.Object{
+		"missing namespace": {
+			input: kube.Object{
 				"metadata": map[string]any{
 					"name": "test-pod",
 				},
 			},
-			expected: "",
+			want: "",
 		},
-		{
-			name: "missing metadata",
-			object: kube.Object{
+		"missing metadata": {
+			input: kube.Object{
 				"kind": "Pod",
 			},
-			expected: "",
+			want: "",
 		},
-		{
-			name: "nil namespace",
-			object: kube.Object{
+		"nil namespace": {
+			input: kube.Object{
 				"metadata": map[string]any{
 					"namespace": nil,
 					"name":      "test-pod",
 				},
 			},
-			expected: "",
+			want: "",
 		},
-		{
-			name: "non-string namespace",
-			object: kube.Object{
+		"non-string namespace": {
+			input: kube.Object{
 				"metadata": map[string]any{
 					"namespace": 123,
 					"name":      "test-pod",
 				},
 			},
-			expected: "",
+			want: "",
 		},
-		{
-			name: "non-map metadata",
-			object: kube.Object{
+		"non-map metadata": {
+			input: kube.Object{
 				"metadata": "invalid",
 			},
-			expected: "",
+			want: "",
 		},
-		{
-			name:     "empty object",
-			object:   kube.Object{},
-			expected: "",
+		"empty object": {
+			input: kube.Object{},
+			want:  "",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			result := tt.object.GetNamespace()
-			assert.Equal(t, tt.expected, result)
+			got := tc.input.GetNamespace()
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -328,84 +305,75 @@ func TestObject_GetNamespace(t *testing.T) {
 func TestObject_GetName(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name     string
-		object   kube.Object
-		expected string
+	tcs := map[string]struct {
+		input kube.Object
+		want  string
 	}{
-		{
-			name: "valid name",
-			object: kube.Object{
+		"valid name": {
+			input: kube.Object{
 				"metadata": map[string]any{
 					"name":      "test-pod",
 					"namespace": "default",
 				},
 			},
-			expected: "test-pod",
+			want: "test-pod",
 		},
-		{
-			name: "deployment name",
-			object: kube.Object{
+		"deployment name": {
+			input: kube.Object{
 				"metadata": map[string]any{
 					"name": "nginx-deployment",
 				},
 			},
-			expected: "nginx-deployment",
+			want: "nginx-deployment",
 		},
-		{
-			name: "missing name",
-			object: kube.Object{
+		"missing name": {
+			input: kube.Object{
 				"metadata": map[string]any{
 					"namespace": "default",
 				},
 			},
-			expected: "<empty>",
+			want: "<empty>",
 		},
-		{
-			name: "missing metadata",
-			object: kube.Object{
+		"missing metadata": {
+			input: kube.Object{
 				"kind": "Pod",
 			},
-			expected: "<empty>",
+			want: "<empty>",
 		},
-		{
-			name: "nil name",
-			object: kube.Object{
+		"nil name": {
+			input: kube.Object{
 				"metadata": map[string]any{
 					"name": nil,
 				},
 			},
-			expected: "<empty>",
+			want: "<empty>",
 		},
-		{
-			name: "non-string name",
-			object: kube.Object{
+		"non-string name": {
+			input: kube.Object{
 				"metadata": map[string]any{
 					"name": 123,
 				},
 			},
-			expected: "<empty>",
+			want: "<empty>",
 		},
-		{
-			name: "non-map metadata",
-			object: kube.Object{
+		"non-map metadata": {
+			input: kube.Object{
 				"metadata": "invalid",
 			},
-			expected: "<empty>",
+			want: "<empty>",
 		},
-		{
-			name:     "empty object",
-			object:   kube.Object{},
-			expected: "<empty>",
+		"empty object": {
+			input: kube.Object{},
+			want:  "<empty>",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			result := tt.object.GetName()
-			assert.Equal(t, tt.expected, result)
+			got := tc.input.GetName()
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -413,70 +381,63 @@ func TestObject_GetName(t *testing.T) {
 func TestObject_GetNamespacedName(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name     string
-		object   kube.Object
-		expected string
+	tcs := map[string]struct {
+		input kube.Object
+		want  string
 	}{
-		{
-			name: "namespaced resource",
-			object: kube.Object{
+		"namespaced resource": {
+			input: kube.Object{
 				"metadata": map[string]any{
 					"name":      "test-pod",
 					"namespace": "default",
 				},
 			},
-			expected: "default/test-pod",
+			want: "default/test-pod",
 		},
-		{
-			name: "cluster-scoped resource",
-			object: kube.Object{
+		"cluster-scoped resource": {
+			input: kube.Object{
 				"metadata": map[string]any{
 					"name": "test-node",
 				},
 			},
-			expected: "test-node",
+			want: "test-node",
 		},
-		{
-			name: "empty namespace",
-			object: kube.Object{
+		"empty namespace": {
+			input: kube.Object{
 				"metadata": map[string]any{
 					"name":      "test-pod",
 					"namespace": "",
 				},
 			},
-			expected: "test-pod",
+			want: "test-pod",
 		},
-		{
-			name: "custom namespace",
-			object: kube.Object{
+		"custom namespace": {
+			input: kube.Object{
 				"metadata": map[string]any{
 					"name":      "nginx-deployment",
 					"namespace": "kube-system",
 				},
 			},
-			expected: "kube-system/nginx-deployment",
+			want: "kube-system/nginx-deployment",
 		},
-		{
-			name: "missing metadata",
-			object: kube.Object{
+		"missing metadata": {
+			input: kube.Object{
 				"kind": "Pod",
 			},
-			expected: "<empty>",
+			want: "<empty>",
 		},
-		{
-			name:     "empty object",
-			object:   kube.Object{},
-			expected: "<empty>",
+		"empty object": {
+			input: kube.Object{},
+			want:  "<empty>",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			result := tt.object.GetNamespacedName()
-			assert.Equal(t, tt.expected, result)
+			got := tc.input.GetNamespacedName()
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -484,15 +445,13 @@ func TestObject_GetNamespacedName(t *testing.T) {
 func TestObjectEqual(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		objectA  kube.Object
-		objectB  kube.Object
-		name     string
-		expected bool
+	tcs := map[string]struct {
+		inputA kube.Object
+		inputB kube.Object
+		want   bool
 	}{
-		{
-			name: "identical objects",
-			objectA: kube.Object{
+		"identical objects": {
+			inputA: kube.Object{
 				"apiVersion": "v1",
 				"kind":       "Pod",
 				"metadata": map[string]any{
@@ -500,7 +459,7 @@ func TestObjectEqual(t *testing.T) {
 					"namespace": "default",
 				},
 			},
-			objectB: kube.Object{
+			inputB: kube.Object{
 				"apiVersion": "v1",
 				"kind":       "Pod",
 				"metadata": map[string]any{
@@ -508,11 +467,10 @@ func TestObjectEqual(t *testing.T) {
 					"namespace": "default",
 				},
 			},
-			expected: true,
+			want: true,
 		},
-		{
-			name: "different apiVersion",
-			objectA: kube.Object{
+		"different apiVersion": {
+			inputA: kube.Object{
 				"apiVersion": "v1",
 				"kind":       "Pod",
 				"metadata": map[string]any{
@@ -520,7 +478,7 @@ func TestObjectEqual(t *testing.T) {
 					"namespace": "default",
 				},
 			},
-			objectB: kube.Object{
+			inputB: kube.Object{
 				"apiVersion": "apps/v1",
 				"kind":       "Pod",
 				"metadata": map[string]any{
@@ -528,11 +486,10 @@ func TestObjectEqual(t *testing.T) {
 					"namespace": "default",
 				},
 			},
-			expected: false,
+			want: false,
 		},
-		{
-			name: "different kind",
-			objectA: kube.Object{
+		"different kind": {
+			inputA: kube.Object{
 				"apiVersion": "v1",
 				"kind":       "Pod",
 				"metadata": map[string]any{
@@ -540,7 +497,7 @@ func TestObjectEqual(t *testing.T) {
 					"namespace": "default",
 				},
 			},
-			objectB: kube.Object{
+			inputB: kube.Object{
 				"apiVersion": "v1",
 				"kind":       "Service",
 				"metadata": map[string]any{
@@ -548,11 +505,10 @@ func TestObjectEqual(t *testing.T) {
 					"namespace": "default",
 				},
 			},
-			expected: false,
+			want: false,
 		},
-		{
-			name: "different namespace",
-			objectA: kube.Object{
+		"different namespace": {
+			inputA: kube.Object{
 				"apiVersion": "v1",
 				"kind":       "Pod",
 				"metadata": map[string]any{
@@ -560,7 +516,7 @@ func TestObjectEqual(t *testing.T) {
 					"namespace": "default",
 				},
 			},
-			objectB: kube.Object{
+			inputB: kube.Object{
 				"apiVersion": "v1",
 				"kind":       "Pod",
 				"metadata": map[string]any{
@@ -568,11 +524,10 @@ func TestObjectEqual(t *testing.T) {
 					"namespace": "kube-system",
 				},
 			},
-			expected: false,
+			want: false,
 		},
-		{
-			name: "different name",
-			objectA: kube.Object{
+		"different name": {
+			inputA: kube.Object{
 				"apiVersion": "v1",
 				"kind":       "Pod",
 				"metadata": map[string]any{
@@ -580,7 +535,7 @@ func TestObjectEqual(t *testing.T) {
 					"namespace": "default",
 				},
 			},
-			objectB: kube.Object{
+			inputB: kube.Object{
 				"apiVersion": "v1",
 				"kind":       "Pod",
 				"metadata": map[string]any{
@@ -588,29 +543,27 @@ func TestObjectEqual(t *testing.T) {
 					"namespace": "default",
 				},
 			},
-			expected: false,
+			want: false,
 		},
-		{
-			name: "cluster-scoped resources",
-			objectA: kube.Object{
+		"cluster-scoped resources": {
+			inputA: kube.Object{
 				"apiVersion": "v1",
 				"kind":       "Node",
 				"metadata": map[string]any{
 					"name": "node-1",
 				},
 			},
-			objectB: kube.Object{
+			inputB: kube.Object{
 				"apiVersion": "v1",
 				"kind":       "Node",
 				"metadata": map[string]any{
 					"name": "node-1",
 				},
 			},
-			expected: true,
+			want: true,
 		},
-		{
-			name: "one namespaced one cluster-scoped",
-			objectA: kube.Object{
+		"one namespaced one cluster-scoped": {
+			inputA: kube.Object{
 				"apiVersion": "v1",
 				"kind":       "Pod",
 				"metadata": map[string]any{
@@ -618,18 +571,17 @@ func TestObjectEqual(t *testing.T) {
 					"namespace": "default",
 				},
 			},
-			objectB: kube.Object{
+			inputB: kube.Object{
 				"apiVersion": "v1",
 				"kind":       "Pod",
 				"metadata": map[string]any{
 					"name": "test-pod",
 				},
 			},
-			expected: false,
+			want: false,
 		},
-		{
-			name: "objects with additional fields",
-			objectA: kube.Object{
+		"objects with additional fields": {
+			inputA: kube.Object{
 				"apiVersion": "v1",
 				"kind":       "Pod",
 				"metadata": map[string]any{
@@ -643,7 +595,7 @@ func TestObjectEqual(t *testing.T) {
 					"containers": []any{},
 				},
 			},
-			objectB: kube.Object{
+			inputB: kube.Object{
 				"apiVersion": "v1",
 				"kind":       "Pod",
 				"metadata": map[string]any{
@@ -657,16 +609,16 @@ func TestObjectEqual(t *testing.T) {
 					"phase": "Running",
 				},
 			},
-			expected: true,
+			want: true,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			result := kube.ObjectEqual(&tt.objectA, &tt.objectB)
-			assert.Equal(t, tt.expected, result)
+			got := kube.ObjectEqual(&tc.inputA, &tc.inputB)
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
