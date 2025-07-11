@@ -71,59 +71,52 @@ func TestObject_GetAPIVersion(t *testing.T) {
 func TestObject_GetGroup(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name     string
-		object   kube.Object
-		expected string
+	tcs := map[string]struct {
+		input kube.Object
+		want  string
 	}{
-		{
-			name: "apps group",
-			object: kube.Object{
+		"apps group": {
+			input: kube.Object{
 				"apiVersion": "apps/v1",
 			},
-			expected: "apps",
+			want: "apps",
 		},
-		{
-			name: "networking group",
-			object: kube.Object{
+		"networking group": {
+			input: kube.Object{
 				"apiVersion": "networking.k8s.io/v1",
 			},
-			expected: "networking.k8s.io",
+			want: "networking.k8s.io",
 		},
-		{
-			name: "core group (v1)",
-			object: kube.Object{
+		"core group (v1)": {
+			input: kube.Object{
 				"apiVersion": "v1",
 			},
-			expected: "",
+			want: "core",
 		},
-		{
-			name: "custom group with multiple slashes",
-			object: kube.Object{
+		"custom group with multiple slashes": {
+			input: kube.Object{
 				"apiVersion": "custom.io/v1beta1/extra",
 			},
-			expected: "custom.io",
+			want: "custom.io",
 		},
-		{
-			name: "missing apiVersion",
-			object: kube.Object{
+		"missing apiVersion": {
+			input: kube.Object{
 				"kind": "Pod",
 			},
-			expected: "",
+			want: "core",
 		},
-		{
-			name:     "empty object",
-			object:   kube.Object{},
-			expected: "",
+		"empty object": {
+			input: kube.Object{},
+			want:  "core",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			result := tt.object.GetGroup()
-			assert.Equal(t, tt.expected, result)
+			got := tc.input.GetGroup()
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -191,62 +184,55 @@ func TestObject_GetKind(t *testing.T) {
 func TestObject_GetGroupKind(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name     string
-		object   kube.Object
-		expected string
+	tcs := map[string]struct {
+		input kube.Object
+		want  string
 	}{
-		{
-			name: "apps group with deployment",
-			object: kube.Object{
+		"apps group with deployment": {
+			input: kube.Object{
 				"apiVersion": "apps/v1",
 				"kind":       "Deployment",
 			},
-			expected: "apps/Deployment",
+			want: "apps/Deployment",
 		},
-		{
-			name: "core group with pod",
-			object: kube.Object{
+		"core group with pod": {
+			input: kube.Object{
 				"apiVersion": "v1",
 				"kind":       "Pod",
 			},
-			expected: "Pod",
+			want: "core/Pod",
 		},
-		{
-			name: "networking group with ingress",
-			object: kube.Object{
+		"networking group with ingress": {
+			input: kube.Object{
 				"apiVersion": "networking.k8s.io/v1",
 				"kind":       "Ingress",
 			},
-			expected: "networking.k8s.io/Ingress",
+			want: "networking.k8s.io/Ingress",
 		},
-		{
-			name: "missing group and kind",
-			object: kube.Object{
+		"missing group and kind": {
+			input: kube.Object{
 				"metadata": map[string]any{"name": "test"},
 			},
-			expected: "<empty>",
+			want: "core/<empty>",
 		},
-		{
-			name: "missing kind with group",
-			object: kube.Object{
+		"missing kind with group": {
+			input: kube.Object{
 				"apiVersion": "apps/v1",
 			},
-			expected: "apps/<empty>",
+			want: "apps/<empty>",
 		},
-		{
-			name:     "empty object",
-			object:   kube.Object{},
-			expected: "<empty>",
+		"empty object": {
+			input: kube.Object{},
+			want:  "core/<empty>",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			result := tt.object.GetGroupKind()
-			assert.Equal(t, tt.expected, result)
+			got := tc.input.GetGroupKind()
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
