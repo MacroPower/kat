@@ -126,22 +126,37 @@ func NewModel(c Config) ListModel {
 		*ckb.Down,
 		*ckb.Left,
 		*ckb.Right,
-		*kb.PageUp,
-		*kb.PageDown,
+		*ckb.Next,
+		*ckb.Prev,
 	)
 	kbr.AddColumn(
-		*ckb.Reload,
 		*kb.Open,
 		*kb.Find,
+		*kb.PageUp,
+		*kb.PageDown,
 		*kb.Home,
 		*kb.End,
 	)
 	kbr.AddColumn(
+		*ckb.Reload,
 		*ckb.Escape,
 		*ckb.Error,
 		*ckb.Help,
 		*ckb.Quit,
+		*ckb.Suspend,
 	)
+
+	// Add plugin keybinds column if plugins are available.
+	profile := c.CommonModel.Cmd.GetCurrentProfile()
+	if profile != nil {
+		pluginBinds := profile.GetPluginKeyBinds()
+		// Truncate to maximum of 6 plugin keybinds (shown in help).
+		if len(pluginBinds) > 6 {
+			pluginBinds = pluginBinds[:6]
+		}
+
+		kbr.AddColumn(pluginBinds...)
+	}
 
 	m := ListModel{
 		cm:           c.CommonModel,

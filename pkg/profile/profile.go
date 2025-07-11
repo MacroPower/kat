@@ -271,8 +271,8 @@ func (p *Profile) GetPluginNameByKey(keyCode string) string {
 	return ""
 }
 
-func (p *Profile) GetPluginKeyBinds() []*keys.KeyBind {
-	binds := []*keys.KeyBind{}
+func (p *Profile) GetPluginKeyBinds() []keys.KeyBind {
+	binds := []keys.KeyBind{}
 
 	if p.Plugins == nil {
 		return binds
@@ -284,7 +284,7 @@ func (p *Profile) GetPluginKeyBinds() []*keys.KeyBind {
 			desc = fmt.Sprintf("plugin %q", name)
 		}
 
-		binds = append(binds, &keys.KeyBind{
+		binds = append(binds, keys.KeyBind{
 			Description: desc,
 			Keys:        plugin.Keys,
 		})
