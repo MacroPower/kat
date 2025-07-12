@@ -96,7 +96,6 @@ Sleep 500ms
 Type "/"
 Sleep 500ms
 Type "containers" Sleep 500ms Enter
-Type "n"
 Sleep 500ms
 
 Ctrl+B
