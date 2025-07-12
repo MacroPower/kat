@@ -12,12 +12,16 @@
   <a href="https://github.com/macropower/kat/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/macropower/kat"></a>
 </p>
 
-<p align="center">
-  <code>kat</code> provides a <b>terminal UI</b> for rendering, validating, and displaying <b>local Kubernetes manifests</b>. It eliminates the frustrating cycle of manually running commands, scrolling through endless output, and constantly losing context when working with Helm charts, Kustomize overlays, and other manifest generators.
-</p>
+`kat` automatically invokes manifest generators like `helm` or `kustomize`, and provides a persistent, navigable view of rendered resources, with support for live reloading, integrated validation, and more.
+
+It is made of two main components, which can be used together or independently:
+
+1. A **rule-based engine** for automatically rendering and validating manifests
+2. A **terminal UI** for browsing and debugging rendered Kubernetes manifests
+
+Together, these deliver a seamless development experience that maintains context and focus while iterating on Helm charts, Kustomize overlays, and other manifest generators.
 
 <p align="center">
-  <br>
   <img src="./docs/assets/demo.gif">
 </p>
 
