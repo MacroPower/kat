@@ -10,7 +10,8 @@ RUN apk add --no-cache \
     curl \
     bash \
     ca-certificates \
-    openssl
+    openssl \
+    git
 
 # Install helm
 RUN curl -s https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
