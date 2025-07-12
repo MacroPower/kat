@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	// Protect CEL environment creation from concurrent access.
+	// Protect CEL environment creation and compilation from concurrent access.
 	celMutex sync.Mutex
 
 	// DefaultEnvironment is a shared environment instance for simple use cases.
@@ -27,7 +27,6 @@ var (
 // Environment provides a thread-safe wrapper around a [*cel.Env].
 type Environment struct {
 	env *cel.Env
-	mu  sync.Mutex
 }
 
 // NewEnvironment creates a new [Environment].
@@ -178,8 +177,8 @@ func createEnvironment() (*cel.Env, error) {
 //
 //nolint:ireturn // Following CEL's function signature.
 func (e *Environment) Compile(expression string) (cel.Program, error) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	celMutex.Lock()
+	defer celMutex.Unlock()
 
 	ast, issues := e.env.Compile(expression)
 	if issues != nil && issues.Err() != nil {
