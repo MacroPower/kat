@@ -57,6 +57,7 @@
 
 Output docs/assets/demo.gif
 
+Set Theme "OneDark"
 Set Shell "bash"
 Set Padding 20
 Set FontSize 22
@@ -65,19 +66,12 @@ Set Height 600
 
 Hide
 
-  Type `go build -o dist/kat -ldflags="-X github.com/macropower/kat/pkg/version.Version=0.x" cmd/kat/main.go`  Enter
-  Type "alias kat=./dist/kat"  Enter
-  Type "export KAT_UI_GLAMOUR_STYLE=dark"  Enter
-
-  Sleep 500ms
-  Type "clear"  Enter
-  Sleep 500ms
-
   Type "tmux -f /dev/null -L test new-session -- bash" Sleep 500ms Enter
   Type "tmux split-window -d -h -- bash && \" Sleep 500ms Enter
   Type "tmux set status && \" Sleep 500ms Enter
   Type 'tmux setw pane-border-style "fg=0" && \' Sleep 500ms Enter
-  Type 'tmux setw pane-active-border-style "fg=0"' Sleep 500ms Enter
+  Type 'tmux setw pane-active-border-style "fg=0" && \' Sleep 500ms Enter
+  Type 'tmux set terminal-overrides ",*256col*:Tc"' Sleep 500ms Enter
   Sleep 500ms
   Ctrl+L
 
@@ -88,7 +82,7 @@ Hide
 
   Ctrl+B
   Type o
-  Type "kat example/helm -w"  Enter
+  Type 'go run -ldflags="-X github.com/macropower/kat/pkg/version.Version=$(git tag --sort=-version:refname | head -n1)" cmd/kat/main.go example/helm -w'  Enter
   Sleep 4s
 
 Show
@@ -99,10 +93,11 @@ Type "/"
 Sleep 500ms
 Type "deployment" Sleep 500ms Enter
 Sleep 500ms
-PageDown@100ms 1
-Sleep 100ms
-Down@50ms 5
-Sleep 100ms
+Type "/"
+Sleep 500ms
+Type "containers" Sleep 500ms Enter
+Type "n"
+Sleep 500ms
 
 Ctrl+B
 Type o
