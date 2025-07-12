@@ -93,10 +93,14 @@ func New(theme string) *Theme {
 						Background(style.lipglossFromToken(chroma.NameTag))
 
 		errorTitleStyle = genericStyle.
-				Background(style.lipglossFromToken(chroma.GenericDeleted))
+				Foreground(style.lipglossFromTokenBg(chroma.Background)).
+				Background(style.lipglossFromToken(chroma.GenericDeleted)).
+				Bold(true)
 
 		resultTitleStyle = genericStyle.
-					Background(style.lipglossFromToken(chroma.GenericInserted))
+					Foreground(style.lipglossFromTokenBg(chroma.Background)).
+					Background(style.lipglossFromToken(chroma.GenericInserted)).
+					Bold(true)
 
 		errorOverlayStyle = genericStyle.
 					Border(lipgloss.RoundedBorder()).
