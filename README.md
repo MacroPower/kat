@@ -186,10 +186,16 @@ Render a project with command passthrough:
 kat ./example/helm task -- helm:render
 ```
 
-Render using data from stdin:
+Render using data from stdin (disables rendering engine):
 
 ```sh
 cat ./example/kustomize/resources.yaml | kat -f -
+```
+
+Render and send the output to a file (disables TUI):
+
+```sh
+kat ./example/helm > manifests.yaml
 ```
 
 ## ⚙️ Configuration

@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/alecthomas/kong"
 	"github.com/goccy/go-yaml"
+	"golang.org/x/term"
 
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/config"
@@ -21,24 +23,30 @@ import (
 
 const (
 	cmdName     = "kat"
-	cmdDesc     = `cat for Kubernetes manifests.`
+	cmdDesc     = `Rule-based rendering engine and TUI for local Kubernetes manifests.`
 	cmdInitErr  = "initialization failed"
 	cmdExamples = `
 Examples:
-	# kat the current directory.
+	# kat the current directory
 	kat
 
-	# kat a file or directory path.
+	# kat a file or directory path
 	kat ./example/kustomize
 
-	# Force using the "ks" profile (defined in config).
+	# Force using the "ks" profile (defined in config)
 	kat ./example/kustomize ks
 
-	# Override the "ks" profile arguments.
+	# Override the "ks" profile arguments
 	kat ./example/kustomize ks -- build . --enable-helm
 
-	# kat a file or stdin directly (no reload support).
+	# Watch for changes and reload
+	kat ./example/helm --watch
+
+	# kat a file or stdin directly (disables rendering engine)
 	cat ./example/kustomize/resources.yaml | kat -f -
+
+	# kat a project and send the output to a file (disables TUI)
+	kat ./example/helm > manifests.yaml
 `
 )
 
@@ -140,6 +148,24 @@ func main() {
 			slog.Error("create command runner", slog.Any("err", err))
 			cliCtx.Fatalf(cmdInitErr)
 		}
+	}
+
+	// If stdout is not a terminal, actually "concatenate".
+	if !term.IsTerminal(int(os.Stdout.Fd())) {
+		run := cr.Run()
+		if run.Stdout != "" {
+			_, err := fmt.Fprint(cliCtx.Stdout, run.Stdout)
+			cliCtx.FatalIfErrorf(err)
+		}
+		if run.Stderr != "" {
+			_, err := fmt.Fprint(cliCtx.Stderr, run.Stderr)
+			cliCtx.FatalIfErrorf(err)
+		}
+
+		cliCtx.FatalIfErrorf(run.Error)
+
+		// Exit early.
+		cliCtx.Exit(0)
 	}
 
 	logBuf := log.NewCircularBuffer(100)
