@@ -217,7 +217,7 @@ func TestProfile_WithHooks(t *testing.T) {
 
 		result, err := p.Exec(t.Context(), "/tmp")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "hook execution")
+		require.ErrorIs(t, err, profile.ErrHookExecution)
 		assert.Nil(t, result) // main command should not have executed
 	})
 

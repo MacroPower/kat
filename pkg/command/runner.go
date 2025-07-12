@@ -17,19 +17,8 @@ import (
 	"github.com/macropower/kat/pkg/rule"
 )
 
-var (
-	// ErrNoCommandForPath is returned when no command is found for a path.
-	ErrNoCommandForPath = errors.New("no command for path")
-
-	// ErrCommandExecution is returned when command execution fails.
-	ErrCommandExecution = errors.New("command execution")
-
-	// ErrEmptyCommand is returned when a command is empty.
-	ErrEmptyCommand = errors.New("empty command")
-
-	// ErrHookExecution is returned when hook execution fails.
-	ErrHookExecution = errors.New("hook execution")
-)
+// ErrNoCommandForPath is returned when no command is found for a path.
+var ErrNoCommandForPath = errors.New("no command for path")
 
 // Runner wraps one or more Rule objects. It manages:
 //   - File-to-command mappings.
@@ -78,9 +67,9 @@ func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
 		for _, hook := range p.Hooks.Init {
 			hr, err := hook.Exec(context.Background(), cr.path)
 			if err != nil && hr != nil {
-				return nil, fmt.Errorf("%w: init: %w\n%s\n%s", ErrHookExecution, err, hr.Stdout, hr.Stderr)
+				return nil, fmt.Errorf("%w: init: %w\n%s\n%s", profile.ErrHookExecution, err, hr.Stdout, hr.Stderr)
 			} else if err != nil {
-				return nil, fmt.Errorf("%w: init: %w", ErrHookExecution, err)
+				return nil, fmt.Errorf("%w: init: %w", profile.ErrHookExecution, err)
 			}
 		}
 	}
@@ -183,7 +172,7 @@ func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 
 	plugin := p.GetPlugin(name)
 	if plugin == nil {
-		co.Error = fmt.Errorf("plugin %q not found", name)
+		co.Error = fmt.Errorf("plugin %q: not found", name)
 		cr.broadcast(EventEnd(co))
 
 		return co
@@ -208,7 +197,7 @@ func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 
 		return co
 	} else if co.Error != nil {
-		co.Error = fmt.Errorf("%w: plugin %q: %w", ErrCommandExecution, plugin.Description, co.Error)
+		co.Error = fmt.Errorf("plugin %q: %w", plugin.Description, co.Error)
 		cr.broadcast(EventEnd(co))
 
 		return co
@@ -372,7 +361,7 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 
 		return co
 	} else if co.Error != nil {
-		co.Error = fmt.Errorf("%w: %s: %w", ErrCommandExecution, cmd, co.Error)
+		co.Error = fmt.Errorf("%s: %w", cmd, co.Error)
 		cr.broadcast(EventEnd(co))
 
 		return co

@@ -17,10 +17,10 @@ import (
 
 var (
 	// ErrHookExecution is returned when hook execution fails.
-	ErrHookExecution = errors.New("hook execution")
+	ErrHookExecution = errors.New("hook")
 
 	// ErrPluginExecution is returned when plugin execution fails.
-	ErrPluginExecution = errors.New("plugin execution")
+	ErrPluginExecution = errors.New("plugin")
 )
 
 // Profile represents a command profile with optional source filtering.
