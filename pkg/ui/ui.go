@@ -274,7 +274,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if msg.Error == nil && len(msg.Resources) > 0 {
-			statusMsg := fmt.Sprintf("rendered %d manifests", len(msg.Resources))
+			statusMsg := fmt.Sprintf("rendered %d resources", len(msg.Resources))
 			cmds = append(cmds, m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess))
 		}
 

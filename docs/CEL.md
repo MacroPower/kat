@@ -119,7 +119,7 @@ source: >-
 
 ### `yamlPath(file, path)` - Read YAML content
 
-Reads a YAML file and extracts a value using a YAML path expression. Returns `null` if the file doesn't exist, can't be read, or the path doesn't exist.
+Reads a YAML file and extracts a value using a JSONPath expression. Returns `null` if the file doesn't exist, can't be read, or the path doesn't exist.
 
 **For Rules (boolean):**
 

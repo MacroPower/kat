@@ -27,7 +27,7 @@
 
 ## ✨ Features
 
-- **🔍️ Manifest browsing** - Navigate hundreds of rendered manifests with fuzzy search and filtering, no more endless scrolling through terminal output
+- **🔍️ Manifest browsing** - Navigate hundreds of resources with fuzzy search and filtering, no more endless scrolling through terminal output
 - **⚡️ Live reload** - Use `--watch` to automatically re-render when you modify source files, without losing your current context
 - **🐛 Error handling** - Rendering and validation errors are displayed as overlays and disappear if reloading resolves the error
 - **🎯 Project detection** - Automatically detect Helm charts, Kustomize projects, and custom manifest generators using powerful CEL expressions
@@ -195,7 +195,7 @@ cat ./example/kustomize/resources.yaml | kat -f -
 Render and send the output to a file (disables TUI):
 
 ```sh
-kat ./example/helm > manifests.yaml
+kat ./example/helm > manifest.yaml
 ```
 
 ## ⚙️ Configuration
@@ -283,7 +283,7 @@ profiles:
             - callerRef:
                 pattern: "^HELM_.+"
       postRender:
-        # Pass the rendered manifests via stdin to `kubeconform`.
+        # Pass the rendered manifest via stdin to `kubeconform`.
         - command: kubeconform
           args: [-strict, -summary]
     plugins:
@@ -322,7 +322,7 @@ profiles:
 - `pathBase(string)`: Returns the filename (e.g., `"Chart.yaml"`)
 - `pathExt(string)`: Returns the file extension (e.g., `".yaml"`)
 - `pathDir(string)`: Returns the directory path
-- `yamlPath(file, path)`: Reads a YAML file and extracts a value using a YAML path expression
+- `yamlPath(file, path)`: Reads a YAML file and extracts a value using a JSONPath expression
 
 You can combine these with CEL's built-in functions like `exists()`, `filter()`, `in`, `contains()`, `matches()`, and logical operators.
 
@@ -417,7 +417,7 @@ rules:
         pathBase(f) == "Chart.yaml" &&
         yamlPath(f, "$.apiVersion") == "v2")
     profile: helm-v3
-  - # Match Kubernetes native manifests with specific API versions
+  - # Match Kubernetes resources with specific API versions
     match: >-
       files.exists(f,
         pathExt(f) in [".yaml", ".yml"] &&
@@ -446,7 +446,7 @@ profiles:
 
 > Note that you should write your `task` to:
 >
-> - Output the rendered manifests to stdout, and anything else to stderr.
+> - Output the rendered manifest to stdout, and anything else to stderr.
 > - Tolerate being called from any directory in the project.
 >   - E.g., instead of `./folder`, use `{{joinPath .ROOT_DIR "folder"}}`.
 > - Not require any additional arguments to run.

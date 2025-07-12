@@ -520,7 +520,7 @@ func (m ListModel) getHeaderSections() ([]string, lipgloss.Style) {
 
 		switch m.sections[i].key {
 		case SectionDocuments:
-			s = fmt.Sprintf("%d manifests", localCount)
+			s = fmt.Sprintf("%d resources", localCount)
 
 		case SectionFilter:
 			s = fmt.Sprintf("%d “%s”", len(m.filteredYAMLs), m.filterInput.Value())
