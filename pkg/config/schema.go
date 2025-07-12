@@ -8,7 +8,7 @@ import (
 	"github.com/macropower/kat/pkg/schema"
 )
 
-//go:generate go run ../../internal/schema_gen/main.go -o config.v1beta1.json
+//go:generate go run ../../internal/schemagen/main.go -o config.v1beta1.json
 
 //go:embed config.v1beta1.json
 var schemaJSON []byte
