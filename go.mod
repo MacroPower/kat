@@ -8,6 +8,7 @@ require (
 	github.com/alecthomas/chroma/v2 v2.19.0
 	github.com/alecthomas/kong v1.12.0
 	github.com/atotto/clipboard v0.1.4
+	github.com/aymanbagabas/go-udiff v0.3.1
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.6
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834

@@ -28,10 +28,9 @@ func Normalize(in string) (string, error) {
 
 // MatchPosition represents a search match position within the content.
 type MatchPosition struct {
-	Line   int // 0-based line number.
-	Start  int // 0-based character position within the line.
-	End    int // 0-based character position within the line (exclusive).
-	Length int // Length of the match.
+	Line  int // 0-based line number.
+	Start int // 0-based character position within the line.
+	End   int // 0-based character position within the line (exclusive).
 }
 
 // SearchHighlighter handles search-specific highlighting via [*ansis.StyleEditor].
