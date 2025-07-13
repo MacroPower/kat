@@ -1,0 +1,92 @@
+
+   2 resources
+
+ │ nginx-deployment
+ │ apps/Deployment
+
+   example-ingress
+   networking.k8s.io/Ingress
+
+
+
+
+
+
+
+
+
+
+
+
+
+ kat unknown  static                                                               1/1  ? Help
+────────────────────────────────────────────────────────────────────────────────
+   1  apiVersion: apps/v1
+   2  kind: Deployment
+   3  metadata:
+   4    name: nginx-deployment
+   5    labels:
+   6      app: nginx
+   7  spec:
+   8    replicas: 3
+   9    selector:
+  10      matchLabels:
+  11        app: nginx
+  12    template:
+  13      metadata:
+  14        labels:
+  15          app: nginx
+  16      spec:
+  17        containers:
+  18          - name: nginx
+  19            image: nginx:1.14.2
+  20            ports:
+  21              - containerPort: 80
+ kat unknown  nginx-deployment                                                      0%  ? Help
+────────────────────────────────────────────────────────────────────────────────
+
+   2 resources
+
+ │ nginx-deployment
+ │ apps/Deployment
+
+   example-ingress
+   networking.k8s.io/Ingress
+
+
+
+
+
+
+
+
+
+
+
+
+
+ kat unknown  static                                                               1/1  ? Help
+────────────────────────────────────────────────────────────────────────────────
+> ./kat . -f example/kustomize/resources.yaml --config=pkg/config/config.yaml
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────

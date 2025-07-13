@@ -211,3 +211,34 @@ tasks:
       - chmod u+x {{.PRE_COMMIT_FILE}}
       - echo "${COMMIT_MSG}" > {{.COMMIT_MSG_FILE}}
       - chmod u+x {{.COMMIT_MSG_FILE}}
+
+  e2e-test:
+    internal: true
+    requires:
+      vars: [TEST]
+    cmds:
+      - vhs e2e/tapes/{{.TEST}}.tape -q
+
+  e2e-all:
+    internal: true
+    requires:
+      vars: [TESTS]
+    cmds:
+      - for:
+          var: TESTS
+        task: e2e-test
+        vars:
+          TEST: "{{.ITEM}}"
+
+  e2e:
+    desc: Runs all end-to-end tests
+    vars:
+      TESTS:
+        sh: cd e2e/tapes && ls *.tape | sed 's/\.tape//'
+    cmds:
+      - go build -o kat cmd/kat/main.go
+      - defer: rm -f kat
+      - task: e2e-all
+        vars:
+          TESTS: "{{.TESTS}}"
+      - git diff --exit-code e2e/golden
