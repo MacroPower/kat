@@ -26,7 +26,7 @@ Together, these deliver a seamless development experience that maintains context
 </p>
 
 <p align="center">
-  ❤️ Made with <a href="https://github.com/charmbracelet/bubbletea">bubble tea</a>, <a href="https://github.com/charmbracelet/glow">glow</a>, and <a href="https://github.com/alecthomas/chroma/">chroma</a>.
+  ❤️ Made with <a href="https://github.com/charmbracelet/bubbletea">bubble tea</a>, <a href="https://github.com/alecthomas/chroma/">chroma</a>, and <a href="#-dependencies">other amazing libraries</a>.
 </p>
 
 ## ✨ Features
@@ -535,9 +535,26 @@ Chroma uses the same syntax as Pygments. Define `ui.themes.[name].styles` as a m
 
 ## 🔍️ Similar Tools
 
-- [bat](https://github.com/sharkdp/bat)
-- [glow](https://github.com/charmbracelet/glow)
-- [k9s](https://github.com/derailed/k9s)
-- [viddy](https://github.com/sachaos/viddy)
-- [soft-serve](https://github.com/charmbracelet/soft-serve)
-- [wishlist](https://github.com/charmbracelet/wishlist)
+These projects provided a lot of inspiration (and snippets) for `kat`:
+
+- [k9s](https://github.com/derailed/k9s) - _A terminal UI to interact with your Kubernetes clusters._
+- [bat](https://github.com/sharkdp/bat) - _A `cat(1)` clone with wings._
+- [task](https://github.com/go-task/task) - _A task runner for Go._
+- [glow](https://github.com/charmbracelet/glow) - _Render markdown on the CLI, with pizzazz!_
+- [soft-serve](https://github.com/charmbracelet/soft-serve) - _The mighty, self-hostable Git server for the command line._
+- [wishlist](https://github.com/charmbracelet/wishlist) - _The SSH directory._
+- [viddy](https://github.com/sachaos/viddy) - _A modern `watch` command._
+
+## ❤️ Dependencies
+
+`kat` is built on top of a number of libraries. Here are some of its key dependencies:
+
+- [charmbracelet/bubbletea](https://github.com/charmbracelet/bubbletea) - _A powerful TUI framework for Go._
+  - ...plus many other fantastic libraries from [_charm_](https://github.com/charmbracelet)
+- [alecthomas/chroma](https://github.com/alecthomas/chroma) - _A general-purpose syntax highlighter in pure Go._
+- [google/cel-go](https://github.com/google/cel-go) - _A fast, portable, and safe expression evaluation engine._
+- [goccy/go-yaml](https://github.com/goccy/go-yaml) - _YAML support for Go._
+- [fsnotify](https://github.com/fsnotify/fsnotify) - _Cross-platform filesystem notifications._
+- [invopop/jsonschema](https://github.com/invopop/jsonschema) - _JSON Schema generation._
+- [santhosh-tekuri/jsonschema](https://github.com/santhosh-tekuri/jsonschema) - _JSON Schema validation._
+- And [more](https://github.com/MacroPower/kat/blob/main/go.mod).
