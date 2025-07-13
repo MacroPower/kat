@@ -32,32 +32,39 @@ Together, these deliver a seamless development experience that maintains context
 ## ✨ Features
 
 **🔍️ Manifest browsing**
+
 - Navigate hundreds of resources with fuzzy search and filtering
 - View individual resources in your terminal with syntax highlighting
 
 **⚡️ Live reload**
+
 - Monitor source files with `--watch` for automatic re-rendering
 - Maintain your current context between reloads so you don't lose your place
 - Highlight changes with diff visualization between renders
 
 **🐛 Error handling**
+
 - Surface rendering and validation errors as overlays
 - Works with reload; fix source files and watch errors disappear instantly
 
 **🧪 Tool integration**
+
 - Define profiles for any manifest generator (Helm, Kustomize, CUE, KCL, Jsonnet, etc.)
 - Run tools like `kubeconform` or `kyverno` automatically on rendered manifests
 - Chain multiple tools together with pre and post-render hooks
 
 **🎯 Project detection**
+
 - Select your defined profiles automatically using CEL expressions
 - Match projects based on file contents, structure, or naming patterns
 
 **🔌 Plugin system**
+
 - Add custom keybind-triggered commands for your specific workflows
 - Execute dry-runs, deployments, or any custom tooling without leaving kat
 
 **🎨 Fully customizable**
+
 - Choose from any available Chroma themes, or define your own
 - Remap any keybinding to match your preferences
 
