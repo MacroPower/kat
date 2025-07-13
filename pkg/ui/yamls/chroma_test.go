@@ -932,13 +932,13 @@ func TestDiffPosition(t *testing.T) {
 				Line:  0,
 				Start: 5,
 				End:   10,
-				Type:  yamls.DiffAdded,
+				Type:  yamls.DiffInserted,
 			},
 			want: yamls.DiffPosition{
 				Line:  0,
 				Start: 5,
 				End:   10,
-				Type:  yamls.DiffAdded,
+				Type:  yamls.DiffInserted,
 			},
 		},
 		"removed diff position": {
@@ -946,13 +946,13 @@ func TestDiffPosition(t *testing.T) {
 				Line:  2,
 				Start: 0,
 				End:   15,
-				Type:  yamls.DiffRemoved,
+				Type:  yamls.DiffDeleted,
 			},
 			want: yamls.DiffPosition{
 				Line:  2,
 				Start: 0,
 				End:   15,
-				Type:  yamls.DiffRemoved,
+				Type:  yamls.DiffDeleted,
 			},
 		},
 	}

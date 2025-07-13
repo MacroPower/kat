@@ -59,7 +59,7 @@ func NewChromaRenderer(t *theme.Theme, lineNumbersDisabled bool) *ChromaRenderer
 
 	insertedStyle := t.InsertedStyle
 	deletedStyle := t.DeletedStyle
-	changedStyle := t.InsertedStyle
+	editedStyle := t.InsertedStyle
 
 	return &ChromaRenderer{
 		currentSelectedMatch: -1,
@@ -69,7 +69,7 @@ func NewChromaRenderer(t *theme.Theme, lineNumbersDisabled bool) *ChromaRenderer
 		style:                t.ChromaStyle,
 		lineNumbersDisabled:  lineNumbersDisabled,
 		searchHighlighter:    NewSearchHighlighter(highlightStyle, selectedHighlightStyle),
-		diffHighlighter:      NewDiffHighlighter(insertedStyle, deletedStyle, changedStyle),
+		diffHighlighter:      NewDiffHighlighter(insertedStyle, deletedStyle, editedStyle),
 		differ:               NewDiffer(),
 	}
 }

@@ -13,9 +13,9 @@ import (
 type DiffType int
 
 const (
-	DiffAdded DiffType = iota
-	DiffRemoved
-	DiffChanged
+	DiffInserted DiffType = iota
+	DiffDeleted
+	DiffEdited
 )
 
 // DiffPosition represents a diff change position within the content.
@@ -28,17 +28,17 @@ type DiffPosition struct {
 
 // DiffHighlighter handles diff-specific highlighting via [*ansis.StyleEditor].
 type DiffHighlighter struct {
-	addedStyle   lipgloss.Style
-	removedStyle lipgloss.Style
-	changedStyle lipgloss.Style
+	insertedStyle lipgloss.Style
+	deletedStyle  lipgloss.Style // For future use.
+	editedStyle   lipgloss.Style
 }
 
 // NewDiffHighlighter creates a new [DiffHighlighter].
-func NewDiffHighlighter(addedStyle, removedStyle, changedStyle lipgloss.Style) *DiffHighlighter {
+func NewDiffHighlighter(insertedStyle, deletedStyle, editedStyle lipgloss.Style) *DiffHighlighter {
 	return &DiffHighlighter{
-		addedStyle:   addedStyle,
-		removedStyle: removedStyle,
-		changedStyle: changedStyle,
+		insertedStyle: insertedStyle,
+		deletedStyle:  deletedStyle,
+		editedStyle:   editedStyle,
 	}
 }
 
@@ -71,12 +71,12 @@ func (dh *DiffHighlighter) convertDiffsToStyleRanges(diffs []DiffPosition) map[i
 	for _, diff := range diffs {
 		var style lipgloss.Style
 		switch diff.Type {
-		case DiffAdded:
-			style = dh.addedStyle
-		case DiffRemoved:
-			style = dh.removedStyle
-		case DiffChanged:
-			style = dh.changedStyle
+		case DiffInserted:
+			style = dh.insertedStyle
+		case DiffDeleted:
+			style = dh.deletedStyle
+		case DiffEdited:
+			style = dh.editedStyle
 		}
 
 		styleRange := ansis.StyleRange{
@@ -180,9 +180,9 @@ func convertEditToDiffPositions(edit udiff.Edit, currentContent string) []DiffPo
 	isMultiLine := len(newLines) > 1
 
 	// Determine diff type.
-	diffType := DiffAdded
+	diffType := DiffInserted
 	if edit.End > edit.Start {
-		diffType = DiffChanged
+		diffType = DiffEdited
 	}
 
 	if !isMultiLine && lineNum < len(currentLines) {
@@ -220,9 +220,9 @@ func convertEditToDiffPositions(edit udiff.Edit, currentContent string) []DiffPo
 		}
 
 		lineType := diffType
-		if i > 0 && diffType == DiffChanged {
+		if i > 0 && diffType == DiffEdited {
 			// Additional lines in a change are additions.
-			lineType = DiffAdded
+			lineType = DiffInserted
 		}
 
 		diffs = append(diffs, DiffPosition{
