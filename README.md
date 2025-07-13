@@ -31,14 +31,34 @@ Together, these deliver a seamless development experience that maintains context
 
 ## ✨ Features
 
-- **🔍️ Manifest browsing** - Navigate hundreds of resources with fuzzy search and filtering, no more endless scrolling through terminal output
-- **⚡️ Live reload** - Use `--watch` to automatically re-render when you modify source files, without losing your current context
-- **🐛 Error handling** - Rendering and validation errors are displayed as overlays and disappear if reloading resolves the error
-- **🎯 Project detection** - Automatically detect Helm charts, Kustomize projects, and custom manifest generators using powerful CEL expressions
-- **🧪 Tool integration** - Define profiles for any manifest generator (Helm, Kustomize, CUE, KCL, Jsonnet, etc.) with pre/post-render hooks
-- **🔌 Plugin system** - Create custom keybind-triggered commands for common tasks that can't run on hooks, like dry-runs or diffs
-- **✅ Custom validation** - Run tools like `kubeconform`, `kyverno`, or custom validators automatically on rendered output
-- **🎨 Beautiful UI** - Syntax-highlighted YAML with customizable themes and keybindings that match your preferences
+**🔍️ Manifest browsing**
+- Navigate hundreds of resources with fuzzy search and filtering
+- View individual resources in your terminal with syntax highlighting
+
+**⚡️ Live reload**
+- Monitor source files with `--watch` for automatic re-rendering
+- Maintain your current context between reloads so you don't lose your place
+
+**🐛 Error handling**
+- Surface rendering and validation errors as overlays
+- Works with reload; fix source files and watch errors disappear instantly
+
+**🧪 Tool integration**
+- Define profiles for any manifest generator (Helm, Kustomize, CUE, KCL, Jsonnet, etc.)
+- Run tools like `kubeconform` or `kyverno` automatically on rendered manifests
+- Chain multiple tools together with pre and post-render hooks
+
+**🎯 Project detection**
+- Select your defined profiles automatically using CEL expressions
+- Match projects based on file contents, structure, or naming patterns
+
+**🔌 Plugin system**
+- Add custom keybind-triggered commands for your specific workflows
+- Execute dry-runs, deployments, or any custom tooling without leaving kat
+
+**🎨 Fully customizable**
+- Choose from any available Chroma themes, or define your own
+- Remap any keybinding to match your preferences
 
 ## 📦 Installation
 
