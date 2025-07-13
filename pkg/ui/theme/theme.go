@@ -39,6 +39,8 @@ type Theme struct {
 	StatusBarPosStyle         lipgloss.Style
 	StatusBarStyle            lipgloss.Style
 	SubtleStyle               lipgloss.Style
+	InsertedStyle             lipgloss.Style
+	DeletedStyle              lipgloss.Style
 
 	ChromaStyle *chroma.Style
 	Ellipsis    string
@@ -112,6 +114,14 @@ func New(theme string) *Theme {
 		subtleStyle = lipgloss.NewStyle().
 				Foreground(style.lipglossFromToken(chroma.Comment))
 
+		insertedStyle = lipgloss.NewStyle().
+				Foreground(style.lipglossFromTokenBg(chroma.Background)).
+				Background(style.lipglossFromToken(chroma.GenericInserted))
+
+		deletedStyle = lipgloss.NewStyle().
+				Foreground(style.lipglossFromTokenBg(chroma.Background)).
+				Background(style.lipglossFromToken(chroma.GenericDeleted))
+
 		paginationStyle = subtleStyle
 
 		lineNumberStyle = subtleStyle
@@ -138,6 +148,8 @@ func New(theme string) *Theme {
 		StatusBarPosStyle:         statusBarPosStyle,
 		StatusBarStyle:            statusBarStyle,
 		SubtleStyle:               subtleStyle,
+		InsertedStyle:             insertedStyle,
+		DeletedStyle:              deletedStyle,
 
 		ChromaStyle: style.style,
 		Ellipsis:    Ellipsis,

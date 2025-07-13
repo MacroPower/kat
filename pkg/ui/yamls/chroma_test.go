@@ -20,6 +20,8 @@ func testTheme() *theme.Theme {
 	return &theme.Theme{
 		SelectedStyle:   lipgloss.NewStyle().Background(lipgloss.Color("12")).Underline(true).Bold(true),
 		LineNumberStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("8")),
+		InsertedStyle:   lipgloss.NewStyle().Background(lipgloss.Color("2")),
+		DeletedStyle:    lipgloss.NewStyle().Background(lipgloss.Color("1")),
 		ChromaStyle:     styles.Get("github"),
 	}
 }
@@ -122,7 +124,7 @@ func TestChromaRenderer_SetAndGetMethods(t *testing.T) {
 	// Test SetFormatter.
 	renderer.SetFormatter("terminal16m")
 
-	// Render content to populate matches.
+	// Render content to populate matches and diffs.
 	_, err := renderer.RenderContent("test: value test", 80)
 	require.NoError(t, err)
 
@@ -376,7 +378,6 @@ func TestChromaRenderer_MatchPositioning(t *testing.T) {
 		assert.Equal(t, expected.line, matches[i].Line, "Match %d line position", i)
 		assert.Equal(t, expected.start, matches[i].Start, "Match %d start position", i)
 		assert.Equal(t, expected.end, matches[i].End, "Match %d end position", i)
-		assert.Equal(t, 1, matches[i].Length, "Match %d length", i)
 	}
 }
 
@@ -400,16 +401,14 @@ func TestChromaRenderer_ConsecutiveMatches(t *testing.T) {
 	// First 'l' match.
 	match1 := matches[0]
 	assert.Equal(t, 0, match1.Line)
-	assert.Equal(t, 2, match1.Start)  // First 'l' in "hello"
-	assert.Equal(t, 3, match1.End)    // After first 'l' in "hello"
-	assert.Equal(t, 1, match1.Length) // Single character
+	assert.Equal(t, 2, match1.Start) // First 'l' in "hello"
+	assert.Equal(t, 3, match1.End)   // After first 'l' in "hello"
 
 	// Second 'l' match.
 	match2 := matches[1]
 	assert.Equal(t, 0, match2.Line)
-	assert.Equal(t, 3, match2.Start)  // Second 'l' in "hello"
-	assert.Equal(t, 4, match2.End)    // After second 'l' in "hello"
-	assert.Equal(t, 1, match2.Length) // Single character
+	assert.Equal(t, 3, match2.Start) // Second 'l' in "hello"
+	assert.Equal(t, 4, match2.End)   // After second 'l' in "hello"
 }
 
 func TestChromaRenderer_MultiLineSearch(t *testing.T) {
@@ -486,7 +485,6 @@ func TestChromaRenderer_EdgeCases(t *testing.T) {
 		"emoji in yaml": {
 			yaml:       "status: 🚀 ready",
 			searchTerm: "🚀",
-			width:      80,
 			expectErr:  false,
 		},
 		"tab characters": {
@@ -588,8 +586,8 @@ func TestChromaRenderer(t *testing.T) {
 	t.Logf("Found %d matches", len(matches))
 
 	for i, match := range matches {
-		t.Logf("Match %d: Line=%d, Start=%d, End=%d, Length=%d",
-			i, match.Line, match.Start, match.End, match.Length)
+		t.Logf("Match %d: Line=%d, Start=%d, End=%d",
+			i, match.Line, match.Start, match.End)
 	}
 
 	// Test that we should find both "o" characters at positions 10 and 13
@@ -920,4 +918,53 @@ func TestChromaRenderer_InitialSearchHighlighting(t *testing.T) {
 	// The result should contain highlighting even with no selection.
 	assert.Contains(t, result, "\x1b[", "Should contain ANSI sequences for highlighting")
 	assert.Equal(t, txt, ansi.Strip(result), "Plain text should match original")
+}
+
+func TestDiffPosition(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		input yamls.DiffPosition
+		want  yamls.DiffPosition
+	}{
+		"added diff position": {
+			input: yamls.DiffPosition{
+				Line:  0,
+				Start: 5,
+				End:   10,
+				Type:  yamls.DiffAdded,
+			},
+			want: yamls.DiffPosition{
+				Line:  0,
+				Start: 5,
+				End:   10,
+				Type:  yamls.DiffAdded,
+			},
+		},
+		"removed diff position": {
+			input: yamls.DiffPosition{
+				Line:  2,
+				Start: 0,
+				End:   15,
+				Type:  yamls.DiffRemoved,
+			},
+			want: yamls.DiffPosition{
+				Line:  2,
+				Start: 0,
+				End:   15,
+				Type:  yamls.DiffRemoved,
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tc.want.Line, tc.input.Line)
+			assert.Equal(t, tc.want.Start, tc.input.Start)
+			assert.Equal(t, tc.want.End, tc.input.End)
+			assert.Equal(t, tc.want.Type, tc.input.Type)
+		})
+	}
 }

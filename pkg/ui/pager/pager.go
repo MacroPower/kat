@@ -270,10 +270,11 @@ func (m *PagerModel) Unload() {
 		m.ExitSearch()
 	}
 	if m.chromaRenderer != nil {
-		m.chromaRenderer.SetSearchTerm("")
+		m.chromaRenderer.Unload()
 	}
 
 	m.currentMatch = -1
+	m.totalMatches = 0
 	m.ViewState = StateReady
 	m.viewport.SetContent("")
 

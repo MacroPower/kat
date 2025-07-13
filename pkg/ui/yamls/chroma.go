@@ -27,6 +27,8 @@ type ChromaRenderer struct {
 	theme                *theme.Theme
 	style                *chroma.Style
 	searchHighlighter    *SearchHighlighter
+	diffHighlighter      *DiffHighlighter
+	differ               *Differ
 	searchTerm           string
 	matches              []MatchPosition
 	currentSelectedMatch int // Index of the currently selected match (-1 if none selected).
@@ -55,6 +57,10 @@ func NewChromaRenderer(t *theme.Theme, lineNumbersDisabled bool) *ChromaRenderer
 	highlightStyle := t.SelectedStyle.Underline(true).Bold(true)
 	selectedHighlightStyle := t.LogoStyle.Bold(true)
 
+	insertedStyle := t.InsertedStyle
+	deletedStyle := t.DeletedStyle
+	changedStyle := t.InsertedStyle
+
 	return &ChromaRenderer{
 		currentSelectedMatch: -1,
 		theme:                t,
@@ -63,6 +69,8 @@ func NewChromaRenderer(t *theme.Theme, lineNumbersDisabled bool) *ChromaRenderer
 		style:                t.ChromaStyle,
 		lineNumbersDisabled:  lineNumbersDisabled,
 		searchHighlighter:    NewSearchHighlighter(highlightStyle, selectedHighlightStyle),
+		diffHighlighter:      NewDiffHighlighter(insertedStyle, deletedStyle, changedStyle),
+		differ:               NewDiffer(),
 	}
 }
 
@@ -73,11 +81,19 @@ func (gr *ChromaRenderer) RenderContent(yaml string, width int) (string, error) 
 		gr.findMatches(yaml)
 	}
 
+	gr.differ.SetInitialContent(yaml)
+
+	// Set original content and find diffs using the DiffHighlighter.
+	diffs := gr.differ.FindDiffs(yaml)
+
 	// First apply chroma syntax highlighting to the original content.
 	content, err := gr.executeRendering(yaml)
 	if err != nil {
 		return "", err
 	}
+
+	// Apply diff highlighting to the chroma-styled content.
+	content = gr.diffHighlighter.ApplyDiffHighlights(content, diffs)
 
 	// Apply search highlighting to the chroma-styled content using the highlighter.
 	if gr.searchTerm != "" && len(gr.matches) > 0 {
@@ -182,6 +198,16 @@ func (gr *ChromaRenderer) GetMatches() []MatchPosition {
 	return gr.matches
 }
 
+func (gr *ChromaRenderer) ClearDiffs() {
+	gr.differ.ClearDiffs()
+}
+
+// Unload clears the current state of the renderer.
+func (gr *ChromaRenderer) Unload() {
+	gr.differ.Unload()
+	gr.SetSearchTerm("")
+}
+
 // SetFormatter sets the chroma formatter explicitly.
 // This is primarily useful for testing.
 func (gr *ChromaRenderer) SetFormatter(name string) {
@@ -260,10 +286,9 @@ func (gr *ChromaRenderer) findSubstringMatches(line, term string, lineNum int) {
 
 		if runeStart >= 0 && runeEnd > runeStart {
 			gr.matches = append(gr.matches, MatchPosition{
-				Line:   lineNum,
-				Start:  runeStart,
-				End:    runeEnd,
-				Length: runeEnd - runeStart,
+				Line:  lineNum,
+				Start: runeStart,
+				End:   runeEnd,
 			})
 		}
 
