@@ -131,16 +131,18 @@ func (dh *Differ) FindDiffs(currentContent string) []DiffPosition {
 	// Use go-udiff to compute differences.
 	edits := udiff.Strings(dh.originalContent, currentContent)
 
+	diffs := []DiffPosition{}
 	for _, edit := range edits {
 		if edit.New == "" {
 			// Skip deletions since we only render current content.
 			continue
 		}
 
-		// Convert edit to diff positions.
-		dh.diffs = convertEditToDiffPositions(edit, currentContent)
+		// Convert edit to diff positions and append.
+		diffs = append(diffs, convertEditToDiffPositions(edit, currentContent)...)
 	}
 
+	dh.diffs = diffs
 	dh.originalContent = currentContent
 
 	return dh.diffs
@@ -213,7 +215,7 @@ func convertEditToDiffPositions(edit udiff.Edit, currentContent string) []DiffPo
 		// For the first line of a multi-line edit, start from the column position
 		// For subsequent lines, highlight the entire line.
 		start := 0
-		if i == 0 && !isMultiLine {
+		if i == 0 {
 			start = startCol
 		}
 
