@@ -1,8 +1,10 @@
 package theme
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/styles"
@@ -16,7 +18,15 @@ const (
 	Ellipsis = "…"
 )
 
-var Default = New("github")
+var (
+	Default = New("github")
+
+	ErrRegisterStyles = errors.New("register theme styles")
+	ErrInvalidName    = errors.New("invalid theme name")
+
+	// Protect chroma styles from concurrent access.
+	chromaStyleMutex sync.Mutex
+)
 
 type Theme struct {
 	CursorStyle               lipgloss.Style
@@ -157,9 +167,16 @@ func New(theme string) *Theme {
 }
 
 func Register(name string, entries chroma.StyleEntries) error {
+	if name == "" {
+		return fmt.Errorf("%w: %q", ErrInvalidName, name)
+	}
+
+	chromaStyleMutex.Lock()
+	defer chromaStyleMutex.Unlock()
+
 	customTheme, err := chroma.NewStyle(name, entries)
 	if err != nil {
-		return fmt.Errorf("create chroma style: %w", err)
+		return fmt.Errorf("%w: %w", ErrRegisterStyles, err)
 	}
 
 	styles.Register(customTheme)
@@ -172,6 +189,9 @@ type chromaStyle struct {
 }
 
 func newChromaStyle(theme string) chromaStyle {
+	chromaStyleMutex.Lock()
+	defer chromaStyleMutex.Unlock()
+
 	s := styles.Get(getStyle(theme))
 	if s == nil {
 		// If the style is not found, fallback to the default style.
