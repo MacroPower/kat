@@ -25,11 +25,20 @@ jobs:
         with:
           go-version: stable
 
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@latest
+
       - name: Run Go test
-        run: go test -race -vet=all -coverprofile=coverage.txt ./...
+        run: gotestsum --junitfile=junit.xml --format=pkgname -- -race -vet=all -coverprofile=coverage.txt ./...
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
