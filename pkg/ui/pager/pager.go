@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -19,10 +20,14 @@ import (
 	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
-const statusBarHeight = 1
+const (
+	statusBarHeight    = 1
+	diffTimeoutSeconds = 3
+)
 
 type (
 	ContentRenderedMsg string
+	ClearDiffTimerMsg  struct{}
 )
 
 type ViewState int
@@ -40,6 +45,7 @@ type PagerModel struct {
 	helpRenderer   *statusbar.HelpRenderer
 	chromaRenderer *yamls.ChromaRenderer
 	kb             *KeyBinds
+	clearDiffTimer *time.Timer
 
 	// Current document being rendered, sans-chroma rendering. We cache
 	// it here so we can re-render it on resize.
@@ -188,6 +194,14 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 
 	case ContentRenderedMsg:
 		m.setContent(string(msg))
+		cmds = append(cmds, m.StartClearDiffTimer())
+
+	case ClearDiffTimerMsg:
+		if m.chromaRenderer != nil {
+			m.chromaRenderer.ClearDiffs()
+
+			cmds = append(cmds, m.Render(m.CurrentDocument.Body))
+		}
 
 	// We've received terminal dimensions, either for the first time or
 	// after a resize.
@@ -260,6 +274,25 @@ func (m PagerModel) Render(yaml string) tea.Cmd {
 	}
 }
 
+// WaitForClearDiffTimer returns a command that waits for the clear diff timer to expire.
+func (m *PagerModel) WaitForClearDiffTimer() tea.Cmd {
+	return func() tea.Msg {
+		<-m.clearDiffTimer.C
+		return ClearDiffTimerMsg{}
+	}
+}
+
+// StartClearDiffTimer starts a [diffTimeoutSeconds] timer to clear diff highlights.
+func (m *PagerModel) StartClearDiffTimer() tea.Cmd {
+	if m.clearDiffTimer != nil {
+		m.clearDiffTimer.Stop()
+	}
+
+	m.clearDiffTimer = time.NewTimer(diffTimeoutSeconds * time.Second)
+
+	return m.WaitForClearDiffTimer()
+}
+
 func (m *PagerModel) Unload() {
 	slog.Debug("unload pager document")
 	if m.ShowHelp {
@@ -271,6 +304,13 @@ func (m *PagerModel) Unload() {
 	}
 	if m.chromaRenderer != nil {
 		m.chromaRenderer.Unload()
+	}
+
+	// Stop the clear diff timer if it's running.
+	if m.clearDiffTimer != nil {
+		m.clearDiffTimer.Stop()
+
+		m.clearDiffTimer = nil
 	}
 
 	m.currentMatch = -1
