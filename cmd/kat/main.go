@@ -61,6 +61,8 @@ var cli struct {
 
 	Path string `arg:"" default:"." help:"File or directory path, default is $PWD." type:"path"`
 
+	Config *string `help:"Path to the kat configuration file." optional:"" type:"path"`
+
 	Command string   `arg:"" help:"Command or profile override."          optional:""`
 	Args    []string `arg:"" help:"Arguments for the command or profile." optional:""`
 
@@ -85,7 +87,13 @@ func main() {
 	slog.SetDefault(slog.New(logHandler))
 
 	cfg := config.NewConfig()
-	configPath := config.GetPath()
+
+	var configPath string
+	if cli.Config != nil {
+		configPath = *cli.Config
+	} else {
+		configPath = config.GetPath()
+	}
 
 	if cli.WriteConfig {
 		err := config.WriteDefaultConfig(configPath)
