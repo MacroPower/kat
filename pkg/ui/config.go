@@ -1,10 +1,11 @@
 package ui
 
 import (
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/alecthomas/chroma/v2"
-	"github.com/hashicorp/go-multierror"
 	"github.com/invopop/jsonschema"
 
 	"github.com/macropower/kat/pkg/keys"
@@ -142,16 +143,30 @@ func (kb *KeyBinds) EnsureDefaults() {
 }
 
 func (kb *KeyBinds) Validate() error {
-	var merr *multierror.Error
+	var (
+		err  error
+		errs []error
+	)
 
-	merr = multierror.Append(merr, keys.ValidateBinds(
+	err = keys.ValidateBinds(
 		kb.Common.GetKeyBinds(),
 		kb.List.GetKeyBinds(),
-	))
-	merr = multierror.Append(merr, keys.ValidateBinds(
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("list: %w", err))
+	}
+
+	err = keys.ValidateBinds(
 		kb.Common.GetKeyBinds(),
 		kb.Pager.GetKeyBinds(),
-	))
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("pager: %w", err))
+	}
 
-	return merr.ErrorOrNil()
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+
+	return nil
 }

@@ -1,6 +1,7 @@
 package keys
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -219,17 +220,23 @@ func stringColumn(width int, kbs ...KeyBind) []string {
 }
 
 func ValidateBinds(kbs ...[]KeyBind) error {
+	var errs []error
+
 	seen := make(map[string]bool)
 	for _, ks := range kbs {
 		for _, kb := range ks {
 			for _, key := range kb.Keys {
 				if seen[key.Code] {
-					return fmt.Errorf("duplicate key binding found: %s", key.Code)
+					errs = append(errs, fmt.Errorf("duplicate key binding found: %s", key.Code))
 				}
 
 				seen[key.Code] = true
 			}
 		}
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 
 	return nil
