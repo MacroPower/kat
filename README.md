@@ -38,6 +38,7 @@ Together, these deliver a seamless development experience that maintains context
 **⚡️ Live reload**
 - Monitor source files with `--watch` for automatic re-rendering
 - Maintain your current context between reloads so you don't lose your place
+- Highlight changes with diff visualization between renders
 
 **🐛 Error handling**
 - Surface rendering and validation errors as overlays
