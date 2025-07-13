@@ -194,6 +194,7 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 
 	case ContentRenderedMsg:
 		m.setContent(string(msg))
+
 		cmds = append(cmds, m.StartClearDiffTimer())
 
 	case ClearDiffTimerMsg:
