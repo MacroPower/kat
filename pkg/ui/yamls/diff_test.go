@@ -125,7 +125,7 @@ func TestDiffer_SetInitialContent(t *testing.T) {
 			differ.SetInitialContent(tc.newContent)
 
 			// We can't directly test the original content, but we can test behavior
-			diffs := differ.FindDiffs(tc.wantOriginal)
+			diffs := differ.FindAndCacheDiffs(tc.wantOriginal)
 			assert.Empty(t, diffs, "original content should match")
 		})
 	}
@@ -162,11 +162,11 @@ func TestDiffer_SetOriginalContent(t *testing.T) {
 			differ.SetOriginalContent(tc.firstContent)
 
 			// Add some diffs by finding differences
-			differ.FindDiffs("some different content")
+			differ.FindAndCacheDiffs("some different content")
 
 			differ.SetOriginalContent(tc.secondContent)
 
-			diffs := differ.FindDiffs(tc.testContent)
+			diffs := differ.FindAndCacheDiffs(tc.testContent)
 
 			if tc.wantDiffs {
 				assert.NotEmpty(t, diffs)
@@ -189,7 +189,7 @@ func TestDiffer_FindDiffs(t *testing.T) {
 		"no original content": {
 			originalContent: "",
 			currentContent:  "some content",
-			wantDiffsCount:  0,
+			wantDiffsCount:  1,
 			wantDiffTypes:   []yamls.DiffType{},
 		},
 		"same content": {
@@ -225,7 +225,7 @@ func TestDiffer_FindDiffs(t *testing.T) {
 			differ := yamls.NewDiffer()
 			differ.SetOriginalContent(tc.originalContent)
 
-			diffs := differ.FindDiffs(tc.currentContent)
+			diffs := differ.FindAndCacheDiffs(tc.currentContent)
 
 			assert.Len(t, diffs, tc.wantDiffsCount)
 
@@ -244,7 +244,7 @@ func TestDiffer_GetDiffs(t *testing.T) {
 	differ := yamls.NewDiffer()
 	differ.SetOriginalContent("original")
 
-	diffs := differ.FindDiffs("modified")
+	diffs := differ.FindAndCacheDiffs("modified")
 
 	gotDiffs := differ.GetDiffs()
 	assert.Equal(t, diffs, gotDiffs)
@@ -255,7 +255,7 @@ func TestDiffer_ClearDiffs(t *testing.T) {
 
 	differ := yamls.NewDiffer()
 	differ.SetOriginalContent("original")
-	differ.FindDiffs("modified")
+	differ.FindAndCacheDiffs("modified")
 
 	// Ensure diffs exist before clearing
 	assert.NotEmpty(t, differ.GetDiffs())
@@ -269,7 +269,7 @@ func TestDiffer_Unload(t *testing.T) {
 
 	differ := yamls.NewDiffer()
 	differ.SetOriginalContent("original")
-	differ.FindDiffs("modified")
+	differ.FindAndCacheDiffs("modified")
 
 	// Ensure diffs exist before unloading
 	assert.NotEmpty(t, differ.GetDiffs())
@@ -278,10 +278,6 @@ func TestDiffer_Unload(t *testing.T) {
 
 	// After unload, diffs should be cleared and original content reset
 	assert.Empty(t, differ.GetDiffs())
-
-	// Test that original content was reset by checking that same content produces no diffs
-	diffs := differ.FindDiffs("any content")
-	assert.Empty(t, diffs)
 }
 
 func TestConvertEditToDiffPositions(t *testing.T) {
@@ -322,7 +318,7 @@ func TestConvertEditToDiffPositions(t *testing.T) {
 			differ := yamls.NewDiffer()
 			differ.SetOriginalContent(tc.originalContent)
 
-			diffs := differ.FindDiffs(tc.currentContent)
+			diffs := differ.FindAndCacheDiffs(tc.currentContent)
 
 			assert.Len(t, diffs, tc.wantDiffsCount)
 
@@ -384,7 +380,7 @@ func TestOffsetToLineCol(t *testing.T) {
 			differ := yamls.NewDiffer()
 			tc.setupDiffer(differ)
 
-			diffs := differ.FindDiffs(tc.testContent)
+			diffs := differ.FindAndCacheDiffs(tc.testContent)
 
 			if tc.wantDiffs {
 				assert.NotEmpty(t, diffs)
@@ -443,7 +439,7 @@ line3`,
 			differ := yamls.NewDiffer()
 			differ.SetOriginalContent(tc.original)
 
-			diffs := differ.FindDiffs(tc.current)
+			diffs := differ.FindAndCacheDiffs(tc.current)
 
 			assert.Len(t, diffs, tc.wantLen, "diffs %+v should match expected length", diffs)
 

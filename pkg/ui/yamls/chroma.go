@@ -84,7 +84,7 @@ func (gr *ChromaRenderer) RenderContent(yaml string, width int) (string, error) 
 	gr.differ.SetInitialContent(yaml)
 
 	// Set original content and find diffs using the DiffHighlighter.
-	diffs := gr.differ.FindDiffs(yaml)
+	diffs := gr.differ.FindAndCacheDiffs(yaml)
 
 	// First apply chroma syntax highlighting to the original content.
 	content, err := gr.executeRendering(yaml)

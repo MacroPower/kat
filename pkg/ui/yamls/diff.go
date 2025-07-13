@@ -117,17 +117,9 @@ func (dh *Differ) SetOriginalContent(content string) {
 	}
 }
 
-// FindDiffs finds differences between the current content and the original content using go-udiff.
+// FindAndCacheDiffs finds differences between the current content and the
+// original content using go-udiff.
 func (dh *Differ) FindDiffs(currentContent string) []DiffPosition {
-	if dh.originalContent == "" {
-		return []DiffPosition{}
-	}
-
-	// If the current content is the same as the original, return existing diffs.
-	if dh.originalContent == currentContent {
-		return dh.diffs
-	}
-
 	// Use go-udiff to compute differences.
 	edits := udiff.Strings(dh.originalContent, currentContent)
 
@@ -142,7 +134,23 @@ func (dh *Differ) FindDiffs(currentContent string) []DiffPosition {
 		diffs = append(diffs, convertEditToDiffPositions(edit, currentContent)...)
 	}
 
+	return diffs
+}
+
+// FindAndCacheDiffs calls [Differ.FindDiffs], stores the diffs internally and
+// re-returns them if the content hasn't changed.
+func (dh *Differ) FindAndCacheDiffs(currentContent string) []DiffPosition {
+	// If the current content is the same as the original, return existing diffs.
+	if dh.originalContent == currentContent {
+		return dh.diffs
+	}
+
+	// Otherwise, find diffs and store the results.
+	diffs := dh.FindDiffs(currentContent)
 	dh.diffs = diffs
+
+	// Update the original content to the current content, so that subsequent calls
+	// return the same diffs if the content hasn't changed.
 	dh.originalContent = currentContent
 
 	return dh.diffs
