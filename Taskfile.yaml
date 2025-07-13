@@ -86,9 +86,10 @@ tasks:
   go-cover:
     desc: Runs Go tests with coverage
     cmds:
+      - go install gotest.tools/gotestsum@latest
       - cmd: mkdir -p .test/
         silent: true
-      - go test -coverprofile=.test/cover.out ./...
+      - gotestsum --junitfile=.test/junit.xml --format=pkgname -- -race -vet=all -coverprofile=.test/cover.out ./...
 
   go-bench:
     desc: Run Go benchmarks
