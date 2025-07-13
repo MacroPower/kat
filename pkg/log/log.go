@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/mattn/go-isatty"
 	"github.com/muesli/termenv"
 
 	charmlog "github.com/charmbracelet/log"
@@ -101,9 +99,7 @@ func newCharmLogHandler(w io.Writer, level slog.Level) slog.Handler {
 		ReportCaller:    true,
 		TimeFormat:      time.Kitchen,
 	})
-	if isatty.IsTerminal(os.Stdout.Fd()) {
-		logger.SetColorProfile(termenv.ColorProfile())
-	}
+	logger.SetColorProfile(termenv.ColorProfile())
 
 	return logger
 }
