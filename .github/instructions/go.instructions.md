@@ -1,8 +1,9 @@
 ---
-applyTo: "**.go"
+description: 'Instructions for writing Go code following idiomatic Go practices and community standards'
+applyTo: '**/*.go,**/go.mod,**/go.sum'
 ---
 
-# General Instructions for Go
+# Go Development Instructions
 
 ## Comments and Documentation
 - Document all exported items - every exported function, type, constant, and variable must have a doc comment.

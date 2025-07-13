@@ -1,12 +1,4 @@
 {
-  "github.copilot.chat.codeGeneration.instructions": [
-    {
-      "file": ".github/instructions/go.instructions.md"
-    },
-    {
-      "file": ".github/instructions/test.instructions.md"
-    }
-  ],
   "gopls": { "ui.semanticTokens": true },
   "go.lintTool": "golangci-lint-v2",
   "go.lintFlags": ["--path-mode=abs", "--fast-only"],
@@ -14,5 +6,26 @@
   "go.alternateTools": {
     "customFormatter": "golangci-lint-v2"
   },
-  "go.formatFlags": ["fmt", "--stdin"]
+  "go.formatFlags": [
+    "fmt",
+    "--stdin"
+  ],
+  "chat.modeFilesLocations": {
+    ".github/chatmodes": true
+  },
+  "chat.promptFilesLocations": {
+    ".github/prompts": true
+  },
+  "chat.instructionsFilesLocations": {
+    ".github/instructions": true
+  },
+  "github.copilot.enable": {
+    "go": true,
+    "markdown": true
+  },
+  "github.copilot.chat.commitMessageGeneration.instructions": [
+    {
+      "text": "Use conventional commit message format."
+    }
+  ]
 }
