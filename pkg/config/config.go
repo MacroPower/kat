@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/user"
 	"path/filepath"
 
 	"github.com/invopop/jsonschema"
@@ -283,10 +282,17 @@ func GetPath() string {
 		return filepath.Join(xdgHome, "kat", "config.yaml")
 	}
 
-	usr, err := user.Current()
-	if err != nil && usr != nil {
-		return filepath.Join(usr.HomeDir, ".config", "kat", "config.yaml")
+	usrHome, err := os.UserHomeDir()
+	if err == nil && usrHome != "" {
+		return filepath.Join(usrHome, ".config", "kat", "config.yaml")
 	}
 
-	return filepath.Join(os.TempDir(), "kat", "config.yaml")
+	tmpConfig := filepath.Join(os.TempDir(), "kat", "config.yaml")
+
+	slog.Warn("could not determine user config directory, using temp path for config",
+		slog.String("path", tmpConfig),
+		slog.Any("error", fmt.Errorf("$XDG_CONFIG_HOME is unset, fall back to home directory: %w", err)),
+	)
+
+	return tmpConfig
 }

@@ -3,7 +3,6 @@ package config_test
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -347,48 +346,63 @@ func TestConfig_MarshalYAML(t *testing.T) {
 
 //nolint:paralleltest // We need to set environment variables, so run tests sequentially.
 func TestGetPath(t *testing.T) {
-	tests := map[string]struct {
-		setupEnv   func(t *testing.T)
-		cleanupEnv func(t *testing.T)
-		validate   func(t *testing.T, path string)
+	tcs := map[string]struct {
+		setupEnv func(t *testing.T)
+		want     string
 	}{
-		"with XDG_CONFIG_HOME": {
+		"XDG_CONFIG_HOME is set and not empty": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
 				t.Setenv("XDG_CONFIG_HOME", "/custom/config")
 			},
-			validate: func(t *testing.T, path string) {
-				t.Helper()
-				assert.Equal(t, "/custom/config/kat/config.yaml", path)
-			},
+			want: "/custom/config/kat/config.yaml",
 		},
-		"without XDG_CONFIG_HOME": {
+		"XDG_CONFIG_HOME is empty and HOME is set": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
 				t.Setenv("XDG_CONFIG_HOME", "")
+				t.Setenv("HOME", "/test/home")
 			},
-			validate: func(t *testing.T, path string) {
+			want: "/test/home/.config/kat/config.yaml",
+		},
+		"XDG_CONFIG_HOME is not set and HOME is set": {
+			setupEnv: func(t *testing.T) {
 				t.Helper()
-				// Should fall back to ~/.config/kat/config.yaml or temp dir.
-				assert.Contains(t, path, "kat/config.yaml")
+				err := os.Unsetenv("XDG_CONFIG_HOME")
+				require.NoError(t, err)
+				t.Setenv("HOME", "/test/home")
 			},
+			want: "/test/home/.config/kat/config.yaml",
+		},
+		"XDG_CONFIG_HOME is empty and HOME is empty": {
+			setupEnv: func(t *testing.T) {
+				t.Helper()
+				t.Setenv("XDG_CONFIG_HOME", "")
+				t.Setenv("HOME", "")
+			},
+			want: filepath.Join(os.TempDir(), "kat", "config.yaml"), //nolint:usetesting // Needs to equal host.
+		},
+		"XDG_CONFIG_HOME is not set and HOME is empty": {
+			setupEnv: func(t *testing.T) {
+				t.Helper()
+				err := os.Unsetenv("XDG_CONFIG_HOME")
+				require.NoError(t, err)
+				t.Setenv("HOME", "")
+			},
+			want: filepath.Join(os.TempDir(), "kat", "config.yaml"), //nolint:usetesting // Needs to equal host.
 		},
 	}
 
-	//nolint:paralleltest // We need to set environment variables, so run tests sequentially.
-	for name, tc := range tests {
+	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			if tc.setupEnv != nil {
 				tc.setupEnv(t)
 			}
 
-			path := config.GetPath()
-			assert.NotEmpty(t, path)
-			assert.True(t, strings.HasSuffix(path, "config.yaml"))
+			got := config.GetPath()
 
-			if tc.validate != nil {
-				tc.validate(t, path)
-			}
+			assert.NotEmpty(t, got)
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
