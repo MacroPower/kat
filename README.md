@@ -73,7 +73,7 @@ Together, these deliver a seamless development experience that maintains context
 ### Homebrew
 
 ```sh
-brew install macropower/tap/kat
+brew install macropower/tap/kat yq
 ```
 
 ### Go
