@@ -232,9 +232,15 @@ kat ./example/helm > manifest.yaml
 
 ## ⚙️ Configuration
 
-You can use `kat --write-config` to generate a default configuration file at `~/.config/kat/config.yaml`. This file allows you to customize the behavior of `kat`, such as the UI style, keybindings, rules for project detection, and profiles for rendering different types of projects. This will also write a JSON schema to the same location, for use with your editor's YAML language server.
+When you first run `kat`, it will attempt to add default configuration files to `$XDG_CONFIG_HOME/kat/` (or `~/.config/kat/`). This configuration allows you to customize the behavior of `kat`, such as the UI style, keybindings, rules for project detection, and profiles for rendering different types of projects.
 
-Alternatively, you can find the default configuration file as well as JSON schemas in [pkg/config](pkg/config).
+Note that JSON schemas are also included in the configuration directory, which can be used by your editor's YAML language server.
+
+> Some of the default behavior around loading configuration can be overridden with command line flags or environment variables. See `kat --help` for details.
+
+Over time, the default configuration may change, and the schema is currently still evolving. If you want to reset your configuration to the latest defaults, you can use `kat --write-config`, which will move your existing configuration to a backup file and generate a new default configuration.
+
+> You can find the default configuration file as well as JSON schemas in [pkg/config](pkg/config).
 
 ## 🛠️ Rules and Profiles
 

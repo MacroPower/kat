@@ -68,7 +68,7 @@ var cli struct {
 
 	Watch bool `help:"Watch for changes and trigger reloading." short:"w"`
 
-	WriteConfig bool `env:"-" help:"Write the configuration file to the default path."`
+	WriteConfig bool `env:"-" help:"Write the default configuration files."`
 	ShowConfig  bool `env:"-" help:"Print the active configuration and exit."`
 }
 
@@ -95,14 +95,9 @@ func main() {
 		configPath = config.GetPath()
 	}
 
-	if cli.WriteConfig {
-		err := config.WriteDefaultConfig(configPath)
-		if err != nil {
-			slog.Error("write config", slog.Any("err", err))
-			cliCtx.Fatalf(cmdInitErr)
-		}
-
-		cliCtx.Exit(0)
+	err = config.WriteDefaultConfig(configPath, cli.WriteConfig)
+	if err != nil {
+		slog.Error("write config", slog.Any("err", err))
 	}
 
 	cfgData, err := config.ReadConfig(configPath)
