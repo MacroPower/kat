@@ -70,6 +70,8 @@ Together, these deliver a seamless development experience that maintains context
 
 ## 📦 Installation
 
+> Note: The default `kat` configuration contains references to `helm`, `kustomize`, and `yq`. If you want to use `kat` with these tools, you will need to install them separately.
+
 ### Homebrew
 
 ```sh
