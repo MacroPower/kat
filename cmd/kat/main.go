@@ -33,14 +33,14 @@ Examples:
 	# kat a file or directory path
 	kat ./example/kustomize
 
+	# Watch for changes and reload
+	kat ./example/helm --watch
+
 	# Force using the "ks" profile (defined in config)
 	kat ./example/kustomize ks
 
-	# Override the "ks" profile arguments
-	kat ./example/kustomize ks -- build . --enable-helm
-
-	# Watch for changes and reload
-	kat ./example/helm --watch
+	# Set the "helm" profile's extra arguments
+	kat ./example/helm helm -- -g -f prod-values.yaml
 
 	# kat a file or stdin directly (disables rendering engine)
 	cat ./example/kustomize/resources.yaml | kat -f -
@@ -215,14 +215,14 @@ func getProfile(cfg *config.Config, cmd string, args []string) (*profile.Profile
 
 		var err error
 
-		p, err = profile.New(cmd, profile.WithArgs(args...))
+		p, err = profile.New(cmd, profile.WithExtraArgs(args...))
 		if err != nil {
 			return nil, fmt.Errorf("create profile: %w", err)
 		}
 	} else if len(args) > 0 {
 		slog.Debug("overwriting profile arguments", slog.String("name", cmd))
 
-		p.Command.Args = args
+		p.ExtraArgs = args
 	}
 
 	return p, nil

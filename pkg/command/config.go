@@ -48,7 +48,8 @@ var (
 				),
 			)),
 		"helm": profile.MustNew("helm",
-			profile.WithArgs("template", ".", "--generate-name"),
+			profile.WithArgs("template", "."),
+			profile.WithExtraArgs("-g"),
 			profile.WithSource(filterHelmFiles),
 			profile.WithEnvFrom([]execs.EnvFromSource{
 				{

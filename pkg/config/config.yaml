@@ -31,7 +31,8 @@ profiles:
     source: >-
       files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])
     command: helm
-    args: [template, ., --generate-name]
+    args: [template, .]
+    extraArgs: [-g]
     # env:
     #   - name: EXAMPLE_VAR
     #     value: "true"

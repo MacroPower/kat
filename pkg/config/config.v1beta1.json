@@ -22,7 +22,7 @@
                       },
                       "type": "array",
                       "title": "Arguments",
-                      "description": "Args contains the command line arguments.\n\nCommand.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                      "description": "Args contains the immutable command line arguments.\n\nCommand.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     },
                     "env": {
                       "items": {
@@ -134,7 +134,7 @@
                       },
                       "type": "array",
                       "title": "Arguments",
-                      "description": "Args contains the command line arguments.\n\nCommand.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                      "description": "Args contains the immutable command line arguments.\n\nCommand.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     },
                     "env": {
                       "items": {
@@ -246,7 +246,7 @@
                       },
                       "type": "array",
                       "title": "Arguments",
-                      "description": "Args contains the command line arguments.\n\nCommand.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                      "description": "Args contains the immutable command line arguments.\n\nCommand.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                     },
                     "env": {
                       "items": {
@@ -392,7 +392,7 @@
                   },
                   "type": "array",
                   "title": "Arguments",
-                  "description": "Args contains the command line arguments.\n\nCommand.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                  "description": "Args contains the immutable command line arguments.\n\nCommand.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
                 },
                 "env": {
                   "items": {
@@ -542,7 +542,7 @@
             },
             "type": "array",
             "title": "Arguments",
-            "description": "Args contains the command line arguments.\n\nCommand.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+            "description": "Args contains the immutable command line arguments.\n\nCommand.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
           },
           "env": {
             "items": {
@@ -626,6 +626,14 @@
             "type": "array",
             "title": "Environment Variables From",
             "description": "EnvFrom contains sources for inheriting environment variables.\n\nCommand.EnvFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+          },
+          "extraArgs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Optional Arguments",
+            "description": "ExtraArgs contains extra arguments that can be overridden from the CLI.\nThey are appended to the Args of the Command.\n\nProfile.ExtraArgs: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
           }
         },
         "additionalProperties": false,
