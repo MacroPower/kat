@@ -235,6 +235,7 @@ func TestWriteDefaultConfig(t *testing.T) {
 	tests := map[string]struct {
 		setupPath func(t *testing.T) string
 		errMsg    string
+		force     bool
 		wantErr   bool
 	}{
 		"new file": {
@@ -243,6 +244,7 @@ func TestWriteDefaultConfig(t *testing.T) {
 
 				return filepath.Join(t.TempDir(), "config.yaml")
 			},
+			force:   false,
 			wantErr: false,
 		},
 		"existing file": {
@@ -254,6 +256,7 @@ func TestWriteDefaultConfig(t *testing.T) {
 
 				return path
 			},
+			force:   false,
 			wantErr: false, // Should not overwrite existing file.
 		},
 		"create parent directories": {
@@ -263,6 +266,7 @@ func TestWriteDefaultConfig(t *testing.T) {
 
 				return filepath.Join(dir, "nested", "deep", "config.yaml")
 			},
+			force:   false,
 			wantErr: false,
 		},
 		"path is directory": {
@@ -271,6 +275,38 @@ func TestWriteDefaultConfig(t *testing.T) {
 
 				return t.TempDir()
 			},
+			force:   false,
+			wantErr: true,
+			errMsg:  "path is a directory",
+		},
+		"force new file": {
+			setupPath: func(t *testing.T) string {
+				t.Helper()
+
+				return filepath.Join(t.TempDir(), "config.yaml")
+			},
+			force:   true,
+			wantErr: false,
+		},
+		"force existing file creates backup": {
+			setupPath: func(t *testing.T) string {
+				t.Helper()
+				path := filepath.Join(t.TempDir(), "config.yaml")
+				err := os.WriteFile(path, []byte("existing content"), 0o600)
+				require.NoError(t, err)
+
+				return path
+			},
+			force:   true,
+			wantErr: false,
+		},
+		"force with path is directory": {
+			setupPath: func(t *testing.T) string {
+				t.Helper()
+
+				return t.TempDir()
+			},
+			force:   true,
 			wantErr: true,
 			errMsg:  "path is a directory",
 		},
@@ -282,7 +318,16 @@ func TestWriteDefaultConfig(t *testing.T) {
 
 			path := tc.setupPath(t)
 
-			err := config.WriteDefaultConfig(path)
+			// Record if the file existed before to check backup behavior
+			var originalContent []byte
+
+			info, err := os.Stat(path)
+			if err == nil && info.Mode().IsRegular() {
+				originalContent, err = os.ReadFile(path)
+				require.NoError(t, err)
+			}
+
+			err = config.WriteDefaultConfig(path, tc.force)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -294,6 +339,31 @@ func TestWriteDefaultConfig(t *testing.T) {
 				require.NoError(t, err)
 				assert.True(t, info.Mode().IsRegular())
 				assert.Positive(t, info.Size())
+
+				// If force=true and original content existed, verify backup was created
+				if tc.force && len(originalContent) > 0 {
+					dir := filepath.Dir(path)
+					entries, err := os.ReadDir(dir)
+					require.NoError(t, err)
+
+					backupFound := false
+					for _, entry := range entries {
+						if filepath.Ext(entry.Name()) != ".old" {
+							continue
+						}
+
+						backupPath := filepath.Join(dir, entry.Name())
+						backupContent, err := os.ReadFile(backupPath)
+						require.NoError(t, err)
+						assert.Equal(t, originalContent, backupContent, "backup should contain original content")
+
+						backupFound = true
+
+						break
+					}
+
+					assert.True(t, backupFound, "backup file should be created when force=true and file exists")
+				}
 			}
 		})
 	}
@@ -306,7 +376,7 @@ func TestDefaultConfigYAMLIsValid(t *testing.T) {
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "default-config.yaml")
 
-	err := config.WriteDefaultConfig(configPath)
+	err := config.WriteDefaultConfig(configPath, false)
 	require.NoError(t, err)
 
 	// Read and load the written config.
@@ -414,7 +484,7 @@ func TestDefaultConfigContentValidation(t *testing.T) {
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "test-config.yaml")
 
-	err := config.WriteDefaultConfig(configPath)
+	err := config.WriteDefaultConfig(configPath, false)
 	require.NoError(t, err)
 
 	// Read the actual file content.
@@ -455,7 +525,7 @@ func TestEmbeddedConfigMatchesSourceFile(t *testing.T) {
 	tempDir := t.TempDir()
 	embeddedConfigPath := filepath.Join(tempDir, "embedded-config.yaml")
 
-	err = config.WriteDefaultConfig(embeddedConfigPath)
+	err = config.WriteDefaultConfig(embeddedConfigPath, false)
 	require.NoError(t, err)
 
 	// Read the written embedded config.
@@ -473,7 +543,7 @@ func TestUnmarshalAndValidateDefaultConfig(t *testing.T) {
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "default-config.yaml")
 
-	err := config.WriteDefaultConfig(configPath)
+	err := config.WriteDefaultConfig(configPath, false)
 	require.NoError(t, err)
 
 	// Read the config data.
@@ -534,7 +604,7 @@ func TestDefaultConfigFullPipeline(t *testing.T) {
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "config.yaml")
 
-	err := config.WriteDefaultConfig(configPath)
+	err := config.WriteDefaultConfig(configPath, false)
 	require.NoError(t, err)
 
 	// Read the config.

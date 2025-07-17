@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/invopop/jsonschema"
 
@@ -214,7 +215,7 @@ func (c *Config) Write(path string) error {
 
 // WriteDefaultConfig writes the embedded default config.yaml and jsonschema to
 // the specified path.
-func WriteDefaultConfig(path string) error {
+func WriteDefaultConfig(path string, force bool) error {
 	configExists := false
 	pathInfo, err := os.Stat(path)
 	if pathInfo != nil {
@@ -233,32 +234,48 @@ func WriteDefaultConfig(path string) error {
 		return fmt.Errorf("create directories: %w", err)
 	}
 
-	// Write the default config file.
-	if !configExists {
-		err := os.WriteFile(path, defaultConfigYAML, 0o600)
+	if configExists && force {
+		// Move the existing file to a backup.
+		backupFile := fmt.Sprintf("%s.%d.old", filepath.Base(path), time.Now().UnixNano())
+		backupPath := filepath.Join(filepath.Dir(path), backupFile)
+		slog.Info("backing up existing config file",
+			slog.String("path", backupPath),
+		)
+
+		err = os.Rename(path, backupPath)
 		if err != nil {
-			return fmt.Errorf("write config file: %w", err)
+			return fmt.Errorf("rename existing config file to backup: %w", err)
 		}
 
+		configExists = false
+	}
+
+	// Write the default config file.
+	if !configExists {
 		slog.Info("write default configuration",
 			slog.String("path", path),
 		)
+
+		err = os.WriteFile(path, defaultConfigYAML, 0o600)
+		if err != nil {
+			return fmt.Errorf("write config file: %w", err)
+		}
 	} else {
-		slog.Warn("configuration file already exists, skipping write",
+		slog.Debug("configuration file already exists, skipping write",
 			slog.String("path", path),
 		)
 	}
 
 	// Write the JSON schema file alongside the config file.
 	schemaPath := filepath.Join(filepath.Dir(path), "config.v1beta1.json")
+	slog.Debug("write JSON schema",
+		slog.String("path", schemaPath),
+	)
+
 	err = os.WriteFile(schemaPath, schemaJSON, 0o600)
 	if err != nil {
 		return fmt.Errorf("write schema file: %w", err)
 	}
-
-	slog.Info("write JSON schema",
-		slog.String("path", schemaPath),
-	)
 
 	return nil
 }
