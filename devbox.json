@@ -12,7 +12,7 @@
     "vhs": "0.10.0",
     "bashInteractive": "5.2p37",
     "tmux": "3.5",
-    "syft": "1.27.0",
+    "syft": "1.28.0",
     "cosign": "2.5.0"
   },
   "shell": {
