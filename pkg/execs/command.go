@@ -77,8 +77,9 @@ type Command struct {
 	baseEnv map[string]string
 	// Command is the command to execute.
 	Command string `json:"command" jsonschema:"title=Command,pattern=^\\S+$"`
-	// Args contains the command line arguments.
-	Args []string `json:"args,omitempty" jsonschema:"title=Arguments" yaml:"args,flow,omitempty"`
+	// Args contains the immutable command line arguments.
+	Args      []string `json:"args,omitempty" jsonschema:"title=Arguments" yaml:"args,flow,omitempty"`
+	extraArgs []string `json:"-"`
 	// Env contains environment variable definitions.
 	Env []EnvVar `json:"env,omitempty" jsonschema:"title=Environment Variables"`
 	// EnvFrom contains sources for inheriting environment variables.
@@ -118,6 +119,11 @@ func (e *Command) AddEnvVar(envVar EnvVar) {
 // AddEnvFrom adds environment variable sources.
 func (e *Command) AddEnvFrom(envFrom []EnvFromSource) {
 	e.EnvFrom = append(e.EnvFrom, envFrom...)
+}
+
+// SetExtraArgs sets additional command arguments.
+func (e *Command) SetExtraArgs(args ...string) {
+	e.extraArgs = args
 }
 
 // GetEnv constructs environment variables for command execution.
@@ -161,9 +167,13 @@ func (e *Command) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (
 	// Get environment variables for command execution.
 	env := e.GetEnv()
 
+	// Combine Args and ExtraArgs to get the full command arguments.
+	allArgs := append([]string{}, e.Args...)
+	allArgs = append(allArgs, e.extraArgs...)
+
 	// Prepare the command to execute.
 	//nolint:gosec // G204: Subprocess launched with a potential tainted input or cmd arguments.
-	cmd := exec.CommandContext(ctx, e.Command, e.Args...)
+	cmd := exec.CommandContext(ctx, e.Command, allArgs...)
 	cmd.Dir = dir
 	cmd.Env = env
 	cmd.Stdin = bytes.NewReader(stdin)
@@ -216,7 +226,10 @@ func (e *Command) CompilePatterns() error {
 }
 
 func (e *Command) String() string {
-	return fmt.Sprintf("%s %s", e.Command, strings.Join(e.Args, " "))
+	allArgs := append([]string{}, e.Args...)
+	allArgs = append(allArgs, e.extraArgs...)
+
+	return fmt.Sprintf("%s %s", e.Command, strings.Join(allArgs, " "))
 }
 
 // applyEnvFrom applies all envFrom sources to the environment map.

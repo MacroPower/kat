@@ -54,6 +54,50 @@ func TestCommand_AddEnvFrom(t *testing.T) {
 	assert.Equal(t, "HOME", env.EnvFrom[0].CallerRef.Name)
 }
 
+func TestCommand_SetExtraArgs(t *testing.T) {
+	t.Parallel()
+
+	tcs := map[string]struct {
+		want  string
+		input []string
+	}{
+		"single optional argument": {
+			input: []string{"--verbose"},
+			want:  "echo hello --verbose",
+		},
+		"multiple optional arguments": {
+			input: []string{"--verbose", "--force", "--output=json"},
+			want:  "echo hello --verbose --force --output=json",
+		},
+		"empty optional arguments": {
+			input: []string{},
+			want:  "echo hello",
+		},
+		"nil optional arguments": {
+			input: nil,
+			want:  "echo hello",
+		},
+		"optional arguments with empty strings": {
+			input: []string{"", "--verbose", ""},
+			want:  "echo hello  --verbose ",
+		},
+	}
+
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			cmd := execs.NewCommand([]string{})
+			cmd.Command = "echo"
+			cmd.Args = []string{"hello"}
+			cmd.SetExtraArgs(tc.input...)
+
+			got := cmd.String()
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func TestCommand_SetBaseEnv(t *testing.T) {
 	t.Parallel()
 
@@ -883,6 +927,66 @@ func TestCommand_Exec(t *testing.T) {
 				assert.Equal(t, "error message\n", result.Stderr)
 			},
 		},
+		{
+			name: "command with optional arguments",
+			setup: func() execs.Command {
+				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
+				cmd.Command = "echo"
+				cmd.Args = []string{"hello"}
+				cmd.SetExtraArgs("world", "from", "optional")
+
+				return cmd
+			},
+			dir:     "",
+			wantErr: false,
+			validate: func(t *testing.T, result *execs.Result, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				assert.Equal(t, "hello world from optional\n", result.Stdout)
+				assert.Empty(t, result.Stderr)
+			},
+		},
+		{
+			name: "command with args and extra args combined",
+			setup: func() execs.Command {
+				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
+				cmd.Command = "sh"
+				cmd.Args = []string{"-c", "echo \"$1 $2 $3\"", "script"}
+				cmd.SetExtraArgs("arg1", "arg2")
+
+				return cmd
+			},
+			dir:     "",
+			wantErr: false,
+			validate: func(t *testing.T, result *execs.Result, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				assert.Equal(t, "arg1 arg2 \n", result.Stdout)
+				assert.Empty(t, result.Stderr)
+			},
+		},
+		{
+			name: "command with empty extra args",
+			setup: func() execs.Command {
+				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
+				cmd.Command = "echo"
+				cmd.Args = []string{"base"}
+				cmd.SetExtraArgs()
+
+				return cmd
+			},
+			dir:     "",
+			wantErr: false,
+			validate: func(t *testing.T, result *execs.Result, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				assert.Equal(t, "base\n", result.Stdout)
+				assert.Empty(t, result.Stderr)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -1014,6 +1118,46 @@ func TestCommand_ExecWithStdin(t *testing.T) {
 				assert.Nil(t, result)
 			},
 		},
+		{
+			name: "command with stdin and optional arguments",
+			setup: func() execs.Command {
+				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
+				cmd.Command = "grep"
+				cmd.Args = []string{"test"}
+				cmd.SetExtraArgs("--color=never")
+
+				return cmd
+			},
+			stdin: []byte("line 1\ntest line\nline 3\nanother test\n"),
+			dir:   "",
+			validate: func(t *testing.T, result *execs.Result, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				assert.Contains(t, result.Stdout, "test line")
+				assert.Contains(t, result.Stdout, "another test")
+				assert.Empty(t, result.Stderr)
+			},
+		},
+		{
+			name: "command with stdin using extra args only",
+			setup: func() execs.Command {
+				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
+				cmd.Command = "wc"
+				cmd.SetExtraArgs("-l")
+
+				return cmd
+			},
+			stdin: []byte("line 1\nline 2\nline 3\n"),
+			dir:   "",
+			validate: func(t *testing.T, result *execs.Result, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				assert.Contains(t, result.Stdout, "3")
+				assert.Empty(t, result.Stderr)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -1130,6 +1274,53 @@ func TestCommand_String(t *testing.T) {
 				return cmd
 			},
 			expected: "test  arg2 ",
+		},
+		{
+			name: "command with optional arguments only",
+			setup: func() execs.Command {
+				cmd := execs.NewCommand([]string{})
+				cmd.Command = "git"
+				cmd.SetExtraArgs("status", "--short")
+
+				return cmd
+			},
+			expected: "git status --short",
+		},
+		{
+			name: "command with args and optional arguments",
+			setup: func() execs.Command {
+				cmd := execs.NewCommand([]string{})
+				cmd.Command = "git"
+				cmd.Args = []string{"commit"}
+				cmd.SetExtraArgs("-m", "test message")
+
+				return cmd
+			},
+			expected: "git commit -m test message",
+		},
+		{
+			name: "command with empty optional arguments",
+			setup: func() execs.Command {
+				cmd := execs.NewCommand([]string{})
+				cmd.Command = "echo"
+				cmd.Args = []string{"hello"}
+				cmd.SetExtraArgs()
+
+				return cmd
+			},
+			expected: "echo hello",
+		},
+		{
+			name: "command with extra args containing spaces",
+			setup: func() execs.Command {
+				cmd := execs.NewCommand([]string{})
+				cmd.Command = "git"
+				cmd.Args = []string{"commit"}
+				cmd.SetExtraArgs("-m", "commit message with spaces", "--author=John Doe")
+
+				return cmd
+			},
+			expected: "git commit -m commit message with spaces --author=John Doe",
 		},
 	}
 

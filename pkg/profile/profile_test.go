@@ -27,16 +27,34 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name:    "profile with source expression",
-			command: "kubectl",
+			command: "echo",
 			opts: []profile.ProfileOpt{
-				profile.WithArgs("apply", "-f", "-"),
+				profile.WithArgs("rendering"),
 				profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`),
 			},
 			wantErr: false,
 		},
 		{
+			name:    "profile with extra args",
+			command: "echo",
+			opts: []profile.ProfileOpt{
+				profile.WithArgs("base", "command"),
+				profile.WithExtraArgs("--verbose", "--output=json"),
+			},
+			wantErr: false,
+		},
+		{
+			name:    "profile with args and extra args",
+			command: "sh",
+			opts: []profile.ProfileOpt{
+				profile.WithArgs("-c", "echo template"),
+				profile.WithExtraArgs("--debug", "--dry-run"),
+			},
+			wantErr: false,
+		},
+		{
 			name:    "profile with invalid source expression",
-			command: "kubectl",
+			command: "echo",
 			opts: []profile.ProfileOpt{
 				profile.WithSource("invalid.expression()"),
 			},
@@ -580,6 +598,165 @@ func TestProfile_EnvironmentWithHooks(t *testing.T) {
 		result, err := p.Exec(t.Context(), "/tmp")
 		require.NoError(t, err)
 		assert.Contains(t, result.Stdout, "main output")
+	})
+}
+
+func TestProfile_ExtraArgsWithHooks(t *testing.T) {
+	t.Parallel()
+
+	t.Run("extra args applied before hooks execution", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a post-render hook that processes the main command output
+		postRenderHook, err := profile.NewHookCommand("grep", profile.WithHookArgs("world"))
+		require.NoError(t, err)
+
+		hooks, err := profile.NewHooks(
+			profile.WithPostRender(postRenderHook),
+		)
+		require.NoError(t, err)
+
+		// Create a profile with base args and extra args
+		p := profile.MustNew("echo",
+			profile.WithArgs("hello"),
+			profile.WithExtraArgs("world", "from", "optional"),
+			profile.WithHooks(hooks),
+		)
+
+		result, err := p.Exec(t.Context(), "/tmp")
+		require.NoError(t, err)
+		// The main command should output "hello world from optional"
+		// The post-render hook should grep for "world" and find it
+		assert.Contains(t, result.Stdout, "hello world from optional")
+	})
+
+	t.Run("extra args with pre-render hooks", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a pre-render hook
+		preRenderHook, err := profile.NewHookCommand("echo", profile.WithHookArgs("pre-render executed"))
+		require.NoError(t, err)
+
+		hooks, err := profile.NewHooks(
+			profile.WithPreRender(preRenderHook),
+		)
+		require.NoError(t, err)
+
+		// Create a profile with extra args
+		p := profile.MustNew("echo",
+			profile.WithArgs("main"),
+			profile.WithExtraArgs("command", "with", "args"),
+			profile.WithHooks(hooks),
+		)
+
+		result, err := p.Exec(t.Context(), "/tmp")
+		require.NoError(t, err)
+		// Should contain output from main command with extra args
+		assert.Contains(t, result.Stdout, "main command with args")
+	})
+}
+
+func TestProfile_ExtraArgs(t *testing.T) {
+	t.Parallel()
+
+	tcs := map[string]struct {
+		expectedOut string
+		input       []string
+		want        []string
+		baseArgs    []string
+	}{
+		"no extra args": {
+			input:       nil,
+			want:        nil,
+			baseArgs:    []string{"hello"},
+			expectedOut: "hello",
+		},
+		"single optional arg": {
+			input:       []string{"world"},
+			want:        []string{"world"},
+			baseArgs:    []string{"hello"},
+			expectedOut: "hello world",
+		},
+		"multiple extra args": {
+			input:       []string{"beautiful", "world"},
+			want:        []string{"beautiful", "world"},
+			baseArgs:    []string{"hello"},
+			expectedOut: "hello beautiful world",
+		},
+		"empty extra args list": {
+			input:       []string{},
+			want:        []string{},
+			baseArgs:    []string{"hello"},
+			expectedOut: "hello",
+		},
+		"extra args with flags": {
+			input:       []string{"--flag", "value"},
+			want:        []string{"--flag", "value"},
+			baseArgs:    []string{"hello"},
+			expectedOut: "hello --flag value",
+		},
+	}
+
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			opts := []profile.ProfileOpt{
+				profile.WithArgs(tc.baseArgs...),
+			}
+			if tc.input != nil {
+				opts = append(opts, profile.WithExtraArgs(tc.input...))
+			}
+
+			p, err := profile.New("echo", opts...)
+			require.NoError(t, err)
+
+			// Verify the profile was created with the correct extra args
+			assert.Equal(t, tc.want, p.ExtraArgs)
+
+			// Verify the args are used during execution
+			result, err := p.Exec(t.Context(), "/tmp")
+			require.NoError(t, err)
+			assert.Contains(t, result.Stdout, tc.expectedOut)
+		})
+	}
+}
+
+func TestProfile_WithExtraArgs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("profile creation with extra args", func(t *testing.T) {
+		t.Parallel()
+
+		p, err := profile.New("echo",
+			profile.WithArgs("base"),
+			profile.WithExtraArgs("--verbose", "--output=json"),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"--verbose", "--output=json"}, p.ExtraArgs)
+	})
+
+	t.Run("profile creation without extra args", func(t *testing.T) {
+		t.Parallel()
+
+		p, err := profile.New("echo", profile.WithArgs("base"))
+		require.NoError(t, err)
+		assert.Nil(t, p.ExtraArgs)
+	})
+
+	t.Run("extra args combined with other options", func(t *testing.T) {
+		t.Parallel()
+
+		p, err := profile.New("echo",
+			profile.WithArgs("rendering", "files"),
+			profile.WithExtraArgs("--verbose", "--format=yaml"),
+			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"--verbose", "--format=yaml"}, p.ExtraArgs)
+		assert.Equal(t, "echo", p.Command.Command)
+		assert.Equal(t, []string{"rendering", "files"}, p.Command.Args)
+		assert.NotEmpty(t, p.Source)
 	})
 }
 

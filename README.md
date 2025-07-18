@@ -208,10 +208,12 @@ Render a project in a specific directory using the `ks` profile:
 kat ./example/kustomize ks
 ```
 
-Render a project and override the profile arguments:
+Render a project with custom profile arguments:
 
 ```sh
-kat ./example/kustomize ks -- build . --enable-helm
+kat ./example/kustomize ks -- --enable-helm
+
+kat ./example/helm helm -- -g -f prod-values.yaml
 ```
 
 Render a project with command passthrough:
@@ -284,6 +286,7 @@ rules:
 
 - `command` (required): The command to execute
 - `args`: Arguments to pass to the command
+- `extraArgs`: Arguments that can be overridden from the CLI
 - `env`: List of environment variables for the command
 - `envFrom`: List of sources for environment variables
 - `source`: Define which files to watch for changes (when watch is enabled)
@@ -304,7 +307,8 @@ Profile `source` expressions use list-returning CEL expressions with the same va
 profiles:
   helm:
     command: helm
-    args: [template, ., --generate-name]
+    args: [template, .]
+    extraArgs: [-g]
     source: >-
       files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])
     envFrom:
@@ -379,7 +383,8 @@ rules:
 profiles:
   helm:
     command: helm
-    args: [template, ., --generate-name]
+    args: [template, .]
+    extraArgs: [-g]
     source: >-
       files.filter(f,
         pathExt(f) in [".yaml", ".yml", ".tpl"])
@@ -410,7 +415,8 @@ profiles:
 
   helm:
     command: helm
-    args: [template, ., --generate-name]
+    args: [template, .]
+    extraArgs: [-g]
     source: >-
       files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])
     envFrom:

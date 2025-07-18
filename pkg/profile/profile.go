@@ -52,6 +52,9 @@ type Profile struct {
 	Source string `json:"source,omitempty" jsonschema:"title=Source"`
 	// Command contains the command execution configuration.
 	Command execs.Command `json:",inline"`
+	// ExtraArgs contains extra arguments that can be overridden from the CLI.
+	// They are appended to the Args of the Command.
+	ExtraArgs []string `json:"extraArgs,omitempty" jsonschema:"title=Optional Arguments" yaml:"extraArgs,flow,omitempty"`
 }
 
 // ProfileOpt is a functional option for configuring a Profile.
@@ -86,6 +89,14 @@ func MustNew(command string, opts ...ProfileOpt) *Profile {
 func WithArgs(args ...string) ProfileOpt {
 	return func(p *Profile) {
 		p.Command.Args = args
+	}
+}
+
+// WithExtraArgs sets extra command arguments for the profile.
+// These arguments can be overridden from the CLI.
+func WithExtraArgs(args ...string) ProfileOpt {
+	return func(p *Profile) {
+		p.ExtraArgs = args
 	}
 }
 
@@ -141,6 +152,9 @@ func (p *Profile) Build() error {
 			}
 		}
 	}
+
+	// Add extra arguments to the rendering command.
+	p.Command.SetExtraArgs(p.ExtraArgs...)
 
 	err := p.CompileSource()
 	if err != nil {
