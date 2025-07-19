@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 )
 
 var (
@@ -164,6 +165,8 @@ func (e *Command) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (
 		return nil, ErrEmptyCommand
 	}
 
+	start := time.Now()
+
 	// Get environment variables for command execution.
 	env := e.GetEnv()
 
@@ -190,6 +193,12 @@ func (e *Command) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (
 	}
 
 	if err != nil {
+		slog.DebugContext(ctx, "command failed",
+			slog.String("command", e.String()),
+			slog.Duration("duration", time.Since(start)),
+			slog.Any("error", err),
+		)
+
 		if stdout.Len() > 0 || stderr.Len() > 0 {
 			return result, fmt.Errorf("%w: %w", ErrCommandExecution, err)
 		}
@@ -197,7 +206,10 @@ func (e *Command) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (
 		return nil, fmt.Errorf("%w: %w", ErrCommandExecution, err)
 	}
 
-	slog.DebugContext(ctx, "command executed successfully")
+	slog.DebugContext(ctx, "command executed successfully",
+		slog.String("command", e.String()),
+		slog.Duration("duration", time.Since(start)),
+	)
 
 	return result, nil
 }

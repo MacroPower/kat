@@ -1,21 +1,18 @@
 package main
 
 import (
-	"fmt"
+	"flag"
+	"log"
 	"os"
-
-	"github.com/alecthomas/kong"
 
 	"github.com/macropower/kat/pkg/config"
 	"github.com/macropower/kat/pkg/schema"
 )
 
-var cli struct {
-	OutFile string `default:"schema.json" help:"Output file for the generated schema" short:"o"`
-}
+var outFile = flag.String("o", "schema.json", "Output file for the generated schema")
 
 func main() {
-	cliCtx := kong.Parse(&cli)
+	flag.Parse()
 
 	gen := schema.NewGenerator(config.NewConfig(),
 		"github.com/macropower/kat/pkg/config",
@@ -28,12 +25,12 @@ func main() {
 	)
 	jsData, err := gen.Generate()
 	if err != nil {
-		cliCtx.FatalIfErrorf(fmt.Errorf("generate JSON schema: %w", err))
+		log.Fatalf("generate JSON schema: %v", err)
 	}
 
 	// Write schema.json file.
-	err = os.WriteFile(cli.OutFile, jsData, 0o600)
+	err = os.WriteFile(*outFile, jsData, 0o600)
 	if err != nil {
-		cliCtx.FatalIfErrorf(fmt.Errorf("write schema file: %w", err))
+		log.Fatalf("write schema file: %v", err)
 	}
 }

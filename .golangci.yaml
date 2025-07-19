@@ -259,3 +259,6 @@ linters:
       - path: cmd/
         linters:
           - wrapcheck
+      - path: internal/
+        linters:
+          - wrapcheck

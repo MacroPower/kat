@@ -211,9 +211,9 @@ kat ./example/kustomize ks
 Render a project with custom profile arguments:
 
 ```sh
-kat ./example/kustomize ks -- --enable-helm
+kat ./example/helm -- -g -f prod-values.yaml
 
-kat ./example/helm helm -- -g -f prod-values.yaml
+kat ./example/kustomize ks -- --enable-helm
 ```
 
 Render a project with command passthrough:
@@ -222,13 +222,13 @@ Render a project with command passthrough:
 kat ./example/helm task -- helm:render
 ```
 
-Render using data from stdin (disables rendering engine):
+Read from stdin (disables rendering engine):
 
 ```sh
-cat ./example/kustomize/resources.yaml | kat -f -
+cat ./example/kustomize/resources.yaml | kat -
 ```
 
-Render and send the output to a file (disables TUI):
+Send output to a file (disables TUI):
 
 ```sh
 kat ./example/helm > manifest.yaml

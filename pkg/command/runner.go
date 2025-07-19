@@ -139,6 +139,20 @@ func (cr *Runner) RunPlugin(name string) Output {
 	return cr.RunPluginContext(context.Background(), name)
 }
 
+func (cr *Runner) SetExtraArgs(args []string) error {
+	cr.mu.Lock()
+	defer cr.mu.Unlock()
+
+	p := cr.GetCurrentProfile()
+	p.ExtraArgs = args
+	err := p.Build() // Rebuild the profile to apply changes.
+	if err != nil {
+		return fmt.Errorf("rebuild profile with extra args: %w", err)
+	}
+
+	return nil
+}
+
 // RunPluginContext executes a plugin by name with the provided context.
 func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 	cr.mu.Lock()
@@ -314,7 +328,6 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 		path = cr.path
 		p    = cr.rule.GetProfile()
 		cmd  = p.Command.Command
-		args = p.Command.Args
 	)
 
 	// Cancel any currently running command.
@@ -329,12 +342,6 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 	cr.mu.Unlock()
 
 	cr.broadcast(EventStart(TypeRun))
-
-	slog.DebugContext(ctx, "run",
-		slog.String("path", path),
-		slog.Any("command", cmd),
-		slog.Any("args", args),
-	)
 
 	co := Output{
 		Type: TypeRun,
