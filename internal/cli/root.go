@@ -38,6 +38,7 @@ func NewRootCmd() *cobra.Command {
 		Short:             cmdDesc,
 		Example:           cmdExamples,
 		PersistentPreRunE: setupLogging(args),
+		ValidArgsFunction: runCompletion(runArgs),
 		Args:              runCmd.Args,
 		RunE:              runCmd.RunE,
 	}

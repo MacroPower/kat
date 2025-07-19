@@ -96,6 +96,7 @@ func NewRunCmd(ra *RunArgs) *cobra.Command {
 			}
 			return nil
 		},
+		ValidArgsFunction: runCompletion(ra),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				path             = "."
@@ -127,6 +128,53 @@ func NewRunCmd(ra *RunArgs) *cobra.Command {
 	ra.AddFlags(cmd)
 
 	return cmd
+}
+
+// Try to load config to get available profiles.
+func tryGetProfileNames(configPath string) []cobra.Completion {
+	if configPath == "" {
+		configPath = config.GetPath()
+	}
+
+	cfgData, err := config.ReadConfig(configPath)
+	if err != nil {
+		return nil
+	}
+
+	cfg, err := config.LoadConfig(cfgData)
+	if err != nil {
+		return nil
+	}
+
+	profileNameDesc := map[string]string{}
+	for k, v := range cfg.Command.Profiles {
+		profileNameDesc[k] = v.Command.String()
+	}
+	if len(profileNameDesc) == 0 {
+		return nil
+	}
+
+	completions := make([]cobra.Completion, 0, len(profileNameDesc))
+	for name, desc := range profileNameDesc {
+		completions = append(completions, cobra.CompletionWithDesc(name, desc))
+	}
+
+	return completions
+}
+
+func runCompletion(ra *RunArgs) func(*cobra.Command, []string, string) ([]cobra.Completion, cobra.ShellCompDirective) {
+	return func(_ *cobra.Command, args []string, _ string) ([]cobra.Completion, cobra.ShellCompDirective) {
+		// First argument: path completion.
+		if len(args) == 0 {
+			return nil, cobra.ShellCompDirectiveFilterDirs
+		}
+		// Second argument: command/profile completion.
+		if len(args) == 1 {
+			return tryGetProfileNames(ra.ConfigPath), cobra.ShellCompDirectiveNoFileComp
+		}
+		// No more arguments accepted.
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
 }
 
 func run(cmd *cobra.Command, rc *RunArgs) error {
