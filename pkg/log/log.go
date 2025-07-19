@@ -14,18 +14,38 @@ import (
 	charmlog "github.com/charmbracelet/log"
 )
 
-type Format string
+type (
+	Format string
+	Level  string
+)
 
 const (
 	FormatJSON   Format = "json"
 	FormatLogfmt Format = "logfmt"
 	FormatText   Format = "text"
+
+	LevelError Level = "error"
+	LevelWarn  Level = "warn"
+	LevelInfo  Level = "info"
+	LevelDebug Level = "debug"
 )
 
 var (
 	ErrInvalidArgument  = errors.New("invalid argument")
 	ErrUnknownLogLevel  = errors.New("unknown log level")
 	ErrUnknownLogFormat = errors.New("unknown log format")
+
+	AllFormats = []string{
+		string(FormatJSON),
+		string(FormatLogfmt),
+		string(FormatText),
+	}
+	AllLevels = []string{
+		string(LevelError),
+		string(LevelWarn),
+		string(LevelInfo),
+		string(LevelDebug),
+	}
 )
 
 // CreateHandlerWithStrings creates a [slog.Handler] by strings.
@@ -65,14 +85,14 @@ func CreateHandler(w io.Writer, logLvl slog.Level, logFmt Format) slog.Handler {
 }
 
 func GetLevel(level string) (slog.Level, error) {
-	switch strings.ToLower(level) {
-	case "error":
+	switch Level(strings.ToLower(level)) {
+	case LevelError:
 		return slog.LevelError, nil
-	case "warn", "warning":
+	case LevelWarn, "warning":
 		return slog.LevelWarn, nil
-	case "info":
+	case LevelInfo:
 		return slog.LevelInfo, nil
-	case "debug":
+	case LevelDebug:
 		return slog.LevelDebug, nil
 	}
 

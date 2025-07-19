@@ -24,8 +24,24 @@ func NewRootArgs() *RootArgs {
 }
 
 func (ra *RootArgs) AddFlags(cmd *cobra.Command) {
-	cmd.PersistentFlags().StringVar(&ra.LogLevel, "log-level", "info", "Log level")
-	cmd.PersistentFlags().StringVar(&ra.LogFormat, "log-format", "text", "Log format (text, logfmt, json)")
+	cmd.PersistentFlags().StringVar(&ra.LogLevel, "log-level", "info", fmt.Sprintf("Log level %s", log.AllLevels))
+	cmd.PersistentFlags().StringVar(&ra.LogFormat, "log-format", "text", fmt.Sprintf("Log format %s", log.AllFormats))
+
+	var err error
+
+	err = cmd.RegisterFlagCompletionFunc("log-format",
+		cobra.FixedCompletions(log.AllFormats, cobra.ShellCompDirectiveNoFileComp),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	err = cmd.RegisterFlagCompletionFunc("log-level",
+		cobra.FixedCompletions(log.AllLevels, cobra.ShellCompDirectiveNoFileComp),
+	)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func NewRootCmd() *cobra.Command {
