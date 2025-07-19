@@ -19,7 +19,7 @@
 
   •◦
 
- kat unknown  helm: helm template . --generate-name                                1/2  ? Help
+ kat unknown  helm: helm template . -g                                             1/2  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
    6 resources
@@ -42,7 +42,7 @@
 
   ◦•
 
- kat unknown  helm: helm template . --generate-name                                2/2  ? Help
+ kat unknown  helm: helm template . -g                                             2/2  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
    6 resources
@@ -65,7 +65,7 @@
 
   •◦
 
- kat unknown  helm: helm template . --generate-name                                1/2  ? Help
+ kat unknown  helm: helm template . -g                                             1/2  ? Help
 ────────────────────────────────────────────────────────────────────────────────
    1  # Source: example/templates/deployment.yaml
    2  apiVersion: apps/v1
@@ -111,7 +111,7 @@
 
   •◦
 
- kat unknown  helm: helm template . --generate-name                                1/2  ? Help
+ kat unknown  helm: helm template . -g                                             1/2  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
    Find:
@@ -134,7 +134,7 @@
 
   •◦
 
- kat unknown  helm: helm template . --generate-name                                1/2  ? Help
+ kat unknown  helm: helm template . -g                                             1/2  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
    Find: deployment
@@ -157,7 +157,7 @@
 
 
 
- kat unknown  helm: helm template . --generate-name                                1/1  ? Help
+ kat unknown  helm: helm template . -g                                             1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
    1  # Source: example/templates/deployment.yaml
    2  apiVersion: apps/v1
