@@ -39,9 +39,6 @@ const (
   # Read from stdin (disables rendering engine):
   cat ./example/kustomize/resources.yaml | kat -
 
-  # Read from a file (disables rendering engine):
-  kat -f ./example/kustomize/resources.yaml
-
   # Send output to a file (disables TUI):
   kat ./example/helm > manifests.yaml`
 )
