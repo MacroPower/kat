@@ -1,0 +1,184 @@
+
+   6 resources
+
+ │ release-name-example
+ │ apps/Deployment
+
+   release-name-example-hpa
+   autoscaling/HorizontalPodAutoscaler
+
+   release-name-example-test-connection
+   core/Pod
+
+   release-name-example-sa
+   core/ServiceAccount
+
+   release-name-example-svc
+   core/Service
+
+
+  •◦
+
+ kat unknown  helm: helm template . -g -f values-prod.yaml                         1/2  ? Help
+────────────────────────────────────────────────────────────────────────────────
+
+   Find:
+
+   release-name-example
+   apps/Deployment
+
+   release-name-example-hpa
+   autoscaling/HorizontalPodAutoscaler
+
+   release-name-example-test-connection
+   core/Pod
+
+   release-name-example-sa
+   core/ServiceAccount
+
+   release-name-example-svc
+   core/Service
+
+
+  •◦
+
+ kat unknown  helm: helm template . -g -f values-prod.yaml                         1/2  ? Help
+────────────────────────────────────────────────────────────────────────────────
+
+   Find: deployment
+
+ │ release-name-example
+ │ apps/Deployment
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ kat unknown  helm: helm template . -g -f values-prod.yaml                         1/1  ? Help
+────────────────────────────────────────────────────────────────────────────────
+   1  # Source: example/templates/deployment.yaml
+   2  apiVersion: apps/v1
+   3  kind: Deployment
+   4  metadata:
+   5    name: release-name-example
+   6    labels:
+   7      helm.sh/chart: example-0.1.0
+   8      app.kubernetes.io/name: example
+   9      app.kubernetes.io/instance: release-name
+  10      app.kubernetes.io/version: "1.16.0"
+  11      app.kubernetes.io/managed-by: Helm
+  12  spec:
+  13    selector:
+  14      matchLabels:
+  15        app.kubernetes.io/name: example
+  16        app.kubernetes.io/instance: release-name
+  17    template:
+  18      metadata:
+  19        labels:
+  20          helm.sh/chart: example-0.1.0
+  21          app.kubernetes.io/name: example
+ kat unknown  release-name-example                                                  0%  ? Help
+────────────────────────────────────────────────────────────────────────────────
+   1  # Source: example/templates/deployment.yaml
+   2  apiVersion: apps/v1
+   3  kind: Deployment
+   4  metadata:
+   5    name: release-name-example
+   6    labels:
+   7      helm.sh/chart: example-0.1.0
+   8      app.kubernetes.io/name: example
+   9      app.kubernetes.io/instance: release-name
+  10      app.kubernetes.io/version: "1.16.0"
+  11      app.kubernetes.io/managed-by: Helm
+  12  spec:
+  13    selector:
+  14      matchLabels:
+  15        app.kubernetes.io/name: example
+  16        app.kubernetes.io/instance: release-name
+  17    template:
+  18      metadata:
+  19        labels:
+  20          helm.sh/chart: example-0.1.0
+  21          app.kubernetes.io/name: example
+Search:
+────────────────────────────────────────────────────────────────────────────────
+   1  # Source: example/templates/deployment.yaml
+   2  apiVersion: apps/v1
+   3  kind: Deployment
+   4  metadata:
+   5    name: release-name-example
+   6    labels:
+   7      helm.sh/chart: example-0.1.0
+   8      app.kubernetes.io/name: example
+   9      app.kubernetes.io/instance: release-name
+  10      app.kubernetes.io/version: "1.16.0"
+  11      app.kubernetes.io/managed-by: Helm
+  12  spec:
+  13    selector:
+  14      matchLabels:
+  15        app.kubernetes.io/name: example
+  16        app.kubernetes.io/instance: release-name
+  17    template:
+  18      metadata:
+  19        labels:
+  20          helm.sh/chart: example-0.1.0
+  21          app.kubernetes.io/name: example
+Search: resources
+────────────────────────────────────────────────────────────────────────────────
+  29            image: "nginx:1.16.0"
+  30            imagePullPolicy: IfNotPresent
+  31            ports:
+  32              - name: http
+  33                containerPort: 80
+  34                protocol: TCP
+  35            livenessProbe:
+  36              httpGet:
+  37                path: /
+  38                port: http
+  39            readinessProbe:
+  40              httpGet:
+  41                path: /
+  42                port: http
+  43            resources:
+  44              limits:
+  45                cpu: 2
+  46                memory: 1Gi
+  47              requests:
+  48                cpu: 1
+  49                memory: 1Gi
+ kat unknown  match 1/1                                                           100%  ? Help
+────────────────────────────────────────────────────────────────────────────────
+> ./kat example/helm --config=pkg/config/config.yaml -- -g -f values-prod.yaml
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
