@@ -226,7 +226,7 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 		configPath = config.GetPath()
 	}
 
-	err := config.WriteDefaultConfig(configPath, rc.WriteConfig)
+	err := config.WriteDefaultConfig(configPath, false)
 	if err != nil {
 		slog.Error("write default config", slog.Any("err", err))
 	}
