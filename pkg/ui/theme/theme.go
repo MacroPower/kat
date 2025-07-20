@@ -32,6 +32,7 @@ type Theme struct {
 	CursorStyle               lipgloss.Style
 	ErrorOverlayStyle         lipgloss.Style
 	ErrorTitleStyle           lipgloss.Style
+	ErrorTextStyle            lipgloss.Style
 	ResultTitleStyle          lipgloss.Style
 	FilterStyle               lipgloss.Style
 	GenericOverlayStyle       lipgloss.Style
@@ -109,6 +110,9 @@ func New(theme string) *Theme {
 				Background(style.lipglossFromToken(chroma.GenericDeleted)).
 				Bold(true)
 
+		errorTextStyle = lipgloss.NewStyle().
+				Foreground(style.lipglossFromToken(chroma.GenericDeleted))
+
 		resultTitleStyle = genericStyle.
 					Foreground(style.lipglossFromTokenBg(chroma.Background)).
 					Background(style.lipglossFromToken(chroma.GenericInserted)).
@@ -141,6 +145,7 @@ func New(theme string) *Theme {
 		CursorStyle:               cursorStyle,
 		ErrorOverlayStyle:         errorOverlayStyle,
 		ErrorTitleStyle:           errorTitleStyle,
+		ErrorTextStyle:            errorTextStyle,
 		ResultTitleStyle:          resultTitleStyle,
 		FilterStyle:               filterStyle,
 		GenericOverlayStyle:       genericOverlayStyle,

@@ -18,6 +18,7 @@ import (
 
 const (
 	wrapOnCharacters = " /-"
+	lineIndicator    = ">"
 )
 
 // ChromaRenderer handles rendering content with chroma styling.
@@ -28,15 +29,18 @@ type ChromaRenderer struct {
 	style                *chroma.Style
 	searchHighlighter    *SearchHighlighter
 	diffHighlighter      *DiffHighlighter
+	errorHighlighter     *ErrorHighlighter
 	differ               *Differ
 	searchTerm           string
 	matches              []MatchPosition
+	errors               []ErrorPosition
 	currentSelectedMatch int // Index of the currently selected match (-1 if none selected).
+	initialLineNumber    int // Initial line number for rendering.
 	lineNumbersDisabled  bool
 }
 
 // NewChromaRenderer creates a new [ChromaRenderer].
-func NewChromaRenderer(t *theme.Theme, lineNumbersDisabled bool) *ChromaRenderer {
+func NewChromaRenderer(t *theme.Theme, opts ...ChromaRendererOpt) *ChromaRenderer {
 	lexer := lexers.Get("YAML")
 	lexer = chroma.Coalesce(lexer)
 
@@ -61,16 +65,39 @@ func NewChromaRenderer(t *theme.Theme, lineNumbersDisabled bool) *ChromaRenderer
 	deletedStyle := t.DeletedStyle
 	editedStyle := t.InsertedStyle
 
-	return &ChromaRenderer{
+	cr := &ChromaRenderer{
 		currentSelectedMatch: -1,
 		theme:                t,
 		lexer:                lexer,
 		formatter:            formatter,
 		style:                t.ChromaStyle,
-		lineNumbersDisabled:  lineNumbersDisabled,
+		initialLineNumber:    1, // Default initial line number.
 		searchHighlighter:    NewSearchHighlighter(highlightStyle, selectedHighlightStyle),
 		diffHighlighter:      NewDiffHighlighter(insertedStyle, deletedStyle, editedStyle),
+		errorHighlighter:     NewErrorHighlighter(deletedStyle),
 		differ:               NewDiffer(),
+	}
+
+	for _, opt := range opts {
+		opt(cr)
+	}
+
+	return cr
+}
+
+type ChromaRendererOpt func(*ChromaRenderer)
+
+// WithLineNumbersDisabled disables line numbers in the renderer.
+func WithLineNumbersDisabled(b bool) ChromaRendererOpt {
+	return func(gr *ChromaRenderer) {
+		gr.lineNumbersDisabled = b
+	}
+}
+
+// WithInitialLineNumber sets the initial line number for the renderer.
+func WithInitialLineNumber(line int) ChromaRendererOpt {
+	return func(gr *ChromaRenderer) {
+		gr.initialLineNumber = line
 	}
 }
 
@@ -94,6 +121,11 @@ func (gr *ChromaRenderer) RenderContent(yaml string, width int) (string, error) 
 
 	// Apply diff highlighting to the chroma-styled content.
 	content = gr.diffHighlighter.ApplyDiffHighlights(content, diffs)
+
+	// Apply error highlighting to the chroma-styled content.
+	if len(gr.errors) > 0 {
+		content = gr.errorHighlighter.ApplyErrorHighlights(content, gr.errors)
+	}
 
 	// Apply search highlighting to the chroma-styled content using the highlighter.
 	if gr.searchTerm != "" && len(gr.matches) > 0 {
@@ -132,7 +164,7 @@ func (gr *ChromaRenderer) postProcessContent(content string, width int) string {
 		if gr.lineNumbersDisabled {
 			result.WriteString(gr.formatLine(line, width))
 		} else {
-			result.WriteString(gr.formatLineWithNumber(line, i+1, width))
+			result.WriteString(gr.formatLineWithNumber(line, gr.initialLineNumber+i, width))
 		}
 
 		// Don't add an artificial newline after the last split.
@@ -156,7 +188,16 @@ func (gr *ChromaRenderer) formatLineWithNumber(line string, lineNum, width int) 
 	width = max(0, width-2) // Reserve space for line number and padding.
 
 	trunc := lipgloss.NewStyle().MaxWidth(width).Render
-	lineNumberText := fmt.Sprintf("%4d  ", lineNum)
+
+	// Check if this line has any errors (convert to 0-based for comparison).
+	hasError := gr.hasErrorOnLine(lineNum - gr.initialLineNumber)
+
+	var lineNumberText string
+	if hasError {
+		lineNumberText = fmt.Sprintf("%s%3d  ", lineIndicator, lineNum)
+	} else {
+		lineNumberText = fmt.Sprintf("%4d  ", lineNum)
+	}
 
 	lines := cellbuf.Wrap(line, width, wrapOnCharacters)
 
@@ -174,6 +215,17 @@ func (gr *ChromaRenderer) formatLineWithNumber(line string, lineNum, width int) 
 	}
 
 	return strings.Join(fmtLines, "\n")
+}
+
+// hasErrorOnLine checks if there are any errors on the specified line (0-based).
+func (gr *ChromaRenderer) hasErrorOnLine(line int) bool {
+	for _, err := range gr.errors {
+		if err.Line == line {
+			return true
+		}
+	}
+
+	return false
 }
 
 // SetSearchTerm sets the search term and clears existing matches.
@@ -206,6 +258,21 @@ func (gr *ChromaRenderer) ClearDiffs() {
 func (gr *ChromaRenderer) Unload() {
 	gr.differ.Unload()
 	gr.SetSearchTerm("")
+	gr.ClearErrors()
+}
+
+// SetError adds an error highlight at the specified position.
+func (gr *ChromaRenderer) SetError(line, start, end int) {
+	gr.errors = append(gr.errors, ErrorPosition{
+		Line:  line,
+		Start: start,
+		End:   end,
+	})
+}
+
+// ClearErrors removes all error highlights.
+func (gr *ChromaRenderer) ClearErrors() {
+	gr.errors = nil
 }
 
 // SetFormatter sets the chroma formatter explicitly.

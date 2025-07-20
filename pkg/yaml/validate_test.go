@@ -1,42 +1,42 @@
-// Package schema_test contains tests for the schema package's public interface.
-// Tests are in a separate package to ensure we only test exported functionality.
-package schema_test
+package yaml_test
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/macropower/kat/pkg/schema"
+	goccyyaml "github.com/goccy/go-yaml"
+
+	"github.com/macropower/kat/pkg/yaml"
 )
 
 func TestValidationError_Error(t *testing.T) {
 	t.Parallel()
 
 	tcs := map[string]struct {
-		err  schema.ValidationError
 		want string
+		err  yaml.Error
 	}{
 		"with path": {
-			err: schema.ValidationError{
-				Path:   mustBuildPath(t, "field", "subfield"),
-				Detail: "value is required",
+			err: yaml.Error{
+				Err:  errors.New("value is required"),
+				Path: mustBuildPath(t, "field", "subfield"),
 			},
 			want: "error at $.field.subfield: value is required",
 		},
 		"without path": {
-			err: schema.ValidationError{
-				Detail: "value is required",
+			err: yaml.Error{
+				Err: errors.New("validation error: value is required"),
 			},
 			want: "validation error: value is required",
 		},
 		"empty detail": {
-			err: schema.ValidationError{
-				Path:   mustBuildPath(t, "field"),
-				Detail: "",
+			err: yaml.Error{
+				Err:  errors.New(""),
+				Path: mustBuildPath(t, "field"),
 			},
 			want: "error at $.field: ",
 		},
@@ -91,7 +91,7 @@ func TestNewValidator(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			validator, err := schema.NewValidator(tc.schemaData)
+			validator, err := yaml.NewValidator("test", tc.schemaData)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -158,7 +158,7 @@ func TestValidator_Validate(t *testing.T) {
 		"required": ["name"]
 	}`)
 
-	validator, err := schema.NewValidator(schemaData)
+	validator, err := yaml.NewValidator("test", schemaData)
 	require.NoError(t, err)
 
 	tcs := map[string]struct {
@@ -362,256 +362,13 @@ func TestValidator_Validate(t *testing.T) {
 			if tc.wantErr {
 				require.Error(t, err)
 
-				var validationErr *schema.ValidationError
+				var validationErr *yaml.Error
 				require.ErrorAs(t, err, &validationErr)
 				assert.NotNil(t, validationErr.Path)
 				assert.Equal(t, tc.expectedPath, validationErr.Path.String())
-				assert.NotEmpty(t, validationErr.Detail)
 			} else {
 				require.NoError(t, err)
 			}
 		})
 	}
-}
-
-// Test that [schema.ValidationError.Path] works correctly with [yaml.Path.AnnotateSource].
-func TestValidator_Validate_WithAnnotateSource(t *testing.T) {
-	t.Parallel()
-
-	schemaData := []byte(`{
-		"type": "object",
-		"properties": {
-			"users": {
-				"type": "array",
-				"items": {
-					"type": "object",
-					"properties": {
-						"name": {"type": "string"},
-						"age": {"type": "number"}
-					},
-					"required": ["name", "age"]
-				}
-			},
-			"config": {
-				"type": "object",
-				"properties": {
-					"enabled": {"type": "boolean"},
-					"settings": {
-						"type": "array",
-						"items": {"type": "string"}
-					}
-				},
-				"required": ["enabled"]
-			}
-		},
-		"required": ["users"]
-	}`)
-
-	validator, err := schema.NewValidator(schemaData)
-	require.NoError(t, err)
-
-	tcs := map[string]struct {
-		yamlSource       string
-		expectedErrorMsg string
-		expectedLine     int // Expected line number where error should be annotated
-	}{
-		"missing required field at root": {
-			yamlSource: `config:
-  enabled: true
-  settings:
-    - "option1"
-    - "option2"`,
-			expectedErrorMsg: "error at $:",
-			expectedLine:     1, // Error at root, should point to first line
-		},
-		"wrong type in array element": {
-			yamlSource: `users:
-  - name: "John"
-    age: 30
-  - name: "Jane"
-    age: "invalid"
-config:
-  enabled: true`,
-			expectedErrorMsg: "error at $.users[1].age:",
-			expectedLine:     5, // Line with 'age: "invalid"'
-		},
-		"missing required field in array object": {
-			yamlSource: `users:
-  - name: "John"
-    age: 30
-  - name: "Jane"
-    # missing age field
-config:
-  enabled: true`,
-			expectedErrorMsg: "error at $.users[1]:",
-			expectedLine:     4, // Line with 'name: "Jane"' (start of problematic object)
-		},
-		"wrong type in nested array": {
-			yamlSource: `users:
-  - name: "John"
-    age: 30
-config:
-  enabled: true
-  settings:
-    - "option1"
-    - 123
-    - "option3"`,
-			expectedErrorMsg: "error at $.config.settings[1]:",
-			expectedLine:     8, // Line with '- 123'
-		},
-		"missing required field in nested object": {
-			yamlSource: `users:
-  - name: "John"
-    age: 30
-config:
-  settings:
-    - "option1"`,
-			expectedErrorMsg: "error at $.config:",
-			expectedLine:     5, // Line with 'settings:' (first property of problematic object)
-		},
-	}
-
-	for name, tc := range tcs {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			// Parse the YAML source
-			var data any
-
-			err := yaml.Unmarshal([]byte(tc.yamlSource), &data)
-			require.NoError(t, err, "YAML should be valid")
-
-			// Validate the data
-			err = validator.Validate(data)
-			require.Error(t, err, "Validation should fail")
-
-			// Check that we get a ValidationError
-			var validationErr *schema.ValidationError
-			require.ErrorAs(t, err, &validationErr)
-			assert.NotNil(t, validationErr.Path, "ValidationError should have a path")
-
-			// Check that the error message contains the expected path
-			assert.Contains(t, err.Error(), tc.expectedErrorMsg)
-
-			// Test AnnotateSource functionality
-			annotated, err := validationErr.Path.AnnotateSource([]byte(tc.yamlSource), true)
-			require.NoError(t, err, "AnnotateSource should not fail")
-
-			// The annotated source should contain error markers
-			annotatedStr := string(annotated)
-			assert.NotEqual(t, tc.yamlSource, annotatedStr, "Annotated source should be different from original")
-
-			// Debug output
-			t.Logf("Expected line: %d", tc.expectedLine)
-			t.Logf("Annotated output:\n%s", annotatedStr)
-
-			// Split into lines to check annotation
-			lines := splitLines(annotatedStr)
-
-			// The annotated source might only show a subset of lines around the error.
-			// Look for the expected line number in the annotated output.
-			expectedLineStr := fmt.Sprintf("%d |", tc.expectedLine)
-			foundExpectedLine := false
-
-			var errorLine string
-
-			for _, line := range lines {
-				if containsString(line, expectedLineStr) {
-					foundExpectedLine = true
-					errorLine = line
-
-					break
-				}
-			}
-
-			assert.True(t, foundExpectedLine, "Should find line %d in annotated output", tc.expectedLine)
-
-			// Check that the found line or surrounding lines contain error markers
-			if foundExpectedLine {
-				hasAnnotation := containsErrorMarkers(errorLine)
-
-				// Also check the next line for caret markers
-				if !hasAnnotation {
-					for i, line := range lines {
-						if containsString(line, expectedLineStr) && i+1 < len(lines) {
-							hasAnnotation = containsErrorMarkers(lines[i+1])
-
-							break
-						}
-					}
-				}
-
-				assert.True(t, hasAnnotation, "Line %d should have error annotation markers", tc.expectedLine)
-			}
-		})
-	}
-}
-
-// splitLines splits a string into lines, preserving empty lines.
-func splitLines(s string) []string {
-	if s == "" {
-		return []string{}
-	}
-
-	lines := []string{}
-	start := 0
-
-	for i, r := range s {
-		if r == '\n' {
-			lines = append(lines, s[start:i])
-			start = i + 1
-		}
-	}
-
-	// Add the last line if it doesn't end with newline
-	if start < len(s) {
-		lines = append(lines, s[start:])
-	}
-
-	return lines
-}
-
-// containsErrorMarkers checks if a line contains YAML annotation error markers.
-// The go-yaml library uses ">" to mark error lines and "^" for caret indicators.
-func containsErrorMarkers(line string) bool {
-	// Check for line marker (starts with ">")
-	if line != "" && line[0] == '>' {
-		return true
-	}
-
-	// Check for caret indicator line (contains "^")
-	return containsString(line, "^")
-}
-
-// containsString checks if a string contains a substring.
-func containsString(s, substr string) bool {
-	return len(s) >= len(substr) && indexString(s, substr) >= 0
-}
-
-// indexString returns the index of the first occurrence of substr in s, or -1.
-func indexString(s, substr string) int {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return i
-		}
-	}
-
-	return -1
-}
-
-// mustBuildPath is a helper function to build YAML paths for testing.
-// It panics on error, making it suitable only for test cases where the path is known to be valid.
-func mustBuildPath(t *testing.T, parts ...string) *yaml.Path {
-	t.Helper()
-
-	pb := yaml.PathBuilder{}
-	current := pb.Root()
-
-	for _, part := range parts {
-		current = current.Child(part)
-	}
-
-	path := current.Build()
-
-	return path
 }

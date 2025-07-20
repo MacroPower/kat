@@ -1,4 +1,4 @@
-package schema
+package yaml
 
 import (
 	"encoding/json"
@@ -9,27 +9,6 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-// ValidationError represents a validation error from JSON schema validation.
-// It wraps the original validation result and provides path information for
-// [yaml.Path.AnnotateSource].
-type ValidationError struct {
-	Path   *yaml.Path // YAML path to the validation error.
-	Err    error      // Underlying error.
-	Field  string     // Field name that failed validation.
-	Detail string     // Detailed error message.
-}
-
-func (e ValidationError) Error() string {
-	if e.Path != nil {
-		return fmt.Sprintf("error at %s: %v", e.Path.String(), e.Detail)
-	}
-	if e.Field != "" {
-		return fmt.Sprintf("error at %s: %s", e.Field, e.Detail)
-	}
-
-	return "validation error: " + e.Detail
-}
-
 // Validator validates data against a JSON schema.
 // Uses [github.com/santhosh-tekuri/jsonschema/v6].
 type Validator struct {
@@ -37,7 +16,7 @@ type Validator struct {
 }
 
 // NewValidator creates a new [Validator] with the provided JSON schema data.
-func NewValidator(schemaData []byte) (*Validator, error) {
+func NewValidator(url string, schemaData []byte) (*Validator, error) {
 	var schema any
 
 	err := json.Unmarshal(schemaData, &schema)
@@ -46,17 +25,12 @@ func NewValidator(schemaData []byte) (*Validator, error) {
 	}
 
 	compiler := jsonschema.NewCompiler()
-	err = compiler.AddResource(
-		"https://raw.githubusercontent.com/macropower/kat/refs/heads/main/pkg/config/config.v1beta1.json",
-		schema,
-	)
+	err = compiler.AddResource(url, schema)
 	if err != nil {
 		return nil, fmt.Errorf("add schema resource: %w", err)
 	}
 
-	jss, err := compiler.Compile(
-		"https://raw.githubusercontent.com/macropower/kat/refs/heads/main/pkg/config/config.v1beta1.json",
-	)
+	jss, err := compiler.Compile(url)
 	if err != nil {
 		return nil, fmt.Errorf("compile schema: %w", err)
 	}
@@ -84,16 +58,14 @@ func (s *Validator) Validate(data any) error {
 	path, pathErr := buildYAMLPathFromError(validationErr)
 	if pathErr != nil {
 		// If we can't build the path, still return a useful error.
-		return &ValidationError{
-			Err:    errors.New("schema validation"),
-			Detail: validationErr.Error(),
+		return &Error{
+			Err: fmt.Errorf("schema validation: %w", validationErr),
 		}
 	}
 
-	return &ValidationError{
-		Path:   path,
-		Err:    errors.New("schema validation"),
-		Detail: validationErr.Error(),
+	return &Error{
+		Err:  validationErr,
+		Path: path,
 	}
 }
 
@@ -126,12 +98,10 @@ func findMostSpecificLocation(err *jsonschema.ValidationError) []string {
 func buildPathFromLocation(location []string) (*yaml.Path, error) {
 	if len(location) == 0 {
 		// Root level error.
-		pb := yaml.PathBuilder{}
-
-		return pb.Root().Build(), nil
+		return NewPathBuilder().Root().Build(), nil
 	}
 
-	pb := yaml.PathBuilder{}
+	pb := NewPathBuilder()
 	current := pb.Root()
 
 	for _, part := range location {

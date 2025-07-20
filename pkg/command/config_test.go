@@ -265,12 +265,12 @@ func TestConfig_Validate_EdgeCases(t *testing.T) {
 			configErr := config.Validate()
 
 			if tc.expectError {
-				require.NotNil(t, configErr)
+				require.Error(t, configErr)
 				if tc.errorPath != "" {
 					assert.Contains(t, configErr.Error(), tc.errorPath)
 				}
 			} else {
-				assert.Nil(t, configErr)
+				assert.NoError(t, configErr)
 			}
 		})
 	}

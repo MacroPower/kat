@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
@@ -242,7 +241,7 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 	} else {
 		cfg, err = config.LoadConfig(cfgData)
 		if err != nil {
-			return fmt.Errorf("invalid config %q:\n%s", configPath, yaml.FormatError(err, true, true))
+			return fmt.Errorf("invalid config %q: %w", configPath, err)
 		}
 	}
 

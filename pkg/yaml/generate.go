@@ -1,4 +1,4 @@
-package schema
+package yaml
 
 import (
 	"encoding/json"
@@ -16,10 +16,10 @@ import (
 
 type LookupCommentFunc func(commentMap map[string]string) func(t reflect.Type, f string) string
 
-// Generator generates a JSON schema from a Go type using reflection.
+// SchemaGenerator generates a JSON schema from a Go type using reflection.
 // It looks up comments from the source code to provide documentation, one or
 // more package paths are provided. Uses [github.com/invopop/jsonschema].
-type Generator struct {
+type SchemaGenerator struct {
 	Reflector         *jsonschema.Reflector
 	LookupCommentFunc LookupCommentFunc
 	reflectTarget     any
@@ -27,11 +27,11 @@ type Generator struct {
 	Tests             bool // Include test files.
 }
 
-// NewGenerator creates a new [Generator].
+// NewSchemaGenerator creates a new [SchemaGenerator].
 // The reflectTarget is the Go type to generate the schema for, and packagePaths
 // are the fully qualified import paths of the packages to lookup comments from.
-func NewGenerator(reflectTarget any, packagePaths ...string) *Generator {
-	return &Generator{
+func NewSchemaGenerator(reflectTarget any, packagePaths ...string) *SchemaGenerator {
+	return &SchemaGenerator{
 		Reflector:         new(jsonschema.Reflector),
 		LookupCommentFunc: DefaultLookupCommentFunc,
 		packagePaths:      packagePaths,
@@ -39,7 +39,7 @@ func NewGenerator(reflectTarget any, packagePaths ...string) *Generator {
 	}
 }
 
-func (g *Generator) Generate() ([]byte, error) {
+func (g *SchemaGenerator) Generate() ([]byte, error) {
 	if len(g.packagePaths) > 0 {
 		err := g.addLookupComment()
 		if err != nil {
@@ -56,7 +56,7 @@ func (g *Generator) Generate() ([]byte, error) {
 	return jsData, nil
 }
 
-func (g *Generator) addLookupComment() error {
+func (g *SchemaGenerator) addLookupComment() error {
 	// Find the module root directory.
 	moduleRoot, err := findModuleRoot()
 	if err != nil {

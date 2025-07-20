@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/macropower/kat/pkg/config"
-	"github.com/macropower/kat/pkg/schema"
+	"github.com/macropower/kat/pkg/yaml"
 )
 
 var outFile = flag.String("o", "schema.json", "Output file for the generated schema")
@@ -14,14 +14,14 @@ var outFile = flag.String("o", "schema.json", "Output file for the generated sch
 func main() {
 	flag.Parse()
 
-	gen := schema.NewGenerator(config.NewConfig(),
-		"github.com/macropower/kat/pkg/config",
+	gen := yaml.NewSchemaGenerator(config.NewConfig(),
 		"github.com/macropower/kat/pkg/command",
-		"github.com/macropower/kat/pkg/ui",
-		"github.com/macropower/kat/pkg/profile",
-		"github.com/macropower/kat/pkg/rule",
+		"github.com/macropower/kat/pkg/config",
 		"github.com/macropower/kat/pkg/execs",
 		"github.com/macropower/kat/pkg/keys",
+		"github.com/macropower/kat/pkg/profile",
+		"github.com/macropower/kat/pkg/rule",
+		"github.com/macropower/kat/pkg/ui",
 	)
 	jsData, err := gen.Generate()
 	if err != nil {

@@ -121,10 +121,13 @@ func NewModel(c Config) PagerModel {
 	si.Focus()
 
 	m := PagerModel{
-		cm:              c.CommonModel,
-		kb:              c.KeyBinds,
-		helpRenderer:    statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr),
-		chromaRenderer:  yamls.NewChromaRenderer(c.CommonModel.Theme, !c.ShowLineNumbers),
+		cm:           c.CommonModel,
+		kb:           c.KeyBinds,
+		helpRenderer: statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr),
+		chromaRenderer: yamls.NewChromaRenderer(
+			c.CommonModel.Theme,
+			yamls.WithLineNumbersDisabled(!c.ShowLineNumbers),
+		),
 		ViewState:       StateReady,
 		viewport:        vp,
 		searchInput:     si,

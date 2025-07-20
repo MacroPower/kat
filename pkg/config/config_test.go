@@ -128,7 +128,7 @@ kind: Configuration
 invalid: [unclosed
 `,
 			wantErr: true,
-			errMsg:  "decode yaml config",
+			errMsg:  "[3:9] sequence end token ']' not found",
 		},
 		"missing required fields": {
 			yamlContent: `profiles:
@@ -556,7 +556,7 @@ func TestUnmarshalAndValidateDefaultConfig(t *testing.T) {
 
 	// Validate the Kube configuration.
 	kubeErr := cfg.Command.Validate()
-	assert.Nil(t, kubeErr, "embedded default config Kube section should pass validation")
+	require.NoError(t, kubeErr, "embedded default config Kube section should pass validation")
 
 	// Validate the UI configuration key binds.
 	err = cfg.UI.KeyBinds.Validate()

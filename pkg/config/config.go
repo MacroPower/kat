@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -13,16 +12,20 @@ import (
 
 	_ "embed"
 
-	yaml "github.com/goccy/go-yaml"
-
 	"github.com/macropower/kat/pkg/command"
-	"github.com/macropower/kat/pkg/schema"
 	"github.com/macropower/kat/pkg/ui"
+	"github.com/macropower/kat/pkg/ui/theme"
+	"github.com/macropower/kat/pkg/yaml"
 )
+
+//go:generate go run ../../internal/schemagen/main.go -o config.v1beta1.json
 
 var (
 	//go:embed config.yaml
 	defaultConfigYAML []byte
+
+	//go:embed config.v1beta1.json
+	schemaJSON []byte
 
 	ValidAPIVersions = []string{
 		"kat.jacobcolvin.com/v1beta1",
@@ -120,32 +123,35 @@ func ReadConfig(path string) ([]byte, error) {
 	return data, nil
 }
 
+// ValidateConfig.
+
+// ValidateAndLoadConfig.
+
 func LoadConfig(data []byte) (*Config, error) {
 	reader := bytes.NewReader(data)
+
+	t := theme.New("onedark")
 
 	// Decode into interface{} for schema validation.
 	var anyConfig any
 
-	dec := yaml.NewDecoder(reader, yaml.AllowDuplicateMapKey())
+	dec := yaml.NewDecoder(reader)
 	err := dec.Decode(&anyConfig)
 	if err != nil {
-		return nil, fmt.Errorf("decode yaml config: %w", err)
+		//nolint:wrapcheck // Wrapped by [yaml.AddErrorContext].
+		return nil, yaml.AddErrorContext(err, data, t)
 	}
 
 	// Validate against JSON schema.
-	err = ValidateWithSchema(anyConfig)
+	validator, err := yaml.NewValidator("/config.v1beta1.json", schemaJSON)
 	if err != nil {
-		schemaErr := &schema.ValidationError{}
-		if errors.As(err, &schemaErr) {
-			source, srcErr := schemaErr.Path.AnnotateSource(data, true)
-			if srcErr != nil {
-				return nil, fmt.Errorf("path annotation failed: %w; caused by: %w", srcErr, err)
-			}
+		return nil, fmt.Errorf("create validator: %w", err)
+	}
 
-			return nil, fmt.Errorf("%w\n%s", err, source)
-		}
-
-		return nil, fmt.Errorf("schema: %w", err)
+	err = validator.Validate(anyConfig)
+	if err != nil {
+		//nolint:wrapcheck // Wrapped by [yaml.AddErrorContext].
+		return nil, yaml.AddErrorContext(err, data, t)
 	}
 
 	// Validation passed; reset reader and decode into a Config struct.
@@ -155,28 +161,20 @@ func LoadConfig(data []byte) (*Config, error) {
 	}
 
 	c := &Config{}
-	dec = yaml.NewDecoder(reader, yaml.AllowDuplicateMapKey())
+	dec = yaml.NewDecoder(reader)
 	err = dec.Decode(c)
 	if err != nil {
-		return nil, fmt.Errorf("decode yaml config: %w", err)
+		//nolint:wrapcheck // Wrapped by [yaml.AddErrorContext].
+		return nil, yaml.AddErrorContext(err, data, t)
 	}
 
 	c.EnsureDefaults()
 
 	// Run Go validation on the config (for requirements that can't be represented in the schema).
-	cfgErr := c.Command.Validate()
-	if cfgErr != nil {
-		source, srcErr := cfgErr.Path.AnnotateSource(data, true)
-		if srcErr != nil {
-			slog.Warn("failed to annotate config with error",
-				slog.String("path", cfgErr.Path.String()),
-				slog.Any("error", srcErr),
-			)
-
-			return nil, fmt.Errorf("validate config: %w", cfgErr)
-		}
-
-		return nil, fmt.Errorf("validate config: %w\n%s", cfgErr, source)
+	err = c.Command.Validate()
+	if err != nil {
+		//nolint:wrapcheck // Wrapped by [yaml.AddErrorContext].
+		return nil, yaml.AddErrorContext(err, data, t)
 	}
 
 	return c, nil
@@ -282,10 +280,7 @@ func WriteDefaultConfig(path string, force bool) error {
 
 func (c *Config) MarshalYAML() ([]byte, error) {
 	b := &bytes.Buffer{}
-	enc := yaml.NewEncoder(b,
-		yaml.Indent(2),
-		yaml.IndentSequence(true),
-	)
+	enc := yaml.NewEncoder(b)
 	err := enc.Encode(*c)
 	if err != nil {
 		return nil, fmt.Errorf("marshal yaml: %w", err)

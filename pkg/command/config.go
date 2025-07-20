@@ -3,11 +3,10 @@ package command
 import (
 	"fmt"
 
-	"github.com/goccy/go-yaml"
-
 	"github.com/macropower/kat/pkg/execs"
 	"github.com/macropower/kat/pkg/profile"
 	"github.com/macropower/kat/pkg/rule"
+	"github.com/macropower/kat/pkg/yaml"
 )
 
 const (
@@ -106,15 +105,6 @@ type Config struct {
 	Rules []*rule.Rule `json:"rules,omitempty" jsonschema:"title=Rules"`
 }
 
-type ConfigError struct {
-	Path *yaml.Path // YAML path to the error.
-	Err  error
-}
-
-func (e ConfigError) Error() string {
-	return fmt.Sprintf("error at %s: %v", e.Path.String(), e.Err)
-}
-
 func NewConfig(ps map[string]*profile.Profile, rs []*rule.Rule) (*Config, error) {
 	c := &Config{
 		Profiles: ps,
@@ -146,13 +136,13 @@ func (c *Config) EnsureDefaults() {
 	}
 }
 
-func (c *Config) Validate() *ConfigError {
-	pb := yaml.PathBuilder{}
+func (c *Config) Validate() error {
+	pb := yaml.NewPathBuilder()
 
 	for name, p := range c.Profiles {
 		err := p.CompileSource()
 		if err != nil {
-			return &ConfigError{
+			return &yaml.Error{
 				Path: pb.Root().Child("profiles").Child(name).Child("source").Build(),
 				Err:  fmt.Errorf("invalid source: %w", err),
 			}
@@ -166,7 +156,7 @@ func (c *Config) Validate() *ConfigError {
 			uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
 			err := env.ValueFrom.CallerRef.Compile()
 			if err != nil {
-				return &ConfigError{
+				return &yaml.Error{
 					Path: pb.Root().
 						Child("profiles").
 						Child(name).
@@ -189,7 +179,7 @@ func (c *Config) Validate() *ConfigError {
 			uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
 			err := envFrom.CallerRef.Compile()
 			if err != nil {
-				return &ConfigError{
+				return &yaml.Error{
 					Path: pb.Root().
 						Child("profiles").
 						Child(name).
@@ -205,7 +195,7 @@ func (c *Config) Validate() *ConfigError {
 		// TODO: Build should return *ConfigError to avoid the duplicate validation above.
 		err = p.Build()
 		if err != nil {
-			return &ConfigError{
+			return &yaml.Error{
 				Path: pb.Root().Child("profiles").Child(name).Build(),
 				Err:  fmt.Errorf("invalid profile: %w", err),
 			}
@@ -216,7 +206,7 @@ func (c *Config) Validate() *ConfigError {
 		uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
 		err := r.CompileMatch()
 		if err != nil {
-			return &ConfigError{
+			return &yaml.Error{
 				Path: pb.Root().Child("rules").Index(uIdx).Child("match").Build(),
 				Err:  fmt.Errorf("invalid match: %w", err),
 			}
@@ -224,7 +214,7 @@ func (c *Config) Validate() *ConfigError {
 
 		p, ok := c.Profiles[r.Profile]
 		if !ok {
-			return &ConfigError{
+			return &yaml.Error{
 				Path: pb.Root().Child("rules").Index(uIdx).Child("profile").Build(),
 				Err:  fmt.Errorf("profile %q not found", r.Profile),
 			}
