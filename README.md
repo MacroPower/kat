@@ -96,12 +96,6 @@ Run the latest alpine image:
 docker run -it -v .:/data -e TERM=$TERM ghcr.io/macropower/kat:latest-alpine
 ```
 
-Run the latest debian image:
-
-```sh
-docker run -it -v .:/data -e TERM=$TERM ghcr.io/macropower/kat:latest-debian
-```
-
 The default config is located at `/config/kat/config.yaml`, and you can override it by mounting your own configuration file at that path.
 
 There is also a scratch image that contains only the `kat` binary, which is useful when you want to build your own image (which I generally recommend doing):

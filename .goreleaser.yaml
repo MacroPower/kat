@@ -188,21 +188,6 @@ docker_manifests:
     image_templates: *alpineImageTemplates
     skip_push: auto
 
-  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-debian'
-    image_templates: &debianImageTemplates
-      - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-debian-amd64'
-      - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-debian-arm64'
-    skip_push: false
-  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:latest-debian'
-    image_templates: *debianImageTemplates
-    skip_push: auto
-  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}-debian'
-    image_templates: *debianImageTemplates
-    skip_push: auto
-  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-debian'
-    image_templates: *debianImageTemplates
-    skip_push: auto
-
 dockers:
   - goos: linux
     goarch: amd64
@@ -249,20 +234,6 @@ dockers:
     extra_files:
       - completion/
       - man/
-    build_flag_templates: *amd64DockerBuildFlags
-  - goos: linux
-    goarch: arm64
-    dockerfile: docker/Dockerfile.debian
-    use: buildx
-    image_templates:
-      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-debian-arm64"
-    build_flag_templates: *arm64DockerBuildFlags
-  - goos: linux
-    goarch: amd64
-    dockerfile: docker/Dockerfile.debian
-    use: buildx
-    image_templates:
-      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-debian-amd64"
     build_flag_templates: *amd64DockerBuildFlags
 
 docker_signs:
