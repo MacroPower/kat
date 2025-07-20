@@ -11,7 +11,10 @@ RUN apk add --no-cache \
     bash \
     ca-certificates \
     openssl \
-    git
+    git \
+    man-pages \
+    man-db \
+    bash-completion
 
 # Install helm
 RUN curl -s https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
@@ -25,8 +28,13 @@ RUN echo "Installing yq for ${TARGETOS}/${TARGETARCH}..." \
     && curl -fsSL -o /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${TARGETARCH} \
     && chmod +x /usr/local/bin/yq
 
-# Copy the kat binary
+# Copy the kat binary, completions, and man pages
 COPY kat /usr/local/bin/kat
+COPY completion/bash/ /usr/share/bash-completion/completions/
+COPY man/ /usr/share/man/man1/
+
+# Update man database
+RUN mandb -c
 
 # Write the default configuration
 RUN kat --write-config

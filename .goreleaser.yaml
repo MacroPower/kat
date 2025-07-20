@@ -11,10 +11,7 @@ release:
 
 before:
   hooks:
-    # You may remove this if you don't use go modules.
-    - go mod tidy
-    # you may remove this if you don't need go generate
-    - go generate ./...
+    - bash gen.sh
 
 builds:
   - id: kat
@@ -48,6 +45,8 @@ archives:
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     files:
       - LICENSE
+      - completion/**/*
+      - man/*
 
 gomod:
   proxy: true
@@ -132,6 +131,12 @@ homebrew_casks:
     description: &description "TUI for rendering, validating, and displaying local Kubernetes manifests"
     license: "Apache 2.0"
     skip_upload: auto
+    manpages:
+      - man/kat.1
+    completions:
+      bash: completion/bash/kat.bash
+      zsh: completion/zsh/_kat
+      fish: completion/fish/kat.fish
 
 nix:
   - name: kat
@@ -145,6 +150,11 @@ nix:
     description: *description
     license: "asl20"
     skip_upload: auto
+    extra_install: |
+      installManPage ./man/kat.1
+      installShellCompletion ./completion/bash/kat.bash
+      installShellCompletion ./completion/zsh/_kat
+      installShellCompletion ./completion/fish/kat.fish
 
 docker_manifests:
   - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}'
@@ -225,6 +235,9 @@ dockers:
     use: buildx
     image_templates:
       - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-alpine-arm64"
+    extra_files:
+      - completion/
+      - man/
     build_flag_templates: *arm64DockerBuildFlags
   - goos: linux
     goarch: amd64
@@ -232,6 +245,9 @@ dockers:
     use: buildx
     image_templates:
       - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-alpine-amd64"
+    extra_files:
+      - completion/
+      - man/
     build_flag_templates: *amd64DockerBuildFlags
   - goos: linux
     goarch: arm64

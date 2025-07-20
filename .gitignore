@@ -5,6 +5,7 @@
 *.so
 *.dylib
 dist/
+kat
 
 # Test binary, built with `go test -c`
 *.test
@@ -27,3 +28,7 @@ coverage.txt
 # Temp files
 .tmp/
 .task/
+
+# Generated files
+completion/
+man/
