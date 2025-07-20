@@ -8,6 +8,7 @@ env:
 
 release:
   prerelease: auto
+  draft: true
 
 before:
   hooks:
