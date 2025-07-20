@@ -165,13 +165,45 @@ func runCompletion(ra *RunArgs) func(*cobra.Command, []string, string) ([]cobra.
 		if len(args) == 0 {
 			return nil, cobra.ShellCompDirectiveFilterDirs
 		}
+
+		// Dash argument: extra args completion.
+		// This needs to happen after the first argument is handled, even though
+		// passing the dash argument first still works. This is to prevent showing
+		// subcommands as completions for the first argument.
+		dashPos := argsLenAtDash(os.Args)
+		if dashPos != -1 && len(args) >= dashPos {
+			// TODO: Try to complete the extra args based on the command or profile.
+			return nil, cobra.ShellCompDirectiveDefault
+		}
+
 		// Second argument: command/profile completion.
 		if len(args) == 1 {
 			return tryGetProfileNames(ra.ConfigPath), cobra.ShellCompDirectiveNoFileComp
 		}
+
 		// No more arguments accepted.
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
+}
+
+// Hack to find the position of the first dash argument.
+// Can be removed after https://github.com/spf13/cobra/pull/2259 is merged.
+func argsLenAtDash(args []string) int {
+	var dashPos int
+	for _, arg := range args {
+		if arg == "__complete" {
+			// Ignore the __complete argument.
+			continue
+		}
+
+		if arg == "--" {
+			return dashPos - 1
+		}
+
+		dashPos++
+	}
+
+	return -1 // No dash argument found.
 }
 
 func run(cmd *cobra.Command, rc *RunArgs) error {
