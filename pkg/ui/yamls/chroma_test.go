@@ -982,7 +982,7 @@ func TestChromaRenderer_SetError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set an error and verify it's applied
-	renderer.SetError(0, 0, 3) // Highlight "key"
+	renderer.SetError(0, 0, 0, 3) // Highlight "key"
 
 	resultWithError, err := renderer.RenderContent(yaml, 100)
 	require.NoError(t, err)
@@ -1002,7 +1002,7 @@ func TestChromaRenderer_ClearErrors(t *testing.T) {
 	yaml := "key: value\nanother: test"
 
 	// Set an error
-	renderer.SetError(0, 0, 3)
+	renderer.SetError(0, 0, 0, 3)
 
 	resultWithError, err := renderer.RenderContent(yaml, 100)
 	require.NoError(t, err)
@@ -1027,9 +1027,9 @@ func TestChromaRenderer_MultipleErrors(t *testing.T) {
 	yaml := "key: value\nanother: test\nthird: line"
 
 	// Set multiple errors
-	renderer.SetError(0, 0, 3)  // "key" on line 0
-	renderer.SetError(1, 0, 7)  // "another" on line 1
-	renderer.SetError(2, 7, 11) // "line" on line 2
+	renderer.SetError(0, 0, 0, 3)  // "key" on line 0
+	renderer.SetError(1, 0, 1, 7)  // "another" on line 1
+	renderer.SetError(2, 7, 2, 11) // "line" on line 2
 
 	result, err := renderer.RenderContent(yaml, 100)
 	require.NoError(t, err)
@@ -1048,7 +1048,7 @@ func TestChromaRenderer_ErrorsWithOtherHighlights(t *testing.T) {
 	yaml := "key: value\nanother: test"
 
 	// Add error highlighting
-	renderer.SetError(0, 0, 3) // "key"
+	renderer.SetError(0, 0, 0, 3) // "key"
 
 	// Add search highlighting
 	renderer.SetSearchTerm("value")
@@ -1091,7 +1091,7 @@ func TestChromaRenderer_ErrorLineNumberPrefix(t *testing.T) {
 	assert.Contains(t, resultWithoutErrors, "   3  ")
 
 	// Add an error on line 1 (0-based)
-	renderer.SetError(1, 0, 7) // "another" on line 1
+	renderer.SetError(1, 0, 1, 7) // "another" on line 1
 
 	resultWithError, err := renderer.RenderContent(yaml, 100)
 	require.NoError(t, err)
@@ -1100,4 +1100,56 @@ func TestChromaRenderer_ErrorLineNumberPrefix(t *testing.T) {
 	assert.Contains(t, resultWithError, "   1  ") // Line 0 (display 1) - no error
 	assert.Contains(t, resultWithError, ">  2  ") // Line 1 (display 2) - has error
 	assert.Contains(t, resultWithError, "   3  ") // Line 2 (display 3) - no error
+}
+
+func TestChromaRenderer_SetError_MultiLine(t *testing.T) {
+	t.Parallel()
+
+	lipgloss.SetColorProfile(termenv.TrueColor)
+
+	renderer := yamls.NewChromaRenderer(testTheme())
+
+	yaml := "key: value\nanother: test\nthird: line\nfourth: item"
+
+	// Test multi-line error spanning lines 1-3 (0-based)
+	renderer.SetError(1, 5, 3, 6) // From "test" on line 1 to "item" on line 3
+
+	result, err := renderer.RenderContent(yaml, 100)
+	require.NoError(t, err)
+
+	// Should contain ANSI escape sequences for highlighting
+	assert.Contains(t, result, "\x1b[")
+
+	// All lines 2-4 (display lines) should have ">" prefix since they contain errors
+	assert.Contains(t, result, "   1  ") // Line 0 (display 1) - no error
+	assert.Contains(t, result, ">  2  ") // Line 1 (display 2) - has error
+	assert.Contains(t, result, ">  3  ") // Line 2 (display 3) - has error
+	assert.Contains(t, result, ">  4  ") // Line 3 (display 4) - has error
+}
+
+func TestChromaRenderer_SetError_SingleVsMultiLine(t *testing.T) {
+	t.Parallel()
+
+	lipgloss.SetColorProfile(termenv.TrueColor)
+
+	yaml := "key: value\nanother: test"
+
+	// Test single line error
+	singleLineRenderer := yamls.NewChromaRenderer(testTheme())
+	singleLineRenderer.SetError(0, 0, 0, 3) // "key" on same line
+
+	singleResult, err := singleLineRenderer.RenderContent(yaml, 100)
+	require.NoError(t, err)
+
+	// Test multi-line error (even though it's actually same line)
+	multiLineRenderer := yamls.NewChromaRenderer(testTheme())
+	multiLineRenderer.SetError(0, 0, 1, 3) // From line 0 to line 1
+
+	multiResult, err := multiLineRenderer.RenderContent(yaml, 100)
+	require.NoError(t, err)
+
+	// Results should be different - multi-line should affect both lines
+	assert.NotEqual(t, singleResult, multiResult)
+	assert.Contains(t, singleResult, "\x1b[")
+	assert.Contains(t, multiResult, "\x1b[")
 }

@@ -262,12 +262,44 @@ func (gr *ChromaRenderer) Unload() {
 }
 
 // SetError adds an error highlight at the specified position.
-func (gr *ChromaRenderer) SetError(line, start, end int) {
-	gr.errors = append(gr.errors, ErrorPosition{
-		Line:  line,
-		Start: start,
-		End:   end,
-	})
+// If endLine is provided and differs from startLine, it handles multi-line errors.
+func (gr *ChromaRenderer) SetError(startLine, startCol, endLine, endCol int) {
+	if startLine == endLine {
+		// Single line error.
+		gr.errors = append(gr.errors, ErrorPosition{
+			Line:  startLine,
+			Start: startCol,
+			End:   endCol,
+		})
+
+		return
+	}
+
+	// Multi-line error - handle each line appropriately.
+	for i := startLine; i <= endLine; i++ {
+		switch i {
+		case startLine:
+			gr.errors = append(gr.errors, ErrorPosition{
+				Line:  i,
+				Start: startCol,
+				End:   300, // Full line from start column to end.
+			})
+
+		case endLine:
+			gr.errors = append(gr.errors, ErrorPosition{
+				Line:  i,
+				Start: 0,
+				End:   endCol,
+			})
+
+		default:
+			gr.errors = append(gr.errors, ErrorPosition{
+				Line:  i,
+				Start: 0,
+				End:   300, // Full line error for lines in between.
+			})
+		}
+	}
 }
 
 // ClearErrors removes all error highlights.

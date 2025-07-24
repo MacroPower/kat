@@ -19,12 +19,32 @@ func NewPathBuilder() *yaml.PathBuilder {
 	return &yaml.PathBuilder{}
 }
 
-func AddErrorContext(err error, source []byte, t *theme.Theme) error {
+type ErrorWrapper struct {
+	Opts []ErrorOpt
+}
+
+func NewErrorWrapper(opts ...ErrorOpt) *ErrorWrapper {
+	return &ErrorWrapper{
+		Opts: opts,
+	}
+}
+
+// Wrap wraps an error with additional context for [Error]s.
+// If the error isn't an [Error], it returns the original error unmodified.
+func (ew *ErrorWrapper) Wrap(err error, opts ...ErrorOpt) error {
+	if err == nil {
+		return nil
+	}
+
 	var yamlErr *Error
 	if errors.As(err, &yamlErr) {
-		yamlErr.Theme = t
-		yamlErr.Source = source
-		yamlErr.SourceLines = 4 // Default to showing 4 lines around the error.
+		for _, opt := range ew.Opts {
+			opt(yamlErr)
+		}
+
+		for _, opt := range opts {
+			opt(yamlErr)
+		}
 
 		return yamlErr
 	}
@@ -32,6 +52,8 @@ func AddErrorContext(err error, source []byte, t *theme.Theme) error {
 	return err
 }
 
+// Error represents a YAML error. It includes the original error, and the
+// [*token.Token] where the error occurred.
 type Error struct {
 	Err         error
 	Path        *yaml.Path
@@ -40,6 +62,57 @@ type Error struct {
 	Formatter   string
 	Source      []byte
 	SourceLines int // Number of lines to show around the error in the source.
+}
+
+func NewError(err error, opts ...ErrorOpt) *Error {
+	e := &Error{
+		Err:         err,
+		SourceLines: 4,
+		Theme:       theme.Default,
+	}
+	for _, opt := range opts {
+		opt(e)
+	}
+
+	return e
+}
+
+type ErrorOpt func(e *Error)
+
+func WithSourceLines(lines int) ErrorOpt {
+	return func(e *Error) {
+		e.SourceLines = lines
+	}
+}
+
+func WithPath(path *yaml.Path) ErrorOpt {
+	return func(e *Error) {
+		e.Path = path
+	}
+}
+
+func WithToken(tk *token.Token) ErrorOpt {
+	return func(e *Error) {
+		e.Token = tk
+	}
+}
+
+func WithTheme(t *theme.Theme) ErrorOpt {
+	return func(e *Error) {
+		e.Theme = t
+	}
+}
+
+func WithFormatter(formatter string) ErrorOpt {
+	return func(e *Error) {
+		e.Formatter = formatter
+	}
+}
+
+func WithSource(source []byte) ErrorOpt {
+	return func(e *Error) {
+		e.Source = source
+	}
 }
 
 func (e Error) Error() string {
@@ -63,20 +136,6 @@ func (e Error) Error() string {
 	return errMsg
 }
 
-func (e Error) getTokenFromPath(source []byte, path *yaml.Path) (*token.Token, error) {
-	file, err := parser.ParseBytes(source, 0)
-	if err != nil {
-		return nil, fmt.Errorf("parse source bytes into ast.File: %w", err)
-	}
-
-	node, err := path.FilterFile(file)
-	if err != nil {
-		return nil, fmt.Errorf("filter from ast.File by YAMLPath: %w", err)
-	}
-
-	return node.GetToken(), nil
-}
-
 // Replaces [github.com/goccy/go-yaml.Path.AnnotateSource] to render the source with Chroma.
 // Normally it uses [github.com/goccy/go-yaml/printer.Printer].
 func (e Error) annotateSource(source []byte, path *yaml.Path) (string, error) {
@@ -85,7 +144,7 @@ func (e Error) annotateSource(source []byte, path *yaml.Path) (string, error) {
 		err error
 	)
 	if e.Token == nil {
-		tk, err = e.getTokenFromPath(source, path)
+		tk, err = getTokenFromPath(source, path)
 		if err != nil {
 			return "", fmt.Errorf("get token from path: %w", err)
 		}
@@ -118,23 +177,12 @@ func (e Error) printErrorTokenChroma(tk *token.Token) string {
 	errStartLine -= initialLineNumber
 	errEndLine -= initialLineNumber
 
-	if errStartLine == errEndLine {
-		cr.SetError(errStartLine, errStartCol, errEndCol)
-	} else if e.Path != nil {
+	if e.Path != nil {
 		// If using a specific path, set the error for the start line only.
-		cr.SetError(errStartLine, errStartCol, 80)
+		// TODO: Make this work properly (currently the token end position is incorrect).
+		cr.SetError(errStartLine, errStartCol, errStartLine, 300)
 	} else {
-		for i := errStartLine; i <= errEndLine; i++ {
-			// TODO: Move this to SetError.
-			switch i {
-			case errStartLine:
-				cr.SetError(i, errStartCol, 80)
-			case errEndLine:
-				cr.SetError(i, 0, errEndCol)
-			default:
-				cr.SetError(i, 0, 80) // Full line error for lines in between.
-			}
-		}
+		cr.SetError(errStartLine, errStartCol, errEndLine, errEndCol)
 	}
 
 	out, err := cr.RenderContent(content, 0)
@@ -143,6 +191,20 @@ func (e Error) printErrorTokenChroma(tk *token.Token) string {
 	}
 
 	return out
+}
+
+func getTokenFromPath(source []byte, path *yaml.Path) (*token.Token, error) {
+	file, err := parser.ParseBytes(source, 0)
+	if err != nil {
+		return nil, fmt.Errorf("parse source bytes into ast.File: %w", err)
+	}
+
+	node, err := path.FilterFile(file)
+	if err != nil {
+		return nil, fmt.Errorf("filter from ast.File by YAMLPath: %w", err)
+	}
+
+	return node.GetToken(), nil
 }
 
 // getTokenPosition returns the start and end positions of the token in the source.

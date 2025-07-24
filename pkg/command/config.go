@@ -142,10 +142,10 @@ func (c *Config) Validate() error {
 	for name, p := range c.Profiles {
 		err := p.CompileSource()
 		if err != nil {
-			return &yaml.Error{
-				Path: pb.Root().Child("profiles").Child(name).Child("source").Build(),
-				Err:  fmt.Errorf("invalid source: %w", err),
-			}
+			return yaml.NewError(
+				fmt.Errorf("invalid source for profile %q: %w", name, err),
+				yaml.WithPath(pb.Root().Child("profiles").Child(name).Child("source").Build()),
+			)
 		}
 
 		for i, env := range p.Command.Env {
@@ -156,8 +156,9 @@ func (c *Config) Validate() error {
 			uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
 			err := env.ValueFrom.CallerRef.Compile()
 			if err != nil {
-				return &yaml.Error{
-					Path: pb.Root().
+				return yaml.NewError(
+					fmt.Errorf("invalid env pattern: %w", err),
+					yaml.WithPath(pb.Root().
 						Child("profiles").
 						Child(name).
 						Child("env").
@@ -165,9 +166,8 @@ func (c *Config) Validate() error {
 						Child("valueFrom").
 						Child("callerRef").
 						Child("pattern").
-						Build(),
-					Err: fmt.Errorf("invalid env pattern: %w", err),
-				}
+						Build()),
+				)
 			}
 		}
 
@@ -179,26 +179,26 @@ func (c *Config) Validate() error {
 			uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
 			err := envFrom.CallerRef.Compile()
 			if err != nil {
-				return &yaml.Error{
-					Path: pb.Root().
+				return yaml.NewError(
+					fmt.Errorf("invalid envFrom pattern: %w", err),
+					yaml.WithPath(pb.Root().
 						Child("profiles").
 						Child(name).
 						Child("envFrom").
 						Index(uIdx).
 						Child("callerRef").
 						Child("pattern").
-						Build(),
-					Err: fmt.Errorf("invalid envFrom pattern: %w", err),
-				}
+						Build()),
+				)
 			}
 		}
 		// TODO: Build should return *ConfigError to avoid the duplicate validation above.
 		err = p.Build()
 		if err != nil {
-			return &yaml.Error{
-				Path: pb.Root().Child("profiles").Child(name).Build(),
-				Err:  fmt.Errorf("invalid profile: %w", err),
-			}
+			return yaml.NewError(
+				fmt.Errorf("invalid profile: %w", err),
+				yaml.WithPath(pb.Root().Child("profiles").Child(name).Build()),
+			)
 		}
 	}
 
@@ -206,18 +206,18 @@ func (c *Config) Validate() error {
 		uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
 		err := r.CompileMatch()
 		if err != nil {
-			return &yaml.Error{
-				Path: pb.Root().Child("rules").Index(uIdx).Child("match").Build(),
-				Err:  fmt.Errorf("invalid match: %w", err),
-			}
+			return yaml.NewError(
+				fmt.Errorf("invalid match: %w", err),
+				yaml.WithPath(pb.Root().Child("rules").Index(uIdx).Child("match").Build()),
+			)
 		}
 
 		p, ok := c.Profiles[r.Profile]
 		if !ok {
-			return &yaml.Error{
-				Path: pb.Root().Child("rules").Index(uIdx).Child("profile").Build(),
-				Err:  fmt.Errorf("profile %q not found", r.Profile),
-			}
+			return yaml.NewError(
+				fmt.Errorf("profile %q not found", r.Profile),
+				yaml.WithPath(pb.Root().Child("rules").Index(uIdx).Child("profile").Build()),
+			)
 		}
 
 		r.SetProfile(p)

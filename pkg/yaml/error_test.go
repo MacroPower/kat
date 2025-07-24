@@ -17,20 +17,20 @@ func TestYAMLError(t *testing.T) {
 
 	lipgloss.SetColorProfile(termenv.TrueColor)
 
-	err := yaml.Error{
-		Source: []byte(`a: b
+	err := yaml.NewError(
+		errors.New("test error"),
+		yaml.WithPath(yaml.NewPathBuilder().Root().Child("key").Build()),
+		yaml.WithSourceLines(2),
+		yaml.WithTheme(theme.New("onedark")),
+		yaml.WithFormatter("terminal16m"),
+		yaml.WithSource([]byte(`a: b
 b: c
 foo: "bar"
 key: value
 baz: 5
 c: d
-e: f`),
-		Path:        yaml.NewPathBuilder().Root().Child("key").Build(),
-		Err:         errors.New("test error"),
-		Theme:       theme.New("onedark"),
-		SourceLines: 2,
-		Formatter:   "terminal16m",
-	}
+e: f`)),
+	)
 
-	require.NoError(t, err)
+	require.Error(t, err)
 }

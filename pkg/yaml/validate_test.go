@@ -2,13 +2,10 @@ package yaml_test
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	goccyyaml "github.com/goccy/go-yaml"
 
 	"github.com/macropower/kat/pkg/yaml"
 )
@@ -17,28 +14,22 @@ func TestValidationError_Error(t *testing.T) {
 	t.Parallel()
 
 	tcs := map[string]struct {
+		err  error
 		want string
-		err  yaml.Error
 	}{
 		"with path": {
-			err: yaml.Error{
-				Err:  errors.New("value is required"),
-				Path: mustBuildPath(t, "field", "subfield"),
-			},
+			err: yaml.NewError(errors.New("value is required"),
+				yaml.WithPath(yaml.NewPathBuilder().Root().Child("field").Child("subfield").Build()),
+			),
 			want: "error at $.field.subfield: value is required",
 		},
 		"without path": {
-			err: yaml.Error{
-				Err: errors.New("validation error: value is required"),
-			},
-			want: "validation error: value is required",
+			err:  yaml.NewError(errors.New("value is required")),
+			want: "value is required",
 		},
-		"empty detail": {
-			err: yaml.Error{
-				Err:  errors.New(""),
-				Path: mustBuildPath(t, "field"),
-			},
-			want: "error at $.field: ",
+		"empty error": {
+			err:  yaml.NewError(nil, yaml.WithPath(yaml.NewPathBuilder().Root().Child("field").Build())),
+			want: "",
 		},
 	}
 

@@ -131,6 +131,11 @@ func LoadConfig(data []byte) (*Config, error) {
 	reader := bytes.NewReader(data)
 
 	t := theme.New("onedark")
+	yamlError := yaml.NewErrorWrapper(
+		yaml.WithTheme(t),
+		yaml.WithSource(data),
+		yaml.WithSourceLines(4),
+	)
 
 	// Decode into interface{} for schema validation.
 	var anyConfig any
@@ -138,8 +143,7 @@ func LoadConfig(data []byte) (*Config, error) {
 	dec := yaml.NewDecoder(reader)
 	err := dec.Decode(&anyConfig)
 	if err != nil {
-		//nolint:wrapcheck // Wrapped by [yaml.AddErrorContext].
-		return nil, yaml.AddErrorContext(err, data, t)
+		return nil, yamlError.Wrap(err)
 	}
 
 	// Validate against JSON schema.
@@ -150,8 +154,7 @@ func LoadConfig(data []byte) (*Config, error) {
 
 	err = validator.Validate(anyConfig)
 	if err != nil {
-		//nolint:wrapcheck // Wrapped by [yaml.AddErrorContext].
-		return nil, yaml.AddErrorContext(err, data, t)
+		return nil, yamlError.Wrap(err)
 	}
 
 	// Validation passed; reset reader and decode into a Config struct.
@@ -164,8 +167,7 @@ func LoadConfig(data []byte) (*Config, error) {
 	dec = yaml.NewDecoder(reader)
 	err = dec.Decode(c)
 	if err != nil {
-		//nolint:wrapcheck // Wrapped by [yaml.AddErrorContext].
-		return nil, yaml.AddErrorContext(err, data, t)
+		return nil, yamlError.Wrap(err)
 	}
 
 	c.EnsureDefaults()
@@ -173,8 +175,7 @@ func LoadConfig(data []byte) (*Config, error) {
 	// Run Go validation on the config (for requirements that can't be represented in the schema).
 	err = c.Command.Validate()
 	if err != nil {
-		//nolint:wrapcheck // Wrapped by [yaml.AddErrorContext].
-		return nil, yaml.AddErrorContext(err, data, t)
+		return nil, yamlError.Wrap(err)
 	}
 
 	return c, nil
