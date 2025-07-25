@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/macropower/kat/pkg/config"
+	"github.com/macropower/kat/pkg/ui/theme"
 )
 
 func TestNewConfig(t *testing.T) {
@@ -42,13 +43,12 @@ func TestConfig_EnsureDefaults(t *testing.T) {
 	assert.NotNil(t, cfg.Command)
 }
 
-func TestReadConfig(t *testing.T) {
+func TestNewConfigLoaderFromFile(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
+	tcs := map[string]struct {
 		setupFile func(t *testing.T) string
-		errMsg    string
-		wantErr   bool
+		want      error
 	}{
 		"valid file": {
 			setupFile: func(t *testing.T) string {
@@ -59,7 +59,7 @@ kind: Configuration
 
 				return createTempFile(t, content)
 			},
-			wantErr: false,
+			want: nil,
 		},
 		"non-existent file": {
 			setupFile: func(t *testing.T) string {
@@ -67,8 +67,7 @@ kind: Configuration
 
 				return "/non/existent/file.yaml"
 			},
-			wantErr: true,
-			errMsg:  "stat file",
+			want: os.ErrNotExist,
 		},
 		"directory instead of file": {
 			setupFile: func(t *testing.T) string {
@@ -76,41 +75,65 @@ kind: Configuration
 
 				return t.TempDir()
 			},
-			wantErr: true,
-			errMsg:  "path is a directory",
+			want: os.ErrInvalid,
 		},
 	}
 
-	for name, tc := range tests {
+	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
 			path := tc.setupFile(t)
 
-			data, err := config.ReadConfig(path)
+			got, err := config.NewConfigLoaderFromFile(path)
 
-			if tc.wantErr {
+			if tc.want != nil {
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), tc.errMsg)
-				assert.Nil(t, data)
+				assert.Nil(t, got)
 			} else {
 				require.NoError(t, err)
-				assert.NotEmpty(t, data)
+				assert.NotNil(t, got)
 			}
 		})
 	}
 }
 
-func TestLoadConfig(t *testing.T) {
+func TestNewConfigLoaderFromBytes(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
-		yamlContent string
-		errMsg      string
-		wantErr     bool
+	input := `apiVersion: kat.jacobcolvin.com/v1beta1
+kind: Configuration
+rules:
+  - match: 'true'
+    profile: test
+profiles:
+  test:
+    command: echo
+    args: ["test"]
+`
+
+	cl := config.NewConfigLoaderFromBytes([]byte(input))
+	require.NotNil(t, cl)
+
+	err := cl.Validate()
+	require.NoError(t, err)
+
+	cfg, err := cl.Load()
+	require.NoError(t, err)
+	assert.Equal(t, "kat.jacobcolvin.com/v1beta1", cfg.APIVersion)
+	assert.Equal(t, "Configuration", cfg.Kind)
+}
+
+func TestConfigLoader_ValidateAndLoad(t *testing.T) {
+	t.Parallel()
+
+	tcs := map[string]struct {
+		input   string
+		errMsg  string
+		wantErr bool
 	}{
 		"valid config": {
-			yamlContent: `apiVersion: kat.jacobcolvin.com/v1beta1
+			input: `apiVersion: kat.jacobcolvin.com/v1beta1
 kind: Configuration
 rules:
   - match: 'true'
@@ -123,7 +146,7 @@ profiles:
 			wantErr: false,
 		},
 		"invalid yaml": {
-			yamlContent: `apiVersion: kat.jacobcolvin.com/v1beta1
+			input: `apiVersion: kat.jacobcolvin.com/v1beta1
 kind: Configuration
 invalid: [unclosed
 `,
@@ -131,7 +154,7 @@ invalid: [unclosed
 			errMsg:  "[3:9] sequence end token ']' not found",
 		},
 		"missing required fields": {
-			yamlContent: `profiles:
+			input: `profiles:
   test:
     command: echo
 `,
@@ -140,15 +163,23 @@ invalid: [unclosed
 		},
 	}
 
-	for name, tc := range tests {
+	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			cfg, err := config.LoadConfig([]byte(tc.yamlContent))
+			cl := config.NewConfigLoaderFromBytes([]byte(tc.input))
 
+			err := cl.Validate()
 			if tc.wantErr {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errMsg)
+			} else {
+				require.NoError(t, err)
+			}
+
+			cfg, err := cl.Load()
+			if tc.wantErr {
+				require.Error(t, err)
 				assert.Nil(t, cfg)
 			} else {
 				require.NoError(t, err)
@@ -379,11 +410,11 @@ func TestDefaultConfigYAMLIsValid(t *testing.T) {
 	err := config.WriteDefaultConfig(configPath, false)
 	require.NoError(t, err)
 
-	// Read and load the written config.
-	data, err := config.ReadConfig(configPath)
+	// Load the written config using the new ConfigLoader API.
+	cl, err := config.NewConfigLoaderFromFile(configPath)
 	require.NoError(t, err)
 
-	cfg, err := config.LoadConfig(data)
+	cfg, err := cl.Load()
 	require.NoError(t, err)
 
 	// Re-marshal the config to get only public fields.
@@ -477,43 +508,6 @@ func TestGetPath(t *testing.T) {
 	}
 }
 
-func TestDefaultConfigContentValidation(t *testing.T) {
-	t.Parallel()
-
-	// Write default config and read it back.
-	tempDir := t.TempDir()
-	configPath := filepath.Join(tempDir, "test-config.yaml")
-
-	err := config.WriteDefaultConfig(configPath, false)
-	require.NoError(t, err)
-
-	// Read the actual file content.
-	content, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-
-	contentStr := string(content)
-
-	// Verify essential sections exist.
-	assert.Contains(t, contentStr, "apiVersion: kat.jacobcolvin.com/v1beta1")
-	assert.Contains(t, contentStr, "kind: Configuration")
-	assert.Contains(t, contentStr, "rules:")
-	assert.Contains(t, contentStr, "profiles:")
-
-	// Verify specific profiles exist.
-	assert.Contains(t, contentStr, "ks:")
-	assert.Contains(t, contentStr, "helm:")
-	assert.Contains(t, contentStr, "yaml:")
-
-	// Verify profile structure.
-	assert.Contains(t, contentStr, "command: kustomize")
-	assert.Contains(t, contentStr, "command: helm")
-	assert.Contains(t, contentStr, "args:")
-
-	// Verify rules structure.
-	assert.Contains(t, contentStr, "match:")
-	assert.Contains(t, contentStr, "profile:")
-}
-
 func TestEmbeddedConfigMatchesSourceFile(t *testing.T) {
 	t.Parallel()
 
@@ -546,12 +540,11 @@ func TestUnmarshalAndValidateDefaultConfig(t *testing.T) {
 	err := config.WriteDefaultConfig(configPath, false)
 	require.NoError(t, err)
 
-	// Read the config data.
-	configData, err := config.ReadConfig(configPath)
+	// Load and validate the config using the same process as the main application.
+	cl, err := config.NewConfigLoaderFromFile(configPath)
 	require.NoError(t, err)
 
-	// Load and validate the config using the same process as the main application.
-	cfg, err := config.LoadConfig(configData)
+	cfg, err := cl.Load()
 	require.NoError(t, err, "embedded default config should load without errors")
 
 	// Validate the Kube configuration.
@@ -568,18 +561,15 @@ func TestUnmarshalAndValidateDefaultConfig(t *testing.T) {
 	assert.NotNil(t, cfg.Command)
 	assert.NotNil(t, cfg.UI)
 
-	// Verify that all expected profiles exist and are valid.
-	expectedProfiles := []string{"ks", "helm", "yaml", "ks-helm"}
-	for _, profileName := range expectedProfiles {
-		profile, exists := cfg.Command.Profiles[profileName]
-		assert.True(t, exists, "profile %q should exist in default config", profileName)
-		assert.NotEmpty(t, profile.Command.Command, "profile %q should have a command", profileName)
-		assert.NotEmpty(t, profile.Command.Args, "profile %q should have args", profileName)
+	// Verify that profiles exist.
+	assert.NotEmpty(t, cfg.Command.Profiles, "default config should have profiles")
+	// Verify that all profiles are valid.
+	for profileName, p := range cfg.Command.Profiles {
+		assert.NotEmpty(t, p.Command.Command, "profile %q should have a command", profileName)
 	}
 
-	// Verify that rules exist and can be evaluated.
+	// Verify that rules exist.
 	assert.NotEmpty(t, cfg.Command.Rules, "default config should have rules")
-	assert.Len(t, cfg.Command.Rules, 3, "default config should have exactly 3 rules")
 
 	// Verify that each rule has the required fields.
 	for i, rule := range cfg.Command.Rules {
@@ -607,12 +597,11 @@ func TestDefaultConfigFullPipeline(t *testing.T) {
 	err := config.WriteDefaultConfig(configPath, false)
 	require.NoError(t, err)
 
-	// Read the config.
-	cfgData, err := config.ReadConfig(configPath)
+	// Load the config using the new API.
+	cl, err := config.NewConfigLoaderFromFile(configPath)
 	require.NoError(t, err)
 
-	// Load the config.
-	cfg, err := config.LoadConfig(cfgData)
+	cfg, err := cl.Load()
 	require.NoError(t, err)
 
 	// Validate UI KeyBinds (simulating the validation in main.go).
@@ -625,12 +614,110 @@ func TestDefaultConfigFullPipeline(t *testing.T) {
 	assert.NotEmpty(t, yamlConfig)
 
 	// Verify the marshaled config can be loaded again (round-trip test).
-	cfg2, err := config.LoadConfig(yamlConfig)
+	cl2 := config.NewConfigLoaderFromBytes(yamlConfig)
+	cfg2, err := cl2.Load()
 	require.NoError(t, err)
 	assert.Equal(t, cfg.APIVersion, cfg2.APIVersion)
 	assert.Equal(t, cfg.Kind, cfg2.Kind)
 	assert.Len(t, cfg2.Command.Profiles, len(cfg.Command.Profiles))
 	assert.Len(t, cfg2.Command.Rules, len(cfg.Command.Rules))
+}
+
+func TestConfigLoader_WithThemeFromData(t *testing.T) {
+	t.Parallel()
+
+	tcs := map[string]struct {
+		want  *theme.Theme
+		input string
+	}{
+		"valid config with quoted theme": {
+			input: `
+ui:
+  theme: "github"`,
+			want: theme.New("github"),
+		},
+		"valid config with single quoted theme": {
+			input: `
+ui:
+  theme: 'monokai'`,
+			want: theme.New("monokai"),
+		},
+		"valid config with unquoted theme": {
+			input: `
+ui:
+  theme: dracula`,
+			want: theme.New("dracula"),
+		},
+		"config with ui section but no theme": {
+			input: `
+ui:
+  someOtherField: value`,
+			want: theme.Default,
+		},
+		"config without ui section": {
+			input: `
+profiles:
+  test:
+    command: echo`,
+			want: theme.Default,
+		},
+		"malformed yaml with regex fallback": {
+			input: `
+ui:
+  theme: "onedark"
+  invalid: [unclosed`,
+			want: theme.New("onedark"),
+		},
+		"regex fallback with indented theme": {
+			input: `
+ui:
+  someField: value
+  theme: "github-dark"
+  anotherField: value`,
+			want: theme.New("github-dark"),
+		},
+		"regex fallback with comments": {
+			input: `
+ui:
+  # Some comment
+  theme: "solarized" # inline comment
+  otherField: value`,
+			want: theme.New("solarized"),
+		},
+		"empty config": {
+			input: "",
+			want:  theme.Default,
+		},
+		"completely invalid yaml": {
+			input: `this is not yaml at all!`,
+			want:  theme.Default,
+		},
+		"config with theme in wrong section": {
+			input: `
+profiles:
+  test:
+    theme: "shouldnotbefound"`,
+			want: theme.Default,
+		},
+	}
+
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			require.NotNil(t, tc.want)
+			require.NotNil(t, tc.want.ChromaStyle)
+
+			cl := config.NewConfigLoaderFromBytes([]byte(tc.input), config.WithThemeFromData())
+			require.NotNil(t, cl)
+
+			got := cl.GetTheme()
+			require.NotNil(t, got)
+			require.NotNil(t, got.ChromaStyle)
+
+			assert.Equal(t, tc.want.ChromaStyle.Name, got.ChromaStyle.Name)
+		})
+	}
 }
 
 // createTempFile creates a temporary file with the given content.

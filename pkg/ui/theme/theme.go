@@ -19,7 +19,7 @@ const (
 )
 
 var (
-	Default = New("github")
+	Default = New(getDefaultStyle())
 
 	ErrRegisterStyles = errors.New("register theme styles")
 	ErrInvalidName    = errors.New("invalid theme name")

@@ -38,6 +38,15 @@ func NewValidator(url string, schemaData []byte) (*Validator, error) {
 	return &Validator{schema: jss}, nil
 }
 
+func MustNewValidator(url string, schemaData []byte) *Validator {
+	v, err := NewValidator(url, schemaData)
+	if err != nil {
+		panic(err)
+	}
+
+	return v
+}
+
 // ValidateWithSchema validates the given data against the schema.
 // It returns a [ValidationError] that can be used with [yaml.Path.AnnotateSource]
 // for precise error reporting.

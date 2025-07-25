@@ -132,12 +132,12 @@ func tryGetProfileNames(configPath string) []cobra.Completion {
 		configPath = config.GetPath()
 	}
 
-	cfgData, err := config.ReadConfig(configPath)
+	cl, err := config.NewConfigLoaderFromFile(configPath)
 	if err != nil {
 		return nil
 	}
 
-	cfg, err := config.LoadConfig(cfgData)
+	cfg, err := cl.Load()
 	if err != nil {
 		return nil
 	}
@@ -235,11 +235,16 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 		return err
 	}
 
-	cfgData, err := config.ReadConfig(configPath)
+	cl, err := config.NewConfigLoaderFromFile(configPath, config.WithThemeFromData())
 	if err != nil {
 		slog.Warn("could not read config, using defaults", slog.Any("err", err))
 	} else {
-		cfg, err = config.LoadConfig(cfgData)
+		err = cl.Validate()
+		if err != nil {
+			return fmt.Errorf("invalid config %q: %w", configPath, err)
+		}
+
+		cfg, err = cl.Load()
 		if err != nil {
 			return fmt.Errorf("invalid config %q: %w", configPath, err)
 		}
