@@ -265,3 +265,6 @@ linters:
       - path: internal/
         linters:
           - wrapcheck
+      - text: "slog\\."
+        linters:
+          - noctx
