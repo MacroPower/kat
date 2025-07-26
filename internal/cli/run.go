@@ -17,6 +17,7 @@ import (
 	"github.com/macropower/kat/pkg/ui"
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/theme"
+	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
 const (
@@ -257,13 +258,24 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 
 	if rc.ShowConfig {
 		// Print the active configuration and exit.
-		yamlConfig, err := cfg.MarshalYAML()
+		slog.Info("active configuration", slog.String("path", configPath))
+
+		yamlBytes, err := cfg.MarshalYAML()
 		if err != nil {
 			return fmt.Errorf("marshal config yaml: %w", err)
 		}
 
-		slog.Info("active configuration", slog.String("path", configPath))
-		fmt.Printf("%s", yamlConfig)
+		yamlConfig := string(yamlBytes)
+
+		cr := yamls.NewChromaRenderer(cl.GetTheme(), yamls.WithLineNumbersDisabled(true))
+		prettyConfig, err := cr.RenderContent(yamlConfig, 0)
+		if err != nil {
+			mustN(fmt.Fprintln(cmd.OutOrStdout(), yamlConfig))
+
+			return err
+		}
+
+		mustN(fmt.Fprintln(cmd.OutOrStdout(), prettyConfig))
 
 		return nil
 	}
