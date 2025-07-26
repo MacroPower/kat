@@ -74,8 +74,19 @@ Together, these deliver a seamless development experience that maintains context
 
 ### Homebrew
 
+You can install `kat` using my [tap](https://github.com/MacroPower/homebrew-tap).
+
+With `brew`:
+
 ```sh
-brew install macropower/tap/kat
+brew install macropower/tap/kat --cask
+```
+
+With your `Brewfile`:
+
+```sh
+tap "macropower/tap"
+cask "kat"
 ```
 
 ### Go
