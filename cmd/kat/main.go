@@ -16,6 +16,7 @@ func main() {
 		fang.WithVersion(version.GetVersion()),
 		fang.WithCommit(version.Revision),
 		fang.WithErrorHandler(cli.ErrorHandler),
+		fang.WithColorSchemeFunc(cli.ColorSchemeFunc),
 	)
 	if err != nil {
 		os.Exit(1)
