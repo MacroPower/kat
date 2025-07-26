@@ -2,27 +2,32 @@ package config
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/invopop/jsonschema"
 
 	_ "embed"
 
-	yaml "github.com/goccy/go-yaml"
-
 	"github.com/macropower/kat/pkg/command"
-	"github.com/macropower/kat/pkg/schema"
 	"github.com/macropower/kat/pkg/ui"
+	"github.com/macropower/kat/pkg/ui/theme"
+	"github.com/macropower/kat/pkg/yaml"
 )
+
+//go:generate go run ../../internal/schemagen/main.go -o config.v1beta1.json
 
 var (
 	//go:embed config.yaml
 	defaultConfigYAML []byte
+
+	//go:embed config.v1beta1.json
+	schemaJSON []byte
 
 	ValidAPIVersions = []string{
 		"kat.jacobcolvin.com/v1beta1",
@@ -30,6 +35,8 @@ var (
 	ValidKinds = []string{
 		"Configuration",
 	}
+
+	DefaultValidator = yaml.MustNewValidator("/config.v1beta1.json", schemaJSON)
 )
 
 //nolint:recvcheck // Must satisfy the jsonschema interface.
@@ -98,91 +105,28 @@ func (c Config) JSONSchemaExtend(jss *jsonschema.Schema) {
 	_, _ = jss.Properties.Set("kind", kind)
 }
 
-func ReadConfig(path string) ([]byte, error) {
-	pathInfo, err := os.Stat(path)
-	if pathInfo != nil {
-		if err == nil && pathInfo.IsDir() {
-			return nil, fmt.Errorf("%s: path is a directory", path)
-		}
-		if err == nil && !pathInfo.Mode().IsRegular() {
-			return nil, fmt.Errorf("%s: unknown file state", path)
-		}
-	}
+func (c Config) MarshalYAML() ([]byte, error) {
+	type alias Config
+
+	b := &bytes.Buffer{}
+
+	enc := yaml.NewEncoder(b)
+	err := enc.Encode(alias(c))
 	if err != nil {
-		return nil, fmt.Errorf("stat file: %w", err)
+		return nil, fmt.Errorf("marshal yaml: %w", err)
 	}
 
-	data, err := os.ReadFile(path) //nolint:gosec // G304: Potential file inclusion via variable.
-	if err != nil {
-		return nil, fmt.Errorf("read file: %w", err)
-	}
+	defer func() {
+		err := enc.Close()
+		if err != nil {
+			slog.Error("failed to close YAML encoder", slog.Any("error", err))
+		}
+	}()
 
-	return data, nil
+	return b.Bytes(), nil
 }
 
-func LoadConfig(data []byte) (*Config, error) {
-	reader := bytes.NewReader(data)
-
-	// Decode into interface{} for schema validation.
-	var anyConfig any
-
-	dec := yaml.NewDecoder(reader, yaml.AllowDuplicateMapKey())
-	err := dec.Decode(&anyConfig)
-	if err != nil {
-		return nil, fmt.Errorf("decode yaml config: %w", err)
-	}
-
-	// Validate against JSON schema.
-	err = ValidateWithSchema(anyConfig)
-	if err != nil {
-		schemaErr := &schema.ValidationError{}
-		if errors.As(err, &schemaErr) {
-			source, srcErr := schemaErr.Path.AnnotateSource(data, true)
-			if srcErr != nil {
-				return nil, fmt.Errorf("path annotation failed: %w; caused by: %w", srcErr, err)
-			}
-
-			return nil, fmt.Errorf("%w\n%s", err, source)
-		}
-
-		return nil, fmt.Errorf("schema: %w", err)
-	}
-
-	// Validation passed; reset reader and decode into a Config struct.
-	_, err = reader.Seek(0, 0)
-	if err != nil {
-		return nil, fmt.Errorf("prepare reader for decoding yaml config: %w", err)
-	}
-
-	c := &Config{}
-	dec = yaml.NewDecoder(reader, yaml.AllowDuplicateMapKey())
-	err = dec.Decode(c)
-	if err != nil {
-		return nil, fmt.Errorf("decode yaml config: %w", err)
-	}
-
-	c.EnsureDefaults()
-
-	// Run Go validation on the config (for requirements that can't be represented in the schema).
-	cfgErr := c.Command.Validate()
-	if cfgErr != nil {
-		source, srcErr := cfgErr.Path.AnnotateSource(data, true)
-		if srcErr != nil {
-			slog.Warn("failed to annotate config with error",
-				slog.String("path", cfgErr.Path.String()),
-				slog.Any("error", srcErr),
-			)
-
-			return nil, fmt.Errorf("validate config: %w", cfgErr)
-		}
-
-		return nil, fmt.Errorf("validate config: %w\n%s", cfgErr, source)
-	}
-
-	return c, nil
-}
-
-func (c *Config) Write(path string) error {
+func (c Config) Write(path string) error {
 	pathInfo, err := os.Stat(path)
 	if pathInfo != nil {
 		if err == nil && pathInfo.Mode().IsRegular() {
@@ -211,6 +155,104 @@ func (c *Config) Write(path string) error {
 	}
 
 	return nil
+}
+
+type ConfigValidator interface {
+	Validate(data any) error
+}
+
+type ConfigLoader struct {
+	cv        ConfigValidator
+	theme     *theme.Theme
+	yamlError *yaml.ErrorWrapper
+	data      []byte
+}
+
+func NewConfigLoaderFromBytes(data []byte, opts ...ConfigLoaderOpt) *ConfigLoader {
+	cl := &ConfigLoader{
+		cv:    DefaultValidator,
+		theme: theme.Default,
+		data:  data,
+	}
+	for _, opt := range opts {
+		opt(cl)
+	}
+
+	cl.yamlError = yaml.NewErrorWrapper(
+		yaml.WithTheme(cl.theme),
+		yaml.WithSource(cl.data),
+		yaml.WithSourceLines(4),
+	)
+
+	return cl
+}
+
+func NewConfigLoaderFromFile(path string, opts ...ConfigLoaderOpt) (*ConfigLoader, error) {
+	data, err := readConfig(path)
+	if err != nil {
+		return nil, fmt.Errorf("read config file: %w", err)
+	}
+
+	cl := NewConfigLoaderFromBytes(data, opts...)
+
+	return cl, nil
+}
+
+type ConfigLoaderOpt func(*ConfigLoader)
+
+func WithConfigValidator(cv ConfigValidator) ConfigLoaderOpt {
+	return func(cl *ConfigLoader) {
+		cl.cv = cv
+	}
+}
+
+func WithThemeFromData() ConfigLoaderOpt {
+	return func(cl *ConfigLoader) {
+		cl.theme = getTheme(cl.data)
+	}
+}
+
+// Validate validates configuration data with [ConfigValidator] without loading
+// it into a [Config] struct.
+func (cl *ConfigLoader) Validate() error {
+	// Decode into interface{} for initial validation.
+	var anyConfig any
+
+	dec := yaml.NewDecoder(bytes.NewReader(cl.data))
+	err := dec.Decode(&anyConfig)
+	if err != nil {
+		return cl.yamlError.Wrap(err)
+	}
+
+	err = cl.cv.Validate(anyConfig)
+	if err != nil {
+		return cl.yamlError.Wrap(err)
+	}
+
+	return nil
+}
+
+func (cl *ConfigLoader) Load() (*Config, error) {
+	c := &Config{}
+	dec := yaml.NewDecoder(bytes.NewReader(cl.data))
+	err := dec.Decode(c)
+	if err != nil {
+		return nil, cl.yamlError.Wrap(err)
+	}
+
+	c.EnsureDefaults()
+
+	// Run Go validation on the config (for requirements that can't be represented in the schema).
+	err = c.Command.Validate()
+	if err != nil {
+		return nil, cl.yamlError.Wrap(err)
+	}
+
+	return c, nil
+}
+
+func (cl *ConfigLoader) GetTheme() *theme.Theme {
+	return cl.theme
 }
 
 // WriteDefaultConfig writes the embedded default config.yaml and jsonschema to
@@ -280,20 +322,6 @@ func WriteDefaultConfig(path string, force bool) error {
 	return nil
 }
 
-func (c *Config) MarshalYAML() ([]byte, error) {
-	b := &bytes.Buffer{}
-	enc := yaml.NewEncoder(b,
-		yaml.Indent(2),
-		yaml.IndentSequence(true),
-	)
-	err := enc.Encode(*c)
-	if err != nil {
-		return nil, fmt.Errorf("marshal yaml: %w", err)
-	}
-
-	return b.Bytes(), nil
-}
-
 func GetPath() string {
 	if xdgHome, ok := os.LookupEnv("XDG_CONFIG_HOME"); ok && xdgHome != "" {
 		return filepath.Join(xdgHome, "kat", "config.yaml")
@@ -312,4 +340,95 @@ func GetPath() string {
 	)
 
 	return tmpConfig
+}
+
+func readConfig(path string) ([]byte, error) {
+	pathInfo, err := os.Stat(path)
+	if pathInfo != nil {
+		if err == nil && pathInfo.IsDir() {
+			return nil, fmt.Errorf("%s: path is a directory", path)
+		}
+		if err == nil && !pathInfo.Mode().IsRegular() {
+			return nil, fmt.Errorf("%s: unknown file state", path)
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("stat file: %w", err)
+	}
+
+	data, err := os.ReadFile(path) //nolint:gosec // G304: Potential file inclusion via variable.
+	if err != nil {
+		return nil, fmt.Errorf("read file: %w", err)
+	}
+
+	return data, nil
+}
+
+func getTheme(data []byte) *theme.Theme {
+	var themeName string
+
+	path := yaml.NewPathBuilder().Root().Child("ui").Child("theme").Build()
+	err := path.Read(bytes.NewReader(data), &themeName)
+	if err == nil {
+		return theme.New(themeName)
+	}
+
+	slog.Debug("could not read theme, config might be invalid")
+
+	// As a last-ditch effort, try to get the theme using regex.
+	// This is a fallback if the config is malformed or missing the theme.
+	themeName = extractThemeWithRegex(data)
+	if themeName != "" {
+		slog.Debug("extracted theme using regex fallback", slog.String("theme", themeName))
+		return theme.New(themeName)
+	}
+
+	return theme.Default
+}
+
+// ExtractThemeWithRegex attempts to extract the theme from YAML data using regex.
+// This is done so that we can style the error output when the config is not valid YAML.
+// It looks for the pattern:
+//
+//	ui:
+//	  foo: bar
+//	  # ...
+//	  theme: <value>
+//
+// And extracts the theme value.
+func extractThemeWithRegex(data []byte) string {
+	content := string(data)
+
+	// Pattern explanation:
+	// (?m) - multiline mode
+	// ^ui:\s*$ - matches "ui:" at start of line with optional whitespace, then end of line
+	// ((?:\n[ \t]+.*)*) - captures newlines followed by indented content.
+	uiPattern := `(?m)^ui:\s*$((?:\n[ \t]+.*)*)`
+
+	uiRe := regexp.MustCompile(uiPattern)
+	uiMatches := uiRe.FindStringSubmatch(content)
+
+	if len(uiMatches) >= 2 {
+		uiSection := uiMatches[1]
+
+		// Within the ui section, look for theme: value
+		// \n[ \t]+ - newline followed by one or more whitespace characters (indentation)
+		// theme:\s* - "theme:" with optional whitespace
+		// (?:"([^"#\n]+)"|'([^'#\n]+)'|([^\s#\n]+)) - captures quoted or unquoted theme value.
+		themePattern := `\n[ \t]+theme:\s*(?:"([^"#\n]+)"|'([^'#\n]+)'|([^\s#\n]+))`
+
+		themeRe := regexp.MustCompile(themePattern)
+		themeMatches := themeRe.FindStringSubmatch(uiSection)
+
+		if len(themeMatches) >= 4 {
+			// Check which capture group matched (double quote, single quote, or unquoted).
+			for i := 1; i < 4; i++ {
+				if themeMatches[i] != "" {
+					return strings.TrimSpace(themeMatches[i])
+				}
+			}
+		}
+	}
+
+	return ""
 }

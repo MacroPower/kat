@@ -1,4 +1,4 @@
-package schema_test
+package yaml_test
 
 import (
 	"encoding/json"
@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/macropower/kat/pkg/schema"
+	"github.com/macropower/kat/pkg/yaml"
 )
 
 // Test types for schema generation.
@@ -87,7 +87,7 @@ func TestNewGenerator(t *testing.T) {
 
 	testStruct := TestStruct{}
 
-	gen := schema.NewGenerator(testStruct)
+	gen := yaml.NewSchemaGenerator(testStruct)
 	gen.Tests = true
 
 	assert.NotNil(t, gen)
@@ -95,7 +95,7 @@ func TestNewGenerator(t *testing.T) {
 	assert.NotNil(t, gen.LookupCommentFunc)
 }
 
-func TestGenerator_Generate(t *testing.T) {
+func TestSchemaGenerator_Generate(t *testing.T) {
 	t.Parallel()
 
 	tcs := map[string]struct {
@@ -134,7 +134,7 @@ func TestGenerator_Generate(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			gen := schema.NewGenerator(tc.reflectTarget, tc.packagePaths...)
+			gen := yaml.NewSchemaGenerator(tc.reflectTarget, tc.packagePaths...)
 			gen.Tests = true
 			result, err := gen.Generate()
 
@@ -170,12 +170,12 @@ func TestDefaultLookupCommentFunc(t *testing.T) {
 	t.Parallel()
 
 	commentMap := map[string]string{
-		"schema_test.TestStruct":      "TestStruct is a test structure.",
-		"schema_test.TestStruct.Name": "Name field comment.",
-		"schema_test.TestStruct.Age":  "Age field comment.",
+		"yaml_test.TestStruct":      "TestStruct is a test structure.",
+		"yaml_test.TestStruct.Name": "Name field comment.",
+		"yaml_test.TestStruct.Age":  "Age field comment.",
 	}
 
-	lookupFunc := schema.DefaultLookupCommentFunc(commentMap)
+	lookupFunc := yaml.DefaultLookupCommentFunc(commentMap)
 	testType := reflect.TypeOf(TestStruct{})
 
 	tcs := map[string]struct {
@@ -184,19 +184,19 @@ func TestDefaultLookupCommentFunc(t *testing.T) {
 	}{
 		"type comment": {
 			fieldName: "",
-			want:      "TestStruct is a test structure.\n\nTestStruct: https://pkg.go.dev/github.com/macropower/kat/pkg/schema_test#TestStruct",
+			want:      "TestStruct is a test structure.\n\nTestStruct: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#TestStruct",
 		},
 		"field comment for Name": {
 			fieldName: "Name",
-			want:      "Name field comment.\n\nTestStruct.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/schema_test#TestStruct",
+			want:      "Name field comment.\n\nTestStruct.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#TestStruct",
 		},
 		"field comment for Age": {
 			fieldName: "Age",
-			want:      "Age field comment.\n\nTestStruct.Age: https://pkg.go.dev/github.com/macropower/kat/pkg/schema_test#TestStruct",
+			want:      "Age field comment.\n\nTestStruct.Age: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#TestStruct",
 		},
 		"missing field comment": {
 			fieldName: "MissingField",
-			want:      "TestStruct.MissingField: https://pkg.go.dev/github.com/macropower/kat/pkg/schema_test#TestStruct",
+			want:      "TestStruct.MissingField: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#TestStruct",
 		},
 	}
 
@@ -214,7 +214,7 @@ func TestDefaultLookupCommentFunc_EmptyCommentMap(t *testing.T) {
 	t.Parallel()
 
 	commentMap := map[string]string{}
-	lookupFunc := schema.DefaultLookupCommentFunc(commentMap)
+	lookupFunc := yaml.DefaultLookupCommentFunc(commentMap)
 	testType := reflect.TypeOf(TestStruct{})
 
 	tcs := map[string]struct {
@@ -223,11 +223,11 @@ func TestDefaultLookupCommentFunc_EmptyCommentMap(t *testing.T) {
 	}{
 		"type without comment": {
 			fieldName: "",
-			want:      "TestStruct: https://pkg.go.dev/github.com/macropower/kat/pkg/schema_test#TestStruct",
+			want:      "TestStruct: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#TestStruct",
 		},
 		"field without comment": {
 			fieldName: "Name",
-			want:      "TestStruct.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/schema_test#TestStruct",
+			want:      "TestStruct.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#TestStruct",
 		},
 	}
 
@@ -244,7 +244,7 @@ func TestDefaultLookupCommentFunc_EmptyCommentMap(t *testing.T) {
 func TestGenerator_SetCustomLookupFunc(t *testing.T) {
 	t.Parallel()
 
-	gen := schema.NewGenerator(TestStruct{})
+	gen := yaml.NewSchemaGenerator(TestStruct{})
 	gen.Tests = true
 
 	// Create a custom lookup function.
@@ -402,7 +402,7 @@ func TestGenerator_Generate_ComplexStructures(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			gen := schema.NewGenerator(tc.reflectTarget, tc.packagePaths...)
+			gen := yaml.NewSchemaGenerator(tc.reflectTarget, tc.packagePaths...)
 			gen.Tests = true
 			result, err := gen.Generate()
 
@@ -425,17 +425,17 @@ func TestDefaultLookupCommentFunc_ComplexStructures(t *testing.T) {
 	t.Parallel()
 
 	commentMap := map[string]string{
-		"schema_test.ComplexStruct":                "ComplexStruct demonstrates various Go type features.",
-		"schema_test.ComplexStruct.BasicField":     "BasicField is a simple field.",
-		"schema_test.ComplexStruct.SliceField":     "SliceField contains multiple values.",
-		"schema_test.ComplexStruct.MapField":       "MapField contains key-value pairs.",
-		"schema_test.ComplexStruct.NestedStruct":   "NestedStruct contains nested data.",
-		"schema_test.ComplexStruct.PointerField":   "PointerField may be nil.",
-		"schema_test.EmbeddedStruct":               "EmbeddedStruct provides embedded functionality.",
-		"schema_test.EmbeddedStruct.EmbeddedValue": "EmbeddedValue is from an embedded struct.",
+		"yaml_test.ComplexStruct":                "ComplexStruct demonstrates various Go type features.",
+		"yaml_test.ComplexStruct.BasicField":     "BasicField is a simple field.",
+		"yaml_test.ComplexStruct.SliceField":     "SliceField contains multiple values.",
+		"yaml_test.ComplexStruct.MapField":       "MapField contains key-value pairs.",
+		"yaml_test.ComplexStruct.NestedStruct":   "NestedStruct contains nested data.",
+		"yaml_test.ComplexStruct.PointerField":   "PointerField may be nil.",
+		"yaml_test.EmbeddedStruct":               "EmbeddedStruct provides embedded functionality.",
+		"yaml_test.EmbeddedStruct.EmbeddedValue": "EmbeddedValue is from an embedded struct.",
 	}
 
-	lookupFunc := schema.DefaultLookupCommentFunc(commentMap)
+	lookupFunc := yaml.DefaultLookupCommentFunc(commentMap)
 
 	tcs := map[string]struct {
 		structType reflect.Type
@@ -445,37 +445,37 @@ func TestDefaultLookupCommentFunc_ComplexStructures(t *testing.T) {
 		"complex struct type comment": {
 			structType: reflect.TypeOf(ComplexStruct{}),
 			fieldName:  "",
-			want:       "ComplexStruct demonstrates various Go type features.\n\nComplexStruct: https://pkg.go.dev/github.com/macropower/kat/pkg/schema_test#ComplexStruct",
+			want:       "ComplexStruct demonstrates various Go type features.\n\nComplexStruct: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#ComplexStruct",
 		},
 		"complex struct basic field": {
 			structType: reflect.TypeOf(ComplexStruct{}),
 			fieldName:  "BasicField",
-			want:       "BasicField is a simple field.\n\nComplexStruct.BasicField: https://pkg.go.dev/github.com/macropower/kat/pkg/schema_test#ComplexStruct",
+			want:       "BasicField is a simple field.\n\nComplexStruct.BasicField: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#ComplexStruct",
 		},
 		"complex struct slice field": {
 			structType: reflect.TypeOf(ComplexStruct{}),
 			fieldName:  "SliceField",
-			want:       "SliceField contains multiple values.\n\nComplexStruct.SliceField: https://pkg.go.dev/github.com/macropower/kat/pkg/schema_test#ComplexStruct",
+			want:       "SliceField contains multiple values.\n\nComplexStruct.SliceField: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#ComplexStruct",
 		},
 		"complex struct map field": {
 			structType: reflect.TypeOf(ComplexStruct{}),
 			fieldName:  "MapField",
-			want:       "MapField contains key-value pairs.\n\nComplexStruct.MapField: https://pkg.go.dev/github.com/macropower/kat/pkg/schema_test#ComplexStruct",
+			want:       "MapField contains key-value pairs.\n\nComplexStruct.MapField: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#ComplexStruct",
 		},
 		"embedded struct type comment": {
 			structType: reflect.TypeOf(EmbeddedStruct{}),
 			fieldName:  "",
-			want:       "EmbeddedStruct provides embedded functionality.\n\nEmbeddedStruct: https://pkg.go.dev/github.com/macropower/kat/pkg/schema_test#EmbeddedStruct",
+			want:       "EmbeddedStruct provides embedded functionality.\n\nEmbeddedStruct: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#EmbeddedStruct",
 		},
 		"embedded struct field comment": {
 			structType: reflect.TypeOf(EmbeddedStruct{}),
 			fieldName:  "EmbeddedValue",
-			want:       "EmbeddedValue is from an embedded struct.\n\nEmbeddedStruct.EmbeddedValue: https://pkg.go.dev/github.com/macropower/kat/pkg/schema_test#EmbeddedStruct",
+			want:       "EmbeddedValue is from an embedded struct.\n\nEmbeddedStruct.EmbeddedValue: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#EmbeddedStruct",
 		},
 		"missing comment for complex field": {
 			structType: reflect.TypeOf(ComplexStruct{}),
 			fieldName:  "UndocumentedField",
-			want:       "ComplexStruct.UndocumentedField: https://pkg.go.dev/github.com/macropower/kat/pkg/schema_test#ComplexStruct",
+			want:       "ComplexStruct.UndocumentedField: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#ComplexStruct",
 		},
 	}
 
@@ -499,19 +499,19 @@ func TestGenerator_Generate_WithPackagePaths(t *testing.T) {
 	}{
 		"complex struct with current package path": {
 			reflectTarget: ComplexStruct{},
-			packagePaths:  []string{"github.com/macropower/kat/pkg/schema"},
+			packagePaths:  []string{"github.com/macropower/kat/pkg/yaml"},
 			expectError:   false,
 		},
 		"nested struct with current package path": {
 			reflectTarget: NestedComplexStruct{},
-			packagePaths:  []string{"github.com/macropower/kat/pkg/schema"},
+			packagePaths:  []string{"github.com/macropower/kat/pkg/yaml"},
 			expectError:   false,
 		},
 		"multiple package paths": {
 			reflectTarget: ComplexStruct{},
 			packagePaths: []string{
-				"github.com/macropower/kat/pkg/schema",
 				"github.com/macropower/kat/pkg/config",
+				"github.com/macropower/kat/pkg/yaml",
 			},
 			expectError: false,
 		},
@@ -526,7 +526,7 @@ func TestGenerator_Generate_WithPackagePaths(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			gen := schema.NewGenerator(tc.reflectTarget, tc.packagePaths...)
+			gen := yaml.NewSchemaGenerator(tc.reflectTarget, tc.packagePaths...)
 			gen.Tests = true
 			result, err := gen.Generate()
 
@@ -599,7 +599,7 @@ func TestGenerator_EdgeCases(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			gen := schema.NewGenerator(tc.reflectTarget, tc.packagePaths...)
+			gen := yaml.NewSchemaGenerator(tc.reflectTarget, tc.packagePaths...)
 			gen.Tests = true
 			result, err := gen.Generate()
 
@@ -626,11 +626,11 @@ func TestGenerator_Generate_CommentExtractionPipeline(t *testing.T) {
 	}{
 		"TestStruct with package path - full pipeline": {
 			reflectTarget: TestStruct{},
-			packagePaths:  []string{"github.com/macropower/kat/pkg/schema"},
+			packagePaths:  []string{"github.com/macropower/kat/pkg/yaml"},
 			checkComments: func(t *testing.T, schemaData map[string]any) {
 				t.Helper()
 
-				// TestStruct should generate a direct schema.
+				// TestStruct should generate a direct yaml.
 				properties, ok := schemaData["properties"].(map[string]any)
 				require.True(t, ok, "Expected properties to be a map[string]any")
 
@@ -670,7 +670,7 @@ func TestGenerator_Generate_CommentExtractionPipeline(t *testing.T) {
 		},
 		"ComplexStruct with package path - full pipeline": {
 			reflectTarget: ComplexStruct{},
-			packagePaths:  []string{"github.com/macropower/kat/pkg/schema"},
+			packagePaths:  []string{"github.com/macropower/kat/pkg/yaml"},
 			checkComments: func(t *testing.T, schemaData map[string]any) {
 				t.Helper()
 
@@ -745,7 +745,7 @@ func TestGenerator_Generate_CommentExtractionPipeline(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			gen := schema.NewGenerator(tc.reflectTarget, tc.packagePaths...)
+			gen := yaml.NewSchemaGenerator(tc.reflectTarget, tc.packagePaths...)
 			gen.Tests = true
 			result, err := gen.Generate()
 

@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/macropower/kat/pkg/ui"
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/theme"
+	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
 const (
@@ -133,12 +133,12 @@ func tryGetProfileNames(configPath string) []cobra.Completion {
 		configPath = config.GetPath()
 	}
 
-	cfgData, err := config.ReadConfig(configPath)
+	cl, err := config.NewConfigLoaderFromFile(configPath)
 	if err != nil {
 		return nil
 	}
 
-	cfg, err := config.LoadConfig(cfgData)
+	cfg, err := cl.Load()
 	if err != nil {
 		return nil
 	}
@@ -236,13 +236,18 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 		return err
 	}
 
-	cfgData, err := config.ReadConfig(configPath)
+	cl, err := config.NewConfigLoaderFromFile(configPath, config.WithThemeFromData())
 	if err != nil {
 		slog.Warn("could not read config, using defaults", slog.Any("err", err))
 	} else {
-		cfg, err = config.LoadConfig(cfgData)
+		err = cl.Validate()
 		if err != nil {
-			return fmt.Errorf("invalid config %q:\n%s", configPath, yaml.FormatError(err, true, true))
+			return fmt.Errorf("invalid config %q: %w", configPath, err)
+		}
+
+		cfg, err = cl.Load()
+		if err != nil {
+			return fmt.Errorf("invalid config %q: %w", configPath, err)
 		}
 	}
 
@@ -253,13 +258,24 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 
 	if rc.ShowConfig {
 		// Print the active configuration and exit.
-		yamlConfig, err := cfg.MarshalYAML()
+		slog.Info("active configuration", slog.String("path", configPath))
+
+		yamlBytes, err := cfg.MarshalYAML()
 		if err != nil {
 			return fmt.Errorf("marshal config yaml: %w", err)
 		}
 
-		slog.Info("active configuration", slog.String("path", configPath))
-		fmt.Printf("%s", yamlConfig)
+		yamlConfig := string(yamlBytes)
+
+		cr := yamls.NewChromaRenderer(cl.GetTheme(), yamls.WithLineNumbersDisabled(true))
+		prettyConfig, err := cr.RenderContent(yamlConfig, 0)
+		if err != nil {
+			mustN(fmt.Fprintln(cmd.OutOrStdout(), yamlConfig))
+
+			return err
+		}
+
+		mustN(fmt.Fprintln(cmd.OutOrStdout(), prettyConfig))
 
 		return nil
 	}

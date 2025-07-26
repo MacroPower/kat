@@ -99,7 +99,7 @@ func TestNewChromaRenderer(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := yamls.NewChromaRenderer(tc.theme, tc.lineNumbersDisabled)
+			renderer := yamls.NewChromaRenderer(tc.theme, yamls.WithLineNumbersDisabled(tc.lineNumbersDisabled))
 			assert.NotNil(t, renderer)
 
 			// Test that the renderer can render basic content.
@@ -113,7 +113,7 @@ func TestNewChromaRenderer(t *testing.T) {
 func TestChromaRenderer_SetAndGetMethods(t *testing.T) {
 	t.Parallel()
 
-	renderer := yamls.NewChromaRenderer(testTheme(), true)
+	renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 
 	// Test SetSearchTerm and GetMatches.
 	assert.Empty(t, renderer.GetMatches())
@@ -197,7 +197,7 @@ data:
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := yamls.NewChromaRenderer(testTheme(), false)
+			renderer := yamls.NewChromaRenderer(testTheme())
 			renderer.SetFormatter("terminal16m")
 
 			result, err := renderer.RenderContent(tc.yaml, tc.width)
@@ -282,7 +282,7 @@ func TestChromaRenderer_SearchHighlighting(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := yamls.NewChromaRenderer(testTheme(), true)
+			renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 			renderer.SetFormatter("terminal16m")
 			renderer.SetSearchTerm(tc.searchTerm)
 
@@ -330,7 +330,7 @@ func TestChromaRenderer_LineNumbers(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := yamls.NewChromaRenderer(testTheme(), tc.lineNumbersDisabled)
+			renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(tc.lineNumbersDisabled))
 			renderer.SetFormatter("terminal16m")
 
 			result, err := renderer.RenderContent(tc.yaml, 80)
@@ -350,7 +350,7 @@ func TestChromaRenderer_LineNumbers(t *testing.T) {
 func TestChromaRenderer_MatchPositioning(t *testing.T) {
 	t.Parallel()
 
-	renderer := yamls.NewChromaRenderer(testTheme(), true)
+	renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 	renderer.SetFormatter("terminal16m")
 
 	// Test specific match positioning.
@@ -384,7 +384,7 @@ func TestChromaRenderer_MatchPositioning(t *testing.T) {
 func TestChromaRenderer_ConsecutiveMatches(t *testing.T) {
 	t.Parallel()
 
-	renderer := yamls.NewChromaRenderer(testTheme(), true)
+	renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 	renderer.SetFormatter("terminal16m")
 
 	// Test individual character matching.
@@ -414,7 +414,7 @@ func TestChromaRenderer_ConsecutiveMatches(t *testing.T) {
 func TestChromaRenderer_MultiLineSearch(t *testing.T) {
 	t.Parallel()
 
-	renderer := yamls.NewChromaRenderer(testTheme(), true)
+	renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 	renderer.SetFormatter("terminal16m")
 
 	yaml := `line1: test
@@ -439,7 +439,7 @@ func TestChromaRenderer_ANSIHandling(t *testing.T) {
 
 	lipgloss.SetColorProfile(termenv.TrueColor)
 
-	renderer := yamls.NewChromaRenderer(testTheme(), true)
+	renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 	renderer.SetFormatter("terminal16m")
 
 	text := "key: value"
@@ -505,7 +505,7 @@ func TestChromaRenderer_EdgeCases(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := yamls.NewChromaRenderer(testTheme(), true)
+			renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 			renderer.SetFormatter("terminal16m")
 			renderer.SetSearchTerm(tc.searchTerm)
 
@@ -543,7 +543,7 @@ func TestChromaRenderer_DifferentFormatters(t *testing.T) {
 		t.Run(formatter, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := yamls.NewChromaRenderer(testTheme(), true)
+			renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 			renderer.SetFormatter(formatter)
 
 			result, err := renderer.RenderContent(yaml, 80)
@@ -567,7 +567,7 @@ func TestChromaRenderer(t *testing.T) {
 	}
 
 	// Create a ChromaRenderer instance with the theme.
-	renderer := yamls.NewChromaRenderer(basicTheme, true)
+	renderer := yamls.NewChromaRenderer(basicTheme, yamls.WithLineNumbersDisabled(true))
 	renderer.SetFormatter("terminal16m")
 
 	// Test case that reproduces the bug: searching for "o" in "text: hello world"
@@ -612,7 +612,7 @@ func TestChromaRenderer_ErrorScenarios(t *testing.T) {
 	}{
 		"malformed yaml": {
 			setupFunc: func() *yamls.ChromaRenderer {
-				return yamls.NewChromaRenderer(testTheme(), true)
+				return yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 			},
 			yaml:        "key: [\ninvalid",
 			expectError: false, // Chroma should handle malformed YAML gracefully
@@ -620,7 +620,7 @@ func TestChromaRenderer_ErrorScenarios(t *testing.T) {
 		},
 		"very large content": {
 			setupFunc: func() *yamls.ChromaRenderer {
-				return yamls.NewChromaRenderer(testTheme(), true)
+				return yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 			},
 			yaml:        strings.Repeat("key: value\n", 10000),
 			expectError: false,
@@ -628,7 +628,7 @@ func TestChromaRenderer_ErrorScenarios(t *testing.T) {
 		},
 		"binary content": {
 			setupFunc: func() *yamls.ChromaRenderer {
-				return yamls.NewChromaRenderer(testTheme(), true)
+				return yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 			},
 			yaml:        string([]byte{0x00, 0x01, 0x02, 0x03, 0xFF}),
 			expectError: false,
@@ -660,7 +660,7 @@ func TestChromaRenderer_ConcurrentAccess(t *testing.T) {
 	t.Parallel()
 
 	// Test that the renderer is safe for concurrent read access.
-	renderer := yamls.NewChromaRenderer(testTheme(), true)
+	renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 	renderer.SetFormatter("terminal16m")
 
 	// Prepare the renderer with initial content.
@@ -717,7 +717,7 @@ func TestChromaRenderer_SearchTermNormalization(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := yamls.NewChromaRenderer(testTheme(), true)
+			renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 			renderer.SetFormatter("terminal16m")
 			renderer.SetSearchTerm(tc.searchTerm)
 
@@ -759,7 +759,7 @@ func TestChromaRenderer_LineWrapping(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := yamls.NewChromaRenderer(testTheme(), true)
+			renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 			renderer.SetFormatter("terminal16m")
 
 			result, err := renderer.RenderContent(tc.yaml, tc.width)
@@ -817,7 +817,7 @@ message: "This is a quoted string with special chars: !@#$%"
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			renderer := yamls.NewChromaRenderer(testTheme(), false)
+			renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(false))
 			renderer.SetFormatter("terminal16m")
 
 			result, err := renderer.RenderContent(tc.yaml, 80)
@@ -839,7 +839,7 @@ func TestChromaRenderer_SelectedMatchHighlighting(t *testing.T) {
 
 	lipgloss.SetColorProfile(termenv.TrueColor)
 
-	renderer := yamls.NewChromaRenderer(testTheme(), true)
+	renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 	renderer.SetFormatter("terminal16m")
 
 	yaml := "name: test value test"
@@ -900,7 +900,7 @@ func TestChromaRenderer_InitialSearchHighlighting(t *testing.T) {
 
 	lipgloss.SetColorProfile(termenv.TrueColor)
 
-	renderer := yamls.NewChromaRenderer(testTheme(), true)
+	renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 	renderer.SetFormatter("terminal16m")
 
 	txt := "name: test"
@@ -967,4 +967,189 @@ func TestDiffPosition(t *testing.T) {
 			assert.Equal(t, tc.want.Type, tc.input.Type)
 		})
 	}
+}
+
+func TestChromaRenderer_SetError(t *testing.T) {
+	t.Parallel()
+
+	lipgloss.SetColorProfile(termenv.TrueColor)
+
+	renderer := yamls.NewChromaRenderer(testTheme())
+
+	// Initially no errors
+	yaml := "key: value\nanother: test"
+	result, err := renderer.RenderContent(yaml, 100)
+	require.NoError(t, err)
+
+	// Set an error and verify it's applied
+	renderer.SetError(0, 0, 0, 3) // Highlight "key"
+
+	resultWithError, err := renderer.RenderContent(yaml, 100)
+	require.NoError(t, err)
+
+	// The result with error should be different and contain ANSI escape sequences
+	assert.NotEqual(t, result, resultWithError)
+	assert.Contains(t, resultWithError, "\x1b[")
+}
+
+func TestChromaRenderer_ClearErrors(t *testing.T) {
+	t.Parallel()
+
+	lipgloss.SetColorProfile(termenv.TrueColor)
+
+	renderer := yamls.NewChromaRenderer(testTheme())
+
+	yaml := "key: value\nanother: test"
+
+	// Set an error
+	renderer.SetError(0, 0, 0, 3)
+
+	resultWithError, err := renderer.RenderContent(yaml, 100)
+	require.NoError(t, err)
+
+	// Clear errors
+	renderer.ClearErrors()
+
+	resultWithoutError, err := renderer.RenderContent(yaml, 100)
+	require.NoError(t, err)
+
+	// Results should be different - error styling should be removed
+	assert.NotEqual(t, resultWithError, resultWithoutError)
+}
+
+func TestChromaRenderer_MultipleErrors(t *testing.T) {
+	t.Parallel()
+
+	lipgloss.SetColorProfile(termenv.TrueColor)
+
+	renderer := yamls.NewChromaRenderer(testTheme())
+
+	yaml := "key: value\nanother: test\nthird: line"
+
+	// Set multiple errors
+	renderer.SetError(0, 0, 0, 3)  // "key" on line 0
+	renderer.SetError(1, 0, 1, 7)  // "another" on line 1
+	renderer.SetError(2, 7, 2, 11) // "line" on line 2
+
+	result, err := renderer.RenderContent(yaml, 100)
+	require.NoError(t, err)
+
+	// Should contain ANSI escape sequences for highlighting
+	assert.Contains(t, result, "\x1b[")
+}
+
+func TestChromaRenderer_ErrorsWithOtherHighlights(t *testing.T) {
+	t.Parallel()
+
+	lipgloss.SetColorProfile(termenv.TrueColor)
+
+	renderer := yamls.NewChromaRenderer(testTheme())
+
+	yaml := "key: value\nanother: test"
+
+	// Add error highlighting
+	renderer.SetError(0, 0, 0, 3) // "key"
+
+	// Add search highlighting
+	renderer.SetSearchTerm("value")
+
+	result, err := renderer.RenderContent(yaml, 100)
+	require.NoError(t, err)
+
+	// Should contain both error and search highlighting
+	assert.Contains(t, result, "\x1b[")
+
+	// Clear errors and re-render - should still have search highlighting
+	renderer.ClearErrors()
+
+	resultWithoutErrors, err := renderer.RenderContent(yaml, 100)
+	require.NoError(t, err)
+
+	// Results should be different
+	assert.NotEqual(t, result, resultWithoutErrors)
+
+	// Both should contain highlighting (search is still active)
+	assert.Contains(t, resultWithoutErrors, "\x1b[")
+}
+
+func TestChromaRenderer_ErrorLineNumberPrefix(t *testing.T) {
+	t.Parallel()
+
+	lipgloss.SetColorProfile(termenv.TrueColor)
+
+	renderer := yamls.NewChromaRenderer(testTheme())
+
+	yaml := "key: value\nanother: test\nthird: line"
+
+	// Render without errors first
+	resultWithoutErrors, err := renderer.RenderContent(yaml, 100)
+	require.NoError(t, err)
+
+	// Should contain normal line numbers (spaces before numbers)
+	assert.Contains(t, resultWithoutErrors, "   1  ")
+	assert.Contains(t, resultWithoutErrors, "   2  ")
+	assert.Contains(t, resultWithoutErrors, "   3  ")
+
+	// Add an error on line 1 (0-based)
+	renderer.SetError(1, 0, 1, 7) // "another" on line 1
+
+	resultWithError, err := renderer.RenderContent(yaml, 100)
+	require.NoError(t, err)
+
+	// Line 1 (display line 2) should have ">" prefix, others should not
+	assert.Contains(t, resultWithError, "   1  ") // Line 0 (display 1) - no error
+	assert.Contains(t, resultWithError, ">  2  ") // Line 1 (display 2) - has error
+	assert.Contains(t, resultWithError, "   3  ") // Line 2 (display 3) - no error
+}
+
+func TestChromaRenderer_SetError_MultiLine(t *testing.T) {
+	t.Parallel()
+
+	lipgloss.SetColorProfile(termenv.TrueColor)
+
+	renderer := yamls.NewChromaRenderer(testTheme())
+
+	yaml := "key: value\nanother: test\nthird: line\nfourth: item"
+
+	// Test multi-line error spanning lines 1-3 (0-based)
+	renderer.SetError(1, 5, 3, 6) // From "test" on line 1 to "item" on line 3
+
+	result, err := renderer.RenderContent(yaml, 100)
+	require.NoError(t, err)
+
+	// Should contain ANSI escape sequences for highlighting
+	assert.Contains(t, result, "\x1b[")
+
+	// All lines 2-4 (display lines) should have ">" prefix since they contain errors
+	assert.Contains(t, result, "   1  ") // Line 0 (display 1) - no error
+	assert.Contains(t, result, ">  2  ") // Line 1 (display 2) - has error
+	assert.Contains(t, result, ">  3  ") // Line 2 (display 3) - has error
+	assert.Contains(t, result, ">  4  ") // Line 3 (display 4) - has error
+}
+
+func TestChromaRenderer_SetError_SingleVsMultiLine(t *testing.T) {
+	t.Parallel()
+
+	lipgloss.SetColorProfile(termenv.TrueColor)
+
+	yaml := "key: value\nanother: test"
+
+	// Test single line error
+	singleLineRenderer := yamls.NewChromaRenderer(testTheme())
+	singleLineRenderer.SetError(0, 0, 0, 3) // "key" on same line
+
+	singleResult, err := singleLineRenderer.RenderContent(yaml, 100)
+	require.NoError(t, err)
+
+	// Test multi-line error (even though it's actually same line)
+	multiLineRenderer := yamls.NewChromaRenderer(testTheme())
+	multiLineRenderer.SetError(0, 0, 1, 3) // From line 0 to line 1
+
+	multiResult, err := multiLineRenderer.RenderContent(yaml, 100)
+	require.NoError(t, err)
+
+	// Results should be different - multi-line should affect both lines
+	assert.NotEqual(t, singleResult, multiResult)
+	assert.Contains(t, singleResult, "\x1b[")
+	assert.Contains(t, multiResult, "\x1b[")
 }
