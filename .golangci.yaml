@@ -218,6 +218,9 @@ linters:
           disabled: true
         - name: var-naming
           disabled: true
+        # Requires default cases.
+        - name: enforce-switch-style
+          disabled: true
 
     depguard:
       rules:
