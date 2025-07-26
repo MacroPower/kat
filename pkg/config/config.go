@@ -105,13 +105,23 @@ func (c Config) JSONSchemaExtend(jss *jsonschema.Schema) {
 	_, _ = jss.Properties.Set("kind", kind)
 }
 
-func (c *Config) MarshalYAML() ([]byte, error) {
+func (c Config) MarshalYAML() ([]byte, error) {
+	type alias Config
+
 	b := &bytes.Buffer{}
+
 	enc := yaml.NewEncoder(b)
-	err := enc.Encode(*c)
+	err := enc.Encode(alias(c))
 	if err != nil {
 		return nil, fmt.Errorf("marshal yaml: %w", err)
 	}
+
+	defer func() {
+		err := enc.Close()
+		if err != nil {
+			slog.Error("failed to close YAML encoder", slog.Any("error", err))
+		}
+	}()
 
 	return b.Bytes(), nil
 }

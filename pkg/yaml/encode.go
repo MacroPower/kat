@@ -19,3 +19,7 @@ func NewEncoder(w io.Writer) *Encoder {
 func (e *Encoder) Encode(v any) error {
 	return e.e.Encode(v) //nolint:wrapcheck // Return the original error.
 }
+
+func (e *Encoder) Close() error {
+	return e.e.Close() //nolint:wrapcheck // Return the original error.
+}
