@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM scratch
 
 ARG TARGETOS
 ARG TARGETARCH
