@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/ansi"
 	"github.com/muesli/termenv"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -243,16 +244,15 @@ func (m *PagerModel) SetSize(w, h int) {
 	// Calculate viewport dimensions.
 	viewportHeight := h - statusBarHeight
 
-	// Reserve space for search bar if in search mode.
-	if m.ViewState == StateSearching {
-		viewportHeight -= statusBarHeight // Search bar takes one line.
-	}
-
 	// Calculate help height if needed.
 	if m.ShowHelp {
 		m.helpHeight = m.helpRenderer.CalculateHelpHeight()
 		viewportHeight -= (statusBarHeight + m.helpHeight)
 	}
+
+	m.searchInput.Width = w - len(m.searchInput.Prompt) - ansi.PrintableRuneWidth(
+		m.searchInput.Prompt,
+	)
 
 	m.viewport.Width = w
 	m.viewport.Height = viewportHeight

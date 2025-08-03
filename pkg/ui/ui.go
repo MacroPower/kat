@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/macropower/kat/pkg/command"
+	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/kube"
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/list"
@@ -165,7 +166,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if m.kb.Common.Error.Match(msg.String()) {
+		key := msg.String()
+		if m.matchAction(m.kb.Common.Error, key) {
 			if m.state != stateShowResult {
 				m.overlayState = overlayStateNone
 
@@ -197,15 +199,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return newModel, cmd
 		}
 
-		if m.kb.Common.Left.Match(msg.String()) {
-			if (m.state == stateShowDocument && m.pager.ViewState != pager.StateSearching) || m.state == stateShowResult {
+		if m.matchAction(m.kb.Common.Left, key) {
+			if m.state == stateShowDocument || m.state == stateShowResult {
 				m.unloadDocument()
 			}
 		}
 
 		// Handle plugin keybinds.
-		if profile := m.cm.Cmd.GetCurrentProfile(); profile != nil {
-			if pluginName := profile.GetPluginNameByKey(msg.String()); pluginName != "" {
+		profile := m.cm.Cmd.GetCurrentProfile()
+		if profile != nil && !m.isTextInputFocused() {
+			if pluginName := profile.GetPluginNameByKey(key); pluginName != "" {
 				cmd := m.runPlugin(pluginName)
 
 				return m, cmd
@@ -377,27 +380,16 @@ func (m *model) loadingView() string {
 func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	key := msg.String()
 
-	switch {
-	case m.kb.Common.Quit.Match(key):
-		if m.state == stateShowList && m.list.FilterState == list.Filtering {
-			// Pass through to filter handler.
-			return m, nil, false
-		}
-		if m.state == stateShowDocument && m.pager.ViewState == pager.StateSearching {
-			// Pass through to pager search handler.
-			return m, nil, false
-		}
-		if m.state == stateShowResult && m.fullResult.ViewState == pager.StateSearching {
-			// Pass through to pager search handler.
-			return m, nil, false
-		}
+	// Always allow suspend to work regardless of current focus.
+	if m.kb.Common.Suspend.Match(key) {
+		return m, tea.Suspend, true
+	}
 
+	switch {
+	case m.matchAction(m.kb.Common.Quit, key):
 		return m, tea.Quit, true
 
-	case m.kb.Common.Suspend.Match(key):
-		return m, tea.Suspend, true
-
-	case m.kb.Common.Escape.Match(key):
+	case m.matchAction(m.kb.Common.Escape, key):
 		isShowingDocument := m.state == stateShowDocument && m.pager.ViewState != pager.StateSearching
 		isShowingResult := m.state == stateShowResult && m.fullResult.ViewState != pager.StateSearching
 		if isShowingDocument || isShowingResult || !m.cm.Loaded {
@@ -415,31 +407,38 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 
 		return m, nil, true
 
-	case m.kb.Common.Reload.Match(key):
-		return m.handleRefreshKey(msg)
+	case m.matchAction(m.kb.Common.Reload, key):
+		initCmds := m.Init()
+
+		return m, initCmds, true
 	}
 
 	return m, nil, false
 }
 
-// handleRefreshKey handles the refresh key based on current state.
-func (m *model) handleRefreshKey(_ tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+func (m *model) matchAction(kb *keys.KeyBind, key string) bool {
+	if m.isTextInputFocused() && keys.IsTextInputAction(key) {
+		return false
+	}
+
+	return kb.Match(key)
+}
+
+func (m *model) isTextInputFocused() bool {
 	if m.state == stateShowList && m.list.FilterState == list.Filtering {
 		// Pass through to list handler.
-		return m, nil, false
+		return true
 	}
 	if m.state == stateShowDocument && m.pager.ViewState == pager.StateSearching {
 		// Pass through to pager search handler.
-		return m, nil, false
+		return true
 	}
 	if m.state == stateShowResult && m.fullResult.ViewState == pager.StateSearching {
 		// Pass through to pager search handler.
-		return m, nil, false
+		return true
 	}
 
-	initCmds := m.Init()
-
-	return m, initCmds, true
+	return false
 }
 
 // handleResourceUpdate processes kubernetes resource updates.
