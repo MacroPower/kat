@@ -27,7 +27,7 @@ require (
 	github.com/sahilm/fuzzy v0.1.1
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/spf13/cobra v1.9.1
-	github.com/spf13/pflag v1.0.6
+	github.com/spf13/pflag v1.0.7
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/term v0.33.0
 	golang.org/x/text v0.27.0
