@@ -12,7 +12,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.6
 	github.com/charmbracelet/fang v0.3.0
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
-	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta.2
+	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta.3
 	github.com/charmbracelet/log v0.4.2
 	github.com/charmbracelet/x/ansi v0.9.3
 	github.com/charmbracelet/x/cellbuf v0.0.13
