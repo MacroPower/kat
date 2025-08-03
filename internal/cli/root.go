@@ -24,8 +24,10 @@ func NewRootArgs() *RootArgs {
 }
 
 func (ra *RootArgs) AddFlags(cmd *cobra.Command) {
-	cmd.PersistentFlags().StringVar(&ra.LogLevel, "log-level", "info", fmt.Sprintf("Log level %s", log.AllLevels))
-	cmd.PersistentFlags().StringVar(&ra.LogFormat, "log-format", "text", fmt.Sprintf("Log format %s", log.AllFormats))
+	cmd.PersistentFlags().
+		StringVar(&ra.LogLevel, "log-level", "info", fmt.Sprintf("Log level, one of: %s", log.AllLevels))
+	cmd.PersistentFlags().
+		StringVar(&ra.LogFormat, "log-format", "text", fmt.Sprintf("Log format, one of: %s", log.AllFormats))
 
 	var err error
 
@@ -62,6 +64,8 @@ func NewRootCmd() *cobra.Command {
 	args.AddFlags(cmd)
 	runArgs.AddFlags(cmd)
 	cmd.AddCommand(runCmd)
+
+	bindEnvVars(cmd)
 
 	return cmd
 }

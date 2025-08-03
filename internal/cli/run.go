@@ -124,6 +124,8 @@ func NewRunCmd(ra *RunArgs) *cobra.Command {
 	}
 	ra.AddFlags(cmd)
 
+	bindEnvVars(cmd)
+
 	return cmd
 }
 
