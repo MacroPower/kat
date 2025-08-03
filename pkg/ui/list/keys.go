@@ -177,6 +177,9 @@ func (h *KeyHandler) HandleFilteringMode(m ListModel, msg tea.Msg) (ListModel, t
 // handleFilterKeys handles key events specific to filtering mode.
 func (h *KeyHandler) handleFilterKeys(m ListModel, key string) (ListModel, tea.Cmd) {
 	switch {
+	case keys.IsTextInputAction(key):
+		return m, nil
+
 	case h.ckb.Up.Match(key),
 		h.ckb.Down.Match(key),
 		h.ckb.Next.Match(key),

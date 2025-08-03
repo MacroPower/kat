@@ -3,6 +3,7 @@ package keys
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/muesli/reflow/ansi"
@@ -97,6 +98,7 @@ func (kb *KeyBind) StringRow(keyWidth, descWidth int) string {
 	return fmt.Sprintf("%s%s  %s%s", keys, keySpaces, truncDesc, descSpaces)
 }
 
+// Match checks if the key matches any of the keys in the binding.
 func (kb *KeyBind) Match(key string) bool {
 	for _, k := range kb.Keys {
 		if k.Code == key {
@@ -105,6 +107,15 @@ func (kb *KeyBind) Match(key string) bool {
 	}
 
 	return false
+}
+
+// IsTextInputAction checks if the key should be applied as text input.
+func IsTextInputAction(key string) bool {
+	alwaysNonInput := []string{
+		"esc", "enter", "up", "down", "pgup", "pgdown",
+	}
+
+	return !slices.Contains(alwaysNonInput, key)
 }
 
 func (kb *KeyBind) AddKey(key Key) {

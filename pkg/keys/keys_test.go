@@ -352,6 +352,41 @@ func TestKeyBind_Match(t *testing.T) {
 	}
 }
 
+func TestKeyBind_IsInputAction(t *testing.T) {
+	t.Parallel()
+
+	tcs := map[string]struct {
+		input string
+		want  bool
+	}{
+		"accepts single letter": {
+			input: "k",
+			want:  true,
+		},
+		"accepts uppercase letter": {
+			input: "K",
+			want:  true,
+		},
+		"rejects navigation key": {
+			input: "up",
+			want:  false,
+		},
+		"accepts copy": {
+			input: "ctrl+c",
+			want:  true,
+		},
+	}
+
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			result := keys.IsTextInputAction(tc.input)
+			assert.Equal(t, tc.want, result)
+		})
+	}
+}
+
 func TestKeyBind_AddKey(t *testing.T) {
 	t.Parallel()
 
