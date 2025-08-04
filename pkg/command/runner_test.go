@@ -21,13 +21,16 @@ var (
 	testProfiles = map[string]*profile.Profile{
 		"ks": profile.MustNew("kustomize",
 			profile.WithArgs("build", "."),
-			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`)),
+			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`),
+			profile.WithReload(`fs.event.has(fs.WRITE, fs.CREATE, fs.REMOVE)`)),
 		"helm": profile.MustNew("helm",
 			profile.WithArgs("template", ".", "--generate-name"),
-			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])`)),
+			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])`),
+			profile.WithReload(`fs.event.has(fs.WRITE, fs.RENAME) && pathBase(file) != "Chart.lock"`)),
 		"yaml": profile.MustNew("sh",
 			profile.WithArgs("-c", "yq eval-all '.' *.yaml"),
-			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`)),
+			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`),
+			profile.WithReload(`pathExt(file) in [".yaml", ".yml"]`)),
 	}
 
 	testRules = []*rule.Rule{
@@ -245,6 +248,7 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 
 	tcs := map[string]struct {
 		commandSleepTime string
+		profileReload    string
 		numFileEvents    int
 		collectDuration  time.Duration
 	}{
@@ -252,11 +256,19 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 			numFileEvents:    5,
 			commandSleepTime: "0.2", // 200ms sleep
 			collectDuration:  3 * time.Second,
+			profileReload:    `fs.event.has(fs.WRITE, fs.CREATE)`,
 		},
 		"fewer file events with faster command": {
 			numFileEvents:    3,
 			commandSleepTime: "0.1", // 100ms sleep
 			collectDuration:  2 * time.Second,
+			profileReload:    `pathExt(file) == ".yaml"`,
+		},
+		"file events with path filtering": {
+			numFileEvents:    4,
+			commandSleepTime: "0.1",
+			collectDuration:  2 * time.Second,
+			profileReload:    `pathBase(file) != "ignored.yaml"`,
 		},
 	}
 
@@ -274,6 +286,7 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 			p, err := profile.New("sleep",
 				profile.WithArgs(tc.commandSleepTime),
 				profile.WithSource(`files.filter(f, pathExt(f) == ".yaml")`),
+				profile.WithReload(tc.profileReload),
 			)
 			require.NoError(t, err)
 
@@ -336,18 +349,15 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 			// Wait for collection to complete
 			<-collectionDone
 
-			// Core assertions: These are the behaviors we actually care about
-
 			// 1. We should get at least one successful command completion
 			assert.GreaterOrEqual(t, len(outputs), 1,
 				"should get at least one command result")
 
-			// 2. We should see some start events (file system watcher is working)
+			// 2. We should see some start events
 			assert.GreaterOrEqual(t, startEvents, 1,
-				"should see at least one start event")
+				"should get at least one start event")
 
 			// 3. If we have multiple outputs, we should see some cancellations
-			// (this tests that the cancellation mechanism is working)
 			if len(outputs) > 1 {
 				assert.GreaterOrEqual(t, cancelEvents, 1,
 					"should see some cancellations when multiple commands run")

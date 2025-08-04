@@ -277,15 +277,44 @@ func (cr *Runner) RunOnEvent() {
 			if !ok {
 				return
 			}
-			if evt.Has(fsnotify.Create | fsnotify.Remove | fsnotify.Write | fsnotify.Rename) {
-				// Create a new context for this command execution.
-				ctx := context.Background()
 
-				// Run the command in a goroutine so we can handle cancellation properly.
-				go func() {
-					cr.RunContext(ctx)
-				}()
+			// Ignore events that are not related to file content changes.
+			if evt.Has(fsnotify.Chmod) {
+				continue
 			}
+
+			p := cr.GetCurrentProfile()
+			if p == nil {
+				slog.Error("no profile set for command runner, cannot handle event",
+					slog.String("event", evt.String()),
+				)
+
+				continue
+			}
+
+			if p.Reload != "" {
+				matched, err := p.MatchFileEvent(evt.Name, evt.Op)
+				if err != nil {
+					slog.Error("match file event",
+						slog.String("event", evt.String()),
+						slog.Any("error", err),
+					)
+					cr.broadcast(EventEnd(Output{
+						Error: fmt.Errorf("match file event: %w", err),
+					}))
+
+					continue
+				}
+				if !matched {
+					continue
+				}
+			}
+
+			// Create a new context for this command execution.
+			ctx := context.Background()
+
+			// Run the command in a goroutine so we can handle cancellation properly.
+			go cr.RunContext(ctx)
 
 		case err, ok := <-cr.watcher.Errors:
 			if !ok {

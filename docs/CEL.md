@@ -22,9 +22,9 @@ rules:
 
 Rules are processed in order, so the first matching rule will be applied. If no rules match, and no explicit profile was selected via CLI args, kat will return an error.
 
-### Profiles - List Expressions
+### Profile Source - List Expressions
 
-Profiles use CEL expressions that return a **list of files** to determine which files to watch:
+Profile source expressions use CEL expressions that return a **list of files** to determine which files to watch:
 
 - Non-empty list means the profile will watch those specific files
 - Empty list means no files should be watched
@@ -38,6 +38,22 @@ profiles:
       files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])
 ```
 
+### Profile Reload - Boolean Expressions
+
+Profile reload expressions use CEL expressions that return a **boolean** value to determine if a file change should trigger a reload:
+
+- `true` means the reload should proceed
+- `false` means the reload should be skipped
+
+Use file system event checking and file path operations:
+
+```yaml
+profiles:
+  helm:
+    reload: >-
+      fs.event.has(fs.WRITE, fs.RENAME) && pathBase(file) != "kustomization.yaml"
+```
+
 ## Custom Functions
 
 | Function   | Signature                 | Description                                                              |
@@ -46,6 +62,37 @@ profiles:
 | `pathExt`  | `(string) -> string`      | Returns the file extension of the path, including the dot                |
 | `pathDir`  | `(string) -> string`      | Returns all but the last element of the path (the directory)             |
 | `yamlPath` | `(string, string) -> dyn` | Reads a YAML file and extracts value at path (returns null if not found) |
+| `has`      | `(int, int...) -> bool`   | Checks if an event contains specific flags (supports variadic arguments) |
+
+## File System Constants
+
+| Constant    | Description                   |
+| ----------- | ----------------------------- |
+| `fs.CREATE` | File or directory was created |
+| `fs.WRITE`  | File was written to           |
+| `fs.REMOVE` | File or directory was removed |
+| `fs.RENAME` | File or directory was renamed |
+| `fs.CHMOD`  | File permissions were changed |
+
+## Render Status Constants
+
+### Render Stages
+
+| Constant                   | Description                     |
+| -------------------------- | ------------------------------- |
+| `render.STAGE_NONE`        | No rendering is active          |
+| `render.STAGE_PRE_RENDER`  | Pre-render hooks are executing  |
+| `render.STAGE_RENDER`      | Main command is executing       |
+| `render.STAGE_POST_RENDER` | Post-render hooks are executing |
+
+### Render Results
+
+| Constant               | Description                      |
+| ---------------------- | -------------------------------- |
+| `render.RESULT_NONE`   | No result available              |
+| `render.RESULT_OK`     | Rendering completed successfully |
+| `render.RESULT_ERROR`  | Rendering failed with an error   |
+| `render.RESULT_CANCEL` | Rendering was canceled           |
 
 ## Overview
 
@@ -137,6 +184,22 @@ source: >-
   files.filter(f, pathBase(f) == "Chart.yaml" && yamlPath(f, "$.apiVersion") == "v2")
 ```
 
+### `has(event, flag...)` - Check file system event flags
+
+Checks if a file system event contains specific flags. Supports both single and multiple flag checking.
+
+**For Reload expressions (boolean):**
+
+```yaml
+# Check for specific event types:
+reload: >-
+  fs.event.has(fs.WRITE)
+
+# Check for multiple event types:
+reload: >-
+  fs.event.has(fs.CREATE, fs.WRITE, fs.REMOVE)
+```
+
 ## Using Built-in CEL Functions
 
 Combine filepath functions with CEL's built-in string and list operations:
@@ -173,6 +236,22 @@ source: >-
 # Excluding files with 'matches':
 source: >-
   files.filter(f, pathExt(f) in [".yaml", ".yml"] && !pathBase(f).matches(".*test.*"))
+```
+
+**For Reload expressions (boolean):**
+
+```yaml
+# Using file path operations:
+reload: >-
+  pathBase(file) != "kustomization.yaml"
+
+# Using file system event checking:
+reload: >-
+  fs.event.has(fs.WRITE, fs.RENAME)
+
+# Using render status:
+reload: >-
+  render.result != render.RESULT_CANCEL && render.stage < render.STAGE_RENDER
 ```
 
 ## Complex Examples

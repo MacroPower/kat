@@ -528,7 +528,12 @@
           "source": {
             "type": "string",
             "title": "Source",
-            "description": "Source contains the CEL expression source code for the profile.\n\nProfile.Source: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
+            "description": "Source is a CEL expression that determines which files should be watched by\nthis profile, when file watching is enabled. The expression has access to:\n  - `files` (list\u003cstring\u003e): All file paths in directory\n  - `dir` (string): The directory path being processed\n\nSource CEL expressions must return a list of files:\n  - `files.filter(f, pathExt(f) in [\".yaml\", \".yml\"])` - returns all YAML files\n  - `files.filter(f, pathBase(f) in [\"Chart.yaml\", \"values.yaml\"])` - returns Chart and values files\n  - `files.filter(f, pathBase(f) == \"Chart.yaml\")` - returns files named Chart.yaml\n  - `files.filter(f, !pathBase(f).matches(\".*test.*\"))` - returns non-test files\n  - `files.filter(f, pathBase(f) == \"Chart.yaml\" \u0026\u0026 yamlPath(f, \"$.apiVersion\") == \"v2\")` - returns charts with apiVersion v2\n  - `files` - unfiltered list means all files should be processed\n  - `[]` - empty list means no files should be processed\n\nIf no Source expression is provided, the profile will match all files by default.\n\nProfile.Source: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
+          },
+          "reload": {
+            "type": "string",
+            "title": "Reload",
+            "description": "Reload contains a CEL expression that is evaluated on automated reload\nevents (e.g. from watch). If the expression returns true, the reload will proceed.\nIf it returns false, the reload will be skipped. The expression has access to:\n  - `file` (string): The file path that triggered the event\n  - `fs.event` (int): The file event type, at least one of `fs.CREATE`, `fs.WRITE`, `fs.REMOVE`, `fs.RENAME`, `fs.CHMOD`\n  - `render.stage` (int): The current render stage, one of `render.STAGE_NONE`, `render.STAGE_PRE_RENDER`, `render.STAGE_RENDER`, `render.STAGE_POST_RENDER`\n  - `render.result` (string): The result of the last render operation, one of `render.RESULT_OK`, `render.RESULT_ERROR`, `render.RESULT_CANCEL`\n\nReload CEL expressions must return a boolean value:\n  - `pathBase(file) != \"kustomization.yaml\"` - skip reload for kustomization.yaml files\n  - `fs.event.has(fs.WRITE, fs.RENAME)` - reload for write or rename events\n  - `render.result != render.RESULT_CANCEL` - skip reload if the last render was canceled\n  - `render.stage \u003c render.STAGE_RENDER` - only reload if the main render stage has not started\n\nIf no Reload expression is provided, the profile will always reload on any events.\n\nProfile.Reload: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
           },
           "command": {
             "type": "string",
@@ -641,7 +646,7 @@
         "required": [
           "command"
         ],
-        "description": "Profile represents a command profile with optional source filtering.\n\nThe Source field contains a CEL expression that determines which files\nshould be processed by this profile. The expression has access to:\n  - `files` (list\u003cstring\u003e): All file paths in directory\n  - `dir` (string): The directory path being processed\n\nSource CEL expressions must return a list of files:\n  - `files.filter(f, pathExt(f) in [\".yaml\", \".yml\"])` - returns all YAML files\n  - `files.filter(f, pathBase(f) in [\"Chart.yaml\", \"values.yaml\"])` - returns Chart and values files\n  - `files.filter(f, pathBase(f) == \"Chart.yaml\")` - returns files named Chart.yaml\n  - `files.filter(f, !pathBase(f).matches(\".*test.*\")) - returns non-test files\n  - `files.filter(f, pathBase(f) == \"Chart.yaml\" \u0026\u0026 yamlPath(f, \"$.apiVersion\") == \"v2\")` - returns charts with apiVersion v2\n  - `files` - unfiltered list means all files should be processed\n  - `[]` - empty list means no files should be processed\n\nIf no Source expression is provided, the profile will use default file filtering.\n\nProfile: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
+        "description": "Profile represents a command profile.\n\nProfile: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
       },
       "type": "object",
       "title": "Profiles",

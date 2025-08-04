@@ -1,8 +1,10 @@
 package profile_test
 
 import (
+	"errors"
 	"testing"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -186,7 +188,9 @@ func TestProfile_Exec(t *testing.T) {
 	t.Run("empty command", func(t *testing.T) {
 		t.Parallel()
 
-		p := &profile.Profile{} // empty command
+		p, err := profile.New("") // empty command
+		require.NoError(t, err)
+
 		result, err := p.Exec(t.Context(), "/tmp")
 
 		require.Error(t, err)
@@ -599,6 +603,187 @@ func TestProfile_EnvironmentWithHooks(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, result.Stdout, "main output")
 	})
+}
+
+func TestProfile_MatchFileEvent(t *testing.T) {
+	t.Parallel()
+
+	tcs := map[string]struct {
+		err      error
+		reload   string
+		filePath string
+		event    fsnotify.Op
+		want     bool
+	}{
+		"no reload expression always returns true": {
+			reload:   "",
+			filePath: "/app/config.yaml",
+			event:    fsnotify.Write,
+			want:     true,
+			err:      nil,
+		},
+		"simple file match": {
+			reload:   `pathBase(file) == "config.yaml"`,
+			filePath: "/app/config.yaml",
+			event:    fsnotify.Write,
+			want:     true,
+			err:      nil,
+		},
+		"simple file no match": {
+			reload:   `pathBase(file) == "config.yaml"`,
+			filePath: "/app/other.yaml",
+			event:    fsnotify.Write,
+			want:     false,
+			err:      nil,
+		},
+		"event filtering - match WRITE": {
+			reload:   `fs.event.has(fs.WRITE)`,
+			filePath: "/app/config.yaml",
+			event:    fsnotify.Write,
+			want:     true,
+			err:      nil,
+		},
+		"event filtering - no match CREATE": {
+			reload:   `fs.event.has(fs.WRITE)`,
+			filePath: "/app/config.yaml",
+			event:    fsnotify.Create,
+			want:     false,
+			err:      nil,
+		},
+		"event in list": {
+			reload:   `fs.event.has(fs.WRITE, fs.RENAME)`,
+			filePath: "/app/config.yaml",
+			event:    fsnotify.Rename,
+			want:     true,
+			err:      nil,
+		},
+		"event not in list": {
+			reload:   `fs.event.has(fs.WRITE, fs.RENAME)`,
+			filePath: "/app/config.yaml",
+			event:    fsnotify.Remove,
+			want:     false,
+			err:      nil,
+		},
+		"skip kustomization.yaml files": {
+			reload:   `pathBase(file) != "kustomization.yaml"`,
+			filePath: "/app/kustomization.yaml",
+			event:    fsnotify.Write,
+			want:     false,
+			err:      nil,
+		},
+		"allow non-kustomization files": {
+			reload:   `pathBase(file) != "kustomization.yaml"`,
+			filePath: "/app/deployment.yaml",
+			event:    fsnotify.Write,
+			want:     true,
+			err:      nil,
+		},
+		"status render.stage check - default empty stage": {
+			reload:   `render.stage == render.STAGE_NONE`,
+			filePath: "/app/config.yaml",
+			event:    fsnotify.Write,
+			want:     true,
+			err:      nil,
+		},
+		"status render.stage check - under render stage": {
+			reload:   `render.stage < render.STAGE_RENDER`,
+			filePath: "/app/config.yaml",
+			event:    fsnotify.Write,
+			want:     true,
+			err:      nil,
+		},
+		"status render.result check - default empty result": {
+			reload:   `render.result == render.RESULT_NONE`,
+			filePath: "/app/config.yaml",
+			event:    fsnotify.Write,
+			want:     true,
+			err:      nil,
+		},
+		"status render.result check - not CANCEL": {
+			reload:   `render.result != render.RESULT_CANCEL`,
+			filePath: "/app/config.yaml",
+			event:    fsnotify.Write,
+			want:     true,
+			err:      nil,
+		},
+		"complex expression with multiple conditions": {
+			reload: `
+				pathBase(file) != "kustomization.yaml" &&
+				fs.event.has(fs.WRITE, fs.RENAME) &&
+				render.result != render.RESULT_CANCEL`,
+			filePath: "/app/deployment.yaml",
+			event:    fsnotify.Write,
+			want:     true,
+			err:      nil,
+		},
+		"complex expression fails on kustomization": {
+			reload: `
+				pathBase(file) != "kustomization.yaml" &&
+				fs.event.has(fs.WRITE, fs.RENAME) &&
+				render.result != render.RESULT_CANCEL`,
+			filePath: "/app/kustomization.yaml",
+			event:    fsnotify.Write,
+			want:     false,
+			err:      nil,
+		},
+		"complex expression fails on wrong event": {
+			reload: `
+				pathBase(file) != "kustomization.yaml" &&
+				fs.event.has(fs.WRITE, fs.RENAME) &&
+				render.result != render.RESULT_CANCEL`,
+			filePath: "/app/deployment.yaml",
+			event:    fsnotify.Remove,
+			want:     false,
+			err:      nil,
+		},
+		"file extension filtering": {
+			reload:   `pathExt(file) == ".yaml"`,
+			filePath: "/app/config.yaml",
+			event:    fsnotify.Write,
+			want:     true,
+			err:      nil,
+		},
+		"file extension no match": {
+			reload:   `pathExt(file) == ".yaml"`,
+			filePath: "/app/config.json",
+			event:    fsnotify.Write,
+			want:     false,
+			err:      nil,
+		},
+		"expression returning non-boolean": {
+			reload:   `"not a boolean"`,
+			filePath: "/app/config.yaml",
+			event:    fsnotify.Write,
+			want:     false,
+			err:      errors.New("reload expression did not return a boolean value"),
+		},
+	}
+
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			opts := []profile.ProfileOpt{}
+			if tc.reload != "" {
+				opts = append(opts, profile.WithReload(tc.reload))
+			}
+
+			p, err := profile.New("echo", opts...)
+			require.NoError(t, err)
+
+			got, err := p.MatchFileEvent(tc.filePath, tc.event)
+
+			if tc.err != nil {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.err.Error())
+
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
 }
 
 func TestProfile_ExtraArgsWithHooks(t *testing.T) {
