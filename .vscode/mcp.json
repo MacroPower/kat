@@ -1,0 +1,9 @@
+{
+	"servers": {
+		"kat": {
+			"url": "http://localhost:50165",
+			"type": "http"
+		}
+	},
+	"inputs": []
+}

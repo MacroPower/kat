@@ -239,6 +239,27 @@ Send output to a file (disables TUI):
 kat ./example/helm > manifest.yaml
 ```
 
+## 🤖 MCP Server
+
+You can optionally start `kat` with an MCP server by using the `--serve-mcp` flag:
+
+```sh
+kat --serve-mcp :50165
+```
+
+The MCP server allows AI agents to read output from `kat` in a structured way, and test changes when source files are edited (if watch is enabled).
+
+> Note: The MCP server will only work with AI agents able to read output, think, and then make additional calls. For example, "Ask" and "Edit" modes in VSCode will not work properly. I recommend using Claude Sonnet 4.
+
+### 🧰 Tools
+
+- `list_resources`: List all resources that were rendered by kat.
+- `get_resource`: Get a full YAML representation of a specific resource.
+
+### ⚠️ WARNING
+
+Remember that `kat` is meant to be read-only, and is only meant to have access to your local environment. Meaning, it _should_ be safe to use it with your AI of choice. However, nothing is stopping you (or your AI) from adding any arbitrary, possibly dangerous configuration.
+
 ## ⚙️ Configuration
 
 When you first run `kat`, it will attempt to add default configuration files to `$XDG_CONFIG_HOME/kat/` (or `~/.config/kat/`). This configuration allows you to customize the behavior of `kat`, such as the UI style, keybindings, rules for project detection, and profiles for rendering different types of projects.

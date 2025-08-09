@@ -1,0 +1,349 @@
+package mcp
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
+	"sync"
+	"time"
+
+	"github.com/modelcontextprotocol/go-sdk/jsonschema"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/macropower/kat/pkg/command"
+	"github.com/macropower/kat/pkg/kube"
+	"github.com/macropower/kat/pkg/version"
+)
+
+// ExecutionStatus represents the current state of command execution.
+type ExecutionStatus string
+
+const (
+	// StatusIdle indicates no command is currently executing.
+	StatusIdle ExecutionStatus = "idle"
+	// StatusRunning indicates a command is currently executing.
+	StatusRunning ExecutionStatus = "running"
+	// StatusCompleted indicates the last command completed successfully.
+	StatusCompleted ExecutionStatus = "completed"
+	// StatusError indicates the last command completed with an error.
+	StatusError ExecutionStatus = "error"
+)
+
+// ExecutionState tracks the current state of command execution.
+type ExecutionState struct {
+	Error  error
+	Output *command.Output
+	Status ExecutionStatus
+}
+
+type CommandRunner interface {
+	Subscribe(ch chan<- command.Event)
+}
+
+// Server implements the MCP server for kat.
+type Server struct {
+	server  *mcp.Server
+	eventCh chan command.Event
+	waitCh  chan struct{}
+	state   ExecutionState
+	address string
+	mu      sync.RWMutex
+}
+
+// NewServer creates a new MCP server instance.
+func NewServer(address string, runner CommandRunner) (*Server, error) {
+	impl := &mcp.Implementation{
+		Name:    "kat",
+		Version: version.GetVersion(),
+	}
+
+	opts := &mcp.ServerOptions{
+		Instructions: "MCP Server for rendering and browsing Kubernetes manifests. Workflow: 1) Use the list_resources tool to get a list of resources. 2) STOP and READ the output. 3) Use the get_resource tool to get specific resources from the list_resources output.",
+	}
+
+	mcpServer := mcp.NewServer(impl, opts)
+
+	s := &Server{
+		address: address,
+		server:  mcpServer,
+		eventCh: make(chan command.Event, 100),
+		waitCh:  make(chan struct{}),
+		state: ExecutionState{
+			Status: StatusIdle,
+		},
+	}
+
+	runner.Subscribe(s.eventCh)
+
+	s.registerTools()
+
+	// Start event processing.
+	go s.processEvents()
+
+	return s, nil
+}
+
+// registerTools registers all available tools with the MCP server.
+func (s *Server) registerTools() {
+	// Register the list_resources tool.
+	mcp.AddTool(s.server, &mcp.Tool{
+		Name:        "list_resources",
+		Description: "List Kubernetes resources",
+	}, s.handleListResources)
+
+	// Register the get_resource tool.
+	mcp.AddTool(s.server, &mcp.Tool{
+		Name:        "get_resource",
+		Description: "Get details of a specific Kubernetes resource. You MUST use inputs from a list_resources output in the resources list EXACTLY.",
+		InputSchema: &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"apiVersion": {
+					Type:        "string",
+					Description: "The API version of the resource, if applicable",
+				},
+				"kind": {
+					Type:        "string",
+					Description: "The kind of the resource",
+				},
+				"namespace": {
+					Type:        "string",
+					Description: "The namespace of the resource, if applicable",
+				},
+				"name": {
+					Type:        "string",
+					Description: "The name of the resource",
+				},
+			},
+			Required: []string{"kind", "name"},
+		},
+	}, s.handleGetResource)
+}
+
+// processEvents processes command events in a separate goroutine.
+func (s *Server) processEvents() {
+	for event := range s.eventCh {
+		s.mu.Lock()
+
+		switch e := event.(type) {
+		case command.EventStart:
+			s.state.Status = StatusRunning
+			s.state.Output = nil
+			s.state.Error = nil
+			// Close previous wait channel if exists and create new one.
+			if s.waitCh != nil {
+				close(s.waitCh)
+			}
+
+			s.waitCh = make(chan struct{})
+
+		case command.EventEnd:
+			if e.Error != nil {
+				s.state.Status = StatusError
+				s.state.Error = e.Error
+			} else {
+				s.state.Status = StatusCompleted
+				s.state.Error = nil
+			}
+			// Convert EventEnd to Output.
+			output := command.Output(e)
+			s.state.Output = &output
+			// Signal completion to waiting tools.
+			close(s.waitCh)
+
+			s.waitCh = nil
+
+		case command.EventCancel:
+			s.state.Status = StatusIdle
+			s.state.Output = nil
+			s.state.Error = nil
+			// Signal completion to waiting tools.
+			if s.waitCh != nil {
+				close(s.waitCh)
+
+				s.waitCh = nil
+			}
+		}
+
+		s.mu.Unlock()
+	}
+}
+
+func (s *Server) getWaitChannel() <-chan struct{} {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.waitCh
+}
+
+// waitForCompletion blocks until any ongoing command execution completes or the context is canceled.
+func (s *Server) waitForCompletion(ctx context.Context) error {
+	waitCh := s.getWaitChannel()
+
+	if waitCh != nil {
+		select {
+		case <-waitCh:
+			// Command completed normally.
+			return nil
+		case <-ctx.Done():
+			// Context canceled or timed out.
+			return fmt.Errorf("wait for completion canceled: %w", ctx.Err())
+		}
+	}
+
+	return nil
+}
+
+// handleListResources handles the list_resources tool call.
+func (s *Server) handleListResources(
+	ctx context.Context,
+	_ *mcp.ServerSession,
+	_ *mcp.CallToolParamsFor[ListResourcesParams],
+) (*mcp.CallToolResultFor[ListResourcesResult], error) {
+	slog.DebugContext(ctx, "handling list_resources tool call")
+
+	// Wait for any ongoing execution to complete.
+	err := s.waitForCompletion(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("wait for completion: %w", err)
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	result := ListResourcesResult{
+		Status:    string(s.state.Status),
+		Resources: []kube.ResourceMetadata{},
+	}
+
+	if s.state.Error != nil {
+		result.Error = s.state.Error.Error()
+	}
+
+	if s.state.Output == nil {
+		return createListResourcesResult(result), nil
+	}
+
+	populateResultFromOutput(&result, s.state.Output)
+
+	return createListResourcesResult(result), nil
+}
+
+// handleGetResource handles the get_resource tool call.
+func (s *Server) handleGetResource(
+	ctx context.Context,
+	_ *mcp.ServerSession,
+	params *mcp.CallToolParamsFor[GetResourceParams],
+) (*mcp.CallToolResultFor[GetResourceResult], error) {
+	slog.DebugContext(ctx, "handling get_resource tool call", slog.Any("params", params))
+
+	// Wait for any ongoing execution to complete.
+	err := s.waitForCompletion(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("wait for completion: %w", err)
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	result := GetResourceResult{
+		Status: string(s.state.Status),
+		Found:  false,
+	}
+
+	if s.state.Error != nil {
+		result.Error = s.state.Error.Error()
+	}
+
+	if s.state.Output == nil {
+		return createGetResourceResult(result, params.Arguments), nil
+	}
+
+	// Search for the requested resource.
+	resource := findResource(s.state.Output.Resources, params.Arguments)
+	if resource != nil {
+		result.Found = true
+		result.Resource = &ResourceDetails{
+			Metadata: resource.Object.GetMetadata(),
+			YAML:     resource.YAML,
+		}
+	}
+
+	return createGetResourceResult(result, params.Arguments), nil
+}
+
+func (s *Server) Server() *mcp.Server {
+	return s.server
+}
+
+func (s *Server) Close() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	close(s.eventCh)
+}
+
+// Serve starts the MCP server.
+func (s *Server) Serve(ctx context.Context) error {
+	slog.InfoContext(ctx, "starting MCP server", slog.String("address", s.address))
+
+	if s.address == "" {
+		err := s.serveStdio(ctx)
+		if err != nil {
+			return fmt.Errorf("serve Stdio: %w", err)
+		}
+
+		return nil
+	}
+
+	err := s.serveHTTP()
+	if err != nil {
+		return fmt.Errorf("serve HTTP: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Server) serveHTTP() error {
+	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
+		return s.server
+	}, nil)
+
+	server := &http.Server{
+		Addr:    s.address,
+		Handler: handler,
+
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	err := server.ListenAndServe()
+	if err != nil && err != http.ErrServerClosed {
+		return fmt.Errorf("MCP server failed: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Server) serveStdio(ctx context.Context) error {
+	t := mcp.NewLoggingTransport(mcp.NewStdioTransport(), os.Stderr)
+	err := s.server.Run(ctx, t)
+	if err != nil {
+		return fmt.Errorf("MCP server failed: %w", err)
+	}
+
+	return nil
+}
+
+// truncateString truncates a string to maxLen characters with ellipsis if needed.
+func truncateString(str string, maxLen int) string {
+	if str == "" {
+		return ""
+	}
+	if len(str) > maxLen {
+		return str[:maxLen] + "\n[OUTPUT TRUNCATED]"
+	}
+
+	return str
+}

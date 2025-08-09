@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
@@ -13,6 +14,7 @@ import (
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/config"
 	"github.com/macropower/kat/pkg/log"
+	"github.com/macropower/kat/pkg/mcp"
 	"github.com/macropower/kat/pkg/profile"
 	"github.com/macropower/kat/pkg/ui"
 	"github.com/macropower/kat/pkg/ui/common"
@@ -51,6 +53,7 @@ type RunArgs struct {
 	ConfigPath       string
 	CommandOrProfile string
 	Args             []string
+	ServeMCP         string
 	Watch            bool
 	WriteConfig      bool
 	ShowConfig       bool
@@ -64,6 +67,7 @@ func NewRunArgs(rootArgs *RootArgs) *RunArgs {
 
 func (ra *RunArgs) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&ra.ConfigPath, "config", "", "Path to the kat configuration file")
+	cmd.Flags().StringVar(&ra.ServeMCP, "serve-mcp", "", "Serve the MCP server at the specified address")
 	cmd.Flags().BoolVarP(&ra.Watch, "watch", "w", false, "Watch for changes and trigger reloading")
 	cmd.Flags().BoolVar(&ra.WriteConfig, "write-config", false, "Write the default configuration files and exit")
 	cmd.Flags().BoolVar(&ra.ShowConfig, "show-config", false, "Print the active configuration and exit")
@@ -315,6 +319,20 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 	}
 
 	slog.SetDefault(slog.New(logHandler))
+
+	if rc.ServeMCP != "" {
+		mcpServer, err := mcp.NewServer(rc.ServeMCP, cr)
+		if err != nil {
+			return fmt.Errorf("create MCP server: %w", err)
+		}
+
+		go func() {
+			err := mcpServer.Serve(context.Background())
+			if err != nil {
+				slog.Error("MCP server failed", slog.Any("err", err))
+			}
+		}()
+	}
 
 	err = runUI(cfg.UI, cr)
 	if err != nil {
