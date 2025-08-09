@@ -511,7 +511,6 @@ profiles:
       files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])
     reload: >-
       fs.event.has(fs.WRITE, fs.RENAME) &&
-      !pathBase(file).matches(".*\\.tmp$") &&
       render.result != render.RESULT_CANCEL
 ```
 
