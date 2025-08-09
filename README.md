@@ -295,6 +295,7 @@ rules:
 - `env`: List of environment variables for the command
 - `envFrom`: List of sources for environment variables
 - `source`: Define which files to watch for changes (when watch is enabled)
+- `reload`: Define conditions for when events should trigger a reload
 - `ui`: UI configuration overrides
 - `hooks`: Initialization and rendering hooks
   - `init` hooks are executed once when `kat` is initialized
@@ -306,8 +307,6 @@ rules:
   - `command` (required): The command to execute
   - `args`: Arguments to pass to the command
 
-Profile `source` expressions use list-returning CEL expressions with the same variables as rules.
-
 ```yaml
 profiles:
   helm:
@@ -316,6 +315,8 @@ profiles:
     extraArgs: [-g]
     source: >-
       files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])
+    reload: >-
+      fs.event.has(fs.WRITE, fs.CREATE, fs.REMOVE)
     envFrom:
       - callerRef:
           pattern: "^HELM_.+"
@@ -352,6 +353,8 @@ profiles:
     args: [build, .]
     source: >-
       files.filter(f, pathExt(f) in [".yaml", ".yml"])
+    reload: >-
+      fs.event.has(fs.WRITE, fs.CREATE, fs.REMOVE)
     env:
       - name: KUSTOMIZE_ENABLE_ALPHA_COMMANDS
         value: "true"
@@ -366,12 +369,30 @@ profiles:
 
 ### 🧩 CEL Functions
 
-`kat` provides custom CEL functions for file path operations:
+`kat` provides custom CEL functions for use in rules and profiles:
+
+**Path Functions:**
 
 - `pathBase(string)`: Returns the filename (e.g., `"Chart.yaml"`)
 - `pathExt(string)`: Returns the file extension (e.g., `".yaml"`)
 - `pathDir(string)`: Returns the directory path
+
+**YAML Functions:**
+
 - `yamlPath(file, path)`: Reads a YAML file and extracts a value using a JSONPath expression
+
+**Event Functions:**
+
+- `has(event, flag...)`: Checks if a file system event contains specific flags
+
+**File System Constants:**
+
+- `fs.CREATE`, `fs.WRITE`, `fs.REMOVE`, `fs.RENAME`, `fs.CHMOD`: File system event types
+
+**Render Status Constants:**
+
+- `render.STAGE_NONE`, `render.STAGE_PRE_RENDER`, `render.STAGE_RENDER`, `render.STAGE_POST_RENDER`: Render stages
+- `render.RESULT_NONE`, `render.RESULT_OK`, `render.RESULT_ERROR`, `render.RESULT_CANCEL`: Render results
 
 You can combine these with CEL's built-in functions like `exists()`, `filter()`, `in`, `contains()`, `matches()`, and logical operators.
 
@@ -393,6 +414,9 @@ profiles:
     source: >-
       files.filter(f,
         pathExt(f) in [".yaml", ".yml", ".tpl"])
+    reload: >-
+      fs.event.has(fs.WRITE, fs.RENAME) &&
+      render.result != render.RESULT_CANCEL
 ```
 
 For more details on CEL expressions and examples, see the [CEL documentation](docs/CEL.md).
@@ -474,6 +498,21 @@ rules:
         pathExt(f) in [".yaml", ".yml"] &&
         yamlPath(f, "$.apiVersion") in ["apps/v1", "v1"])
     profile: yaml
+```
+
+**Reload filtering** - Control when file changes trigger reloads using CEL expressions:
+
+```yaml
+profiles:
+  helm:
+    command: helm
+    args: [template, .]
+    source: >-
+      files.filter(f, pathExt(f) in [".yaml", ".yml", ".tpl"])
+    reload: >-
+      fs.event.has(fs.WRITE, fs.RENAME) &&
+      !pathBase(file).matches(".*\\.tmp$") &&
+      render.result != render.RESULT_CANCEL
 ```
 
 **Using Task** - If you use [`task`](https://taskfile.dev), you can use your tasks in the `kat` config:
