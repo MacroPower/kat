@@ -45,7 +45,7 @@ type PagerModel struct {
 	cm             *common.CommonModel
 	helpRenderer   *statusbar.HelpRenderer
 	chromaRenderer *yamls.ChromaRenderer
-	kb             *KeyBinds
+	keyHandler     *KeyHandler
 	clearDiffTimer *time.Timer
 
 	// Current document being rendered, sans-chroma rendering. We cache
@@ -73,6 +73,7 @@ func NewModel(c Config) PagerModel {
 	// Init viewport.
 	vp := viewport.New(0, 0)
 	vp.YPosition = 0
+	vp.KeyMap = viewport.KeyMap{}
 
 	kbr := &keys.KeyBindRenderer{}
 	ckb := c.CommonModel.KeyBinds
@@ -123,7 +124,7 @@ func NewModel(c Config) PagerModel {
 
 	m := PagerModel{
 		cm:           c.CommonModel,
-		kb:           c.KeyBinds,
+		keyHandler:   NewKeyHandler(c.KeyBinds, c.CommonModel.KeyBinds),
 		helpRenderer: statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr),
 		chromaRenderer: yamls.NewChromaRenderer(
 			c.CommonModel.Theme,
@@ -149,52 +150,10 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		key := msg.String()
+		var cmd tea.Cmd
 
-		switch {
-		case m.kb.Home.Match(key):
-			m.viewport.GotoTop()
-
-			return m, nil
-
-		case m.kb.End.Match(key):
-			m.viewport.GotoBottom()
-
-			return m, nil
-
-		case m.kb.HalfPageDown.Match(key):
-			m.viewport.HalfPageDown()
-
-			return m, nil
-
-		case m.kb.HalfPageUp.Match(key):
-			m.viewport.HalfPageUp()
-
-			return m, nil
-
-		case m.cm.KeyBinds.Help.Match(key):
-			m.toggleHelp()
-
-			return m, nil
-
-		case m.kb.Search.Match(key):
-			cmd := m.startSearch()
-
-			return m, cmd
-
-		case m.kb.NextMatch.Match(key):
-			return m.goToNextMatch()
-
-		case m.kb.PrevMatch.Match(key):
-			return m.goToPrevMatch()
-
-		case m.kb.Copy.Match(key):
-			// Copy using OSC 52.
-			termenv.Copy(m.CurrentDocument.Body)
-			// Copy using native system clipboard.
-			_ = clipboard.WriteAll(m.CurrentDocument.Body) //nolint:errcheck // Can be ignored.
-			cmds = append(cmds, m.cm.SendStatusMessage("copied contents", statusbar.StyleSuccess))
-		}
+		m, cmd = m.keyHandler.HandlePagerKeys(m, msg)
+		cmds = append(cmds, cmd)
 
 	case ContentRenderedMsg:
 		m.setContent(string(msg))
@@ -300,7 +259,7 @@ func (m *PagerModel) StartClearDiffTimer() tea.Cmd {
 func (m *PagerModel) Unload() {
 	slog.Debug("unload pager document")
 	if m.ShowHelp {
-		m.toggleHelp()
+		m.ToggleHelp()
 	}
 	// Clear search state.
 	if m.ViewState == StateSearching {
@@ -329,7 +288,7 @@ func (m *PagerModel) setContent(s string) {
 	m.viewport.SetContent(s)
 }
 
-func (m *PagerModel) toggleHelp() {
+func (m *PagerModel) ToggleHelp() {
 	m.ShowHelp = !m.ShowHelp
 	m.SetSize(m.cm.Width, m.cm.Height)
 
@@ -356,8 +315,8 @@ func (m PagerModel) searchBarView() string {
 	return m.searchInput.View()
 }
 
-// startSearch initializes search mode.
-func (m *PagerModel) startSearch() tea.Cmd {
+// StartSearch initializes search mode.
+func (m *PagerModel) StartSearch() tea.Cmd {
 	m.ViewState = StateSearching
 
 	m.searchInput.Reset()
@@ -509,4 +468,103 @@ func (m PagerModel) goToPrevMatch() (PagerModel, tea.Cmd) {
 		m.Render(m.CurrentDocument.Body),
 		m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess),
 	)
+}
+
+// MoveUp moves the viewport up.
+func (m *PagerModel) MoveUp() {
+	m.viewport.ScrollUp(1)
+}
+
+// MoveDown moves the viewport down.
+func (m *PagerModel) MoveDown() {
+	m.viewport.ScrollDown(1)
+}
+
+// PageUp moves the viewport up by one page.
+func (m *PagerModel) PageUp() {
+	m.viewport.PageUp()
+}
+
+// PageDown moves the viewport down by one page.
+func (m *PagerModel) PageDown() {
+	m.viewport.PageDown()
+}
+
+// GoToTop moves to the top of the document.
+func (m *PagerModel) GoToTop() {
+	m.viewport.GotoTop()
+}
+
+// GoToBottom moves to the bottom of the document.
+func (m *PagerModel) GoToBottom() {
+	m.viewport.GotoBottom()
+}
+
+// NextMatch goes to the next search match.
+func (m *PagerModel) NextMatch() tea.Cmd {
+	newModel, cmd := m.goToNextMatch()
+	*m = newModel
+
+	return cmd
+}
+
+// PrevMatch goes to the previous search match.
+func (m *PagerModel) PrevMatch() tea.Cmd {
+	newModel, cmd := m.goToPrevMatch()
+	*m = newModel
+
+	return cmd
+}
+
+// SetHelpVisible sets help visibility.
+func (m *PagerModel) SetHelpVisible(visible bool) {
+	if visible && !m.ShowHelp {
+		m.ToggleHelp()
+	} else if !visible && m.ShowHelp {
+		m.ToggleHelp()
+	}
+}
+
+// HalfPageUp moves the viewport up by half a page.
+func (m *PagerModel) HalfPageUp() {
+	m.viewport.HalfPageUp()
+}
+
+// HalfPageDown moves the viewport down by half a page.
+func (m *PagerModel) HalfPageDown() {
+	m.viewport.HalfPageDown()
+}
+
+// CopyContent copies the current document content to clipboard.
+func (m *PagerModel) CopyContent() tea.Cmd {
+	// Copy using OSC 52.
+	termenv.Copy(m.CurrentDocument.Body)
+	// Copy using native system clipboard.
+	_ = clipboard.WriteAll(m.CurrentDocument.Body) //nolint:errcheck // Can be ignored.
+
+	return m.cm.SendStatusMessage("copied contents", statusbar.StyleSuccess)
+}
+
+// SetSearchText sets the search text and applies the search.
+func (m *PagerModel) SetSearchText(text string) tea.Cmd {
+	m.searchInput.SetValue(text)
+
+	newPagerModel, cmd := m.applySearch(text)
+	*m = newPagerModel
+
+	return cmd
+}
+
+// ClearText clears all text from the search input.
+func (m *PagerModel) ClearText() tea.Cmd {
+	if m.ViewState == StateSearching {
+		m.searchInput.SetValue("")
+
+		newPagerModel, cmd := m.applySearch("")
+		*m = newPagerModel
+
+		return cmd
+	}
+
+	return nil
 }

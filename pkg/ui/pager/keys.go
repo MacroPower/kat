@@ -1,6 +1,11 @@
 package pager
 
-import "github.com/macropower/kat/pkg/keys"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/macropower/kat/pkg/keys"
+	"github.com/macropower/kat/pkg/ui/common"
+)
 
 type KeyBinds struct {
 	Copy *keys.KeyBind `json:"copy,omitempty"`
@@ -79,4 +84,68 @@ func (kb *KeyBinds) GetKeyBinds() []keys.KeyBind {
 		*kb.NextMatch,
 		*kb.PrevMatch,
 	}
+}
+
+// KeyHandler provides key handling for pager view.
+type KeyHandler struct {
+	kb  *KeyBinds
+	ckb *common.KeyBinds
+}
+
+// NewKeyHandler creates a new pager key handler.
+func NewKeyHandler(kb *KeyBinds, ckb *common.KeyBinds) *KeyHandler {
+	return &KeyHandler{
+		kb:  kb,
+		ckb: ckb,
+	}
+}
+
+// HandlePagerKeys handles key events for pager view.
+func (h *KeyHandler) HandlePagerKeys(m PagerModel, msg tea.KeyMsg) (PagerModel, tea.Cmd) {
+	var cmd tea.Cmd
+
+	key := msg.String()
+
+	switch {
+	case h.kb.Home.Match(key):
+		m.GoToTop()
+
+	case h.kb.End.Match(key):
+		m.GoToBottom()
+
+	case h.kb.PageUp.Match(key):
+		m.PageUp()
+
+	case h.kb.PageDown.Match(key):
+		m.PageDown()
+
+	case h.kb.HalfPageDown.Match(key):
+		m.HalfPageDown()
+
+	case h.kb.HalfPageUp.Match(key):
+		m.HalfPageUp()
+
+	case h.ckb.Up.Match(key):
+		m.MoveUp()
+
+	case h.ckb.Down.Match(key):
+		m.MoveDown()
+
+	case h.ckb.Help.Match(key):
+		m.ToggleHelp()
+
+	case h.kb.Search.Match(key):
+		cmd = m.StartSearch()
+
+	case h.kb.NextMatch.Match(key):
+		cmd = m.NextMatch()
+
+	case h.kb.PrevMatch.Match(key):
+		cmd = m.PrevMatch()
+
+	case h.kb.Copy.Match(key):
+		cmd = m.CopyContent()
+	}
+
+	return m, cmd
 }

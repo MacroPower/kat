@@ -98,7 +98,7 @@ func (m *model) unloadDocument() {
 func newModel(cfg *Config, cmd common.Commander) tea.Model {
 	uiTheme := cfg.UI.Theme
 	profile := cmd.GetCurrentProfile()
-	if profile.UI != nil {
+	if profile != nil && profile.UI != nil {
 		if profile.UI.Theme != "" {
 			uiTheme = profile.UI.Theme
 		}

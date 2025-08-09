@@ -85,67 +85,47 @@ func (h *KeyHandler) HandleDocumentBrowsing(m ListModel, msg tea.KeyMsg) (ListMo
 	numDocs := len(m.getVisibleYAMLs())
 	switch {
 	case h.ckb.Up.Match(key):
-		m.moveCursorUp()
+		m.MoveCursorUp()
 
 	case h.ckb.Down.Match(key):
-		m.moveCursorDown()
+		m.MoveCursorDown()
 
 	case h.kb.PageUp.Match(key):
-		m.setCursor(0)
+		m.SetCursorToTop()
 
 	case h.kb.PageDown.Match(key):
-		m.setCursor(m.paginator().ItemsOnPage(numDocs) - 1)
+		m.SetCursorToBottom()
 
 	case h.ckb.Left.Match(key), h.ckb.Prev.Match(key):
-		if len(m.sections) == 0 || m.FilterState == Filtering {
-			return m, nil
-		}
-
-		newPaginatorModel, cmd := m.paginator().Update(msg)
-		m.setPaginator(newPaginatorModel)
-		m.paginator().PrevPage()
-		m.enforcePaginationBounds()
-
-		return m, cmd
+		m.MovePrevPage()
 
 	case h.ckb.Right.Match(key), h.ckb.Next.Match(key):
-		if len(m.sections) == 0 || m.FilterState == Filtering {
-			return m, nil
-		}
-
-		newPaginatorModel, cmd := m.paginator().Update(msg)
-		m.setPaginator(newPaginatorModel)
-		m.paginator().NextPage()
-		m.enforcePaginationBounds()
-
-		return m, cmd
+		m.MoveNextPage()
 
 	case h.kb.Home.Match(key):
-		m.paginator().Page = 0
-		m.setCursor(0)
+		m.GoToStart()
 
 	case h.kb.End.Match(key):
-		m.paginator().Page = m.paginator().TotalPages - 1
-		m.setCursor(m.paginator().ItemsOnPage(numDocs) - 1)
+		m.GoToEnd()
 
 	// Document actions.
 	case h.kb.Open.Match(key):
 		if numDocs != 0 {
-			md := m.selectedYAML()
-			cmd := m.openYAML(md)
+			md := m.GetSelectedYAML()
+			cmd := m.OpenYAML(md)
 
 			return m, cmd
 		}
 
 	// Filtering actions.
 	case h.kb.Find.Match(key):
-		cmd := m.startFiltering()
+		cmd := m.StartFiltering()
 
 		return m, cmd
 
 	// Other actions.
 	case h.ckb.Help.Match(key):
-		m.toggleHelp()
+		m.ToggleHelp()
 	}
 
 	return m, nil
@@ -203,7 +183,7 @@ func (h *KeyHandler) handleFilterKeys(m ListModel, key string) (ListModel, tea.C
 		if len(visibleYAMLs) == 1 {
 			m.ResetFiltering()
 
-			cmd := m.openYAML(visibleYAMLs[0])
+			cmd := m.OpenYAML(visibleYAMLs[0])
 
 			return m, cmd
 		}

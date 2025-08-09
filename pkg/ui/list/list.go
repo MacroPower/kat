@@ -282,10 +282,6 @@ func (m ListModel) paginator() *paginator.Model {
 	return &m.currentSection().paginator
 }
 
-func (m *ListModel) setPaginator(p paginator.Model) {
-	m.currentSection().paginator = p
-}
-
 func (m ListModel) cursor() int {
 	return m.currentSection().cursor
 }
@@ -294,7 +290,7 @@ func (m *ListModel) setCursor(i int) {
 	m.currentSection().cursor = i
 }
 
-func (m *ListModel) toggleHelp() {
+func (m *ListModel) ToggleHelp() {
 	m.ShowHelp = !m.ShowHelp
 	m.SetSize(m.cm.Width, m.cm.Height)
 }
@@ -361,8 +357,8 @@ func (m ListModel) yamlIndex() int {
 	return m.paginator().Page*m.paginator().PerPage + m.cursor()
 }
 
-// Return the current selected yaml in the list.
-func (m ListModel) selectedYAML() *yamls.Document {
+// GetSelectedYAML returns the current selected yaml in the list.
+func (m ListModel) GetSelectedYAML() *yamls.Document {
 	i := m.yamlIndex()
 
 	mds := m.getVisibleYAMLs()
@@ -382,9 +378,9 @@ func (m ListModel) getVisibleYAMLs() []*yamls.Document {
 	return m.YAMLs
 }
 
-// Command for opening a yaml document in the pager. Note that this also
+// OpenYAML opens a yaml document in the pager. Note that this also
 // alters the model.
-func (m *ListModel) openYAML(md *yamls.Document) tea.Cmd {
+func (m *ListModel) OpenYAML(md *yamls.Document) tea.Cmd {
 	cmd := LoadYAML(md)
 
 	return cmd
@@ -394,7 +390,8 @@ func (m *ListModel) itemsOnPage() int {
 	return m.paginator().ItemsOnPage(len(m.getVisibleYAMLs()))
 }
 
-func (m *ListModel) moveCursorUp() {
+// MoveCursorUp moves the cursor up in the list.
+func (m *ListModel) MoveCursorUp() {
 	m.setCursor(m.cursor() - 1)
 	if m.cursor() < 0 && m.paginator().Page == 0 {
 		// Stop.
@@ -413,7 +410,8 @@ func (m *ListModel) moveCursorUp() {
 	m.setCursor(m.itemsOnPage() - 1)
 }
 
-func (m *ListModel) moveCursorDown() {
+// MoveCursorDown moves the cursor down in the list.
+func (m *ListModel) MoveCursorDown() {
 	itemsOnPage := m.itemsOnPage()
 
 	m.setCursor(m.cursor() + 1)
@@ -548,8 +546,8 @@ func (m ListModel) statusBarView() string {
 	return m.cm.GetStatusBar().RenderWithNote(title, progress)
 }
 
-// startFiltering initializes the filtering mode.
-func (m *ListModel) startFiltering() tea.Cmd {
+// StartFiltering initializes the filtering mode.
+func (m *ListModel) StartFiltering() tea.Cmd {
 	// Build values we'll filter against.
 	for _, md := range m.YAMLs {
 		md.BuildFilterValue()
@@ -564,4 +562,73 @@ func (m *ListModel) startFiltering() tea.Cmd {
 	m.filterInput.Focus()
 
 	return textinput.Blink
+}
+
+// MovePrevPage moves to the previous page.
+func (m *ListModel) MovePrevPage() {
+	if len(m.sections) == 0 || m.FilterState == Filtering {
+		return
+	}
+
+	m.paginator().PrevPage()
+	m.enforcePaginationBounds()
+}
+
+// MoveNextPage moves to the next page.
+func (m *ListModel) MoveNextPage() {
+	if len(m.sections) == 0 || m.FilterState == Filtering {
+		return
+	}
+
+	m.paginator().NextPage()
+	m.enforcePaginationBounds()
+}
+
+// SetCursorToTop sets the cursor to the top of the current page.
+func (m *ListModel) SetCursorToTop() {
+	m.setCursor(0)
+}
+
+// SetCursorToBottom sets the cursor to the bottom of the current page.
+func (m *ListModel) SetCursorToBottom() {
+	numDocs := len(m.getVisibleYAMLs())
+	m.setCursor(m.paginator().ItemsOnPage(numDocs) - 1)
+}
+
+// GoToStart goes to the first page and first item.
+func (m *ListModel) GoToStart() {
+	m.paginator().Page = 0
+	m.setCursor(0)
+}
+
+// GoToEnd goes to the last page and last item.
+func (m *ListModel) GoToEnd() {
+	numDocs := len(m.getVisibleYAMLs())
+	m.paginator().Page = m.paginator().TotalPages - 1
+	m.setCursor(m.paginator().ItemsOnPage(numDocs) - 1)
+}
+
+// SetHelpVisible sets help visibility.
+func (m *ListModel) SetHelpVisible(visible bool) {
+	if visible && !m.ShowHelp {
+		m.ToggleHelp()
+	} else if !visible && m.ShowHelp {
+		m.ToggleHelp()
+	}
+}
+
+// SetFilterText sets the filter text and updates the filter.
+func (m *ListModel) SetFilterText(text string) tea.Cmd {
+	m.filterInput.SetValue(text)
+	return FilterYAMLs(*m)
+}
+
+// ClearText clears all text from the filter input.
+func (m *ListModel) ClearText() tea.Cmd {
+	if m.FilterState == Filtering {
+		m.filterInput.SetValue("")
+		return FilterYAMLs(*m)
+	}
+
+	return nil
 }
