@@ -46,6 +46,7 @@ func TestPlugin_Exec(t *testing.T) {
 		t.Parallel()
 
 		plugin := &profile.Plugin{Description: "empty"} // empty command
+		require.NoError(t, plugin.Build())
 
 		result, err := plugin.Exec(t.Context(), "/tmp")
 

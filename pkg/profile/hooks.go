@@ -10,6 +10,8 @@ import (
 
 // Hooks represents the different types of hooks that can be executed.
 type Hooks struct {
+	executor Executor
+
 	// Init contains commands to run during initialization.
 	Init []*HookCommand `json:"init,omitempty" jsonschema:"title=Init Hooks"`
 	// PreRender contains commands to run before rendering.
@@ -67,8 +69,16 @@ func WithPostRender(hooks ...*HookCommand) HookOpts {
 	}
 }
 
+// WithHookExecutor sets the [Executor] for the hook command.
+func WithHookExecutor(executor Executor) HookCommandOpt {
+	return func(hc *HookCommand) {
+		hc.executor = executor
+	}
+}
+
 func (h *Hooks) Build() error {
 	for _, cmd := range h.Init {
+		cmd.executor = h.executor
 		err := cmd.Build()
 		if err != nil {
 			return fmt.Errorf("init hook: %w", err)
@@ -76,6 +86,7 @@ func (h *Hooks) Build() error {
 	}
 
 	for _, cmd := range h.PreRender {
+		cmd.executor = h.executor
 		err := cmd.Build()
 		if err != nil {
 			return fmt.Errorf("preRender hook: %w", err)
@@ -83,6 +94,7 @@ func (h *Hooks) Build() error {
 	}
 
 	for _, cmd := range h.PostRender {
+		cmd.executor = h.executor
 		err := cmd.Build()
 		if err != nil {
 			return fmt.Errorf("postRender hook: %w", err)
@@ -94,6 +106,8 @@ func (h *Hooks) Build() error {
 
 // HookCommand represents a single hook command to execute.
 type HookCommand struct {
+	executor Executor
+
 	// Command contains the command execution configuration.
 	Command execs.Command `json:",inline"`
 }
@@ -151,12 +165,23 @@ func WithHookEnvFrom(envFrom []execs.EnvFromSource) HookCommandOpt {
 	}
 }
 
+// WithHookCommandExecutor sets the [Executor] for the hook command.
+func WithHookCommandExecutor(executor Executor) HookCommandOpt {
+	return func(hc *HookCommand) {
+		hc.executor = executor
+	}
+}
+
 func (hc *HookCommand) Build() error {
 	hc.Command.SetBaseEnv(os.Environ())
 
 	err := hc.Command.CompilePatterns()
 	if err != nil {
 		return fmt.Errorf("compile patterns: %w", err)
+	}
+
+	if hc.executor == nil {
+		hc.executor = execs.NewExecutor(hc.Command)
 	}
 
 	return nil
@@ -168,7 +193,7 @@ func (hc *HookCommand) Exec(ctx context.Context, dir string) (*execs.Result, err
 }
 
 func (hc *HookCommand) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (*execs.Result, error) {
-	result, err := hc.Command.ExecWithStdin(ctx, dir, stdin)
+	result, err := hc.executor.ExecWithStdin(ctx, dir, stdin)
 	if err != nil {
 		return result, fmt.Errorf("%w: %w", ErrHookExecution, err)
 	}

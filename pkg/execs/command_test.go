@@ -90,9 +90,10 @@ func TestCommand_SetExtraArgs(t *testing.T) {
 			cmd := execs.NewCommand([]string{})
 			cmd.Command = "echo"
 			cmd.Args = []string{"hello"}
-			cmd.SetExtraArgs(tc.input...)
 
-			got := cmd.String()
+			exe := execs.NewExecutor(cmd, tc.input...)
+			got := exe.String()
+
 			assert.Equal(t, tc.want, got)
 		})
 	}
@@ -763,7 +764,7 @@ func TestCommand_Exec(t *testing.T) {
 
 	tests := []struct {
 		errType  error
-		setup    func() execs.Command
+		setup    func() execs.Executor
 		validate func(t *testing.T, result *execs.Result, err error)
 		name     string
 		dir      string
@@ -771,12 +772,12 @@ func TestCommand_Exec(t *testing.T) {
 	}{
 		{
 			name: "successful command execution",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
 				cmd.Command = "echo"
 				cmd.Args = []string{"hello", "world"}
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			dir:     "",
 			wantErr: false,
@@ -790,11 +791,11 @@ func TestCommand_Exec(t *testing.T) {
 		},
 		{
 			name: "command with working directory",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
 				cmd.Command = "pwd"
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			dir:     "/tmp",
 			wantErr: false,
@@ -808,7 +809,7 @@ func TestCommand_Exec(t *testing.T) {
 		},
 		{
 			name: "command with environment variables",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
 				cmd.Command = "sh"
 				cmd.Args = []string{"-c", "echo $TEST_VAR"}
@@ -817,7 +818,7 @@ func TestCommand_Exec(t *testing.T) {
 					Value: "test_value",
 				})
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			dir:     "",
 			wantErr: false,
@@ -831,11 +832,11 @@ func TestCommand_Exec(t *testing.T) {
 		},
 		{
 			name: "empty command",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{})
 				cmd.Command = ""
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			dir:     "",
 			wantErr: true,
@@ -849,11 +850,11 @@ func TestCommand_Exec(t *testing.T) {
 		},
 		{
 			name: "nonexistent command",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
 				cmd.Command = "nonexistent-command-12345"
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			dir:     "",
 			wantErr: true,
@@ -867,12 +868,12 @@ func TestCommand_Exec(t *testing.T) {
 		},
 		{
 			name: "command with stderr output",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
 				cmd.Command = "sh"
 				cmd.Args = []string{"-c", "echo 'stdout output'; echo 'stderr output' >&2"}
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			dir:     "",
 			wantErr: false,
@@ -886,12 +887,12 @@ func TestCommand_Exec(t *testing.T) {
 		},
 		{
 			name: "command with non-zero exit code but output",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
 				cmd.Command = "sh"
 				cmd.Args = []string{"-c", "echo 'some output'; exit 1"}
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			dir:     "",
 			wantErr: true,
@@ -907,12 +908,12 @@ func TestCommand_Exec(t *testing.T) {
 		},
 		{
 			name: "command with non-zero exit code and stderr",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
 				cmd.Command = "sh"
 				cmd.Args = []string{"-c", "echo 'error message' >&2; exit 2"}
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			dir:     "",
 			wantErr: true,
@@ -929,13 +930,12 @@ func TestCommand_Exec(t *testing.T) {
 		},
 		{
 			name: "command with optional arguments",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
 				cmd.Command = "echo"
 				cmd.Args = []string{"hello"}
-				cmd.SetExtraArgs("world", "from", "optional")
 
-				return cmd
+				return execs.NewExecutor(cmd, "world", "from", "optional")
 			},
 			dir:     "",
 			wantErr: false,
@@ -949,13 +949,12 @@ func TestCommand_Exec(t *testing.T) {
 		},
 		{
 			name: "command with args and extra args combined",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
 				cmd.Command = "sh"
 				cmd.Args = []string{"-c", "echo \"$1 $2 $3\"", "script"}
-				cmd.SetExtraArgs("arg1", "arg2")
 
-				return cmd
+				return execs.NewExecutor(cmd, "arg1", "arg2")
 			},
 			dir:     "",
 			wantErr: false,
@@ -969,13 +968,12 @@ func TestCommand_Exec(t *testing.T) {
 		},
 		{
 			name: "command with empty extra args",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
 				cmd.Command = "echo"
 				cmd.Args = []string{"base"}
-				cmd.SetExtraArgs()
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			dir:     "",
 			wantErr: false,
@@ -1017,7 +1015,7 @@ func TestCommand_ExecWithStdin(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		setup    func() execs.Command
+		setup    func() execs.Executor
 		validate func(t *testing.T, result *execs.Result, err error)
 		name     string
 		dir      string
@@ -1026,11 +1024,11 @@ func TestCommand_ExecWithStdin(t *testing.T) {
 	}{
 		{
 			name: "command with stdin input",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
 				cmd.Command = "cat"
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			stdin: []byte("hello from stdin"),
 			dir:   "",
@@ -1044,12 +1042,12 @@ func TestCommand_ExecWithStdin(t *testing.T) {
 		},
 		{
 			name: "command processing stdin with grep",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
 				cmd.Command = "grep"
 				cmd.Args = []string{"test"}
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			stdin: []byte("line 1\ntest line\nline 3\nanother test\n"),
 			dir:   "",
@@ -1064,12 +1062,12 @@ func TestCommand_ExecWithStdin(t *testing.T) {
 		},
 		{
 			name: "command with empty stdin",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
 				cmd.Command = "wc"
 				cmd.Args = []string{"-l"}
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			stdin: []byte{},
 			dir:   "",
@@ -1083,12 +1081,12 @@ func TestCommand_ExecWithStdin(t *testing.T) {
 		},
 		{
 			name: "command with nil stdin",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
 				cmd.Command = "echo"
 				cmd.Args = []string{"test"}
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			stdin: nil,
 			dir:   "",
@@ -1102,11 +1100,11 @@ func TestCommand_ExecWithStdin(t *testing.T) {
 		},
 		{
 			name: "empty command with stdin",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{})
 				cmd.Command = ""
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			stdin:   []byte("some input"),
 			dir:     "",
@@ -1120,13 +1118,12 @@ func TestCommand_ExecWithStdin(t *testing.T) {
 		},
 		{
 			name: "command with stdin and optional arguments",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
 				cmd.Command = "grep"
 				cmd.Args = []string{"test"}
-				cmd.SetExtraArgs("--color=never")
 
-				return cmd
+				return execs.NewExecutor(cmd, "--color=never")
 			},
 			stdin: []byte("line 1\ntest line\nline 3\nanother test\n"),
 			dir:   "",
@@ -1141,12 +1138,11 @@ func TestCommand_ExecWithStdin(t *testing.T) {
 		},
 		{
 			name: "command with stdin using extra args only",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{"PATH=/usr/bin:/bin"})
 				cmd.Command = "wc"
-				cmd.SetExtraArgs("-l")
 
-				return cmd
+				return execs.NewExecutor(cmd, "-l")
 			},
 			stdin: []byte("line 1\nline 2\nline 3\n"),
 			dir:   "",
@@ -1191,11 +1187,12 @@ func TestCommand_ExecWithContext(t *testing.T) {
 		cmd.Command = "sleep"
 		cmd.Args = []string{"10"}
 
+		exe := execs.NewExecutor(cmd)
+
 		ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 		defer cancel()
 
-		result, err := cmd.Exec(ctx, "")
-
+		result, err := exe.Exec(ctx, "")
 		require.Error(t, err)
 		assert.ErrorIs(t, err, execs.ErrCommandExecution)
 		// May or may not have result depending on timing.
@@ -1208,119 +1205,93 @@ func TestCommand_String(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		setup    func() execs.Command
+		setup    func() execs.Executor
 		expected string
 	}{
 		{
 			name: "command without arguments",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{})
 				cmd.Command = "echo"
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			expected: "echo ",
 		},
 		{
 			name: "command with single argument",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{})
 				cmd.Command = "echo"
 				cmd.Args = []string{"hello"}
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			expected: "echo hello",
 		},
 		{
 			name: "command with multiple arguments",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{})
 				cmd.Command = "git"
 				cmd.Args = []string{"commit", "-m", "test message"}
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			expected: "git commit -m test message",
 		},
 		{
 			name: "command with arguments containing spaces",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{})
 				cmd.Command = "echo"
 				cmd.Args = []string{"hello world", "test"}
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			expected: "echo hello world test",
 		},
 		{
 			name: "empty command",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{})
 				cmd.Command = ""
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			expected: " ",
 		},
 		{
 			name: "command with empty arguments",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{})
 				cmd.Command = "test"
 				cmd.Args = []string{"", "arg2", ""}
 
-				return cmd
+				return execs.NewExecutor(cmd)
 			},
 			expected: "test  arg2 ",
 		},
 		{
 			name: "command with optional arguments only",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{})
 				cmd.Command = "git"
-				cmd.SetExtraArgs("status", "--short")
 
-				return cmd
+				return execs.NewExecutor(cmd, "status", "--short")
 			},
 			expected: "git status --short",
 		},
 		{
 			name: "command with args and optional arguments",
-			setup: func() execs.Command {
+			setup: func() execs.Executor {
 				cmd := execs.NewCommand([]string{})
 				cmd.Command = "git"
-				cmd.Args = []string{"commit"}
-				cmd.SetExtraArgs("-m", "test message")
+				cmd.Args = []string{"status"}
 
-				return cmd
+				return execs.NewExecutor(cmd, "--short")
 			},
-			expected: "git commit -m test message",
-		},
-		{
-			name: "command with empty optional arguments",
-			setup: func() execs.Command {
-				cmd := execs.NewCommand([]string{})
-				cmd.Command = "echo"
-				cmd.Args = []string{"hello"}
-				cmd.SetExtraArgs()
-
-				return cmd
-			},
-			expected: "echo hello",
-		},
-		{
-			name: "command with extra args containing spaces",
-			setup: func() execs.Command {
-				cmd := execs.NewCommand([]string{})
-				cmd.Command = "git"
-				cmd.Args = []string{"commit"}
-				cmd.SetExtraArgs("-m", "commit message with spaces", "--author=John Doe")
-
-				return cmd
-			},
-			expected: "git commit -m commit message with spaces --author=John Doe",
+			expected: "git status --short",
 		},
 	}
 

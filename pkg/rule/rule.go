@@ -134,5 +134,5 @@ func (r *Rule) SetProfile(p *profile.Profile) {
 func (r *Rule) String() string {
 	p := r.GetProfile()
 
-	return fmt.Sprintf("%s: %s", r.Profile, p.Command.String())
+	return fmt.Sprintf("%s: %s", r.Profile, p.String())
 }

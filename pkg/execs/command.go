@@ -1,16 +1,11 @@
 package execs
 
 import (
-	"bytes"
-	"context"
 	"errors"
 	"fmt"
-	"log/slog"
-	"os/exec"
 	"regexp"
 	"slices"
 	"strings"
-	"time"
 )
 
 var (
@@ -79,8 +74,7 @@ type Command struct {
 	// Command is the command to execute.
 	Command string `json:"command" jsonschema:"title=Command,pattern=^\\S+$"`
 	// Args contains the immutable command line arguments.
-	Args      []string `json:"args,omitempty" jsonschema:"title=Arguments" yaml:"args,flow,omitempty"`
-	extraArgs []string `json:"-"`
+	Args []string `json:"args,omitempty" jsonschema:"title=Arguments" yaml:"args,flow,omitempty"`
 	// Env contains environment variable definitions.
 	Env []EnvVar `json:"env,omitempty" jsonschema:"title=Environment Variables"`
 	// EnvFrom contains sources for inheriting environment variables.
@@ -122,11 +116,6 @@ func (e *Command) AddEnvFrom(envFrom []EnvFromSource) {
 	e.EnvFrom = append(e.EnvFrom, envFrom...)
 }
 
-// SetExtraArgs sets additional command arguments.
-func (e *Command) SetExtraArgs(args ...string) {
-	e.extraArgs = args
-}
-
 // GetEnv constructs environment variables for command execution.
 func (e *Command) GetEnv() []string {
 	// Start with a map to track environment variables.
@@ -156,64 +145,6 @@ func (e *Command) GetEnv() []string {
 	return env
 }
 
-func (e *Command) Exec(ctx context.Context, dir string) (*Result, error) {
-	return e.ExecWithStdin(ctx, dir, nil)
-}
-
-func (e *Command) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (*Result, error) {
-	if e.Command == "" {
-		return nil, ErrEmptyCommand
-	}
-
-	start := time.Now()
-
-	// Get environment variables for command execution.
-	env := e.GetEnv()
-
-	// Combine Args and ExtraArgs to get the full command arguments.
-	allArgs := append([]string{}, e.Args...)
-	allArgs = append(allArgs, e.extraArgs...)
-
-	// Prepare the command to execute.
-	//nolint:gosec // G204: Subprocess launched with a potential tainted input or cmd arguments.
-	cmd := exec.CommandContext(ctx, e.Command, allArgs...)
-	cmd.Dir = dir
-	cmd.Env = env
-	cmd.Stdin = bytes.NewReader(stdin)
-
-	var stdout, stderr bytes.Buffer
-
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-	result := &Result{
-		Stdout: stdout.String(),
-		Stderr: stderr.String(),
-	}
-
-	if err != nil {
-		slog.DebugContext(ctx, "command failed",
-			slog.String("command", e.String()),
-			slog.Duration("duration", time.Since(start)),
-			slog.Any("error", err),
-		)
-
-		if stdout.Len() > 0 || stderr.Len() > 0 {
-			return result, fmt.Errorf("%w: %w", ErrCommandExecution, err)
-		}
-
-		return nil, fmt.Errorf("%w: %w", ErrCommandExecution, err)
-	}
-
-	slog.DebugContext(ctx, "command executed successfully",
-		slog.String("command", e.String()),
-		slog.Duration("duration", time.Since(start)),
-	)
-
-	return result, nil
-}
-
 // CompilePatterns compiles all regex patterns.
 func (e *Command) CompilePatterns() error {
 	for i, envVar := range e.Env {
@@ -235,13 +166,6 @@ func (e *Command) CompilePatterns() error {
 	}
 
 	return nil
-}
-
-func (e *Command) String() string {
-	allArgs := append([]string{}, e.Args...)
-	allArgs = append(allArgs, e.extraArgs...)
-
-	return fmt.Sprintf("%s %s", e.Command, strings.Join(allArgs, " "))
 }
 
 // applyEnvFrom applies all envFrom sources to the environment map.

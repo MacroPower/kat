@@ -147,7 +147,7 @@ func tryGetProfileNames(configPath string) []cobra.Completion {
 
 	profileNameDesc := map[string]string{}
 	for k, v := range cfg.Command.Profiles {
-		profileNameDesc[k] = v.Command.String()
+		profileNameDesc[k] = v.String()
 	}
 	if len(profileNameDesc) == 0 {
 		return nil

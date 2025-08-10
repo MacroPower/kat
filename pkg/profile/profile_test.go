@@ -1,6 +1,7 @@
 package profile_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -12,23 +13,87 @@ import (
 	"github.com/macropower/kat/pkg/profile"
 )
 
-func TestNew(t *testing.T) {
+// mockExecutor is a test implementation of the Executor interface.
+type mockExecutor struct {
+	result *execs.Result
+	err    error
+}
+
+func (m *mockExecutor) Exec(ctx context.Context, dir string) (*execs.Result, error) {
+	return m.ExecWithStdin(ctx, dir, nil)
+}
+
+func (m *mockExecutor) ExecWithStdin(_ context.Context, _ string, _ []byte) (*execs.Result, error) {
+	return m.result, m.err
+}
+
+func (m *mockExecutor) String() string {
+	return "mock executor"
+}
+
+// newMockExecutor creates a mock executor that returns the specified result and error.
+func newMockExecutor(stdout, stderr string, err error) *mockExecutor {
+	var result *execs.Result
+	if err == nil {
+		result = &execs.Result{
+			Stdout: stdout,
+			Stderr: stderr,
+		}
+	}
+
+	return &mockExecutor{
+		result: result,
+		err:    err,
+	}
+}
+
+// mockStatusManager is a test implementation of the StatusManager interface.
+type mockStatusManager struct {
+	renderResult profile.RenderResult
+	renderStage  profile.RenderStage
+}
+
+func (m *mockStatusManager) SetError(_ context.Context) {
+	// Not implemented for testing
+}
+
+func (m *mockStatusManager) SetResult(result profile.RenderResult) {
+	m.renderResult = result
+}
+
+func (m *mockStatusManager) SetStage(stage profile.RenderStage) {
+	m.renderStage = stage
+}
+
+func (m *mockStatusManager) RenderMap() map[string]any {
+	return map[string]any{
+		"stage":  int(m.renderStage),
+		"result": string(m.renderResult),
+	}
+}
+
+// newMockStatusManager creates a mock status manager with the specified stage and result.
+func newMockStatusManager(stage profile.RenderStage, result profile.RenderResult) *mockStatusManager {
+	return &mockStatusManager{
+		renderStage:  stage,
+		renderResult: result,
+	}
+}
+
+func TestProfile_New(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name    string
+	tcs := map[string]struct {
 		command string
 		opts    []profile.ProfileOpt
 		wantErr bool
 	}{
-		{
-			name:    "valid profile",
+		"valid profile": {
 			command: "echo",
 			opts:    []profile.ProfileOpt{profile.WithArgs("hello")},
 			wantErr: false,
 		},
-		{
-			name:    "profile with source expression",
+		"profile with source expression": {
 			command: "echo",
 			opts: []profile.ProfileOpt{
 				profile.WithArgs("rendering"),
@@ -36,8 +101,7 @@ func TestNew(t *testing.T) {
 			},
 			wantErr: false,
 		},
-		{
-			name:    "profile with extra args",
+		"profile with extra args": {
 			command: "echo",
 			opts: []profile.ProfileOpt{
 				profile.WithArgs("base", "command"),
@@ -45,8 +109,7 @@ func TestNew(t *testing.T) {
 			},
 			wantErr: false,
 		},
-		{
-			name:    "profile with args and extra args",
+		"profile with args and extra args": {
 			command: "sh",
 			opts: []profile.ProfileOpt{
 				profile.WithArgs("-c", "echo template"),
@@ -54,8 +117,7 @@ func TestNew(t *testing.T) {
 			},
 			wantErr: false,
 		},
-		{
-			name:    "profile with invalid source expression",
+		"profile with invalid source expression": {
 			command: "echo",
 			opts: []profile.ProfileOpt{
 				profile.WithSource("invalid.expression()"),
@@ -64,96 +126,33 @@ func TestNew(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tc := range tcs {
+		t.Run(name+" (New)", func(t *testing.T) {
 			t.Parallel()
 
-			p, err := profile.New(tt.command, tt.opts...)
+			p, err := profile.New(tc.command, tc.opts...)
 
-			if tt.wantErr {
+			if tc.wantErr {
 				require.Error(t, err)
 				assert.Nil(t, p)
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, p)
-				assert.Equal(t, tt.command, p.Command.Command)
+				assert.Equal(t, tc.command, p.Command.Command)
 			}
 		})
-	}
-}
 
-func TestMustNew(t *testing.T) {
-	t.Parallel()
-
-	t.Run("valid profile", func(t *testing.T) {
-		t.Parallel()
-
-		p := profile.MustNew("echo", profile.WithArgs("test"))
-		require.NotNil(t, p)
-		assert.Equal(t, "echo", p.Command.Command)
-		assert.Equal(t, []string{"test"}, p.Command.Args)
-	})
-
-	t.Run("invalid profile panics", func(t *testing.T) {
-		t.Parallel()
-
-		assert.Panics(t, func() {
-			profile.MustNew("test", profile.WithSource("invalid.expression()"))
-		})
-	})
-}
-
-func TestProfile_MatchFiles(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name          string
-		source        string
-		files         []string
-		expectedFiles []string
-		expectedMatch bool
-	}{
-		{
-			name:          "no source expression",
-			source:        "",
-			files:         []string{"/app/test.yaml", "/app/config.json"},
-			expectedMatch: true,
-			expectedFiles: nil, // nil means use default filtering
-		},
-		{
-			name:          "filter yaml files",
-			source:        `files.filter(f, pathExt(f) in [".yaml", ".yml"])`,
-			files:         []string{"/app/test.yaml", "/app/config.json", "/app/service.yml"},
-			expectedMatch: true,
-			expectedFiles: []string{"/app/test.yaml", "/app/service.yml"},
-		},
-		{
-			name:          "no matches",
-			source:        `files.filter(f, pathExt(f) == ".xml")`,
-			files:         []string{"/app/test.yaml", "/app/config.json"},
-			expectedMatch: false,
-			expectedFiles: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(name+" (MustNew)", func(t *testing.T) {
 			t.Parallel()
 
-			opts := []profile.ProfileOpt{}
-			if tt.source != "" {
-				opts = append(opts, profile.WithSource(tt.source))
-			}
-
-			p, err := profile.New("test", opts...)
-			require.NoError(t, err)
-
-			match, files := p.MatchFiles("/app", tt.files)
-			assert.Equal(t, tt.expectedMatch, match)
-			if tt.expectedFiles != nil {
-				assert.ElementsMatch(t, tt.expectedFiles, files)
+			if tc.wantErr {
+				assert.Panics(t, func() {
+					profile.MustNew(tc.command, tc.opts...)
+				})
 			} else {
-				assert.Nil(t, files)
+				p := profile.MustNew(tc.command, tc.opts...)
+				require.NotNil(t, p)
+				assert.Equal(t, tc.command, p.Command.Command)
 			}
 		})
 	}
@@ -162,160 +161,84 @@ func TestProfile_MatchFiles(t *testing.T) {
 func TestProfile_Exec(t *testing.T) {
 	t.Parallel()
 
-	t.Run("successful execution", func(t *testing.T) {
-		t.Parallel()
-
-		p := profile.MustNew("echo", profile.WithArgs("hello", "world"))
-		result, err := p.Exec(t.Context(), "/tmp")
-
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Contains(t, result.Stdout, "hello world")
-		assert.Empty(t, result.Stderr)
-	})
-
-	t.Run("failed execution", func(t *testing.T) {
-		t.Parallel()
-
-		p := profile.MustNew("false") // command that always fails
-		result, err := p.Exec(t.Context(), "/tmp")
-
-		require.Error(t, err)
-		assert.Nil(t, result)
-		require.ErrorIs(t, err, execs.ErrCommandExecution)
-	})
-
-	t.Run("empty command", func(t *testing.T) {
-		t.Parallel()
-
-		p, err := profile.New("") // empty command
-		require.NoError(t, err)
-
-		result, err := p.Exec(t.Context(), "/tmp")
-
-		require.Error(t, err)
-		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "empty command")
-	})
-}
-
-func TestProfile_WithHooks(t *testing.T) {
-	t.Parallel()
-
-	t.Run("successful pre-render hook", func(t *testing.T) {
-		t.Parallel()
-
-		hooks, err := profile.NewHooks(
-			profile.WithPreRender(
-				profile.MustNewHookCommand("echo", profile.WithHookArgs("pre-render")),
-			),
-		)
-		require.NoError(t, err)
-
-		p := profile.MustNew("echo",
-			profile.WithArgs("main command"),
-			profile.WithHooks(hooks),
-		)
-
-		result, err := p.Exec(t.Context(), "/tmp")
-		require.NoError(t, err)
-		assert.Contains(t, result.Stdout, "main command")
-	})
-
-	t.Run("failing pre-render hook", func(t *testing.T) {
-		t.Parallel()
-
-		hooks, err := profile.NewHooks(
-			profile.WithPreRender(
-				profile.MustNewHookCommand("false"), // always fails
-			),
-		)
-		require.NoError(t, err)
-
-		p := profile.MustNew("echo",
-			profile.WithArgs("should not execute"),
-			profile.WithHooks(hooks),
-		)
-
-		result, err := p.Exec(t.Context(), "/tmp")
-		require.Error(t, err)
-		require.ErrorIs(t, err, profile.ErrHookExecution)
-		assert.Nil(t, result) // main command should not have executed
-	})
-
-	t.Run("successful post-render hook", func(t *testing.T) {
-		t.Parallel()
-
-		hooks, err := profile.NewHooks(
-			profile.WithPostRender(
-				profile.MustNewHookCommand("grep", profile.WithHookArgs("main")),
-			),
-		)
-		require.NoError(t, err)
-
-		p := profile.MustNew("echo",
-			profile.WithArgs("main command output"),
-			profile.WithHooks(hooks),
-		)
-
-		result, err := p.Exec(t.Context(), "/tmp")
-		require.NoError(t, err)
-		assert.Contains(t, result.Stdout, "main command output")
-	})
-}
-
-// TestNewHookCommandError tests that NewHookCommand returns an error for invalid configurations.
-func TestNewHookCommandError(t *testing.T) {
-	t.Parallel()
-
-	// Test that invalid regex patterns in envFrom cause an error
-	_, err := profile.NewHookCommand("echo",
-		profile.WithHookArgs("test"),
-		profile.WithHookEnvFrom([]execs.EnvFromSource{
-			{
-				CallerRef: &execs.CallerRef{
-					Pattern: "[invalid regex",
-				},
+	tcs := map[string]struct {
+		executor    *mockExecutor
+		wantResult  *execs.Result
+		wantErr     error
+		profileOpts []profile.ProfileOpt
+	}{
+		"successful execution": {
+			executor: newMockExecutor("hello world\n", "", nil),
+			wantResult: &execs.Result{
+				Stdout: "hello world\n",
+				Stderr: "",
 			},
-		}),
-	)
+			wantErr: nil,
+		},
+		"execution with stderr": {
+			executor: newMockExecutor("output", "warning message", nil),
+			wantResult: &execs.Result{
+				Stdout: "output",
+				Stderr: "warning message",
+			},
+			wantErr: nil,
+		},
+		"failed execution": {
+			executor:   newMockExecutor("", "", execs.ErrCommandExecution),
+			wantResult: nil,
+			wantErr:    execs.ErrCommandExecution,
+		},
+		"custom error": {
+			executor:   newMockExecutor("", "", errors.New("custom error")),
+			wantResult: nil,
+			wantErr:    errors.New("custom error"),
+		},
+	}
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "hook \"echo\"")
-	assert.Contains(t, err.Error(), "envFrom[0]")
-}
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 
-// TestMustNewHookCommandPanic tests that MustNewHookCommand panics on error.
-func TestMustNewHookCommandPanic(t *testing.T) {
-	t.Parallel()
+			opts := append([]profile.ProfileOpt{}, tc.profileOpts...)
+			opts = append(opts, profile.WithExecutor(tc.executor))
 
-	assert.Panics(t, func() {
-		profile.MustNewHookCommand("echo",
-			profile.WithHookArgs("test"),
-			profile.WithHookEnvFrom([]execs.EnvFromSource{
-				{
-					CallerRef: &execs.CallerRef{
-						Pattern: "[invalid regex",
-					},
-				},
-			}),
-		)
-	})
+			p, err := profile.New("test", opts...)
+			require.NoError(t, err)
+
+			result, err := p.Exec(t.Context(), "/tmp")
+
+			if tc.wantErr != nil {
+				require.Error(t, err)
+				if tc.wantErr.Error() != "" {
+					assert.Contains(t, err.Error(), tc.wantErr.Error())
+				}
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			assert.Equal(t, tc.wantResult.Stdout, result.Stdout)
+			assert.Equal(t, tc.wantResult.Stderr, result.Stderr)
+		})
+	}
 }
 
 //nolint:paralleltest // Cannot use t.Parallel() because we use t.Setenv.
-func TestProfile_EnvironmentIntegration(t *testing.T) {
+func TestProfile_Environment(t *testing.T) {
 	tcs := map[string]struct {
 		setupEnv      func(t *testing.T)
 		validateEnv   func(t *testing.T, result *execs.Result)
 		profileOpts   []profile.ProfileOpt
+		hookOpts      []profile.HookOpts
 		expectedError bool
 	}{
 		"static environment variable": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
 				// No OS environment setup needed.
-			}, profileOpts: []profile.ProfileOpt{
+			},
+			profileOpts: []profile.ProfileOpt{
 				profile.WithArgs("-c", "echo ${STATIC_VAR:-not_found}"),
 				profile.WithEnvVar(execs.EnvVar{
 					Name:  "STATIC_VAR",
@@ -333,7 +256,8 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 				t.Setenv("TEST_PATTERN_VAR1", "pattern_value1")
 				t.Setenv("TEST_PATTERN_VAR2", "pattern_value2")
 				t.Setenv("OTHER_VAR", "other_value")
-			}, profileOpts: []profile.ProfileOpt{
+			},
+			profileOpts: []profile.ProfileOpt{
 				profile.WithArgs("-c", "echo ${TEST_PATTERN_VAR1:-not_found}"),
 				profile.WithEnvFrom([]execs.EnvFromSource{
 					{
@@ -348,24 +272,55 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 				assert.Contains(t, result.Stdout, "pattern_value1")
 			},
 		},
-		"envFrom with name reference": {
+		"environment variables in hooks": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
-				t.Setenv("CUSTOM_VAR", "custom_value")
+				t.Setenv("HOOK_TEST_VAR", "hook_value")
 			},
 			profileOpts: []profile.ProfileOpt{
-				profile.WithArgs("-c", "echo ${CUSTOM_VAR:-not_found}"),
-				profile.WithEnvFrom([]execs.EnvFromSource{
-					{
-						CallerRef: &execs.CallerRef{
-							Name: "CUSTOM_VAR",
-						},
-					},
-				}),
+				profile.WithArgs("-c", "echo main command"),
+			},
+			hookOpts: []profile.HookOpts{
+				profile.WithPreRender(
+					profile.MustNewHookCommand("echo",
+						profile.WithHookArgs("pre-render done"),
+						profile.WithHookEnvFrom([]execs.EnvFromSource{
+							{
+								CallerRef: &execs.CallerRef{
+									Name: "HOOK_TEST_VAR",
+								},
+							},
+						}),
+					),
+				),
 			},
 			validateEnv: func(t *testing.T, result *execs.Result) {
 				t.Helper()
-				assert.Contains(t, result.Stdout, "custom_value")
+				assert.Contains(t, result.Stdout, "main command")
+			},
+		},
+		"hook with static environment variable": {
+			setupEnv: func(t *testing.T) {
+				t.Helper()
+				// No setup needed.
+			},
+			profileOpts: []profile.ProfileOpt{
+				profile.WithArgs("-c", "echo main output"),
+			},
+			hookOpts: []profile.HookOpts{
+				profile.WithPostRender(
+					profile.MustNewHookCommand("echo",
+						profile.WithHookArgs("post-render done"),
+						profile.WithHookEnvVar(execs.EnvVar{
+							Name:  "HOOK_STATIC_VAR",
+							Value: "hook_static_value",
+						}),
+					),
+				),
+			},
+			validateEnv: func(t *testing.T, result *execs.Result) {
+				t.Helper()
+				assert.Contains(t, result.Stdout, "main output")
 			},
 		},
 		"caller reference to essential variable": {
@@ -387,34 +342,6 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 			validateEnv: func(t *testing.T, result *execs.Result) {
 				t.Helper()
 				assert.Contains(t, result.Stdout, "/custom/home")
-			},
-		},
-		"caller reference to envFrom variable": {
-			setupEnv: func(t *testing.T) {
-				t.Helper()
-				t.Setenv("SOURCE_VAR", "source_value")
-			},
-			profileOpts: []profile.ProfileOpt{
-				profile.WithArgs("-c", "echo ${COPIED_VAR:-not_found}"),
-				profile.WithEnvFrom([]execs.EnvFromSource{
-					{
-						CallerRef: &execs.CallerRef{
-							Name: "SOURCE_VAR",
-						},
-					},
-				}),
-				profile.WithEnvVar(execs.EnvVar{
-					Name: "COPIED_VAR",
-					ValueFrom: &execs.EnvVarSource{
-						CallerRef: &execs.CallerRef{
-							Name: "SOURCE_VAR",
-						},
-					},
-				}),
-			},
-			validateEnv: func(t *testing.T, result *execs.Result) {
-				t.Helper()
-				assert.Contains(t, result.Stdout, "source_value")
 			},
 		},
 		"static variable overrides envFrom": {
@@ -440,6 +367,64 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 				t.Helper()
 				assert.Contains(t, result.Stdout, "static_override")
 				assert.NotContains(t, result.Stdout, "from_env")
+			},
+		},
+		"empty environment variable name": {
+			setupEnv: func(t *testing.T) {
+				t.Helper()
+				// No setup needed.
+			},
+			profileOpts: []profile.ProfileOpt{
+				profile.WithArgs("-c", "echo ${EMPTY_NAME_VAR:-not_found}"),
+				profile.WithEnvVar(execs.EnvVar{
+					Name:  "", // Empty name should be ignored.
+					Value: "should_not_appear",
+				}),
+			},
+			validateEnv: func(t *testing.T, result *execs.Result) {
+				t.Helper()
+				// Since the empty name variable is ignored, the variable won't be set.
+				assert.Contains(t, result.Stdout, "not_found")
+			},
+		},
+		"empty environment variable value": {
+			setupEnv: func(t *testing.T) {
+				t.Helper()
+				// No setup needed.
+			},
+			profileOpts: []profile.ProfileOpt{
+				profile.WithArgs("-c", "echo ${EMPTY_VAR:-not_found}"),
+				profile.WithEnvVar(execs.EnvVar{
+					Name:  "EMPTY_VAR",
+					Value: "", // Empty value should be skipped.
+				}),
+			},
+			validateEnv: func(t *testing.T, result *execs.Result) {
+				t.Helper()
+				// Should show the default value since the variable wasn't set due to empty value.
+				assert.Contains(t, result.Stdout, "not_found")
+			},
+		},
+		"missing caller reference": {
+			setupEnv: func(t *testing.T) {
+				t.Helper()
+				// Don't set NONEXISTENT_VAR.
+			},
+			profileOpts: []profile.ProfileOpt{
+				profile.WithArgs("-c", "echo ${MISSING_VAR:-not_found}"),
+				profile.WithEnvVar(execs.EnvVar{
+					Name: "MISSING_VAR",
+					ValueFrom: &execs.EnvVarSource{
+						CallerRef: &execs.CallerRef{
+							Name: "NONEXISTENT_VAR",
+						},
+					},
+				}),
+			},
+			validateEnv: func(t *testing.T, result *execs.Result) {
+				t.Helper()
+				// The variable should not be set, so should show the default value.
+				assert.Contains(t, result.Stdout, "not_found")
 			},
 		},
 		"complex scenario with multiple env sources": {
@@ -498,28 +483,6 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 				assert.NotContains(t, result.Stdout, "should_not_appear")
 			},
 		},
-		"missing caller reference": {
-			setupEnv: func(t *testing.T) {
-				t.Helper()
-				// Don't set NONEXISTENT_VAR.
-			},
-			profileOpts: []profile.ProfileOpt{
-				profile.WithArgs("-c", "echo ${MISSING_VAR:-not_found}"),
-				profile.WithEnvVar(execs.EnvVar{
-					Name: "MISSING_VAR",
-					ValueFrom: &execs.EnvVarSource{
-						CallerRef: &execs.CallerRef{
-							Name: "NONEXISTENT_VAR",
-						},
-					},
-				}),
-			},
-			validateEnv: func(t *testing.T, result *execs.Result) {
-				t.Helper()
-				// The variable should not be set, so should show the default value.
-				assert.Contains(t, result.Stdout, "not_found")
-			},
-		},
 	}
 
 	for name, tc := range tcs {
@@ -527,7 +490,17 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			tc.setupEnv(t)
 
-			p, err := profile.New("sh", tc.profileOpts...)
+			opts := append([]profile.ProfileOpt{}, tc.profileOpts...)
+
+			// Add hooks if specified
+			if len(tc.hookOpts) > 0 {
+				hooks, err := profile.NewHooks(tc.hookOpts...)
+				require.NoError(t, err)
+
+				opts = append(opts, profile.WithHooks(hooks))
+			}
+
+			p, err := profile.New("sh", opts...)
 			require.NoError(t, err)
 
 			result, err := p.Exec(t.Context(), "/tmp")
@@ -542,220 +515,301 @@ func TestProfile_EnvironmentIntegration(t *testing.T) {
 	}
 }
 
-//nolint:tparallel // Cannot use t.Parallel() because we use t.Setenv.
-func TestProfile_EnvironmentWithHooks(t *testing.T) {
-	//nolint:tparallel // Cannot use t.Parallel() because we use t.Setenv.
-	t.Run("environment variables available in hooks", func(t *testing.T) {
-		t.Setenv("HOOK_TEST_VAR", "hook_value")
+func TestProfile_MatchFiles(t *testing.T) {
+	t.Parallel()
 
-		// Create a hook that uses an environment variable.
-		preRenderHook, err := profile.NewHookCommand("sh",
-			profile.WithHookArgs("-c", "echo ${HOOK_TEST_VAR:-not_found}"),
-			profile.WithHookEnvFrom([]execs.EnvFromSource{
-				{
-					CallerRef: &execs.CallerRef{
-						Name: "HOOK_TEST_VAR",
-					},
-				},
-			}),
-		)
-		require.NoError(t, err)
+	tests := []struct {
+		name          string
+		source        string
+		files         []string
+		expectedFiles []string
+		expectedMatch bool
+	}{
+		{
+			name:          "no source expression",
+			source:        "",
+			files:         []string{"/app/test.yaml", "/app/config.json"},
+			expectedMatch: true,
+			expectedFiles: nil, // nil means use default filtering
+		},
+		{
+			name:          "filter yaml files",
+			source:        `files.filter(f, pathExt(f) in [".yaml", ".yml"])`,
+			files:         []string{"/app/test.yaml", "/app/config.json", "/app/service.yml"},
+			expectedMatch: true,
+			expectedFiles: []string{"/app/test.yaml", "/app/service.yml"},
+		},
+		{
+			name:          "no matches",
+			source:        `files.filter(f, pathExt(f) == ".xml")`,
+			files:         []string{"/app/test.yaml", "/app/config.json"},
+			expectedMatch: false,
+			expectedFiles: nil,
+		},
+	}
 
-		hooks, err := profile.NewHooks(
-			profile.WithPreRender(preRenderHook),
-		)
-		require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-		p := profile.MustNew("echo",
-			profile.WithArgs("main command"),
-			profile.WithHooks(hooks),
-		)
+			opts := []profile.ProfileOpt{}
+			if tt.source != "" {
+				opts = append(opts, profile.WithSource(tt.source))
+			}
 
-		result, err := p.Exec(t.Context(), "/tmp")
-		require.NoError(t, err)
-		assert.Contains(t, result.Stdout, "main command")
-	})
+			p, err := profile.New("test", opts...)
+			require.NoError(t, err)
 
-	t.Run("hook with static environment variable", func(t *testing.T) {
-		t.Parallel()
-
-		// Create a hook with a static environment variable.
-		postRenderHook, err := profile.NewHookCommand("sh",
-			profile.WithHookArgs("-c", "echo ${HOOK_STATIC_VAR:-not_found}"),
-			profile.WithHookEnvVar(execs.EnvVar{
-				Name:  "HOOK_STATIC_VAR",
-				Value: "hook_static_value",
-			}),
-		)
-		require.NoError(t, err)
-
-		hooks, err := profile.NewHooks(
-			profile.WithPostRender(postRenderHook),
-		)
-		require.NoError(t, err)
-
-		p := profile.MustNew("echo",
-			profile.WithArgs("main output"),
-			profile.WithHooks(hooks),
-		)
-
-		result, err := p.Exec(t.Context(), "/tmp")
-		require.NoError(t, err)
-		assert.Contains(t, result.Stdout, "main output")
-	})
+			match, files := p.MatchFiles("/app", tt.files)
+			assert.Equal(t, tt.expectedMatch, match)
+			if tt.expectedFiles != nil {
+				assert.ElementsMatch(t, tt.expectedFiles, files)
+			} else {
+				assert.Nil(t, files)
+			}
+		})
+	}
 }
 
 func TestProfile_MatchFileEvent(t *testing.T) {
 	t.Parallel()
 
 	tcs := map[string]struct {
-		err      error
-		reload   string
-		filePath string
-		event    fsnotify.Op
-		want     bool
+		err          error
+		reload       string
+		filePath     string
+		renderResult profile.RenderResult
+		renderStage  profile.RenderStage
+		event        fsnotify.Op
+		want         bool
 	}{
 		"no reload expression always returns true": {
-			reload:   "",
-			filePath: "/app/config.yaml",
-			event:    fsnotify.Write,
-			want:     true,
-			err:      nil,
+			reload:       "",
+			filePath:     "/app/config.yaml",
+			event:        fsnotify.Write,
+			want:         true,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultNone,
 		},
 		"simple file match": {
-			reload:   `pathBase(file) == "config.yaml"`,
-			filePath: "/app/config.yaml",
-			event:    fsnotify.Write,
-			want:     true,
-			err:      nil,
+			reload:       `pathBase(file) == "config.yaml"`,
+			filePath:     "/app/config.yaml",
+			event:        fsnotify.Write,
+			want:         true,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultNone,
 		},
 		"simple file no match": {
-			reload:   `pathBase(file) == "config.yaml"`,
-			filePath: "/app/other.yaml",
-			event:    fsnotify.Write,
-			want:     false,
-			err:      nil,
+			reload:       `pathBase(file) == "config.yaml"`,
+			filePath:     "/app/other.yaml",
+			event:        fsnotify.Write,
+			want:         false,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultNone,
 		},
 		"event filtering - match WRITE": {
-			reload:   `fs.event.has(fs.WRITE)`,
-			filePath: "/app/config.yaml",
-			event:    fsnotify.Write,
-			want:     true,
-			err:      nil,
+			reload:       `fs.event.has(fs.WRITE)`,
+			filePath:     "/app/config.yaml",
+			event:        fsnotify.Write,
+			want:         true,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultNone,
 		},
 		"event filtering - no match CREATE": {
-			reload:   `fs.event.has(fs.WRITE)`,
-			filePath: "/app/config.yaml",
-			event:    fsnotify.Create,
-			want:     false,
-			err:      nil,
+			reload:       `fs.event.has(fs.WRITE)`,
+			filePath:     "/app/config.yaml",
+			event:        fsnotify.Create,
+			want:         false,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultNone,
 		},
 		"event in list": {
-			reload:   `fs.event.has(fs.WRITE, fs.RENAME)`,
-			filePath: "/app/config.yaml",
-			event:    fsnotify.Rename,
-			want:     true,
-			err:      nil,
+			reload:       `fs.event.has(fs.WRITE, fs.RENAME)`,
+			filePath:     "/app/config.yaml",
+			event:        fsnotify.Rename,
+			want:         true,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultNone,
 		},
 		"event not in list": {
-			reload:   `fs.event.has(fs.WRITE, fs.RENAME)`,
-			filePath: "/app/config.yaml",
-			event:    fsnotify.Remove,
-			want:     false,
-			err:      nil,
+			reload:       `fs.event.has(fs.WRITE, fs.RENAME)`,
+			filePath:     "/app/config.yaml",
+			event:        fsnotify.Remove,
+			want:         false,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultNone,
 		},
 		"skip kustomization.yaml files": {
-			reload:   `pathBase(file) != "kustomization.yaml"`,
-			filePath: "/app/kustomization.yaml",
-			event:    fsnotify.Write,
-			want:     false,
-			err:      nil,
+			reload:       `pathBase(file) != "kustomization.yaml"`,
+			filePath:     "/app/kustomization.yaml",
+			event:        fsnotify.Write,
+			want:         false,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultNone,
 		},
 		"allow non-kustomization files": {
-			reload:   `pathBase(file) != "kustomization.yaml"`,
-			filePath: "/app/deployment.yaml",
-			event:    fsnotify.Write,
-			want:     true,
-			err:      nil,
+			reload:       `pathBase(file) != "kustomization.yaml"`,
+			filePath:     "/app/deployment.yaml",
+			event:        fsnotify.Write,
+			want:         true,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultNone,
 		},
 		"status render.stage check - default empty stage": {
-			reload:   `render.stage == render.STAGE_NONE`,
-			filePath: "/app/config.yaml",
-			event:    fsnotify.Write,
-			want:     true,
-			err:      nil,
+			reload:       `render.stage == render.STAGE_NONE`,
+			filePath:     "/app/config.yaml",
+			event:        fsnotify.Write,
+			want:         true,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultNone,
 		},
 		"status render.stage check - under render stage": {
-			reload:   `render.stage < render.STAGE_RENDER`,
-			filePath: "/app/config.yaml",
-			event:    fsnotify.Write,
-			want:     true,
-			err:      nil,
+			reload:       `render.stage < render.STAGE_RENDER`,
+			filePath:     "/app/config.yaml",
+			event:        fsnotify.Write,
+			want:         true,
+			err:          nil,
+			renderStage:  profile.StagePreRender,
+			renderResult: profile.ResultNone,
+		},
+		"status render.stage check - at render stage": {
+			reload:       `render.stage < render.STAGE_RENDER`,
+			filePath:     "/app/config.yaml",
+			event:        fsnotify.Write,
+			want:         false,
+			err:          nil,
+			renderStage:  profile.StageRender,
+			renderResult: profile.ResultNone,
+		},
+		"status render.stage check - post render stage": {
+			reload:       `render.stage < render.STAGE_RENDER`,
+			filePath:     "/app/config.yaml",
+			event:        fsnotify.Write,
+			want:         false,
+			err:          nil,
+			renderStage:  profile.StagePostRender,
+			renderResult: profile.ResultNone,
 		},
 		"status render.result check - default empty result": {
-			reload:   `render.result == render.RESULT_NONE`,
-			filePath: "/app/config.yaml",
-			event:    fsnotify.Write,
-			want:     true,
-			err:      nil,
+			reload:       `render.result == render.RESULT_NONE`,
+			filePath:     "/app/config.yaml",
+			event:        fsnotify.Write,
+			want:         true,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultNone,
 		},
 		"status render.result check - not CANCEL": {
-			reload:   `render.result != render.RESULT_CANCEL`,
-			filePath: "/app/config.yaml",
-			event:    fsnotify.Write,
-			want:     true,
-			err:      nil,
+			reload:       `render.result != render.RESULT_CANCEL`,
+			filePath:     "/app/config.yaml",
+			event:        fsnotify.Write,
+			want:         true,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultOK,
+		},
+		"status render.result check - is CANCEL": {
+			reload:       `render.result != render.RESULT_CANCEL`,
+			filePath:     "/app/config.yaml",
+			event:        fsnotify.Write,
+			want:         false,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultCancel,
+		},
+		"status render.result check - is ERROR": {
+			reload:       `render.result == render.RESULT_ERROR`,
+			filePath:     "/app/config.yaml",
+			event:        fsnotify.Write,
+			want:         true,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultError,
 		},
 		"complex expression with multiple conditions": {
 			reload: `
 				pathBase(file) != "kustomization.yaml" &&
 				fs.event.has(fs.WRITE, fs.RENAME) &&
 				render.result != render.RESULT_CANCEL`,
-			filePath: "/app/deployment.yaml",
-			event:    fsnotify.Write,
-			want:     true,
-			err:      nil,
+			filePath:     "/app/deployment.yaml",
+			event:        fsnotify.Write,
+			want:         true,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultOK,
 		},
 		"complex expression fails on kustomization": {
 			reload: `
 				pathBase(file) != "kustomization.yaml" &&
 				fs.event.has(fs.WRITE, fs.RENAME) &&
 				render.result != render.RESULT_CANCEL`,
-			filePath: "/app/kustomization.yaml",
-			event:    fsnotify.Write,
-			want:     false,
-			err:      nil,
+			filePath:     "/app/kustomization.yaml",
+			event:        fsnotify.Write,
+			want:         false,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultOK,
 		},
 		"complex expression fails on wrong event": {
 			reload: `
 				pathBase(file) != "kustomization.yaml" &&
 				fs.event.has(fs.WRITE, fs.RENAME) &&
 				render.result != render.RESULT_CANCEL`,
-			filePath: "/app/deployment.yaml",
-			event:    fsnotify.Remove,
-			want:     false,
-			err:      nil,
+			filePath:     "/app/deployment.yaml",
+			event:        fsnotify.Remove,
+			want:         false,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultOK,
+		},
+		"complex expression fails on CANCEL result": {
+			reload: `
+				pathBase(file) != "kustomization.yaml" &&
+				fs.event.has(fs.WRITE, fs.RENAME) &&
+				render.result != render.RESULT_CANCEL`,
+			filePath:     "/app/deployment.yaml",
+			event:        fsnotify.Write,
+			want:         false,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultCancel,
 		},
 		"file extension filtering": {
-			reload:   `pathExt(file) == ".yaml"`,
-			filePath: "/app/config.yaml",
-			event:    fsnotify.Write,
-			want:     true,
-			err:      nil,
+			reload:       `pathExt(file) == ".yaml"`,
+			filePath:     "/app/config.yaml",
+			event:        fsnotify.Write,
+			want:         true,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultNone,
 		},
 		"file extension no match": {
-			reload:   `pathExt(file) == ".yaml"`,
-			filePath: "/app/config.json",
-			event:    fsnotify.Write,
-			want:     false,
-			err:      nil,
+			reload:       `pathExt(file) == ".yaml"`,
+			filePath:     "/app/config.json",
+			event:        fsnotify.Write,
+			want:         false,
+			err:          nil,
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultNone,
 		},
 		"expression returning non-boolean": {
-			reload:   `"not a boolean"`,
-			filePath: "/app/config.yaml",
-			event:    fsnotify.Write,
-			want:     false,
-			err:      errors.New("reload expression did not return a boolean value"),
+			reload:       `"not a boolean"`,
+			filePath:     "/app/config.yaml",
+			event:        fsnotify.Write,
+			want:         false,
+			err:          errors.New("reload expression did not return a boolean value"),
+			renderStage:  profile.StageNone,
+			renderResult: profile.ResultNone,
 		},
 	}
 
@@ -767,6 +821,10 @@ func TestProfile_MatchFileEvent(t *testing.T) {
 			if tc.reload != "" {
 				opts = append(opts, profile.WithReload(tc.reload))
 			}
+
+			// Add mock status manager with configured render stage and result
+			mockStatus := newMockStatusManager(tc.renderStage, tc.renderResult)
+			opts = append(opts, profile.WithStatusManager(mockStatus))
 
 			p, err := profile.New("echo", opts...)
 			require.NoError(t, err)
@@ -784,218 +842,4 @@ func TestProfile_MatchFileEvent(t *testing.T) {
 			assert.Equal(t, tc.want, got)
 		})
 	}
-}
-
-func TestProfile_ExtraArgsWithHooks(t *testing.T) {
-	t.Parallel()
-
-	t.Run("extra args applied before hooks execution", func(t *testing.T) {
-		t.Parallel()
-
-		// Create a post-render hook that processes the main command output
-		postRenderHook, err := profile.NewHookCommand("grep", profile.WithHookArgs("world"))
-		require.NoError(t, err)
-
-		hooks, err := profile.NewHooks(
-			profile.WithPostRender(postRenderHook),
-		)
-		require.NoError(t, err)
-
-		// Create a profile with base args and extra args
-		p := profile.MustNew("echo",
-			profile.WithArgs("hello"),
-			profile.WithExtraArgs("world", "from", "optional"),
-			profile.WithHooks(hooks),
-		)
-
-		result, err := p.Exec(t.Context(), "/tmp")
-		require.NoError(t, err)
-		// The main command should output "hello world from optional"
-		// The post-render hook should grep for "world" and find it
-		assert.Contains(t, result.Stdout, "hello world from optional")
-	})
-
-	t.Run("extra args with pre-render hooks", func(t *testing.T) {
-		t.Parallel()
-
-		// Create a pre-render hook
-		preRenderHook, err := profile.NewHookCommand("echo", profile.WithHookArgs("pre-render executed"))
-		require.NoError(t, err)
-
-		hooks, err := profile.NewHooks(
-			profile.WithPreRender(preRenderHook),
-		)
-		require.NoError(t, err)
-
-		// Create a profile with extra args
-		p := profile.MustNew("echo",
-			profile.WithArgs("main"),
-			profile.WithExtraArgs("command", "with", "args"),
-			profile.WithHooks(hooks),
-		)
-
-		result, err := p.Exec(t.Context(), "/tmp")
-		require.NoError(t, err)
-		// Should contain output from main command with extra args
-		assert.Contains(t, result.Stdout, "main command with args")
-	})
-}
-
-func TestProfile_ExtraArgs(t *testing.T) {
-	t.Parallel()
-
-	tcs := map[string]struct {
-		expectedOut string
-		input       []string
-		want        []string
-		baseArgs    []string
-	}{
-		"no extra args": {
-			input:       nil,
-			want:        nil,
-			baseArgs:    []string{"hello"},
-			expectedOut: "hello",
-		},
-		"single optional arg": {
-			input:       []string{"world"},
-			want:        []string{"world"},
-			baseArgs:    []string{"hello"},
-			expectedOut: "hello world",
-		},
-		"multiple extra args": {
-			input:       []string{"beautiful", "world"},
-			want:        []string{"beautiful", "world"},
-			baseArgs:    []string{"hello"},
-			expectedOut: "hello beautiful world",
-		},
-		"empty extra args list": {
-			input:       []string{},
-			want:        []string{},
-			baseArgs:    []string{"hello"},
-			expectedOut: "hello",
-		},
-		"extra args with flags": {
-			input:       []string{"--flag", "value"},
-			want:        []string{"--flag", "value"},
-			baseArgs:    []string{"hello"},
-			expectedOut: "hello --flag value",
-		},
-	}
-
-	for name, tc := range tcs {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			opts := []profile.ProfileOpt{
-				profile.WithArgs(tc.baseArgs...),
-			}
-			if tc.input != nil {
-				opts = append(opts, profile.WithExtraArgs(tc.input...))
-			}
-
-			p, err := profile.New("echo", opts...)
-			require.NoError(t, err)
-
-			// Verify the profile was created with the correct extra args
-			assert.Equal(t, tc.want, p.ExtraArgs)
-
-			// Verify the args are used during execution
-			result, err := p.Exec(t.Context(), "/tmp")
-			require.NoError(t, err)
-			assert.Contains(t, result.Stdout, tc.expectedOut)
-		})
-	}
-}
-
-func TestProfile_WithExtraArgs(t *testing.T) {
-	t.Parallel()
-
-	t.Run("profile creation with extra args", func(t *testing.T) {
-		t.Parallel()
-
-		p, err := profile.New("echo",
-			profile.WithArgs("base"),
-			profile.WithExtraArgs("--verbose", "--output=json"),
-		)
-		require.NoError(t, err)
-		assert.Equal(t, []string{"--verbose", "--output=json"}, p.ExtraArgs)
-	})
-
-	t.Run("profile creation without extra args", func(t *testing.T) {
-		t.Parallel()
-
-		p, err := profile.New("echo", profile.WithArgs("base"))
-		require.NoError(t, err)
-		assert.Nil(t, p.ExtraArgs)
-	})
-
-	t.Run("extra args combined with other options", func(t *testing.T) {
-		t.Parallel()
-
-		p, err := profile.New("echo",
-			profile.WithArgs("rendering", "files"),
-			profile.WithExtraArgs("--verbose", "--format=yaml"),
-			profile.WithSource(`files.filter(f, pathExt(f) in [".yaml", ".yml"])`),
-		)
-		require.NoError(t, err)
-		assert.Equal(t, []string{"--verbose", "--format=yaml"}, p.ExtraArgs)
-		assert.Equal(t, "echo", p.Command.Command)
-		assert.Equal(t, []string{"rendering", "files"}, p.Command.Args)
-		assert.NotEmpty(t, p.Source)
-	})
-}
-
-func TestProfile_EnvironmentEdgeCases(t *testing.T) {
-	t.Parallel()
-
-	t.Run("empty environment variable name", func(t *testing.T) {
-		t.Parallel()
-
-		p, err := profile.New("sh",
-			profile.WithArgs("-c", "echo ${EMPTY_NAME_VAR:-not_found}"),
-			profile.WithEnvVar(execs.EnvVar{
-				Name:  "", // Empty name should be ignored.
-				Value: "should_not_appear",
-			}),
-		)
-		require.NoError(t, err)
-
-		result, err := p.Exec(t.Context(), "/tmp")
-		require.NoError(t, err)
-		// Since the empty name variable is ignored, the variable won't be set.
-		assert.Contains(t, result.Stdout, "not_found")
-	})
-
-	t.Run("empty environment variable value", func(t *testing.T) {
-		t.Parallel()
-
-		p, err := profile.New("sh",
-			profile.WithArgs("-c", "echo ${EMPTY_VAR:-not_found}"),
-			profile.WithEnvVar(execs.EnvVar{
-				Name:  "EMPTY_VAR",
-				Value: "", // Empty value should be skipped.
-			}),
-		)
-		require.NoError(t, err)
-
-		result, err := p.Exec(t.Context(), "/tmp")
-		require.NoError(t, err)
-		// Should show the default value since the variable wasn't set due to empty value.
-		assert.Contains(t, result.Stdout, "not_found")
-	})
-
-	t.Run("malformed base environment", func(t *testing.T) {
-		t.Parallel()
-
-		// This test verifies that the profile handles malformed base environment gracefully.
-		// The NewEnvironment function in profile.go should handle this via os.Environ().
-		p, err := profile.New("echo",
-			profile.WithArgs("test"),
-		)
-		require.NoError(t, err)
-
-		result, err := p.Exec(t.Context(), "/tmp")
-		require.NoError(t, err)
-		assert.Contains(t, result.Stdout, "test")
-	})
 }

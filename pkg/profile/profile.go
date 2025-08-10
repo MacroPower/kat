@@ -24,11 +24,27 @@ var (
 	ErrPluginExecution = errors.New("plugin")
 )
 
+// Executor executes a profile's commands.
+type Executor interface {
+	Exec(ctx context.Context, dir string) (*execs.Result, error)
+	ExecWithStdin(ctx context.Context, dir string, stdin []byte) (*execs.Result, error)
+	String() string
+}
+
+// StatusManager manages the status of a profile.
+type StatusManager interface {
+	SetError(ctx context.Context)
+	SetResult(result RenderResult)
+	SetStage(stage RenderStage)
+	RenderMap() map[string]any
+}
+
 // Profile represents a command profile.
 type Profile struct {
 	sourceProgram cel.Program
 	reloadProgram cel.Program
-	status        *Status
+	executor      Executor
+	status        StatusManager
 
 	// Hooks contains lifecycle hooks for the profile.
 	Hooks *Hooks `json:"hooks,omitempty" jsonschema:"title=Hooks"`
@@ -79,6 +95,8 @@ type Profile struct {
 	// ExtraArgs contains extra arguments that can be overridden from the CLI.
 	// They are appended to the Args of the Command.
 	ExtraArgs []string `json:"extraArgs,omitempty" jsonschema:"title=Optional Arguments" yaml:"extraArgs,flow,omitempty"`
+
+	customExecutor bool // TODO: Prevent duplicate builds and remove this.
 }
 
 // ProfileOpt is a functional option for configuring a Profile.
@@ -88,7 +106,6 @@ type ProfileOpt func(*Profile)
 func New(command string, opts ...ProfileOpt) (*Profile, error) {
 	p := &Profile{
 		Command: execs.Command{Command: command},
-		status:  &Status{},
 	}
 	for _, opt := range opts {
 		opt(p)
@@ -170,8 +187,25 @@ func WithPlugins(plugins map[string]*Plugin) ProfileOpt {
 	}
 }
 
+// WithExecutor sets the [Executor] for the profile.
+func WithExecutor(executor Executor) ProfileOpt {
+	return func(p *Profile) {
+		p.customExecutor = true
+		p.executor = executor
+	}
+}
+
+// WithStatusManager sets the [StatusManager] for the profile.
+func WithStatusManager(status StatusManager) ProfileOpt {
+	return func(p *Profile) {
+		p.status = status
+	}
+}
+
 func (p *Profile) Build() error {
-	p.status = &Status{}
+	if p.status == nil {
+		p.status = &Status{}
+	}
 
 	p.Command.SetBaseEnv(os.Environ())
 	if p.Hooks != nil {
@@ -189,9 +223,6 @@ func (p *Profile) Build() error {
 		}
 	}
 
-	// Add extra arguments to the rendering command.
-	p.Command.SetExtraArgs(p.ExtraArgs...)
-
 	err := p.CompileSource()
 	if err != nil {
 		return fmt.Errorf("compile source: %w", err)
@@ -205,6 +236,10 @@ func (p *Profile) Build() error {
 	err = p.Command.CompilePatterns()
 	if err != nil {
 		return fmt.Errorf("compile patterns: %w", err)
+	}
+
+	if p.executor == nil || !p.customExecutor {
+		p.executor = execs.NewExecutor(p.Command, p.ExtraArgs...)
 	}
 
 	return nil
@@ -348,7 +383,7 @@ func (p *Profile) Exec(ctx context.Context, dir string) (*execs.Result, error) {
 
 	p.status.SetStage(StageRender)
 
-	result, err := p.Command.Exec(ctx, dir)
+	result, err := p.executor.Exec(ctx, dir)
 	if err != nil {
 		p.status.SetError(ctx)
 		return result, err //nolint:wrapcheck // Primary command does not need additional context.
@@ -421,4 +456,8 @@ func (p *Profile) GetPluginKeyBinds() []keys.KeyBind {
 	}
 
 	return binds
+}
+
+func (p *Profile) String() string {
+	return p.executor.String()
 }

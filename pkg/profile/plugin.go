@@ -11,6 +11,8 @@ import (
 
 // Plugin represents a command plugin that can be executed on demand with keybinds.
 type Plugin struct {
+	executor Executor
+
 	// Command contains the command execution configuration.
 	Command execs.Command `json:",inline"`
 	// Description provides a description of what the plugin does.
@@ -80,6 +82,13 @@ func WithPluginEnvFrom(envFrom []execs.EnvFromSource) PluginOpt {
 	}
 }
 
+// WithPluginExecutor sets the [Executor] for the plugin.
+func WithPluginExecutor(executor Executor) PluginOpt {
+	return func(p *Plugin) {
+		p.executor = executor
+	}
+}
+
 func (p *Plugin) Build() error {
 	p.Command.SetBaseEnv(os.Environ())
 
@@ -88,12 +97,16 @@ func (p *Plugin) Build() error {
 		return fmt.Errorf("compile patterns: %w", err)
 	}
 
+	if p.executor == nil {
+		p.executor = execs.NewExecutor(p.Command)
+	}
+
 	return nil
 }
 
 // Exec executes the plugin command in the specified directory.
 func (p *Plugin) Exec(ctx context.Context, dir string) (*execs.Result, error) {
-	result, err := p.Command.Exec(ctx, dir)
+	result, err := p.executor.Exec(ctx, dir)
 	if err != nil {
 		return result, fmt.Errorf("%w: %w", ErrPluginExecution, err)
 	}
