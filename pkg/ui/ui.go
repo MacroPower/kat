@@ -16,6 +16,7 @@ import (
 	"github.com/macropower/kat/pkg/kube"
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/list"
+	"github.com/macropower/kat/pkg/ui/menu"
 	"github.com/macropower/kat/pkg/ui/overlay"
 	"github.com/macropower/kat/pkg/ui/pager"
 	"github.com/macropower/kat/pkg/ui/statusbar"
@@ -44,6 +45,7 @@ const (
 	stateShowList State = iota
 	stateShowDocument
 	stateShowResult
+	stateShowMenu
 )
 
 type OverlayState int
@@ -59,6 +61,8 @@ func (s State) String() string {
 	return map[State]string{
 		stateShowList:     "showing file listing",
 		stateShowDocument: "showing document",
+		stateShowResult:   "showing result",
+		stateShowMenu:     "showing menu",
 	}[s]
 }
 
@@ -72,6 +76,7 @@ type model struct {
 	pager        pager.PagerModel
 	fullResult   pager.PagerModel
 	list         list.ListModel
+	menu         menu.MenuModel
 	state        State
 	overlayState OverlayState
 }
@@ -89,6 +94,11 @@ func (m *model) unloadDocument() {
 		m.fullResult.Unload()
 
 		m.fullResult.ShowHelp = false
+
+	case stateShowMenu:
+		m.menu.Unload()
+
+		m.menu.ShowHelp = false
 	}
 
 	m.state = stateShowList
@@ -143,12 +153,18 @@ func newModel(cfg *Config, cmd common.Commander) tea.Model {
 		ShowLineNumbers: false,
 	})
 
+	menuModel := menu.NewModel(menu.Config{
+		CommonModel: cm,
+		KeyBinds:    cfg.KeyBinds.Menu,
+	})
+
 	m := &model{
 		cm:         cm,
 		spinner:    sp,
 		state:      stateShowList,
 		pager:      pagerModel,
 		list:       listModel,
+		menu:       menuModel,
 		fullResult: fullResultModel,
 		overlay:    overlay.New(cm.Theme),
 		kb:         cfg.KeyBinds,
@@ -327,6 +343,8 @@ func (m *model) View() string {
 		s = m.pager.View()
 	case stateShowResult:
 		s = m.fullResult.View()
+	case stateShowMenu:
+		s = m.menu.View()
 	default:
 		s = m.list.View()
 	}
@@ -392,7 +410,8 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	case m.matchAction(m.kb.Common.Escape, key):
 		isShowingDocument := m.state == stateShowDocument && m.pager.ViewState != pager.StateSearching
 		isShowingResult := m.state == stateShowResult && m.fullResult.ViewState != pager.StateSearching
-		if isShowingDocument || isShowingResult || !m.cm.Loaded {
+		isShowingMenu := m.state == stateShowMenu
+		if isShowingDocument || isShowingResult || isShowingMenu || !m.cm.Loaded {
 			m.unloadDocument()
 		}
 		if m.state == stateShowList {
@@ -406,6 +425,12 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		}
 
 		return m, nil, true
+
+	case m.matchAction(m.kb.Common.Menu, key):
+		m.state = stateShowMenu
+		initCmds := m.menu.Init()
+
+		return m, initCmds, true
 
 	case m.matchAction(m.kb.Common.Reload, key):
 		initCmds := m.Init()
@@ -499,6 +524,12 @@ func (m *model) updateChildModels(msg tea.Msg) []tea.Cmd {
 		m.fullResult = newResultModel
 
 		cmds = append(cmds, cmd)
+
+	case stateShowMenu:
+		newMenuModel, cmd := m.menu.Update(msg)
+		m.menu = newMenuModel
+
+		cmds = append(cmds, cmd)
 	}
 
 	return cmds
@@ -511,6 +542,7 @@ func (m *model) handleWindowResize(msg tea.WindowSizeMsg) {
 	m.list.SetSize(msg.Width, msg.Height)
 	m.pager.SetSize(msg.Width, msg.Height)
 	m.fullResult.SetSize(msg.Width, msg.Height)
+	m.menu.SetSize(msg.Width, msg.Height)
 	m.overlay.SetSize(msg.Width, msg.Height)
 }
 

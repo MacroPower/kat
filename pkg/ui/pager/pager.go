@@ -35,9 +35,6 @@ type ViewState int
 
 const (
 	StateReady ViewState = iota
-	StateLoadingDocument
-	StateShowingError
-	StateShowingStatusMessage
 	StateSearching
 )
 

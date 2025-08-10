@@ -11,6 +11,7 @@ import (
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/list"
+	"github.com/macropower/kat/pkg/ui/menu"
 	"github.com/macropower/kat/pkg/ui/pager"
 )
 
@@ -111,6 +112,8 @@ type KeyBinds struct {
 	Common *common.KeyBinds `json:"common,omitempty" jsonschema:"title=Common Key Binds"`
 	// List contains key bindings specific to list views.
 	List *list.KeyBinds `json:"list,omitempty" jsonschema:"title=List Key Binds"`
+	// Menu contains key bindings specific to menu views.
+	Menu *menu.KeyBinds `json:"menu,omitempty" jsonschema:"title=Menu Key Binds"`
 	// Pager contains key bindings specific to the pager view.
 	Pager *pager.KeyBinds `json:"pager,omitempty" jsonschema:"title=Pager Key Binds"`
 }
@@ -119,6 +122,7 @@ func NewKeyBinds() *KeyBinds {
 	kb := &KeyBinds{
 		Common: &common.KeyBinds{},
 		List:   &list.KeyBinds{},
+		Menu:   &menu.KeyBinds{},
 		Pager:  &pager.KeyBinds{},
 	}
 	kb.EnsureDefaults()
@@ -133,12 +137,16 @@ func (kb *KeyBinds) EnsureDefaults() {
 	if kb.List == nil {
 		kb.List = &list.KeyBinds{}
 	}
+	if kb.Menu == nil {
+		kb.Menu = &menu.KeyBinds{}
+	}
 	if kb.Pager == nil {
 		kb.Pager = &pager.KeyBinds{}
 	}
 
 	kb.Common.EnsureDefaults()
 	kb.List.EnsureDefaults()
+	kb.Menu.EnsureDefaults()
 	kb.Pager.EnsureDefaults()
 }
 
@@ -154,6 +162,14 @@ func (kb *KeyBinds) Validate() error {
 	)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("list: %w", err))
+	}
+
+	err = keys.ValidateBinds(
+		kb.Common.GetKeyBinds(),
+		kb.Menu.GetKeyBinds(),
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("menu: %w", err))
 	}
 
 	err = keys.ValidateBinds(

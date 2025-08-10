@@ -31,6 +31,7 @@ type Runner struct {
 	cancelFunc   context.CancelFunc
 	path         string
 	listeners    []chan<- Event
+	allRules     []*rule.Rule
 	mu           sync.Mutex
 }
 
@@ -100,6 +101,9 @@ func WithProfile(name string, p *profile.Profile) RunnerOpt {
 // WithRules sets multiple rules from which the first matching rule will be used.
 func WithRules(rs []*rule.Rule) RunnerOpt {
 	return func(cr *Runner) error {
+		// Store all rules for later use.
+		cr.allRules = rs
+
 		fileInfo, err := os.Stat(cr.path)
 		if err != nil {
 			return fmt.Errorf("stat path: %w", err)
@@ -143,6 +147,25 @@ func (cr *Runner) isFileWatched(filePath string) bool {
 
 func (cr *Runner) GetCurrentProfile() *profile.Profile {
 	return cr.rule.GetProfile()
+}
+
+// FS returns an [FilteredFS] for the runner that only allows access to directories
+// and files that match at least one rule.
+func (cr *Runner) FS() (*FilteredFS, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("get working directory: %w", err)
+	}
+
+	root, err := os.OpenRoot(wd)
+	if err != nil {
+		return nil, fmt.Errorf("open root: %w", err)
+	}
+
+	return &FilteredFS{
+		root:  root,
+		rules: cr.allRules,
+	}, nil
 }
 
 // RunPlugin executes a plugin by name.

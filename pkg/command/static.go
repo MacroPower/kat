@@ -6,6 +6,7 @@ import (
 
 	"github.com/macropower/kat/pkg/kube"
 	"github.com/macropower/kat/pkg/profile"
+	"github.com/macropower/kat/pkg/rule"
 )
 
 type Static struct {
@@ -81,4 +82,12 @@ func (rg *Static) RunPlugin(_ string) Output {
 	rg.broadcast(EventEnd(out))
 
 	return out
+}
+
+func (rg *Static) GetRules() []*rule.Rule {
+	return nil
+}
+
+func (rg *Static) FS() (*FilteredFS, error) {
+	return nil, errors.ErrUnsupported
 }

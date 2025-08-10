@@ -19,6 +19,7 @@ type Commander interface {
 	Subscribe(ch chan<- command.Event)
 	GetCurrentProfile() *profile.Profile
 	RunPlugin(name string) command.Output
+	FS() (*command.FilteredFS, error)
 }
 
 type CommonModel struct {
@@ -96,6 +97,7 @@ type KeyBinds struct {
 	Help    *keys.KeyBind `json:"help,omitempty"`
 	Error   *keys.KeyBind `json:"error,omitempty"`
 	Escape  *keys.KeyBind `json:"escape,omitempty"`
+	Menu    *keys.KeyBind `json:"menu,omitempty"`
 
 	// Navigation.
 	Up    *keys.KeyBind `json:"up,omitempty"`
@@ -130,6 +132,10 @@ func (kb *KeyBinds) EnsureDefaults() {
 	keys.SetDefaultBind(&kb.Error,
 		keys.NewBind("toggle error",
 			keys.New("!"),
+		))
+	keys.SetDefaultBind(&kb.Menu,
+		keys.NewBind("open menu",
+			keys.New(":"),
 		))
 
 	keys.SetDefaultBind(&kb.Up,
@@ -172,6 +178,7 @@ func (kb *KeyBinds) GetKeyBinds() []keys.KeyBind {
 		*kb.Escape,
 		*kb.Help,
 		*kb.Error,
+		*kb.Menu,
 		*kb.Up,
 		*kb.Down,
 		*kb.Left,
