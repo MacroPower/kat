@@ -39,7 +39,7 @@ jobs:
             nur-packages
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           token: "${{ steps.app-token.outputs.token }}"
           ref: ${{ github.event.inputs.tag != '' && format('refs/tags/{0}', github.event.inputs.tag) || github.ref }}
