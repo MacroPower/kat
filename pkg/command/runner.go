@@ -25,18 +25,20 @@ var ErrNoCommandForPath = errors.New("no command for path")
 //   - Filesystem notifications / watching.
 //   - Concurrent command execution.
 type Runner struct {
-	rule       *rule.Rule
-	watcher    *fsnotify.Watcher
-	cancelFunc context.CancelFunc
-	path       string
-	listeners  []chan<- Event
-	mu         sync.Mutex
+	rule         *rule.Rule
+	watcher      *fsnotify.Watcher
+	watchedFiles map[string]struct{}
+	cancelFunc   context.CancelFunc
+	path         string
+	listeners    []chan<- Event
+	mu           sync.Mutex
 }
 
 // NewRunner creates a new [Runner].
 func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
 	cr := &Runner{
-		path: path,
+		path:         path,
+		watchedFiles: make(map[string]struct{}),
 	}
 
 	var err error
@@ -128,6 +130,15 @@ func WithRules(rs []*rule.Rule) RunnerOpt {
 
 		return nil
 	}
+}
+
+// isFileWatched returns true if the file matched the profile's source expression.
+func (cr *Runner) isFileWatched(filePath string) bool {
+	if _, isWatched := cr.watchedFiles[filePath]; isWatched {
+		return true
+	}
+
+	return false
 }
 
 func (cr *Runner) GetCurrentProfile() *profile.Profile {
@@ -244,12 +255,15 @@ func (cr *Runner) Watch() error {
 		return fmt.Errorf("walk %q: %w", cr.path, err)
 	}
 
+	cr.watchedFiles = make(map[string]struct{})
 	if ok, matchedFiles := p.MatchFiles(cr.path, files); ok {
 		for _, file := range matchedFiles {
-			err := cr.watcher.Add(file)
+			err := cr.watcher.Add(filepath.Dir(file))
 			if err != nil {
 				return fmt.Errorf("add path to watcher: %w", err)
 			}
+
+			cr.watchedFiles[file] = struct{}{}
 		}
 	}
 
@@ -276,6 +290,10 @@ func (cr *Runner) RunOnEvent() {
 		case evt, ok := <-cr.watcher.Events:
 			if !ok {
 				return
+			}
+
+			if !cr.isFileWatched(evt.Name) {
+				continue
 			}
 
 			// Ignore events that are not related to file content changes.
@@ -361,7 +379,7 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 
 	// Cancel any currently running command.
 	if cr.cancelFunc != nil {
-		cr.broadcast(EventCancel{})
+		// Note: The cancel event is broadcast by the canceled goroutine.
 		cr.cancelFunc()
 	}
 

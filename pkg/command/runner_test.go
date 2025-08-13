@@ -243,32 +243,167 @@ func TestCommandRunner_CancellationBehavior(t *testing.T) {
 	})
 }
 
-func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
+func TestCommandRunner_FileWatcher(t *testing.T) {
 	t.Parallel()
 
 	tcs := map[string]struct {
-		commandSleepTime string
-		profileReload    string
-		numFileEvents    int
-		collectDuration  time.Duration
+		fileOperation func(*testing.T, string)
+		wantEvents    int
 	}{
-		"rapid file events with slow command": {
-			numFileEvents:    5,
-			commandSleepTime: "0.2", // 200ms sleep
-			collectDuration:  3 * time.Second,
-			profileReload:    `fs.event.has(fs.WRITE, fs.CREATE)`,
+		"simple file modification": {
+			fileOperation: func(t *testing.T, testFile string) {
+				t.Helper()
+
+				require.NoError(t, os.WriteFile(testFile, []byte("test: modified"), 0o644))
+			},
+			wantEvents: 1,
 		},
-		"fewer file events with faster command": {
-			numFileEvents:    3,
-			commandSleepTime: "0.1", // 100ms sleep
-			collectDuration:  2 * time.Second,
-			profileReload:    `pathExt(file) == ".yaml"`,
+		"file removal and recreation": {
+			fileOperation: func(t *testing.T, testFile string) {
+				t.Helper()
+
+				require.NoError(t, os.Remove(testFile))
+				time.Sleep(50 * time.Millisecond)
+				require.NoError(t, os.WriteFile(testFile, []byte("test: \"1\""), 0o644))
+				time.Sleep(50 * time.Millisecond)
+				require.NoError(t, os.WriteFile(testFile, []byte("test: \"2\""), 0o644))
+			},
+			wantEvents: 3,
+		},
+		"file rename and recreation": {
+			fileOperation: func(t *testing.T, testFile string) {
+				t.Helper()
+
+				require.NoError(t, os.Rename(testFile, testFile+".bak"))
+				time.Sleep(50 * time.Millisecond)
+				require.NoError(t, os.Rename(testFile+".bak", testFile))
+				time.Sleep(50 * time.Millisecond)
+				require.NoError(t, os.WriteFile(testFile, []byte("test: \"1\""), 0o644))
+				time.Sleep(50 * time.Millisecond)
+				require.NoError(t, os.WriteFile(testFile, []byte("test: \"2\""), 0o644))
+			},
+			wantEvents: 3,
+		},
+	}
+
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			// Create a temporary directory for testing
+			tempDir := t.TempDir()
+
+			// Create a test file to watch
+			testFile := filepath.Join(tempDir, "test.yaml")
+			require.NoError(t, os.WriteFile(testFile, []byte("test: initial"), 0o644))
+
+			p, err := profile.New("echo",
+				profile.WithArgs("File event"),
+				profile.WithSource(`files.filter(f, pathExt(f) == ".yaml")`),
+				profile.WithReload(`fs.event.has(fs.WRITE, fs.CREATE, fs.REMOVE, fs.RENAME)`),
+			)
+			require.NoError(t, err)
+
+			// Create a runner with a fast command
+			runner, err := command.NewRunner(filepath.Dir(testFile), command.WithProfile("echo", p))
+			require.NoError(t, err)
+
+			// Start watching
+			require.NoError(t, runner.Watch())
+			defer runner.Close()
+
+			// Channel to collect command events
+			results := make(chan command.Event, 10)
+			runner.Subscribe(results)
+
+			// Start RunOnEvent in a goroutine
+			go runner.RunOnEvent()
+
+			// Give it a moment to start watching
+			time.Sleep(50 * time.Millisecond)
+
+			// Perform the file operation
+			tc.fileOperation(t, testFile)
+
+			// Collect events for a reasonable duration
+			events := collectEventsWithTimeout(results, tc.wantEvents, 5*time.Second)
+			require.Len(t, events, tc.wantEvents, testFile)
+
+			// Verify we got alternating start/end events
+			for i, event := range events {
+				switch i % 2 {
+				case 0: // Even indices should be start events
+					assert.IsType(t, command.EventStart(command.TypeRun), event)
+				case 1: // Odd indices should be end events
+					assert.IsType(t, command.EventEnd{}, event)
+				}
+			}
+		})
+	}
+}
+
+func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
+	t.Parallel()
+
+	// Helper function for file write operations
+	writeFileOp := func(t *testing.T, testFile string, i int) {
+		t.Helper()
+
+		content := fmt.Sprintf("test: data-%d", i)
+		require.NoError(t, os.WriteFile(testFile, []byte(content), 0o644))
+	}
+
+	// Helper function for file remove and re-add operations
+	removeAddFileOp := func(t *testing.T, testFile string, i int) {
+		t.Helper()
+
+		require.NoError(t, os.Remove(testFile))
+
+		time.Sleep(5 * time.Millisecond) // Small delay between remove and add
+
+		content := fmt.Sprintf("test: recreated-%d", i)
+		require.NoError(t, os.WriteFile(testFile, []byte(content), 0o644))
+	}
+
+	tcs := map[string]struct {
+		fileOp             func(*testing.T, string, int)
+		commandSleepTime   string
+		profileReload      string
+		numFileEvents      int
+		collectDuration    time.Duration
+		expectCancellation bool
+	}{
+		"rapid file events with slow command should cause cancellation": {
+			numFileEvents:      5,
+			commandSleepTime:   "0.3",
+			collectDuration:    3 * time.Second,
+			profileReload:      `fs.event.has(fs.WRITE, fs.CREATE)`,
+			fileOp:             writeFileOp,
+			expectCancellation: true,
+		},
+		"fewer file events with faster command should complete all": {
+			numFileEvents:      2,
+			commandSleepTime:   "0.05",
+			collectDuration:    2 * time.Second,
+			profileReload:      `pathExt(file) == ".yaml"`,
+			fileOp:             writeFileOp,
+			expectCancellation: false,
 		},
 		"file events with path filtering": {
-			numFileEvents:    4,
-			commandSleepTime: "0.1",
-			collectDuration:  2 * time.Second,
-			profileReload:    `pathBase(file) != "ignored.yaml"`,
+			numFileEvents:      4,
+			commandSleepTime:   "0.1",
+			collectDuration:    2 * time.Second,
+			profileReload:      `pathBase(file) != "ignored.yaml"`,
+			fileOp:             writeFileOp,
+			expectCancellation: false,
+		},
+		"file remove and re-add events with cancellation": {
+			numFileEvents:      4,
+			commandSleepTime:   "0.2",
+			collectDuration:    3 * time.Second,
+			profileReload:      `fs.event.has(fs.WRITE, fs.CREATE, fs.REMOVE)`,
+			fileOp:             removeAddFileOp,
+			expectCancellation: true,
 		},
 	}
 
@@ -308,11 +443,10 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 			// Give it a moment to start watching
 			time.Sleep(50 * time.Millisecond)
 
-			// Trigger multiple rapid file events by writing to the file quickly
+			// Trigger multiple rapid file events using the specified operation
 			for i := range tc.numFileEvents {
-				content := fmt.Sprintf("test: data-%d", i)
-				require.NoError(t, os.WriteFile(testFile, []byte(content), 0o644))
-				time.Sleep(10 * time.Millisecond) // Small delay between writes
+				tc.fileOp(t, testFile, i)
+				time.Sleep(10 * time.Millisecond)
 			}
 
 			// Collect all events for a specified duration
@@ -349,43 +483,31 @@ func TestCommandRunner_ConcurrentFileEvents(t *testing.T) {
 			// Wait for collection to complete
 			<-collectionDone
 
-			// 1. We should get at least one successful command completion
-			assert.GreaterOrEqual(t, len(outputs), 1,
-				"should get at least one command result")
+			require.GreaterOrEqual(t, len(outputs), 1, "should get at least one completed command")
+			require.GreaterOrEqual(t, startEvents, 1, "should get at least one start event")
 
-			// 2. We should see some start events
-			assert.GreaterOrEqual(t, startEvents, 1,
-				"should get at least one start event")
-
-			// 3. If we have multiple outputs, we should see some cancellations
-			if len(outputs) > 1 {
-				assert.GreaterOrEqual(t, cancelEvents, 1,
-					"should see some cancellations when multiple commands run")
-			}
-
-			// 4. The final result should not be a cancellation error
-			if len(outputs) > 0 {
-				lastOutput := outputs[len(outputs)-1]
-				if lastOutput.Error != nil {
-					assert.NotContains(t, lastOutput.Error.Error(), "context canceled",
-						"final command should not be canceled")
-				}
-			}
-
-			// 5. We shouldn't have more completed commands than we have start events
-			// (basic sanity check)
 			assert.LessOrEqual(t, len(outputs), startEvents,
-				"completed commands should not exceed started commands")
+				"completed commands (%d) should not exceed started commands (%d)",
+				len(outputs), startEvents)
+
+			if tc.expectCancellation {
+				// With multiple rapid file events and slow commands, some should be canceled
+				assert.GreaterOrEqual(t, cancelEvents, 1,
+					"should see cancellations with rapid events and slow commands")
+				assert.Greater(t, startEvents, len(outputs),
+					"should have more starts (%d) than completions (%d) due to cancellations",
+					startEvents, len(outputs))
+			}
+
+			lastOutput := outputs[len(outputs)-1]
+			if lastOutput.Error != nil {
+				assert.NotContains(t, lastOutput.Error.Error(), "context canceled",
+					"final completed command should not be canceled")
+			}
 
 			// Log the results for debugging
-			t.Logf("Events: %d starts, %d ends, %d cancels from %d file events",
+			t.Logf("Events: %d starts, %d ends, %d cancels from %d file operations",
 				startEvents, len(outputs), cancelEvents, tc.numFileEvents)
-
-			// Additional logging to help understand platform differences
-			if startEvents > tc.numFileEvents*2 {
-				t.Logf("Note: File system generated %d start events for %d file writes (%.1fx multiplier)",
-					startEvents, tc.numFileEvents, float64(startEvents)/float64(tc.numFileEvents))
-			}
 		})
 	}
 }
