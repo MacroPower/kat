@@ -148,7 +148,7 @@ func NewModel(c Config) ListModel {
 	)
 
 	// Add plugin keybinds column if plugins are available.
-	profile := c.CommonModel.Cmd.GetCurrentProfile()
+	_, profile := c.CommonModel.Cmd.GetCurrentProfile()
 	if profile != nil {
 		pluginBinds := profile.GetPluginKeyBinds()
 		// Truncate to maximum of 6 plugin keybinds (shown in help).

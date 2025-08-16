@@ -107,7 +107,9 @@ func TestCommandRunner_RunForPath(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			runner, err := command.NewRunner(tc.path, command.WithRules(TestConfig.Rules))
+			runner, err := command.NewRunner(tc.path,
+				command.WithRules(TestConfig.Rules),
+				command.WithProfiles(TestConfig.Profiles))
 			if tc.initError != nil {
 				require.ErrorIs(t, err, tc.initError)
 
@@ -520,7 +522,9 @@ func TestCommandRunner_String(t *testing.T) {
 	chartFile := filepath.Join(tempDir, "Chart.yaml")
 	require.NoError(t, os.WriteFile(chartFile, []byte("name: test-chart"), 0o644))
 
-	runner, err := command.NewRunner(tempDir, command.WithRules(TestConfig.Rules))
+	runner, err := command.NewRunner(tempDir,
+		command.WithRules(TestConfig.Rules),
+		command.WithProfiles(TestConfig.Profiles))
 	require.NoError(t, err)
 
 	// The String method should return the rule's string representation: "profile: command args"
@@ -557,7 +561,9 @@ func TestCommandRunner_GetCurrentProfile(t *testing.T) {
 			tempDir := t.TempDir()
 			require.NoError(t, tc.setupFiles(tempDir))
 
-			runner, err := command.NewRunner(tempDir, command.WithRules(TestConfig.Rules))
+			runner, err := command.NewRunner(tempDir,
+				command.WithRules(TestConfig.Rules),
+				command.WithProfiles(TestConfig.Profiles))
 			if tc.expectNil {
 				// Should fail to create runner for paths with no matching rules
 				require.Error(t, err)
@@ -567,7 +573,7 @@ func TestCommandRunner_GetCurrentProfile(t *testing.T) {
 
 			require.NoError(t, err)
 
-			p := runner.GetCurrentProfile()
+			_, p := runner.GetCurrentProfile()
 			require.NotNil(t, p)
 			assert.NotEmpty(t, p.Command.Command)
 		})
@@ -581,7 +587,9 @@ func TestCommandRunner_RunPlugin(t *testing.T) {
 	chartFile := filepath.Join(tempDir, "Chart.yaml")
 	require.NoError(t, os.WriteFile(chartFile, []byte("name: test-chart"), 0o644))
 
-	runner, err := command.NewRunner(tempDir, command.WithRules(TestConfig.Rules))
+	runner, err := command.NewRunner(tempDir,
+		command.WithRules(TestConfig.Rules),
+		command.WithProfiles(TestConfig.Profiles))
 	require.NoError(t, err)
 
 	// Test event subscription
@@ -611,7 +619,9 @@ func TestCommandRunner_RunPluginContext(t *testing.T) {
 	chartFile := filepath.Join(tempDir, "Chart.yaml")
 	require.NoError(t, os.WriteFile(chartFile, []byte("name: test-chart"), 0o644))
 
-	runner, err := command.NewRunner(tempDir, command.WithRules(TestConfig.Rules))
+	runner, err := command.NewRunner(tempDir,
+		command.WithRules(TestConfig.Rules),
+		command.WithProfiles(TestConfig.Profiles))
 	require.NoError(t, err)
 
 	tests := map[string]struct {
@@ -658,4 +668,257 @@ func TestCommandRunner_RunPluginContext(t *testing.T) {
 			// depending on timing, so we just verify the basic structure
 		})
 	}
+}
+
+func TestRunner_GetProfiles(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+
+	// Create test YAML file
+	yamlFile := filepath.Join(tempDir, "test.yaml")
+	err := os.WriteFile(yamlFile, []byte("key: value"), 0o644)
+	require.NoError(t, err)
+
+	// Test with WithRules - profiles should be extracted from rules
+	runner, err := command.NewRunner(tempDir,
+		command.WithRules(TestConfig.Rules),
+		command.WithProfiles(TestConfig.Profiles))
+	require.NoError(t, err)
+
+	defer runner.Close()
+
+	profiles := runner.GetProfiles()
+
+	// Should have all profiles from the test config
+	require.NotNil(t, profiles)
+	assert.Contains(t, profiles, "ks")
+	assert.Contains(t, profiles, "helm")
+	assert.Contains(t, profiles, "yaml")
+
+	// Verify profile contents
+	assert.Equal(t, testProfiles["yaml"].Command.Command, profiles["yaml"].Command.Command)
+	assert.Equal(t, testProfiles["ks"].Command.Command, profiles["ks"].Command.Command)
+	assert.Equal(t, testProfiles["helm"].Command.Command, profiles["helm"].Command.Command)
+}
+
+func TestRunner_SetProfile(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+
+	// Create test YAML file
+	yamlFile := filepath.Join(tempDir, "test.yaml")
+	err := os.WriteFile(yamlFile, []byte("key: value"), 0o644)
+	require.NoError(t, err)
+
+	runner, err := command.NewRunner(tempDir,
+		command.WithRules(TestConfig.Rules),
+		command.WithProfiles(TestConfig.Profiles))
+	require.NoError(t, err)
+
+	t.Cleanup(runner.Close)
+
+	tcs := map[string]struct {
+		profileName string
+		wantErr     bool
+	}{
+		"switch to existing profile ks": {
+			profileName: "ks",
+			wantErr:     false,
+		},
+		"switch to existing profile helm": {
+			profileName: "helm",
+			wantErr:     false,
+		},
+		"switch to non-existent profile": {
+			profileName: "nonexistent",
+			wantErr:     true,
+		},
+		"switch to empty profile name": {
+			profileName: "",
+			wantErr:     true,
+		},
+	}
+
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			err := runner.SetProfile(tc.profileName)
+
+			if tc.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "not found")
+			} else {
+				require.NoError(t, err)
+
+				// Verify the profile was actually set
+				currentName, currentProfile := runner.GetCurrentProfile()
+				assert.Equal(t, tc.profileName, currentName)
+				assert.NotNil(t, currentProfile)
+
+				// Verify we can get the profile from the profiles map
+				profiles := runner.GetProfiles()
+				expectedProfile := profiles[tc.profileName]
+				assert.Equal(t, expectedProfile, currentProfile)
+			}
+		})
+	}
+}
+
+func TestRunner_SetProfile_Integration(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+
+	// Create test YAML file
+	yamlFile := filepath.Join(tempDir, "test.yaml")
+	err := os.WriteFile(yamlFile, []byte("key: value"), 0o644)
+	require.NoError(t, err)
+
+	runner, err := command.NewRunner(tempDir,
+		command.WithRules(TestConfig.Rules),
+		command.WithProfiles(TestConfig.Profiles))
+	require.NoError(t, err)
+
+	defer runner.Close()
+
+	// Check initial profile (should be "yaml" since we have a .yaml file)
+	initialName, initialProfile := runner.GetCurrentProfile()
+	assert.Equal(t, "yaml", initialName)
+	assert.NotNil(t, initialProfile)
+
+	// Switch to a different profile
+	err = runner.SetProfile("ks")
+	require.NoError(t, err)
+
+	// Verify the switch worked
+	currentName, currentProfile := runner.GetCurrentProfile()
+	assert.Equal(t, "ks", currentName)
+	assert.NotNil(t, currentProfile)
+	assert.NotEqual(t, initialProfile, currentProfile)
+
+	// Verify the command changed
+	assert.Equal(t, "kustomize", currentProfile.Command.Command)
+
+	// Switch back to original
+	err = runner.SetProfile("yaml")
+	require.NoError(t, err)
+
+	// Verify we're back to the original
+	finalName, finalProfile := runner.GetCurrentProfile()
+	assert.Equal(t, "yaml", finalName)
+	assert.Equal(t, initialProfile, finalProfile)
+}
+
+func TestRunner_WithProfile_SingleProfile(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+
+	customProfile := profile.MustNew("custom-command",
+		profile.WithArgs("--custom", "arg"),
+	)
+
+	runner, err := command.NewRunner(tempDir, command.WithProfile("custom", customProfile))
+	require.NoError(t, err)
+
+	defer runner.Close()
+
+	// Should have only the custom profile
+	profiles := runner.GetProfiles()
+	require.Len(t, profiles, 1)
+	assert.Contains(t, profiles, "custom")
+
+	// Current profile should be the custom one
+	currentName, currentProfile := runner.GetCurrentProfile()
+	assert.Equal(t, "custom", currentName)
+	assert.Equal(t, customProfile, currentProfile)
+
+	// Trying to set a different profile should fail
+	err = runner.SetProfile("other")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `profile "other" not found`)
+}
+
+func TestRunner_WithProfiles(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+
+	// Create test YAML file
+	yamlFile := filepath.Join(tempDir, "test.yaml")
+	err := os.WriteFile(yamlFile, []byte("key: value"), 0o644)
+	require.NoError(t, err)
+
+	// Create additional profiles that don't have rules
+	testProfiles := map[string]*profile.Profile{
+		"extra1": profile.MustNew("echo",
+			profile.WithArgs("extra1", "profile"),
+		),
+		"extra2": profile.MustNew("echo",
+			profile.WithArgs("extra2", "profile"),
+		),
+	}
+	testProfiles["yaml"] = TestConfig.Profiles["yaml"]
+
+	// Create runner with both rules and additional profiles
+	runner, err := command.NewRunner(tempDir,
+		command.WithRules(TestConfig.Rules),
+		command.WithProfiles(testProfiles))
+	require.NoError(t, err)
+	t.Cleanup(runner.Close)
+
+	profiles := runner.GetProfiles()
+	require.NotNil(t, profiles)
+
+	assert.Contains(t, profiles, "extra1")
+	assert.Contains(t, profiles, "extra2")
+	assert.Contains(t, profiles, "yaml")
+
+	// Should start with rule-matched profile (yaml)
+	currentName, currentProfile := runner.GetCurrentProfile()
+	assert.Equal(t, "yaml", currentName)
+	assert.NotNil(t, currentProfile)
+
+	// Should be able to switch to additional profile
+	err = runner.SetProfile("extra1")
+	require.NoError(t, err)
+
+	currentName, currentProfile = runner.GetCurrentProfile()
+	assert.Equal(t, "extra1", currentName)
+	assert.Equal(t, testProfiles["extra1"], currentProfile)
+}
+
+func TestRunner_WithProfiles_OverwriteRuleProfiles(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+
+	// Create test YAML file
+	yamlFile := filepath.Join(tempDir, "test.yaml")
+	err := os.WriteFile(yamlFile, []byte("key: value"), 0o644)
+	require.NoError(t, err)
+
+	// Create profile with same name as existing rule but different command
+	overrideProfile := profile.MustNew("echo",
+		profile.WithArgs("overridden", "yaml", "profile"),
+	)
+
+	additionalProfiles := map[string]*profile.Profile{
+		"yaml": overrideProfile, // Override existing rule profile
+	}
+
+	runner, err := command.NewRunner(tempDir,
+		command.WithRules(TestConfig.Rules),
+		command.WithProfiles(additionalProfiles))
+	require.NoError(t, err)
+	t.Cleanup(runner.Close)
+
+	// The profile from WithProfiles should override the one from rules
+	profiles := runner.GetProfiles()
+	yamlProfile := profiles["yaml"]
+	assert.Equal(t, "echo", yamlProfile.Command.Command)
+	assert.Equal(t, []string{"overridden", "yaml", "profile"}, yamlProfile.Command.Args)
 }

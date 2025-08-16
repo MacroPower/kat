@@ -107,7 +107,7 @@ func (m *model) unloadDocument() {
 
 func newModel(cfg *Config, cmd common.Commander) tea.Model {
 	uiTheme := cfg.UI.Theme
-	profile := cmd.GetCurrentProfile()
+	_, profile := cmd.GetCurrentProfile()
 	if profile != nil && profile.UI != nil {
 		if profile.UI.Theme != "" {
 			uiTheme = profile.UI.Theme
@@ -222,7 +222,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Handle plugin keybinds.
-		profile := m.cm.Cmd.GetCurrentProfile()
+		_, profile := m.cm.Cmd.GetCurrentProfile()
 		if profile != nil && !m.isTextInputFocused() {
 			if pluginName := profile.GetPluginNameByKey(key); pluginName != "" {
 				cmd := m.runPlugin(pluginName)

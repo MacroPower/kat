@@ -104,7 +104,7 @@ metadata:
   name: test`)
 	require.NoError(t, err)
 
-	profile := static.GetCurrentProfile()
+	_, profile := static.GetCurrentProfile()
 	require.NotNil(t, profile)
 	// Static resources return an empty profile
 	assert.Empty(t, profile.Command.Command)

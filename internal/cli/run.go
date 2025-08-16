@@ -397,7 +397,9 @@ func setupCommandRunner(path string, cfg *config.Config, rc *RunArgs) (*command.
 			return nil, err
 		}
 	} else {
-		cr, err = command.NewRunner(path, command.WithRules(cfg.Command.Rules))
+		cr, err = command.NewRunner(path,
+			command.WithRules(cfg.Command.Rules),
+			command.WithProfiles(cfg.Command.Profiles))
 		if err != nil {
 			return nil, err
 		}

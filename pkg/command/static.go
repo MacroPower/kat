@@ -31,9 +31,17 @@ func (rg *Static) String() string {
 	return "static"
 }
 
-func (rg *Static) GetCurrentProfile() *profile.Profile {
+func (rg *Static) GetCurrentProfile() (string, *profile.Profile) {
 	// Static resources do not have a profile.
-	return &profile.Profile{}
+	return "static", &profile.Profile{}
+}
+
+func (rg *Static) GetProfiles() map[string]*profile.Profile {
+	return nil
+}
+
+func (rg *Static) SetProfile(_ string) error {
+	return nil
 }
 
 func (rg *Static) Run() Output {

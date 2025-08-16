@@ -212,15 +212,13 @@ func (c *Config) Validate() error {
 			)
 		}
 
-		p, ok := c.Profiles[r.Profile]
+		_, ok := c.Profiles[r.Profile]
 		if !ok {
 			return yaml.NewError(
 				fmt.Errorf("profile %q not found", r.Profile),
 				yaml.WithPath(pb.Root().Child("rules").Index(uIdx).Child("profile").Build()),
 			)
 		}
-
-		r.SetProfile(p)
 	}
 
 	return nil
