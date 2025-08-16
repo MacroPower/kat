@@ -1,10 +1,7 @@
 package menu
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
-
 	"github.com/macropower/kat/pkg/keys"
-	"github.com/macropower/kat/pkg/ui/common"
 )
 
 // KeyBinds defines key bindings for menu view.
@@ -56,59 +53,4 @@ func (kb *KeyBinds) GetKeyBinds() []keys.KeyBind {
 		*kb.PageDown,
 		*kb.Select,
 	}
-}
-
-// KeyHandler provides key handling for menu view.
-type KeyHandler struct {
-	kb  *KeyBinds
-	ckb *common.KeyBinds
-}
-
-// NewKeyHandler creates a new menu key handler.
-func NewKeyHandler(kb *KeyBinds, ckb *common.KeyBinds) *KeyHandler {
-	return &KeyHandler{
-		kb:  kb,
-		ckb: ckb,
-	}
-}
-
-// HandleMenuKeys handles key events for menu view.
-func (h *KeyHandler) HandleMenuKeys(m MenuModel, msg tea.KeyMsg) (MenuModel, tea.Cmd) {
-	var cmd tea.Cmd
-
-	key := msg.String()
-
-	switch {
-	case h.kb.Home.Match(key):
-		m.GoToTop()
-
-	case h.kb.End.Match(key):
-		m.GoToBottom()
-
-	case h.kb.PageUp.Match(key):
-		m.PageUp()
-
-	case h.kb.PageDown.Match(key):
-		m.PageDown()
-
-	case h.ckb.Up.Match(key):
-		m.MoveUp()
-
-	case h.ckb.Down.Match(key):
-		m.MoveDown()
-
-	case h.ckb.Help.Match(key):
-		m.ToggleHelp()
-
-	case h.ckb.Right.Match(key):
-		cmd = m.OpenDirectory()
-
-	case h.ckb.Left.Match(key):
-		cmd = m.GoBack()
-
-	case h.kb.Select.Match(key):
-		cmd = m.SelectDirectory()
-	}
-
-	return m, cmd
 }

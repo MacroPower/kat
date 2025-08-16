@@ -72,11 +72,11 @@ type model struct {
 	overlay      *overlay.Overlay
 	kb           *KeyBinds
 	result       string
+	menu         menu.MenuModel
 	spinner      spinner.Model
 	pager        pager.PagerModel
 	fullResult   pager.PagerModel
 	list         list.ListModel
-	menu         menu.MenuModel
 	state        State
 	overlayState OverlayState
 }

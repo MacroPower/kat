@@ -7,15 +7,14 @@ import (
 
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/ui/common"
-	"github.com/macropower/kat/pkg/ui/filepicker"
+	"github.com/macropower/kat/pkg/ui/configeditor"
 	"github.com/macropower/kat/pkg/ui/statusbar"
 )
 
 type MenuModel struct {
 	cm           *common.CommonModel
 	helpRenderer *statusbar.HelpRenderer
-	keyHandler   *KeyHandler
-	filepicker   filepicker.Model
+	configeditor configeditor.Model
 	ShowHelp     bool
 }
 
@@ -26,16 +25,9 @@ type Config struct {
 
 // NewModel creates a new menu model with rule-based directory filtering.
 func NewModel(c Config) MenuModel {
-	fsys, err := c.CommonModel.Cmd.FS()
-	if err != nil {
-		panic(err)
-	}
-
-	fp := filepicker.New(fsys, c.CommonModel.Theme)
-	fp.DirAllowed = true
-	fp.FileAllowed = false
-	fp.ShowSize = true
-	fp.ShowPermissions = true
+	ce := configeditor.NewModel(&configeditor.Config{
+		CommonModel: c.CommonModel,
+	})
 
 	kbr := &keys.KeyBindRenderer{}
 	ckb := c.CommonModel.KeyBinds
@@ -62,68 +54,44 @@ func NewModel(c Config) MenuModel {
 
 	return MenuModel{
 		cm:           c.CommonModel,
-		filepicker:   fp,
-		keyHandler:   NewKeyHandler(c.KeyBinds, c.CommonModel.KeyBinds),
+		configeditor: ce,
 		helpRenderer: statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr),
 	}
 }
 
 func (m MenuModel) Init() tea.Cmd {
-	return m.filepicker.Init()
+	return m.configeditor.Init()
 }
 
 func (m MenuModel) Update(msg tea.Msg) (MenuModel, tea.Cmd) {
-	var (
-		cmds []tea.Cmd
-		cmd  tea.Cmd
-	)
+	var cmd tea.Cmd
 
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		m, cmd = m.keyHandler.HandleMenuKeys(m, msg)
-		cmds = append(cmds, cmd)
-	}
+	// Update the configeditor model.
+	m.configeditor, cmd = m.configeditor.Update(msg)
 
-	// Update the filepicker model.
-	m.filepicker, cmd = m.filepicker.Update(msg)
-	cmds = append(cmds, cmd)
-
-	return m, tea.Batch(cmds...)
+	return m, cmd
 }
 
 func (m MenuModel) View() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		lipgloss.JoinHorizontal(
-			lipgloss.Bottom,
-			m.filepicker.View(),
-			lipgloss.NewStyle().
-				Height(m.cm.Height).
-				Width(2).
-				Background(m.cm.Theme.SubtleStyle.GetForeground()).
-				Render(""),
-			lipgloss.NewStyle().
-				Height(m.cm.Height).
-				Width(m.cm.Width/2).
-				Background(m.cm.Theme.CursorStyle.GetForeground()).
-				Render(""),
-		),
+		m.configeditor.View(),
 		m.statusBarView(),
 		m.helpView(),
 	)
 }
 
 func (m MenuModel) statusBarView() string {
-	return m.cm.GetStatusBar().RenderWithNote(m.filepicker.CurrentDirectory, "...")
+	return m.cm.GetStatusBar().RenderWithNote(".", "...")
 }
 
-func (m *MenuModel) SetSize(w, h int) {
+func (m *MenuModel) SetSize(_, h int) {
 	// Calculate help height if needed.
 	if m.ShowHelp {
 		helpHeight := m.helpRenderer.CalculateHelpHeight()
-		m.filepicker.SetSize(w/2, h-helpHeight-3) // Account for margins.
+		m.configeditor.SetHeight(h - helpHeight - 2)
 	} else {
-		m.filepicker.SetSize(w/2, h-2)
+		m.configeditor.SetHeight(h - 1)
 	}
 }
 
@@ -142,58 +110,4 @@ func (m MenuModel) helpView() string {
 func (m *MenuModel) ToggleHelp() {
 	m.ShowHelp = !m.ShowHelp
 	m.SetSize(m.cm.Width, m.cm.Height)
-}
-
-// GoToTop moves the cursor to the top of the file list.
-func (m *MenuModel) GoToTop() {
-	m.filepicker.GoToTop()
-}
-
-// GoToBottom moves the cursor to the bottom of the file list.
-func (m *MenuModel) GoToBottom() {
-	m.filepicker.GoToLast()
-}
-
-// PageUp moves the cursor up by one page in the file list.
-func (m *MenuModel) PageUp() {
-	m.filepicker.PageUp()
-}
-
-// PageDown moves the cursor down by one page in the file list.
-func (m *MenuModel) PageDown() {
-	m.filepicker.PageDown()
-}
-
-// MoveUp moves the cursor up one item in the file list.
-func (m *MenuModel) MoveUp() {
-	m.filepicker.MoveUp()
-}
-
-// MoveDown moves the cursor down one item in the file list.
-func (m *MenuModel) MoveDown() {
-	m.filepicker.MoveDown()
-}
-
-// OpenDirectory opens the currently selected directory.
-func (m *MenuModel) OpenDirectory() tea.Cmd {
-	var cmd tea.Cmd
-
-	m.filepicker, cmd = m.filepicker.Open()
-
-	return cmd
-}
-
-// GoBack navigates to the parent directory.
-func (m *MenuModel) GoBack() tea.Cmd {
-	var cmd tea.Cmd
-
-	m.filepicker, cmd = m.filepicker.GoBack()
-
-	return cmd
-}
-
-// SelectDirectory selects the currently focused directory.
-func (m *MenuModel) SelectDirectory() tea.Cmd {
-	m.filepicker.Select()
-	return nil
 }

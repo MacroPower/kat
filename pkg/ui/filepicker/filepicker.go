@@ -1,3 +1,5 @@
+// Package filepicker provides a file picker component for Bubble Tea
+// applications.
 package filepicker
 
 import (
@@ -39,38 +41,39 @@ func New(fsys FilteredFS, t *theme.Theme) Model {
 	return Model{
 		id:               nextID(),
 		fsys:             fsys,
-		Theme:            t,
-		rootPath:         "/",
+		theme:            t,
 		CurrentDirectory: ".",
 		Cursor:           ">",
 		AllowedTypes:     []string{},
 		selected:         0,
 		ShowPermissions:  true,
 		ShowSize:         true,
+		ShowHidden:       false,
 		DirAllowed:       false,
 		FileAllowed:      true,
 		AutoHeight:       true,
 		Height:           0,
-		Width:            0,
 		max:              0,
 		min:              0,
 		selectedStack:    newStack(),
 		minStack:         newStack(),
 		maxStack:         newStack(),
+		KeyMap:           DefaultKeyMap(),
 		Styles:           DefaultStyles(),
 	}
 }
 
 type errorMsg struct {
-	err error //nolint:unused // TODO: Use it.
+	err error
 }
 
 type readDirMsg struct {
-	entries []fs.DirEntry
+	entries []os.DirEntry
 	id      int
 }
 
 const (
+	marginBottom  = 5
 	fileSizeWidth = 7
 	paddingLeft   = 2
 )
@@ -86,6 +89,21 @@ type KeyMap struct {
 	Back     key.Binding
 	Open     key.Binding
 	Select   key.Binding
+}
+
+// DefaultKeyMap defines the default keybindings.
+func DefaultKeyMap() KeyMap {
+	return KeyMap{
+		GoToTop:  key.NewBinding(key.WithKeys("g"), key.WithHelp("g", "first")),
+		GoToLast: key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "last")),
+		Down:     key.NewBinding(key.WithKeys("j", "down", "ctrl+n"), key.WithHelp("j", "down")),
+		Up:       key.NewBinding(key.WithKeys("k", "up", "ctrl+p"), key.WithHelp("k", "up")),
+		PageUp:   key.NewBinding(key.WithKeys("K", "pgup"), key.WithHelp("pgup", "page up")),
+		PageDown: key.NewBinding(key.WithKeys("J", "pgdown"), key.WithHelp("pgdown", "page down")),
+		Back:     key.NewBinding(key.WithKeys("h", "backspace", "left", "esc"), key.WithHelp("h", "back")),
+		Open:     key.NewBinding(key.WithKeys("l", "right", "enter"), key.WithHelp("l", "open")),
+		Select:   key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
+	}
 }
 
 // Styles defines the possible customizations for styles in the file picker.
@@ -131,30 +149,44 @@ func DefaultStylesWithRenderer(r *lipgloss.Renderer) Styles {
 
 // Model represents a file picker.
 type Model struct {
-	Styles           Styles
-	Theme            *theme.Theme
-	selectedStack    stack
-	minStack         stack
-	maxStack         stack
-	fsys             FilteredFS
-	FileSelected     string
-	Path             string
-	Cursor           string
+	Styles        Styles
+	minStack      stack
+	maxStack      stack
+	selectedStack stack
+	fsys          FilteredFS
+	theme         *theme.Theme
+	FileSelected  string
+
+	// Path is the path which the user has selected with the file picker.
+	Path string
+
+	// CurrentDirectory is the directory that the user is currently in.
 	CurrentDirectory string
-	rootPath         string
-	files            []fs.DirEntry
-	AllowedTypes     []string
-	Height           int
-	Width            int
-	max              int
-	id               int
-	min              int
-	selected         int
-	FileAllowed      bool
-	DirAllowed       bool
-	AutoHeight       bool
-	ShowSize         bool
-	ShowPermissions  bool
+
+	Cursor string
+	KeyMap KeyMap
+	files  []os.DirEntry
+
+	// AllowedTypes specifies which file types the user may select.
+	// If empty the user may select any file.
+	AllowedTypes []string
+
+	max      int
+	selected int
+	min      int
+
+	// Height of the picker.
+	//
+	// Deprecated: use [Model.SetHeight] instead.
+	Height int
+
+	id              int
+	ShowSize        bool
+	DirAllowed      bool
+	ShowPermissions bool
+	ShowHidden      bool
+	AutoHeight      bool
+	FileAllowed     bool
 }
 
 type stack struct {
@@ -191,11 +223,11 @@ func (m *Model) popView() (int, int, int) {
 	return m.selectedStack.Pop(), m.minStack.Pop(), m.maxStack.Pop()
 }
 
-func (m Model) readDir(path string) tea.Cmd {
+func (m Model) readDir(path string, _ bool) tea.Cmd {
 	return func() tea.Msg {
 		dirEntries, err := m.fsys.ReadDir(path)
 		if err != nil {
-			return errorMsg{err: err}
+			return errorMsg{err}
 		}
 
 		sort.Slice(dirEntries, func(i, j int) bool {
@@ -212,17 +244,14 @@ func (m Model) readDir(path string) tea.Cmd {
 
 // Init initializes the file picker model.
 func (m Model) Init() tea.Cmd {
-	return m.readDir(m.CurrentDirectory)
+	return m.readDir(m.CurrentDirectory, m.ShowHidden)
 }
 
-// SetSize sets the size of the filepicker.
-func (m *Model) SetSize(w, h int) {
-	m.Width = w
-	m.Height = h
+// SetHeight sets the height of the filepicker.
+func (m *Model) SetHeight(height int) {
+	m.Height = height
 	if m.max > m.Height-1 {
 		m.max = m.min + m.Height - 1
-	} else {
-		m.max = m.Height - 1
 	}
 }
 
@@ -236,179 +265,134 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		m.files = msg.entries
 		m.max = max(m.max, m.Height-1)
+
+	case tea.WindowSizeMsg:
+		if m.AutoHeight {
+			m.Height = msg.Height - marginBottom
+		}
+
+		m.max = m.Height - 1
+
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, m.KeyMap.GoToTop):
+			m.selected = 0
+			m.min = 0
+			m.max = m.Height - 1
+
+		case key.Matches(msg, m.KeyMap.GoToLast):
+			m.selected = len(m.files) - 1
+			m.min = len(m.files) - m.Height
+			m.max = len(m.files) - 1
+
+		case key.Matches(msg, m.KeyMap.Down):
+			m.selected++
+			if m.selected >= len(m.files) {
+				m.selected = len(m.files) - 1
+			}
+			if m.selected > m.max {
+				m.min++
+				m.max++
+			}
+
+		case key.Matches(msg, m.KeyMap.Up):
+			m.selected--
+			if m.selected < 0 {
+				m.selected = 0
+			}
+			if m.selected < m.min {
+				m.min--
+				m.max--
+			}
+
+		case key.Matches(msg, m.KeyMap.PageDown):
+			m.selected += m.Height
+			if m.selected >= len(m.files) {
+				m.selected = len(m.files) - 1
+			}
+
+			m.min += m.Height
+			m.max += m.Height
+
+			if m.max >= len(m.files) {
+				m.max = len(m.files) - 1
+				m.min = m.max - m.Height
+			}
+
+		case key.Matches(msg, m.KeyMap.PageUp):
+			m.selected -= m.Height
+			if m.selected < 0 {
+				m.selected = 0
+			}
+
+			m.min -= m.Height
+			m.max -= m.Height
+
+			if m.min < 0 {
+				m.min = 0
+				m.max = m.min + m.Height
+			}
+
+		case key.Matches(msg, m.KeyMap.Back):
+			m.CurrentDirectory = filepath.Dir(m.CurrentDirectory)
+			if m.selectedStack.Length() > 0 {
+				m.selected, m.min, m.max = m.popView()
+			} else {
+				m.selected = 0
+				m.min = 0
+				m.max = m.Height - 1
+			}
+
+			return m, m.readDir(m.CurrentDirectory, m.ShowHidden)
+
+		case key.Matches(msg, m.KeyMap.Open):
+			if len(m.files) == 0 {
+				break
+			}
+
+			f := m.files[m.selected]
+			info, err := f.Info()
+			if err != nil {
+				break
+			}
+
+			isSymlink := info.Mode()&os.ModeSymlink != 0
+			isDir := f.IsDir()
+
+			if isSymlink {
+				symlinkPath, _ := filepath.EvalSymlinks(filepath.Join(m.CurrentDirectory, f.Name()))
+				info, err := os.Stat(symlinkPath)
+				if err != nil {
+					break
+				}
+				if info.IsDir() {
+					isDir = true
+				}
+			}
+
+			if (!isDir && m.FileAllowed) || (isDir && m.DirAllowed) {
+				if key.Matches(msg, m.KeyMap.Select) {
+					// Select the current path as the selection.
+					m.Path = filepath.Join(m.CurrentDirectory, f.Name())
+				}
+			}
+
+			if !isDir {
+				break
+			}
+
+			m.CurrentDirectory = filepath.Join(m.CurrentDirectory, f.Name())
+			m.pushView(m.selected, m.min, m.max)
+
+			m.selected = 0
+			m.min = 0
+			m.max = m.Height - 1
+
+			return m, m.readDir(m.CurrentDirectory, m.ShowHidden)
+		}
 	}
 
 	return m, nil
-}
-
-// GoToTop moves the cursor to the top of the file list.
-func (m *Model) GoToTop() {
-	m.selected = 0
-	m.min = 0
-	m.max = m.Height - 1
-}
-
-// GoToLast moves the cursor to the last item in the file list.
-func (m *Model) GoToLast() {
-	m.selected = len(m.files) - 1
-	m.min = len(m.files) - m.Height
-	m.max = len(m.files) - 1
-}
-
-// MoveDown moves the cursor down one item in the file list.
-func (m *Model) MoveDown() {
-	m.selected++
-	if m.selected >= len(m.files) {
-		m.selected = len(m.files) - 1
-	}
-	if m.selected > m.max {
-		m.min++
-		m.max++
-	}
-}
-
-// MoveUp moves the cursor up one item in the file list.
-func (m *Model) MoveUp() {
-	m.selected--
-	if m.selected < 0 {
-		m.selected = 0
-	}
-	if m.selected < m.min {
-		m.min--
-		m.max--
-	}
-}
-
-// PageDown moves the cursor down by one page in the file list.
-func (m *Model) PageDown() {
-	m.selected += m.Height
-	if m.selected >= len(m.files) {
-		m.selected = len(m.files) - 1
-	}
-
-	m.min += m.Height
-	m.max += m.Height
-
-	if m.max >= len(m.files) {
-		m.max = len(m.files) - 1
-		m.min = m.max - m.Height
-	}
-}
-
-// PageUp moves the cursor up by one page in the file list.
-func (m *Model) PageUp() {
-	m.selected -= m.Height
-	if m.selected < 0 {
-		m.selected = 0
-	}
-
-	m.min -= m.Height
-	m.max -= m.Height
-
-	if m.min < 0 {
-		m.min = 0
-		m.max = m.min + m.Height
-	}
-}
-
-// GoBack navigates to the parent directory.
-func (m Model) GoBack() (Model, tea.Cmd) {
-	m.CurrentDirectory = filepath.Dir(m.CurrentDirectory)
-	if m.selectedStack.Length() > 0 {
-		m.selected, m.min, m.max = m.popView()
-	} else {
-		m.selected = 0
-		m.min = 0
-		m.max = m.Height - 1
-	}
-
-	return m, m.readDir(m.CurrentDirectory)
-}
-
-// Open opens the currently selected file or directory.
-func (m Model) Open() (Model, tea.Cmd) {
-	if len(m.files) == 0 {
-		return m, nil
-	}
-
-	f := m.files[m.selected]
-	info, err := f.Info()
-	if err != nil {
-		return m, nil
-	}
-
-	isSymlink := info.Mode()&os.ModeSymlink != 0
-	isDir := f.IsDir()
-
-	if isSymlink {
-		// For symlinks, we need to resolve them using the actual filesystem.
-		actualPath := filepath.Join(m.rootPath, m.CurrentDirectory, f.Name())
-		symlinkPath, err := filepath.EvalSymlinks(actualPath)
-		if err != nil {
-			return m, nil
-		}
-
-		info, err := os.Stat(symlinkPath)
-		if err != nil {
-			return m, nil
-		}
-		if info.IsDir() {
-			isDir = true
-		}
-	}
-
-	if !isDir {
-		return m, nil
-	}
-
-	m.CurrentDirectory = filepath.Join(m.CurrentDirectory, f.Name())
-	m.pushView(m.selected, m.min, m.max)
-
-	m.selected = 0
-	m.min = 0
-	m.max = m.Height - 1
-
-	return m, m.readDir(m.CurrentDirectory)
-}
-
-// Select selects the currently focused file or directory.
-func (m *Model) Select() {
-	if len(m.files) == 0 {
-		return
-	}
-
-	f := m.files[m.selected]
-	info, err := f.Info()
-	if err != nil {
-		return
-	}
-
-	isSymlink := info.Mode()&os.ModeSymlink != 0
-	isDir := f.IsDir()
-
-	filePath := filepath.Join(m.CurrentDirectory, f.Name())
-
-	if isSymlink {
-		// For symlinks, we need to resolve them using the actual filesystem.
-		actualPath := filepath.Join(m.rootPath, filePath)
-		symlinkPath, err := filepath.EvalSymlinks(actualPath)
-		if err != nil {
-			return
-		}
-
-		info, err := os.Stat(symlinkPath)
-		if err != nil {
-			return
-		}
-		if info.IsDir() {
-			isDir = true
-		}
-	}
-
-	if (!isDir && m.FileAllowed) || (isDir && m.DirAllowed) {
-		// Set the current path as the selection.
-		m.Path = filepath.Join(m.rootPath, filePath)
-	}
 }
 
 // View returns the view of the file picker.
@@ -426,22 +410,13 @@ func (m Model) View() string {
 
 		var symlinkPath string
 
-		info, err := f.Info()
-		if err != nil {
-			break
-		}
-
+		info, _ := f.Info()
 		isSymlink := info.Mode()&os.ModeSymlink != 0
-		size := strings.Replace(humanize.Bytes(uint64(max(0, info.Size()))), " ", "", 1) //nolint:gosec // Uses max.
+		size := strings.Replace(humanize.Bytes(uint64(info.Size())), " ", "", 1) //nolint:gosec
 		name := f.Name()
 
 		if isSymlink {
-			// For symlinks, resolve using the actual filesystem path.
-			actualPath := filepath.Join(m.rootPath, m.CurrentDirectory, name)
-			symlinkPath, err = filepath.EvalSymlinks(actualPath)
-			if err != nil {
-				break
-			}
+			symlinkPath, _ = filepath.EvalSymlinks(filepath.Join(m.CurrentDirectory, name))
 		}
 
 		disabled := !m.canSelect(name) && !f.IsDir()
@@ -471,12 +446,11 @@ func (m Model) View() string {
 		}
 
 		style := m.Styles.File
-		switch {
-		case f.IsDir():
+		if f.IsDir() {
 			style = m.Styles.Directory
-		case isSymlink:
+		} else if isSymlink {
 			style = m.Styles.Symlink
-		case disabled:
+		} else if disabled {
 			style = m.Styles.DisabledFile
 		}
 
@@ -500,10 +474,7 @@ func (m Model) View() string {
 		s.WriteRune('\n')
 	}
 
-	contentWidth := lipgloss.Width(s.String())
-	padding := max(0, m.Width-contentWidth)
-
-	return lipgloss.NewStyle().MaxWidth(m.Width).PaddingRight(padding).Render(s.String())
+	return s.String()
 }
 
 // DidSelectFile returns whether a user has selected a file (on this msg).
@@ -528,14 +499,18 @@ func (m Model) DidSelectDisabledFile(msg tea.Msg) (bool, string) {
 	return false, ""
 }
 
-//nolint:revive // TODO: Rename.
 func (m Model) didSelectFile(msg tea.Msg) (bool, string) {
 	if len(m.files) == 0 {
 		return false, ""
 	}
 
-	switch msg.(type) {
+	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// If the msg does not match the Select keymap then this could not have been a selection.
+		if !key.Matches(msg, m.KeyMap.Select) {
+			return false, ""
+		}
+
 		// The key press was a selection, let's confirm whether the current file could
 		// be selected or used for navigating deeper into the stack.
 		f := m.files[m.selected]
@@ -548,13 +523,7 @@ func (m Model) didSelectFile(msg tea.Msg) (bool, string) {
 		isDir := f.IsDir()
 
 		if isSymlink {
-			// For symlinks, resolve using the actual filesystem path.
-			actualPath := filepath.Join(m.rootPath, m.CurrentDirectory, f.Name())
-			symlinkPath, err := filepath.EvalSymlinks(actualPath)
-			if err != nil {
-				break
-			}
-
+			symlinkPath, _ := filepath.EvalSymlinks(filepath.Join(m.CurrentDirectory, f.Name()))
 			info, err := os.Stat(symlinkPath)
 			if err != nil {
 				break
