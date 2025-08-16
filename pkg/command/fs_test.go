@@ -303,7 +303,7 @@ func TestFilteredFS_ReadDir(t *testing.T) {
 				return tmpDir, rules
 			},
 			expectError:   false,
-			expectedFiles: []string{"config.yaml", "values.yml", "README.md"}, // ALL files when match exists
+			expectedFiles: []string{"config.yaml", "values.yml"},
 		},
 		"no matching files": {
 			setupFunc: func() (string, []*rule.Rule) {

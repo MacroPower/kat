@@ -88,7 +88,7 @@ func (f *FilteredFS) ReadDir(name string) ([]os.DirEntry, error) {
 // It recursively checks subdirectories up to maxDepth.
 func (f *FilteredFS) filterEntries(dirPath string, entries []os.DirEntry, depth uint) []os.DirEntry {
 	var (
-		files  []string
+		files  []os.DirEntry
 		dirs   []os.DirEntry
 		result []os.DirEntry
 	)
@@ -97,23 +97,16 @@ func (f *FilteredFS) filterEntries(dirPath string, entries []os.DirEntry, depth 
 		if entry.IsDir() {
 			dirs = append(dirs, entry)
 		} else {
-			files = append(files, filepath.Join(dirPath, entry.Name()))
+			files = append(files, entry)
 		}
 	}
 
 	// Check if any files in this directory match rules.
-	hasMatchingFiles := false
-	for _, r := range f.rules {
-		if r.MatchFiles(dirPath, files) {
-			hasMatchingFiles = true
-			break
-		}
-	}
-
-	if hasMatchingFiles {
-		for _, entry := range entries {
-			if !entry.IsDir() {
-				result = append(result, entry)
+	for _, file := range files {
+		for _, r := range f.rules {
+			if r.MatchFiles(dirPath, []string{filepath.Join(dirPath, file.Name())}) {
+				result = append(result, file)
+				continue
 			}
 		}
 	}

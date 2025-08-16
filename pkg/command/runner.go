@@ -68,7 +68,7 @@ func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
 
 	// If we have rules but no current profile set, find the matching rule and set the profile.
 	if cr.currentProfile == nil && len(cr.allRules) > 0 {
-		err = cr.selectInitialProfile()
+		err = cr.selectProfile(path)
 		if err != nil {
 			return nil, err
 		}
@@ -128,16 +128,16 @@ func WithProfiles(profiles map[string]*profile.Profile) RunnerOpt {
 	}
 }
 
-// selectInitialProfile finds the first matching rule and sets the corresponding profile as current.
-func (cr *Runner) selectInitialProfile() error {
-	fileInfo, err := os.Stat(cr.path)
+// selectProfile finds the first matching rule and sets the corresponding profile as current.
+func (cr *Runner) selectProfile(path string) error {
+	fileInfo, err := os.Stat(path)
 	if err != nil {
 		return fmt.Errorf("stat path: %w", err)
 	}
 
 	if fileInfo.IsDir() {
 		// Path is a directory, find matching files inside.
-		cmd, err := findMatchInDirectory(cr.path, cr.allRules)
+		cmd, err := findMatchInDirectory(path, cr.allRules)
 		if err != nil {
 			return err
 		}
@@ -155,9 +155,9 @@ func (cr *Runner) selectInitialProfile() error {
 
 	// Path is a file, check for direct match.
 	// Normalize to directory mode: pass parent directory and file list.
-	fileDir := filepath.Dir(cr.path)
+	fileDir := filepath.Dir(path)
 	for _, r := range cr.allRules {
-		if !r.MatchFiles(fileDir, []string{cr.path}) {
+		if !r.MatchFiles(fileDir, []string{path}) {
 			continue
 		}
 
