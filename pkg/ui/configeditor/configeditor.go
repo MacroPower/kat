@@ -74,16 +74,8 @@ func NewModel(cmd Commander, t *theme.Theme) Model {
 				ShowPermissions(true).
 				ShowSize(true).
 				DirAllowed(true).
-				FileAllowed(true).
-				Validate(func(s string) error {
-					_, err := cmd.FindProfiles(s)
-					if err != nil {
-						return fmt.Errorf("path error: %w", err)
-					}
-					return nil
-				}),
-		),
-		huh.NewGroup(
+				FileAllowed(true),
+
 			huh.NewText().
 				Key("extraArgs").
 				Title("Extra Arguments").
@@ -102,15 +94,8 @@ func NewModel(cmd Commander, t *theme.Theme) Model {
 					}
 					return ""
 				}, m.selectedProfileName),
-
-			huh.NewConfirm().
-				Key("confirm").
-				Title("Ready?").
-				Affirmative("Render").
-				Negative(""),
 		),
 	).
-		WithLayout(huh.LayoutGrid(1, 2)).
 		WithShowHelp(false).
 		WithTheme(ThemeToHuhTheme(t))
 
