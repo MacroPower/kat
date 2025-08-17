@@ -19,7 +19,8 @@ type Commander interface {
 	Subscribe(ch chan<- command.Event)
 	GetProfiles() map[string]*profile.Profile
 	GetCurrentProfile() (string, *profile.Profile)
-	SetProfile(name string) error
+	FindProfiles(path string) ([]command.ProfileMatch, error)
+	Configure(opts ...command.RunnerOpt) error
 	RunPlugin(name string) command.Output
 	FS() (*command.FilteredFS, error)
 }

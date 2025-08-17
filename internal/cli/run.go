@@ -392,28 +392,17 @@ func setupCommandRunner(path string, cfg *config.Config, rc *RunArgs) (*command.
 			return nil, err
 		}
 
-		cr, err = command.NewRunner(path, command.WithProfile(rc.CommandOrProfile, p))
+		cr, err = command.NewRunner(path, command.WithCustomProfile(rc.CommandOrProfile, p))
 		if err != nil {
 			return nil, err
 		}
 	} else {
 		cr, err = command.NewRunner(path,
 			command.WithRules(cfg.Command.Rules),
-			command.WithProfiles(cfg.Command.Profiles))
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if len(rc.Args) > 0 {
-		err = cr.SetExtraArgs(rc.Args)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if rc.Watch {
-		err := cr.Watch()
+			command.WithProfiles(cfg.Command.Profiles),
+			command.WithExtraArgs(rc.Args...),
+			command.WithWatch(rc.Watch),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -450,6 +439,9 @@ func runUI(cfg *ui.Config, cr common.Commander) error {
 					time.Sleep(*cfg.UI.MinimumDelay - time.Since(lastEventTime))
 				}
 
+				p.Send(e)
+
+			case command.EventConfigure:
 				p.Send(e)
 
 			case command.EventCancel:

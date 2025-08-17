@@ -18,8 +18,6 @@ import (
 	"github.com/dustin/go-humanize"
 
 	tea "github.com/charmbracelet/bubbletea"
-
-	"github.com/macropower/kat/pkg/ui/theme"
 )
 
 type FilteredFS interface {
@@ -38,11 +36,10 @@ func nextID() int {
 }
 
 // New returns a new filepicker model with default styling and key bindings.
-func New(fsys FilteredFS, t *theme.Theme) Model {
+func New(fsys FilteredFS) Model {
 	return Model{
 		id:               nextID(),
 		fsys:             fsys,
-		theme:            t,
 		CurrentDirectory: ".",
 		Cursor:           ">",
 		AllowedTypes:     []string{},
@@ -155,7 +152,6 @@ type Model struct {
 	maxStack      stack
 	selectedStack stack
 	fsys          FilteredFS
-	theme         *theme.Theme //nolint:unused // TODO: Use it.
 	FileSelected  string
 
 	// Path is the path which the user has selected with the file picker.

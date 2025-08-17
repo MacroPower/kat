@@ -31,10 +31,6 @@ type Config struct {
 
 // NewModel creates a new menu model with rule-based directory filtering.
 func NewModel(c Config) MenuModel {
-	ce := configeditor.NewModel(&configeditor.Config{
-		CommonModel: c.CommonModel,
-	})
-
 	kbr := &keys.KeyBindRenderer{}
 	ckb := c.CommonModel.KeyBinds
 	kb := c.KeyBinds
@@ -58,15 +54,21 @@ func NewModel(c Config) MenuModel {
 		*ckb.Quit,
 	)
 
-	return MenuModel{
+	m := MenuModel{
 		cm:           c.CommonModel,
-		configeditor: ce,
 		helpRenderer: statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr),
 	}
+	m.addConfigEditor()
+
+	return m
 }
 
 func (m MenuModel) Init() tea.Cmd {
 	return m.configeditor.Init()
+}
+
+func (m *MenuModel) addConfigEditor() {
+	m.configeditor = configeditor.NewModel(m.cm.Cmd, m.cm.Theme)
 }
 
 func (m MenuModel) Update(msg tea.Msg) (MenuModel, tea.Cmd) {
@@ -92,7 +94,9 @@ func (m MenuModel) Update(msg tea.Msg) (MenuModel, tea.Cmd) {
 func (m MenuModel) View() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		m.configeditor.View(),
+		lipgloss.NewStyle().
+			Height(m.cm.Height-1).
+			Render(m.configeditor.View()),
 		m.statusBarView(),
 		m.helpView(),
 	)
@@ -112,7 +116,10 @@ func (m *MenuModel) SetSize(_, h int) {
 	}
 }
 
-func (m *MenuModel) Unload() {}
+func (m *MenuModel) Unload() {
+	// Replace the editor with a new instance.
+	m.addConfigEditor()
+}
 
 // helpView renders the help content.
 func (m MenuModel) helpView() string {

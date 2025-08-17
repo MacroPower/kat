@@ -29,18 +29,20 @@ type Runner struct {
 	currentProfileName string                      // Name of the currently active profile.
 	profiles           map[string]*profile.Profile // All available profiles by name.
 	watcher            *fsnotify.Watcher
+	fsys               *FilteredFS
 	watchedFiles       map[string]struct{}
 	cancelFunc         context.CancelFunc
 	path               string
 	listeners          []chan<- Event
 	allRules           []*rule.Rule
+	extraArgs          []string
 	mu                 sync.Mutex
+	watch              bool
 }
 
 // NewRunner creates a new [Runner].
 func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
 	cr := &Runner{
-		path:         path,
 		watchedFiles: make(map[string]struct{}),
 		profiles:     make(map[string]*profile.Profile),
 	}
@@ -59,49 +61,153 @@ func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
 			WithProfiles(DefaultConfig.Profiles))
 	}
 
-	for _, opt := range opts {
-		err := opt(cr)
-		if err != nil {
-			return nil, fmt.Errorf("command option: %w", err)
-		}
-	}
+	opts = append(opts, WithPath(path))
 
-	// If we have rules but no current profile set, find the matching rule and set the profile.
-	if cr.currentProfile == nil && len(cr.allRules) > 0 {
-		err = cr.selectProfile(path)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if cr.currentProfile == nil {
-		return nil, fmt.Errorf("%w: %s", ErrNoCommandForPath, cr.path)
-	}
-
-	p := cr.currentProfile
-	if p.Hooks != nil {
-		for _, hook := range p.Hooks.Init {
-			hr, err := hook.Exec(context.Background(), cr.path)
-			if err != nil && hr != nil {
-				return nil, fmt.Errorf("%w: init: %w\n%s\n%s", profile.ErrHookExecution, err, hr.Stdout, hr.Stderr)
-			} else if err != nil {
-				return nil, fmt.Errorf("%w: init: %w", profile.ErrHookExecution, err)
-			}
-		}
+	err = cr.Configure(opts...)
+	if err != nil {
+		return nil, err
 	}
 
 	return cr, nil
 }
 
+// Configure applies options to an existing runner.
+// This allows reconfiguration after creation.
+func (cr *Runner) Configure(opts ...RunnerOpt) error {
+	cr.mu.Lock()
+	defer cr.mu.Unlock()
+
+	cr.removeWatchers()
+
+	// Cancel any currently running command.
+	if cr.cancelFunc != nil {
+		// Note: The cancel event is broadcast by the canceled goroutine.
+		cr.cancelFunc()
+	}
+
+	// Apply options.
+	for _, opt := range opts {
+		err := opt(cr)
+		if err != nil {
+			return fmt.Errorf("apply option: %w", err)
+		}
+	}
+
+	if cr.currentProfileName != "" && cr.currentProfile == nil {
+		var ok bool
+
+		cr.currentProfile, ok = cr.profiles[cr.currentProfileName]
+		if !ok {
+			return fmt.Errorf("unknown profile: %s", cr.currentProfileName)
+		}
+	}
+
+	// If we have rules but no current profile set, find the matching rule and set the profile.
+	if cr.currentProfile == nil && len(cr.allRules) > 0 {
+		pName, p, err := cr.FindProfile(cr.path)
+		if err != nil {
+			return err
+		}
+
+		cr.currentProfileName = pName
+		cr.currentProfile = p
+	}
+
+	if cr.currentProfile == nil {
+		return fmt.Errorf("%w: %s", ErrNoCommandForPath, cr.path)
+	}
+
+	if len(cr.extraArgs) > 0 {
+		err := cr.setExtraArgs()
+		if err != nil {
+			return err
+		}
+	}
+
+	if cr.watch {
+		err := cr.watchSource()
+		if err != nil {
+			return err
+		}
+	}
+
+	if cr.currentProfile != nil && cr.currentProfile.Hooks != nil {
+		for _, hook := range cr.currentProfile.Hooks.Init {
+			hr, err := hook.Exec(context.Background(), cr.path)
+			if err != nil && hr != nil {
+				return fmt.Errorf("%w: init: %w\n%s\n%s", profile.ErrHookExecution, err, hr.Stdout, hr.Stderr)
+			} else if err != nil {
+				return fmt.Errorf("%w: init: %w", profile.ErrHookExecution, err)
+			}
+		}
+	}
+
+	cr.broadcast(EventConfigure{})
+	slog.Debug("configured runner",
+		slog.String("path", cr.path),
+		slog.String("profile", cr.currentProfile.String()),
+		slog.Bool("watch", cr.watch),
+	)
+
+	return nil
+}
+
 type RunnerOpt func(cr *Runner) error
 
+// WithPath sets the path for the runner.
+func WithPath(path string) RunnerOpt {
+	return func(cr *Runner) error {
+		cr.path = path
+
+		return nil
+	}
+}
+
+// WithWatch sets the watch flag for the runner.
+func WithWatch(watch bool) RunnerOpt {
+	return func(cr *Runner) error {
+		cr.watch = watch
+
+		return nil
+	}
+}
+
 // WithProfile sets a specific profile to use.
-func WithProfile(name string, p *profile.Profile) RunnerOpt {
+func WithProfile(name string) RunnerOpt {
+	return func(cr *Runner) error {
+		cr.currentProfileName = name
+		cr.currentProfile = nil
+
+		return nil
+	}
+}
+
+// WithProfile sets a custom profile to use.
+func WithCustomProfile(name string, p *profile.Profile) RunnerOpt {
 	return func(cr *Runner) error {
 		cr.currentProfile = p
 		cr.currentProfileName = name
 		cr.profiles[name] = p
 
+		return nil
+	}
+}
+
+// WithAutoProfile configures the runner to determine the profile via rules.
+func WithAutoProfile() RunnerOpt {
+	return func(cr *Runner) error {
+		cr.currentProfile = nil
+		cr.currentProfileName = ""
+
+		return nil
+	}
+}
+
+// WithExtraArgs sets additional arguments to pass to the command.
+// This will override defined ExtraArgs on whatever profile was selected.
+func WithExtraArgs(args ...string) RunnerOpt {
+	return func(cr *Runner) error {
+		cr.extraArgs = args
 		return nil
 	}
 }
@@ -128,29 +234,56 @@ func WithProfiles(profiles map[string]*profile.Profile) RunnerOpt {
 	}
 }
 
-// selectProfile finds the first matching rule and sets the corresponding profile as current.
-func (cr *Runner) selectProfile(path string) error {
+type ProfileMatch struct {
+	Profile *profile.Profile
+	Name    string
+}
+
+func (cr *Runner) FindProfile(path string) (string, *profile.Profile, error) {
+	matches, err := cr.FindProfiles(path)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if len(matches) == 0 {
+		return "", nil, fmt.Errorf("%w: no matching profile found", ErrNoCommandForPath)
+	}
+
+	// Return the highest priority match.
+	return matches[0].Name, matches[0].Profile, nil
+}
+
+// FindProfiles finds matching profiles for the given path using the configured rules.
+// The results are returned in order of priority.
+func (cr *Runner) FindProfiles(path string) ([]ProfileMatch, error) {
 	fileInfo, err := os.Stat(path)
 	if err != nil {
-		return fmt.Errorf("stat path: %w", err)
+		return nil, fmt.Errorf("stat path: %w", err)
 	}
+
+	matches := []ProfileMatch{}
 
 	if fileInfo.IsDir() {
 		// Path is a directory, find matching files inside.
-		cmd, err := findMatchInDirectory(path, cr.allRules)
+		cmds, err := findMatchInDirectory(path, cr.allRules)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		p, exists := cr.profiles[cmd.Profile]
-		if !exists {
-			return fmt.Errorf("profile %q not found for rule", cmd.Profile)
+		for _, cmd := range cmds {
+			p, exists := cr.profiles[cmd.Profile]
+			if !exists {
+				return nil, fmt.Errorf("profile %q not found for rule", cmd.Profile)
+			}
+
+			matches = append(matches, ProfileMatch{
+				Name:    cmd.Profile,
+				Profile: p,
+			})
 		}
-
-		cr.currentProfile = p
-		cr.currentProfileName = cmd.Profile
-
-		return nil
+		if len(matches) > 0 {
+			return matches, nil
+		}
 	}
 
 	// Path is a file, check for direct match.
@@ -163,16 +296,19 @@ func (cr *Runner) selectProfile(path string) error {
 
 		p, exists := cr.profiles[r.Profile]
 		if !exists {
-			return fmt.Errorf("profile %q not found for rule", r.Profile)
+			return nil, fmt.Errorf("profile %q not found for rule", r.Profile)
 		}
 
-		cr.currentProfile = p
-		cr.currentProfileName = r.Profile
-
-		return nil
+		matches = append(matches, ProfileMatch{
+			Name:    r.Profile,
+			Profile: p,
+		})
+	}
+	if len(matches) > 0 {
+		return matches, nil
 	}
 
-	return fmt.Errorf("%w: no matching rule found", ErrNoCommandForPath)
+	return nil, fmt.Errorf("%w: no matching rule found", ErrNoCommandForPath)
 }
 
 // isFileWatched returns true if the file matched the profile's source expression.
@@ -207,23 +343,24 @@ func (cr *Runner) SetProfile(name string) error {
 	return nil
 }
 
-// FS returns an [FilteredFS] for the runner that only allows access to directories
-// and files that match at least one rule.
+// FS creates a [FilteredFS] for the runner that hides directories and files
+// unless they match at least one of the configured rules.
 func (cr *Runner) FS() (*FilteredFS, error) {
+	if cr.fsys != nil {
+		return cr.fsys, nil
+	}
+
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("get working directory: %w", err)
 	}
 
-	root, err := os.OpenRoot(wd)
+	cr.fsys, err = NewFilteredFS(wd, cr.allRules...)
 	if err != nil {
-		return nil, fmt.Errorf("open root: %w", err)
+		return nil, err
 	}
 
-	return &FilteredFS{
-		root:  root,
-		rules: cr.allRules,
-	}, nil
+	return cr.fsys, nil
 }
 
 // RunPlugin executes a plugin by name.
@@ -231,16 +368,19 @@ func (cr *Runner) RunPlugin(name string) Output {
 	return cr.RunPluginContext(context.Background(), name)
 }
 
-func (cr *Runner) SetExtraArgs(args []string) error {
-	cr.mu.Lock()
-	defer cr.mu.Unlock()
-
+func (cr *Runner) setExtraArgs() error {
 	_, p := cr.GetCurrentProfile()
-	p.ExtraArgs = args
-	err := p.Build() // Rebuild the profile to apply changes.
+
+	// Create a copy of the profile to avoid mutating shared profiles.
+	profileCopy := *p
+	profileCopy.ExtraArgs = cr.extraArgs
+	err := profileCopy.Build() // Rebuild the profile to apply changes.
 	if err != nil {
 		return fmt.Errorf("rebuild profile with extra args: %w", err)
 	}
+
+	// Update the current profile with the copy.
+	cr.currentProfile = &profileCopy
 
 	return nil
 }
@@ -256,7 +396,7 @@ func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 
 	// Cancel any currently running command.
 	if cr.cancelFunc != nil {
-		cr.broadcast(EventCancel{})
+		// Note: The cancel event is broadcast by the canceled goroutine.
 		cr.cancelFunc()
 	}
 
@@ -314,7 +454,7 @@ func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 	return co
 }
 
-func (cr *Runner) Watch() error {
+func (cr *Runner) watchSource() error {
 	p := cr.currentProfile
 
 	var files []string
@@ -351,13 +491,34 @@ func (cr *Runner) Watch() error {
 	return nil
 }
 
+func (cr *Runner) removeWatchers() {
+	if cr.watcher == nil {
+		return
+	}
+
+	for file := range cr.watchedFiles {
+		err := cr.watcher.Remove(file)
+		if errors.Is(err, fsnotify.ErrNonExistentWatch) {
+			continue
+		}
+		if err != nil {
+			slog.Error("remove path from watcher", slog.Any("err", err))
+		}
+	}
+
+	clear(cr.watchedFiles)
+}
+
 // Subscribe allows other components to listen for command events.
 func (cr *Runner) Subscribe(ch chan<- Event) {
 	cr.listeners = append(cr.listeners, ch)
 }
 
 func (cr *Runner) broadcast(evt Event) {
-	// Send the event to all listeners.
+	slog.Debug("broadcasting event",
+		slog.String("event", fmt.Sprintf("%T", evt)),
+	)
+
 	for _, ch := range cr.listeners {
 		ch <- evt
 	}
@@ -520,7 +681,7 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 // findMatchInDirectory looks for matching files in a directory.
 // It collects all files and allows CEL expressions to operate on the entire collection.
 // Returns (rule, files) where files contains the specific files to process, or nil to use profile.source.
-func findMatchInDirectory(dirPath string, rs []*rule.Rule) (*rule.Rule, error) {
+func findMatchInDirectory(dirPath string, rs []*rule.Rule) ([]*rule.Rule, error) {
 	var files []string
 
 	// Collect all files in the directory (non-recursive).
@@ -542,10 +703,14 @@ func findMatchInDirectory(dirPath string, rs []*rule.Rule) (*rule.Rule, error) {
 	}
 
 	// Try each rule with the full file collection.
+	matchedRules := []*rule.Rule{}
 	for _, r := range rs {
 		if r.MatchFiles(dirPath, files) {
-			return r, nil
+			matchedRules = append(matchedRules, r)
 		}
+	}
+	if len(matchedRules) > 0 {
+		return matchedRules, nil
 	}
 
 	return nil, fmt.Errorf("%w: no matching files in %s", ErrNoCommandForPath, dirPath)

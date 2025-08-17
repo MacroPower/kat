@@ -33,4 +33,7 @@ type (
 
 	// EventCancel indicates that a command execution has been canceled.
 	EventCancel struct{}
+
+	// EventConfigure indicates that a command has been configured (or re-configured).
+	EventConfigure struct{}
 )

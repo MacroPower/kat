@@ -297,17 +297,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess))
 		}
 
+	case command.EventConfigure:
+		initCmds := m.Init()
+		cmds = append(cmds, initCmds)
+
 	case menu.ChangeConfigMsg:
-		err := m.cm.Cmd.SetProfile(msg.To.Profile)
+		m.list.YAMLs = nil
+		m.state = stateShowList
+		m.menu.Unload()
+
+		err := m.cm.Cmd.Configure(
+			command.WithProfile(msg.To.Profile),
+			command.WithPath(msg.To.File),
+			command.WithExtraArgs(msg.To.ExtraArgs...),
+		)
 		if err != nil {
 			m.err = err
 			m.overlayState = overlayStateError
-
-			break
 		}
-
-		m.state = stateShowList
-		cmds = append(cmds, m.runCommand())
 
 	case common.StatusMessageTimeoutMsg:
 		m.cm.ShowStatusMessage = false
@@ -472,6 +479,10 @@ func (m *model) isTextInputFocused() bool {
 	}
 	if m.state == stateShowResult && m.fullResult.ViewState == pager.StateSearching {
 		// Pass through to pager search handler.
+		return true
+	}
+	if m.state == stateShowMenu {
+		// Pass through to menu.
 		return true
 	}
 

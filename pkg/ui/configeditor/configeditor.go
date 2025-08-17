@@ -1,85 +1,104 @@
 package configeditor
 
 import (
-	"slices"
+	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-shellwords"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/profile"
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/filepicker"
+	"github.com/macropower/kat/pkg/ui/theme"
 )
 
 type Model struct {
 	form *huh.Form
+	cmd  Commander
 
-	cm                  *common.CommonModel
 	profiles            map[string]*profile.Profile
-	selectedProfile     *profile.Profile
 	selectedProfileName *string
+	selectedPath        *string
 	height              int
 }
 
 type Result struct {
 	File      string
 	Profile   string
-	ExtraArgs string
+	ExtraArgs []string
 }
 
 type Config struct {
 	CommonModel *common.CommonModel
 }
 
-func NewModel(cfg *Config) Model {
-	m := Model{
-		cm: cfg.CommonModel,
-	}
-	m.profiles = m.cm.Cmd.GetProfiles()
-	pn, p := m.cm.Cmd.GetCurrentProfile()
-	m.selectedProfileName = &pn
-	m.selectedProfile = p
+type Commander interface {
+	GetProfiles() map[string]*profile.Profile
+	GetCurrentProfile() (string, *profile.Profile)
+	FindProfiles(path string) ([]command.ProfileMatch, error)
+	FS() (*command.FilteredFS, error)
+}
 
-	profileOptions := []huh.Option[string]{}
-	for p := range m.profiles {
-		profileOptions = append(profileOptions, huh.NewOption(p, p))
-	}
+func NewModel(cmd Commander, t *theme.Theme) Model {
+	var (
+		m            Model
+		selectedPath string
+	)
 
-	slices.SortFunc(profileOptions, func(a, b huh.Option[string]) int {
-		return strings.Compare(a.Value, b.Value)
-	})
+	m.selectedPath = &selectedPath
 
-	fsys, err := cfg.CommonModel.Cmd.FS()
+	m.profiles = cmd.GetProfiles()
+
+	pName, _ := cmd.GetCurrentProfile()
+	m.selectedProfileName = &pName
+
+	m.cmd = cmd
+
+	fsys, err := cmd.FS()
 	if err != nil {
 		panic(err)
 	}
 
 	m.form = huh.NewForm(
 		huh.NewGroup(
-			NewFilePicker(filepicker.New(fsys, cfg.CommonModel.Theme)).
+			NewFilePicker(filepicker.New(fsys)).
 				Key("file").
 				Picking(true).
 				Title("Select a file or directory").
-				ShowPermissions(true).ShowSize(true).
+				ShowPermissions(true).
+				ShowSize(true).
 				DirAllowed(true).
-				FileAllowed(true),
+				FileAllowed(true).
+				Validate(func(s string) error {
+					_, err := cmd.FindProfiles(s)
+					if err != nil {
+						return fmt.Errorf("path error: %w", err)
+					}
+					return nil
+				}),
 		),
 		huh.NewGroup(
-			huh.NewSelect[string]().
-				Key("profile").
-				Options(profileOptions...).
-				Title("Choose a profile"),
-
 			huh.NewText().
 				Key("extraArgs").
 				Title("Extra Arguments").
+				TitleFunc(func() string {
+					if m.selectedProfileName != nil && *m.selectedProfileName != "" {
+						return fmt.Sprintf("Extra Arguments (%s)", *m.selectedProfileName)
+					}
+					return "Extra Arguments"
+				}, m.selectedProfileName).
 				Lines(1).
 				PlaceholderFunc(func() string {
-					if m.selectedProfile != nil && len(m.selectedProfile.ExtraArgs) > 0 {
-						return strings.Join(m.selectedProfile.ExtraArgs, " ")
+					if m.selectedProfileName != nil && *m.selectedProfileName != "" {
+						if p, ok := m.profiles[*m.selectedProfileName]; ok {
+							return strings.Join(p.ExtraArgs, " ")
+						}
 					}
 					return ""
 				}, m.selectedProfileName),
@@ -92,9 +111,59 @@ func NewModel(cfg *Config) Model {
 		),
 	).
 		WithLayout(huh.LayoutGrid(1, 2)).
-		WithShowHelp(false)
+		WithShowHelp(false).
+		WithTheme(ThemeToHuhTheme(t))
 
 	return m
+}
+
+func ThemeToHuhTheme(t *theme.Theme) *huh.Theme {
+	h := huh.ThemeBase()
+
+	h.Focused.Base = h.Focused.Base.BorderForeground(t.SelectedStyle.GetForeground())
+	h.Focused.Card = h.Focused.Base
+	h.Focused.Title = h.Focused.Title.Foreground(t.SelectedStyle.GetForeground()).Bold(true)
+	h.Focused.NoteTitle = h.Focused.NoteTitle.Foreground(t.SelectedStyle.GetForeground()).Bold(true).MarginBottom(1)
+	h.Focused.Directory = h.Focused.Directory.Foreground(t.SelectedSubtleStyle.GetForeground())
+	h.Focused.Description = h.Focused.Description.Foreground(t.SelectedSubtleStyle.GetForeground())
+	h.Focused.ErrorIndicator = h.Focused.ErrorIndicator.Foreground(t.ErrorTextStyle.GetForeground())
+	h.Focused.ErrorMessage = h.Focused.ErrorMessage.Foreground(t.ErrorTextStyle.GetForeground())
+	h.Focused.SelectSelector = h.Focused.SelectSelector.Foreground(t.SelectedStyle.GetForeground())
+	h.Focused.NextIndicator = h.Focused.NextIndicator.Foreground(t.SelectedStyle.GetForeground())
+	h.Focused.PrevIndicator = h.Focused.PrevIndicator.Foreground(t.SelectedStyle.GetForeground())
+	h.Focused.Option = h.Focused.Option.Foreground(t.GenericTextStyle.GetBackground())
+	h.Focused.MultiSelectSelector = h.Focused.MultiSelectSelector.Foreground(t.SelectedStyle.GetForeground())
+	h.Focused.SelectedOption = h.Focused.SelectedOption.Foreground(t.SelectedStyle.GetForeground())
+	h.Focused.SelectedPrefix = lipgloss.NewStyle().
+		Foreground(t.SelectedStyle.GetForeground()).
+		SetString("✓ ")
+	h.Focused.UnselectedPrefix = lipgloss.NewStyle().
+		Foreground(t.SubtleStyle.GetForeground()).
+		SetString("• ")
+	h.Focused.UnselectedOption = h.Focused.UnselectedOption.
+		Foreground(t.GenericTextStyle.GetBackground())
+	h.Focused.FocusedButton = h.Focused.FocusedButton.
+		Foreground(t.LogoStyle.GetForeground()).
+		Background(t.LogoStyle.GetBackground())
+	h.Focused.Next = h.Focused.FocusedButton
+	h.Focused.BlurredButton = h.Focused.BlurredButton.
+		Foreground(t.LogoStyle.GetForeground()).
+		Background(t.SubtleStyle.GetForeground())
+
+	h.Focused.TextInput.Cursor = h.Focused.TextInput.Cursor.Foreground(t.SelectedStyle.GetForeground())
+	h.Focused.TextInput.Placeholder = h.Focused.TextInput.Placeholder.Foreground(t.SubtleStyle.GetForeground())
+	h.Focused.TextInput.Prompt = h.Focused.TextInput.Prompt.Foreground(t.SelectedStyle.GetForeground())
+
+	h.Blurred = h.Focused
+	h.Blurred.Base = h.Focused.Base.BorderStyle(lipgloss.HiddenBorder())
+	h.Blurred.Card = h.Blurred.Base
+	h.Blurred.NextIndicator = lipgloss.NewStyle()
+	h.Blurred.PrevIndicator = lipgloss.NewStyle()
+
+	h.Group.Title = h.Focused.Title
+	h.Group.Description = h.Focused.Description
+
+	return h
 }
 
 func (m Model) Init() tea.Cmd {
@@ -114,20 +183,30 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		field := m.form.GetFocusedField()
 		switch field.GetKey() {
-		case "profile":
-			profileName, ok := field.GetValue().(string)
+		case "file":
+			filePath, ok := field.GetValue().(string)
 			if !ok {
+				panic("file field value is not a string")
+			}
+			if filePath == "" {
 				break
 			}
 
-			profilePtr, ok := m.profiles[profileName]
-			if !ok {
+			profiles, err := m.cmd.FindProfiles(filePath)
+			if err != nil {
+				slog.Error("error finding profiles",
+					slog.Any("error", err),
+				)
+
+				*m.selectedProfileName = ""
+
 				break
 			}
 
-			p := *profilePtr
-			*m.selectedProfile = p
-			*m.selectedProfileName = profileName
+			matchedProfile := profiles[0]
+
+			*m.selectedPath = filePath
+			*m.selectedProfileName = matchedProfile.Name
 
 			updateForm = true
 		}
@@ -152,10 +231,18 @@ func (m Model) IsCompleted() bool {
 }
 
 func (m Model) Result() Result {
+	argStr := m.form.GetString("extraArgs")
+	extraArgs, err := shellwords.Parse(argStr)
+	if err != nil {
+		slog.Error("skipping extra arguments",
+			slog.Any("error", err),
+		)
+	}
+
 	return Result{
 		File:      m.form.GetString("file"),
-		Profile:   m.form.GetString("profile"),
-		ExtraArgs: m.form.GetString("extraArgs"),
+		Profile:   *m.selectedProfileName,
+		ExtraArgs: extraArgs,
 	}
 }
 

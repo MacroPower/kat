@@ -3,6 +3,8 @@ package command
 import (
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
 
 	"github.com/macropower/kat/pkg/kube"
 	"github.com/macropower/kat/pkg/profile"
@@ -27,6 +29,10 @@ func NewStatic(input string) (*Static, error) {
 	return &Static{Resources: resources}, nil
 }
 
+func (rg *Static) Configure(_ ...RunnerOpt) error {
+	return nil
+}
+
 func (rg *Static) String() string {
 	return "static"
 }
@@ -37,11 +43,17 @@ func (rg *Static) GetCurrentProfile() (string, *profile.Profile) {
 }
 
 func (rg *Static) GetProfiles() map[string]*profile.Profile {
-	return nil
+	return map[string]*profile.Profile{}
 }
 
-func (rg *Static) SetProfile(_ string) error {
-	return nil
+func (rg *Static) FindProfile(_ string) (string, *profile.Profile, error) {
+	// Static resources do not have a profile.
+	return "", nil, errors.ErrUnsupported
+}
+
+func (rg *Static) FindProfiles(_ string) ([]ProfileMatch, error) {
+	// Static resources do not have a profile.
+	return nil, errors.ErrUnsupported
 }
 
 func (rg *Static) Run() Output {
@@ -73,7 +85,10 @@ func (rg *Static) Subscribe(ch chan<- Event) {
 }
 
 func (rg *Static) broadcast(evt Event) {
-	// Send the event to all listeners.
+	slog.Debug("broadcasting event",
+		slog.String("event", fmt.Sprintf("%T", evt)),
+	)
+
 	for _, ch := range rg.listeners {
 		ch <- evt
 	}
@@ -97,5 +112,5 @@ func (rg *Static) GetRules() []*rule.Rule {
 }
 
 func (rg *Static) FS() (*FilteredFS, error) {
-	return nil, errors.ErrUnsupported
+	return NewFilteredFS(os.TempDir())
 }
