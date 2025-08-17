@@ -5,6 +5,7 @@ package filepicker
 import (
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -64,7 +65,7 @@ func New(fsys FilteredFS, t *theme.Theme) Model {
 }
 
 type errorMsg struct {
-	err error
+	err error //nolint:unused // TODO: Use it.
 }
 
 type readDirMsg struct {
@@ -154,7 +155,7 @@ type Model struct {
 	maxStack      stack
 	selectedStack stack
 	fsys          FilteredFS
-	theme         *theme.Theme
+	theme         *theme.Theme //nolint:unused // TODO: Use it.
 	FileSelected  string
 
 	// Path is the path which the user has selected with the file picker.
@@ -360,9 +361,23 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			isDir := f.IsDir()
 
 			if isSymlink {
-				symlinkPath, _ := filepath.EvalSymlinks(filepath.Join(m.CurrentDirectory, f.Name()))
+				symlinkPath, err := filepath.EvalSymlinks(filepath.Join(m.CurrentDirectory, f.Name()))
+				if err != nil {
+					slog.Error("failed to resolve symlink",
+						slog.String("file", f.Name()),
+						slog.Any("error", err),
+					)
+
+					break
+				}
+
 				info, err := os.Stat(symlinkPath)
 				if err != nil {
+					slog.Error("failed to stat symlink",
+						slog.String("file", f.Name()),
+						slog.Any("error", err),
+					)
+
 					break
 				}
 				if info.IsDir() {
@@ -410,13 +425,33 @@ func (m Model) View() string {
 
 		var symlinkPath string
 
-		info, _ := f.Info()
-		isSymlink := info.Mode()&os.ModeSymlink != 0
-		size := strings.Replace(humanize.Bytes(uint64(info.Size())), " ", "", 1) //nolint:gosec
 		name := f.Name()
 
+		info, err := f.Info()
+		if err != nil {
+			slog.Error("failed to get file info",
+				slog.String("file", name),
+				slog.Any("error", err),
+			)
+
+			continue
+		}
+
+		isSymlink := info.Mode()&os.ModeSymlink != 0
+
+		//nolint:gosec // Checked with max.
+		size := strings.Replace(humanize.Bytes(uint64(max(0, info.Size()))), " ", "", 1)
+
 		if isSymlink {
-			symlinkPath, _ = filepath.EvalSymlinks(filepath.Join(m.CurrentDirectory, name))
+			symlinkPath, err = filepath.EvalSymlinks(filepath.Join(m.CurrentDirectory, name))
+			if err != nil {
+				slog.Error("failed to resolve symlink",
+					slog.String("file", name),
+					slog.Any("error", err),
+				)
+
+				continue
+			}
 		}
 
 		disabled := !m.canSelect(name) && !f.IsDir()
@@ -446,11 +481,12 @@ func (m Model) View() string {
 		}
 
 		style := m.Styles.File
-		if f.IsDir() {
+		switch {
+		case f.IsDir():
 			style = m.Styles.Directory
-		} else if isSymlink {
+		case isSymlink:
 			style = m.Styles.Symlink
-		} else if disabled {
+		case disabled:
 			style = m.Styles.DisabledFile
 		}
 
@@ -479,7 +515,7 @@ func (m Model) View() string {
 
 // DidSelectFile returns whether a user has selected a file (on this msg).
 func (m Model) DidSelectFile(msg tea.Msg) (bool, string) {
-	didSelect, path := m.didSelectFile(msg)
+	didSelect, path := m.didSelectAnyFile(msg)
 	if didSelect && m.canSelect(path) {
 		return true, path
 	}
@@ -491,7 +527,7 @@ func (m Model) DidSelectFile(msg tea.Msg) (bool, string) {
 // (on this msg). This is necessary only if you would like to warn the user that
 // they tried to select a disabled file.
 func (m Model) DidSelectDisabledFile(msg tea.Msg) (bool, string) {
-	didSelect, path := m.didSelectFile(msg)
+	didSelect, path := m.didSelectAnyFile(msg)
 	if didSelect && !m.canSelect(path) {
 		return true, path
 	}
@@ -499,7 +535,7 @@ func (m Model) DidSelectDisabledFile(msg tea.Msg) (bool, string) {
 	return false, ""
 }
 
-func (m Model) didSelectFile(msg tea.Msg) (bool, string) {
+func (m Model) didSelectAnyFile(msg tea.Msg) (bool, string) {
 	if len(m.files) == 0 {
 		return false, ""
 	}
@@ -523,9 +559,23 @@ func (m Model) didSelectFile(msg tea.Msg) (bool, string) {
 		isDir := f.IsDir()
 
 		if isSymlink {
-			symlinkPath, _ := filepath.EvalSymlinks(filepath.Join(m.CurrentDirectory, f.Name()))
+			symlinkPath, err := filepath.EvalSymlinks(filepath.Join(m.CurrentDirectory, f.Name()))
+			if err != nil {
+				slog.Error("failed to resolve symlink",
+					slog.String("file", f.Name()),
+					slog.Any("error", err),
+				)
+
+				break
+			}
+
 			info, err := os.Stat(symlinkPath)
 			if err != nil {
+				slog.Error("failed to stat symlink",
+					slog.String("file", f.Name()),
+					slog.Any("error", err),
+				)
+
 				break
 			}
 			if info.IsDir() {

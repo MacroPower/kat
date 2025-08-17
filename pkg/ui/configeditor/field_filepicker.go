@@ -108,8 +108,8 @@ func (f *FilePicker) Accessor(accessor huh.Accessor[string]) *FilePicker {
 
 // Key sets the key of the file field which can be used to retrieve the value
 // after submission.
-func (f *FilePicker) Key(key string) *FilePicker {
-	f.key = key
+func (f *FilePicker) Key(k string) *FilePicker {
+	f.key = k
 	return f
 }
 
@@ -321,12 +321,12 @@ func (f *FilePicker) setPicking(v bool) {
 
 // Run runs the file field.
 func (f *FilePicker) Run() error {
-	return huh.NewForm(huh.NewGroup(f)).Run() //nolint:wrapcheck
+	return huh.NewForm(huh.NewGroup(f)).Run() //nolint:wrapcheck // Return original error.
 }
 
 // RunAccessible runs an accessible file field.
-func (f *FilePicker) RunAccessible(w io.Writer, r io.Reader) error {
-	return nil
+func (f *FilePicker) RunAccessible(_ io.Writer, _ io.Reader) error {
+	return errors.ErrUnsupported
 }
 
 // copied from bubbles' filepicker.

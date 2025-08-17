@@ -36,23 +36,14 @@ type CommonModel struct {
 	ShowStatusMessage  bool // Whether to show the status message in the status bar.
 }
 
-// ApplicationContext indicates the area of the application something applies
-// to. Occasionally used as an argument to commands and messages.
-type ApplicationContext int
-
-const (
-	ListContext ApplicationContext = iota
-	PagerContext
-
-	StatusMessageTimeout = time.Second * 3 // How long to show status messages.
-)
+const StatusMessageTimeout = time.Second * 3 // How long to show status messages.
 
 type (
 	StatusMessage struct {
 		Message string
 		Style   statusbar.Style
 	}
-	StatusMessageTimeoutMsg ApplicationContext
+	StatusMessageTimeoutMsg struct{}
 )
 
 func (m *CommonModel) GetStatusBar() *statusbar.StatusBarRenderer {
@@ -77,18 +68,18 @@ func (m *CommonModel) SendStatusMessage(msg string, style statusbar.Style) tea.C
 
 	m.StatusMessageTimer = time.NewTimer(StatusMessageTimeout)
 
-	return WaitForStatusMessageTimeout(ListContext, m.StatusMessageTimer)
+	return WaitForStatusMessageTimeout(m.StatusMessageTimer)
 }
 
 type ErrMsg struct{ Err error } //nolint:errname // Tea message.
 
 func (e ErrMsg) Error() string { return e.Err.Error() }
 
-func WaitForStatusMessageTimeout(appCtx ApplicationContext, t *time.Timer) tea.Cmd {
+func WaitForStatusMessageTimeout(t *time.Timer) tea.Cmd {
 	return func() tea.Msg {
 		<-t.C
 
-		return StatusMessageTimeoutMsg(appCtx)
+		return StatusMessageTimeoutMsg{}
 	}
 }
 

@@ -1,7 +1,6 @@
 package configeditor
 
 import (
-	"log/slog"
 	"slices"
 	"strings"
 
@@ -23,6 +22,12 @@ type Model struct {
 	selectedProfile     *profile.Profile
 	selectedProfileName *string
 	height              int
+}
+
+type Result struct {
+	File      string
+	Profile   string
+	ExtraArgs string
 }
 
 type Config struct {
@@ -55,6 +60,7 @@ func NewModel(cfg *Config) Model {
 	m.form = huh.NewForm(
 		huh.NewGroup(
 			NewFilePicker(filepicker.New(fsys, cfg.CommonModel.Theme)).
+				Key("file").
 				Picking(true).
 				Title("Select a file or directory").
 				ShowPermissions(true).ShowSize(true).
@@ -72,7 +78,6 @@ func NewModel(cfg *Config) Model {
 				Title("Extra Arguments").
 				Lines(1).
 				PlaceholderFunc(func() string {
-					slog.Debug("Getting extra args placeholder", slog.String("profile", *m.selectedProfileName))
 					if m.selectedProfile != nil && len(m.selectedProfile.ExtraArgs) > 0 {
 						return strings.Join(m.selectedProfile.ExtraArgs, " ")
 					}
@@ -121,8 +126,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 			p := *profilePtr
-			*m.selectedProfileName = profileName
 			*m.selectedProfile = p
+			*m.selectedProfileName = profileName
 
 			updateForm = true
 		}
@@ -139,14 +144,19 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	if m.form.State == huh.StateCompleted {
-		profileName := *m.selectedProfileName
-		slog.Debug("profile selected", slog.String("name", profileName))
-
-		_ = m.cm.Cmd.SetProfile(profileName)
-	}
-
 	return m, tea.Batch(cmds...)
+}
+
+func (m Model) IsCompleted() bool {
+	return m.form.State == huh.StateCompleted
+}
+
+func (m Model) Result() Result {
+	return Result{
+		File:      m.form.GetString("file"),
+		Profile:   m.form.GetString("profile"),
+		ExtraArgs: m.form.GetString("extraArgs"),
+	}
 }
 
 func (m Model) View() string {

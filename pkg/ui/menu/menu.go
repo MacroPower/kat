@@ -1,6 +1,8 @@
 package menu
 
 import (
+	"log/slog"
+
 	"github.com/charmbracelet/lipgloss"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,6 +12,10 @@ import (
 	"github.com/macropower/kat/pkg/ui/configeditor"
 	"github.com/macropower/kat/pkg/ui/statusbar"
 )
+
+type ChangeConfigMsg struct {
+	To configeditor.Result
+}
 
 type MenuModel struct {
 	cm           *common.CommonModel
@@ -64,12 +70,23 @@ func (m MenuModel) Init() tea.Cmd {
 }
 
 func (m MenuModel) Update(msg tea.Msg) (MenuModel, tea.Cmd) {
-	var cmd tea.Cmd
+	var (
+		cmd  tea.Cmd
+		cmds []tea.Cmd
+	)
 
-	// Update the configeditor model.
 	m.configeditor, cmd = m.configeditor.Update(msg)
+	cmds = append(cmds, cmd)
 
-	return m, cmd
+	if m.configeditor.IsCompleted() {
+		slog.Debug("config editor completed", slog.Any("data", m.configeditor.Result()))
+
+		cmds = append(cmds, func() tea.Msg {
+			return ChangeConfigMsg{To: m.configeditor.Result()}
+		})
+	}
+
+	return m, tea.Batch(cmds...)
 }
 
 func (m MenuModel) View() string {

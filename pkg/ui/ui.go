@@ -297,6 +297,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess))
 		}
 
+	case menu.ChangeConfigMsg:
+		err := m.cm.Cmd.SetProfile(msg.To.Profile)
+		if err != nil {
+			m.err = err
+			m.overlayState = overlayStateError
+
+			break
+		}
+
+		m.state = stateShowList
+		cmds = append(cmds, m.runCommand())
+
 	case common.StatusMessageTimeoutMsg:
 		m.cm.ShowStatusMessage = false
 
