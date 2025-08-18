@@ -18,6 +18,11 @@ import (
 	"github.com/macropower/kat/pkg/ui/theme"
 )
 
+const (
+	FieldFile      = "file"
+	FieldExtraArgs = "extraArgs"
+)
+
 type Model struct {
 	form *huh.Form
 	cmd  Commander
@@ -68,7 +73,7 @@ func NewModel(cmd Commander, t *theme.Theme) Model {
 	m.form = huh.NewForm(
 		huh.NewGroup(
 			NewFilePicker(filepicker.New(fsys)).
-				Key("file").
+				Key(FieldFile).
 				Picking(true).
 				Title("Select a file or directory").
 				ShowPermissions(true).
@@ -77,7 +82,7 @@ func NewModel(cmd Commander, t *theme.Theme) Model {
 				FileAllowed(true),
 
 			huh.NewText().
-				Key("extraArgs").
+				Key(FieldExtraArgs).
 				Title("Extra Arguments").
 				TitleFunc(func() string {
 					if m.selectedProfileName != nil && *m.selectedProfileName != "" {
@@ -168,7 +173,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		field := m.form.GetFocusedField()
 		switch field.GetKey() {
-		case "file":
+		case FieldFile:
 			filePath, ok := field.GetValue().(string)
 			if !ok {
 				panic("file field value is not a string")
@@ -215,8 +220,12 @@ func (m Model) IsCompleted() bool {
 	return m.form.State == huh.StateCompleted
 }
 
+func (m Model) Focused() bool {
+	return m.form.GetFocusedField().GetKey() == FieldExtraArgs
+}
+
 func (m Model) Result() Result {
-	argStr := m.form.GetString("extraArgs")
+	argStr := m.form.GetString(FieldExtraArgs)
 	extraArgs, err := shellwords.Parse(argStr)
 	if err != nil {
 		slog.Error("skipping extra arguments",
@@ -225,7 +234,7 @@ func (m Model) Result() Result {
 	}
 
 	return Result{
-		File:      m.form.GetString("file"),
+		File:      m.form.GetString(FieldFile),
 		Profile:   *m.selectedProfileName,
 		ExtraArgs: extraArgs,
 	}
@@ -233,7 +242,9 @@ func (m Model) Result() Result {
 
 func (m Model) View() string {
 	if m.form.State == huh.StateCompleted {
-		return ""
+		return lipgloss.NewStyle().
+			Height(m.height).
+			Render("Loading...")
 	}
 
 	return lipgloss.NewStyle().

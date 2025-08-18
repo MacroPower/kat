@@ -72,7 +72,7 @@ type model struct {
 	overlay      *overlay.Overlay
 	kb           *KeyBinds
 	result       string
-	menu         menu.MenuModel
+	menu         menu.Model
 	spinner      spinner.Model
 	pager        pager.PagerModel
 	fullResult   pager.PagerModel

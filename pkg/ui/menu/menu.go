@@ -17,9 +17,10 @@ type ChangeConfigMsg struct {
 	To configeditor.Result
 }
 
-type MenuModel struct {
+type Model struct {
 	cm           *common.CommonModel
 	helpRenderer *statusbar.HelpRenderer
+	keyHandler   *KeyHandler
 	configeditor configeditor.Model
 	ShowHelp     bool
 }
@@ -30,7 +31,7 @@ type Config struct {
 }
 
 // NewModel creates a new menu model with rule-based directory filtering.
-func NewModel(c Config) MenuModel {
+func NewModel(c Config) Model {
 	kbr := &keys.KeyBindRenderer{}
 	ckb := c.CommonModel.KeyBinds
 	kb := c.KeyBinds
@@ -54,8 +55,9 @@ func NewModel(c Config) MenuModel {
 		*ckb.Quit,
 	)
 
-	m := MenuModel{
+	m := Model{
 		cm:           c.CommonModel,
+		keyHandler:   NewKeyHandler(kb, ckb),
 		helpRenderer: statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr),
 	}
 	m.addConfigEditor()
@@ -63,19 +65,29 @@ func NewModel(c Config) MenuModel {
 	return m
 }
 
-func (m MenuModel) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	return m.configeditor.Init()
 }
 
-func (m *MenuModel) addConfigEditor() {
+func (m *Model) addConfigEditor() {
 	m.configeditor = configeditor.NewModel(m.cm.Cmd, m.cm.Theme)
 }
 
-func (m MenuModel) Update(msg tea.Msg) (MenuModel, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if m.configeditor.Focused() {
+			break
+		}
+
+		m, cmd = m.keyHandler.HandleKeys(m, msg)
+		cmds = append(cmds, cmd)
+	}
 
 	m.configeditor, cmd = m.configeditor.Update(msg)
 	cmds = append(cmds, cmd)
@@ -91,22 +103,20 @@ func (m MenuModel) Update(msg tea.Msg) (MenuModel, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m MenuModel) View() string {
+func (m Model) View() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		lipgloss.NewStyle().
-			Height(m.cm.Height-1).
-			Render(m.configeditor.View()),
+		m.configeditor.View(),
 		m.statusBarView(),
 		m.helpView(),
 	)
 }
 
-func (m MenuModel) statusBarView() string {
+func (m Model) statusBarView() string {
 	return m.cm.GetStatusBar().RenderWithNote(".", "...")
 }
 
-func (m *MenuModel) SetSize(_, h int) {
+func (m *Model) SetSize(_, h int) {
 	// Calculate help height if needed.
 	if m.ShowHelp {
 		helpHeight := m.helpRenderer.CalculateHelpHeight()
@@ -116,13 +126,13 @@ func (m *MenuModel) SetSize(_, h int) {
 	}
 }
 
-func (m *MenuModel) Unload() {
+func (m *Model) Unload() {
 	// Replace the editor with a new instance.
 	m.addConfigEditor()
 }
 
 // helpView renders the help content.
-func (m MenuModel) helpView() string {
+func (m Model) helpView() string {
 	if !m.ShowHelp {
 		return ""
 	}
@@ -131,7 +141,7 @@ func (m MenuModel) helpView() string {
 }
 
 // ToggleHelp toggles the help display.
-func (m *MenuModel) ToggleHelp() {
+func (m *Model) ToggleHelp() {
 	m.ShowHelp = !m.ShowHelp
 	m.SetSize(m.cm.Width, m.cm.Height)
 }

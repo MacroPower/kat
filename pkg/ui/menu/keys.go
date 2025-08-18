@@ -1,7 +1,10 @@
 package menu
 
 import (
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/macropower/kat/pkg/keys"
+	"github.com/macropower/kat/pkg/ui/common"
 )
 
 // KeyBinds defines key bindings for menu view.
@@ -39,8 +42,8 @@ func (kb *KeyBinds) EnsureDefaults() {
 			keys.New("f"),
 		))
 	keys.SetDefaultBind(&kb.Select,
-		keys.NewBind("select directory",
-			keys.New("space"),
+		keys.NewBind("select",
+			keys.New("enter", keys.WithAlias("↵")),
 		))
 }
 
@@ -53,4 +56,29 @@ func (kb *KeyBinds) GetKeyBinds() []keys.KeyBind {
 		*kb.PageDown,
 		*kb.Select,
 	}
+}
+
+type KeyHandler struct {
+	kb  *KeyBinds //nolint:unused // TODO: Use it.
+	ckb *common.KeyBinds
+}
+
+func NewKeyHandler(kb *KeyBinds, ckb *common.KeyBinds) *KeyHandler {
+	return &KeyHandler{
+		kb:  kb,
+		ckb: ckb,
+	}
+}
+
+func (h *KeyHandler) HandleKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	key := msg.String()
+
+	switch {
+	case h.ckb.Help.Match(key):
+		m.ToggleHelp()
+	}
+
+	return m, cmd
 }
