@@ -1,6 +1,8 @@
 package menu
 
 import (
+	"github.com/charmbracelet/huh"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/macropower/kat/pkg/keys"
@@ -59,7 +61,7 @@ func (kb *KeyBinds) GetKeyBinds() []keys.KeyBind {
 }
 
 type KeyHandler struct {
-	kb  *KeyBinds //nolint:unused // TODO: Use it.
+	kb  *KeyBinds
 	ckb *common.KeyBinds
 }
 
@@ -81,4 +83,36 @@ func (h *KeyHandler) HandleKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 
 	return m, cmd
+}
+
+func (h *KeyHandler) HuhKeyMap() *huh.KeyMap {
+	km := huh.NewDefaultKeyMap()
+
+	km.Input.Prev = h.ckb.Prev.BubbleKey()
+	km.Input.Next = h.ckb.Next.BubbleKey()
+	km.Input.Submit = h.kb.Select.BubbleKey()
+
+	km.FilePicker.GotoTop = h.kb.Home.BubbleKey()
+	km.FilePicker.GotoBottom = h.kb.End.BubbleKey()
+	km.FilePicker.PageUp = h.kb.PageUp.BubbleKey()
+	km.FilePicker.PageDown = h.kb.PageDown.BubbleKey()
+	km.FilePicker.Back = h.ckb.Left.BubbleKey()
+	km.FilePicker.Up = h.ckb.Up.BubbleKey()
+	km.FilePicker.Down = h.ckb.Down.BubbleKey()
+	km.FilePicker.Close = h.ckb.Escape.BubbleKey()
+	km.FilePicker.Prev = h.ckb.Prev.BubbleKey()
+	km.FilePicker.Next = h.ckb.Next.BubbleKey()
+	km.FilePicker.Select = h.kb.Select.BubbleKey()
+	km.FilePicker.Submit = h.kb.Select.BubbleKey()
+	// Note: `km.FilePicker.Open = h.ckb.Right.BubbleKey()` unset.
+
+	km.Text.Prev = h.ckb.Prev.BubbleKey()
+	km.Text.Next = h.ckb.Next.BubbleKey()
+	km.Text.Submit = h.kb.Select.BubbleKey()
+
+	km.Note.Prev = h.ckb.Prev.BubbleKey()
+	km.Note.Next = h.ckb.Next.BubbleKey()
+	km.Note.Submit = h.kb.Select.BubbleKey()
+
+	return km
 }

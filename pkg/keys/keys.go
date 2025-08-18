@@ -8,6 +8,8 @@ import (
 
 	"github.com/muesli/reflow/ansi"
 
+	bubblekey "github.com/charmbracelet/bubbles/key"
+
 	"github.com/macropower/kat/pkg/ui/theme"
 )
 
@@ -107,6 +109,15 @@ func (kb *KeyBind) Match(key string) bool {
 	}
 
 	return false
+}
+
+func (kb *KeyBind) BubbleKey(opts ...bubblekey.BindingOpt) bubblekey.Binding {
+	codes := []string{}
+	for _, k := range kb.Keys {
+		codes = append(codes, k.Code)
+	}
+
+	return bubblekey.NewBinding(append(opts, bubblekey.WithKeys(codes...))...)
 }
 
 // IsTextInputAction checks if the key should be applied as text input.

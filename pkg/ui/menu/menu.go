@@ -70,7 +70,11 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m *Model) addConfigEditor() {
-	m.configeditor = configeditor.NewModel(m.cm.Cmd, m.cm.Theme)
+	m.configeditor = configeditor.NewModel(
+		m.cm.Cmd,
+		themeToHuhTheme(m.cm.Theme),
+		m.keyHandler.HuhKeyMap(),
+	)
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
