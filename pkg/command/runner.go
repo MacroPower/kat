@@ -30,6 +30,7 @@ type Runner struct {
 	profiles           map[string]*profile.Profile // All available profiles by name.
 	watcher            *fsnotify.Watcher
 	fsys               *FilteredFS
+	watchedDirs        map[string]struct{}
 	watchedFiles       map[string]struct{}
 	cancelFunc         context.CancelFunc
 	path               string
@@ -43,6 +44,7 @@ type Runner struct {
 // NewRunner creates a new [Runner].
 func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
 	cr := &Runner{
+		watchedDirs:  make(map[string]struct{}),
 		watchedFiles: make(map[string]struct{}),
 		profiles:     make(map[string]*profile.Profile),
 	}
@@ -479,33 +481,49 @@ func (cr *Runner) watchSource() error {
 	cr.watchedFiles = make(map[string]struct{})
 	if ok, matchedFiles := p.MatchFiles(cr.path, files); ok {
 		for _, file := range matchedFiles {
-			err := cr.watcher.Add(filepath.Dir(file))
+			dir := filepath.Dir(file)
+			err := cr.watcher.Add(dir)
 			if err != nil {
 				return fmt.Errorf("add path to watcher: %w", err)
 			}
 
+			cr.watchedDirs[dir] = struct{}{}
 			cr.watchedFiles[file] = struct{}{}
 		}
 	}
+
+	slog.Debug("added file watchers",
+		slog.String("path", cr.path),
+		slog.Int("count", len(cr.watchedDirs)),
+	)
 
 	return nil
 }
 
 func (cr *Runner) removeWatchers() {
-	if cr.watcher == nil {
+	if cr.watcher == nil || len(cr.watchedDirs) == 0 {
 		return
 	}
 
-	for file := range cr.watchedFiles {
-		err := cr.watcher.Remove(file)
+	removedCount := 0
+	for dir := range cr.watchedDirs {
+		err := cr.watcher.Remove(dir)
 		if errors.Is(err, fsnotify.ErrNonExistentWatch) {
 			continue
 		}
 		if err != nil {
 			slog.Error("remove path from watcher", slog.Any("err", err))
 		}
+
+		removedCount++
 	}
 
+	slog.Debug("removed file watchers",
+		slog.String("path", cr.path),
+		slog.Int("count", removedCount),
+	)
+
+	clear(cr.watchedDirs)
 	clear(cr.watchedFiles)
 }
 
