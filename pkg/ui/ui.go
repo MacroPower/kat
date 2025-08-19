@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/v2/spinner"
 	"github.com/charmbracelet/lipgloss"
 
 	tea "github.com/charmbracelet/bubbletea"

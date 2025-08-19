@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/paginator"
-	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/v2/paginator"
+	"github.com/charmbracelet/bubbles/v2/textinput"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/ansi"
 

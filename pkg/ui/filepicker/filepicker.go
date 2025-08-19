@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/v2/key"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dustin/go-humanize"
 

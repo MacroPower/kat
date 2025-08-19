@@ -8,7 +8,7 @@ import (
 
 	"github.com/muesli/reflow/ansi"
 
-	bubblekey "github.com/charmbracelet/bubbles/key"
+	bubblekey "github.com/charmbracelet/bubbles/v2/key"
 
 	"github.com/macropower/kat/pkg/ui/theme"
 )

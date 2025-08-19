@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/atotto/clipboard"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
+	"github.com/charmbracelet/bubbles/v2/textinput"
+	"github.com/charmbracelet/bubbles/v2/viewport"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/ansi"
 	"github.com/muesli/termenv"

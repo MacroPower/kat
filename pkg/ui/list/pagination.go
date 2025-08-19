@@ -1,7 +1,7 @@
 package list
 
 import (
-	"github.com/charmbracelet/bubbles/paginator"
+	"github.com/charmbracelet/bubbles/v2/paginator"
 	"github.com/muesli/reflow/ansi"
 
 	"github.com/macropower/kat/pkg/ui/theme"
