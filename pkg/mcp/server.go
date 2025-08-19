@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/jsonschema"
@@ -33,27 +34,35 @@ const (
 
 // ExecutionState tracks the current state of command execution.
 type ExecutionState struct {
-	Error  error
-	Output *command.Output
-	Status ExecutionStatus
+	Error           error
+	Output          *command.Output
+	Status          ExecutionStatus
+	CompletionCount int64
+	RequestCount    int64
 }
 
 type CommandRunner interface {
 	Subscribe(ch chan<- command.Event)
+	Configure(opts ...command.RunnerOpt) error
+	RunContext(ctx context.Context) command.Output
 }
 
 // Server implements the MCP server for kat.
 type Server struct {
-	server  *mcp.Server
-	eventCh chan command.Event
-	waitCh  chan struct{}
-	state   ExecutionState
-	address string
-	mu      sync.RWMutex
+	runner          CommandRunner
+	server          *mcp.Server
+	eventCh         chan command.Event
+	completionCond  *sync.Cond
+	address         string
+	currentPath     string
+	state           ExecutionState
+	completionCount int64
+	requestCount    int64
+	mu              sync.RWMutex
 }
 
 // NewServer creates a new MCP server instance.
-func NewServer(address string, runner CommandRunner) (*Server, error) {
+func NewServer(address string, runner CommandRunner, initialPath string) (*Server, error) {
 	impl := &mcp.Implementation{
 		Name:    "kat",
 		Version: version.GetVersion(),
@@ -66,14 +75,17 @@ func NewServer(address string, runner CommandRunner) (*Server, error) {
 	mcpServer := mcp.NewServer(impl, opts)
 
 	s := &Server{
-		address: address,
-		server:  mcpServer,
-		eventCh: make(chan command.Event, 100),
-		waitCh:  make(chan struct{}),
+		address:     address,
+		server:      mcpServer,
+		runner:      runner,
+		eventCh:     make(chan command.Event, 100),
+		currentPath: initialPath,
 		state: ExecutionState{
 			Status: StatusIdle,
 		},
 	}
+
+	s.completionCond = sync.NewCond(&s.mu)
 
 	runner.Subscribe(s.eventCh)
 
@@ -90,7 +102,17 @@ func (s *Server) registerTools() {
 	// Register the list_resources tool.
 	mcp.AddTool(s.server, &mcp.Tool{
 		Name:        "list_resources",
-		Description: "List Kubernetes resources",
+		Description: "List Kubernetes resources rendered by a project (e.g., helm, kustomize) at a particular path. You MUST specify a path.",
+		InputSchema: &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"path": {
+					Type:        "string",
+					Description: "The directory path to operate on, relative to the project root.",
+				},
+			},
+			Required: []string{"path"},
+		},
 	}, s.handleListResources)
 
 	// Register the get_resource tool.
@@ -116,8 +138,12 @@ func (s *Server) registerTools() {
 					Type:        "string",
 					Description: "The name of the resource",
 				},
+				"path": {
+					Type:        "string",
+					Description: "The directory path to operate on, relative to the project root.",
+				},
 			},
-			Required: []string{"kind", "name"},
+			Required: []string{"kind", "name", "path"},
 		},
 	}, s.handleGetResource)
 }
@@ -132,14 +158,11 @@ func (s *Server) processEvents() {
 			s.state.Status = StatusRunning
 			s.state.Output = nil
 			s.state.Error = nil
-			// Close previous wait channel if exists and create new one.
-			if s.waitCh != nil {
-				close(s.waitCh)
-			}
-
-			s.waitCh = make(chan struct{})
 
 		case command.EventEnd:
+			completionCount := atomic.AddInt64(&s.completionCount, 1)
+			currentRequestCount := atomic.LoadInt64(&s.requestCount)
+
 			if e.Error != nil {
 				s.state.Status = StatusError
 				s.state.Error = e.Error
@@ -150,62 +173,118 @@ func (s *Server) processEvents() {
 			// Convert EventEnd to Output.
 			output := command.Output(e)
 			s.state.Output = &output
-			// Signal completion to waiting tools.
-			close(s.waitCh)
+			s.state.CompletionCount = completionCount
+			s.state.RequestCount = currentRequestCount
 
-			s.waitCh = nil
+			// Broadcast to all waiters.
+			s.completionCond.Broadcast()
 
 		case command.EventCancel:
 			s.state.Status = StatusIdle
 			s.state.Output = nil
 			s.state.Error = nil
-			// Signal completion to waiting tools.
-			if s.waitCh != nil {
-				close(s.waitCh)
-
-				s.waitCh = nil
-			}
 		}
 
 		s.mu.Unlock()
 	}
 }
 
-func (s *Server) getWaitChannel() <-chan struct{} {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	return s.waitCh
-}
-
-// waitForCompletion blocks until any ongoing command execution completes or the context is canceled.
-func (s *Server) waitForCompletion(ctx context.Context) error {
-	waitCh := s.getWaitChannel()
-
-	if waitCh != nil {
-		select {
-		case <-waitCh:
-			// Command completed normally.
-			return nil
-		case <-ctx.Done():
-			// Context canceled or timed out.
-			return fmt.Errorf("wait for completion canceled: %w", ctx.Err())
-		}
+func (s *Server) pathChanged(newPath string) bool {
+	// If no path provided, use current path (no-op).
+	if newPath == "" {
+		return false
 	}
 
-	return nil
+	// If path hasn't changed, this is a no-op.
+	if s.currentPath == newPath {
+		return false
+	}
+
+	return true
+}
+
+func (s *Server) reload(ctx context.Context, path string) (int64, error) {
+	if !s.pathChanged(path) {
+		return 0, nil
+	}
+
+	// Reconfigure the runner with the new path.
+	err := s.runner.Configure(
+		command.WithAutoProfile(),
+		command.WithPath(path),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("reconfigure runner with path %q: %w", path, err)
+	}
+
+	s.currentPath = path
+
+	// Increment request count and run the command with the new path.
+	requestNumber := atomic.AddInt64(&s.requestCount, 1)
+	go s.runner.RunContext(ctx)
+
+	return requestNumber, nil
+}
+
+// waitForCompletion blocks until any command execution completes after the given request number or the context is canceled.
+func (s *Server) waitForCompletion(ctx context.Context, requestNumber int64) error {
+	if requestNumber == 0 {
+		return nil // No reload happened.
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Create a channel for context cancellation.
+	ctxDone := make(chan struct{})
+	go func() {
+		<-ctx.Done()
+		close(ctxDone)
+		s.completionCond.Broadcast() // Wake up the condition variable.
+	}()
+
+	// Check if we already have a recent completion.
+	for {
+		if s.state.Status == StatusCompleted || s.state.Status == StatusError {
+			if s.state.RequestCount >= requestNumber {
+				return nil
+			}
+		}
+
+		// Check if context was canceled.
+		select {
+		case <-ctxDone:
+			return fmt.Errorf("wait for completion canceled: %w", ctx.Err())
+		default:
+		}
+
+		// Wait for the next completion.
+		s.completionCond.Wait()
+	}
 }
 
 // handleListResources handles the list_resources tool call.
 func (s *Server) handleListResources(
 	ctx context.Context,
 	_ *mcp.ServerSession,
-	_ *mcp.CallToolParamsFor[ListResourcesParams],
+	params *mcp.CallToolParamsFor[ListResourcesParams],
 ) (*mcp.CallToolResultFor[ListResourcesResult], error) {
-	slog.DebugContext(ctx, "handling list_resources tool call")
+	startTime := time.Now()
 
-	// Wait for any ongoing execution to complete.
-	err := s.waitForCompletion(ctx)
+	slog.DebugContext(ctx, "handling list_resources tool call", slog.Any("params", params))
+
+	s.mu.Lock()
+
+	requestNumber, err := s.reload(ctx, params.Arguments.Path)
+	if err != nil {
+		s.mu.Unlock()
+		return nil, fmt.Errorf("reconfigure runner: %w", err)
+	}
+
+	s.mu.Unlock()
+
+	// Wait for any completion that occurs after our request was made.
+	err = s.waitForCompletion(ctx, requestNumber)
 	if err != nil {
 		return nil, fmt.Errorf("wait for completion: %w", err)
 	}
@@ -228,7 +307,15 @@ func (s *Server) handleListResources(
 
 	populateResultFromOutput(&result, s.state.Output)
 
-	return createListResourcesResult(result), nil
+	toolResult := createListResourcesResult(result)
+
+	slog.DebugContext(ctx, "list_resources execution completed",
+		slog.String("status", string(s.state.Status)),
+		slog.Int("resource_count", len(s.state.Output.Resources)),
+		slog.Duration("duration", time.Since(startTime)),
+	)
+
+	return toolResult, nil
 }
 
 // handleGetResource handles the get_resource tool call.
@@ -239,8 +326,18 @@ func (s *Server) handleGetResource(
 ) (*mcp.CallToolResultFor[GetResourceResult], error) {
 	slog.DebugContext(ctx, "handling get_resource tool call", slog.Any("params", params))
 
-	// Wait for any ongoing execution to complete.
-	err := s.waitForCompletion(ctx)
+	s.mu.Lock()
+
+	requestNumber, err := s.reload(ctx, params.Arguments.Path)
+	if err != nil {
+		s.mu.Unlock()
+		return nil, fmt.Errorf("reconfigure runner: %w", err)
+	}
+
+	s.mu.Unlock()
+
+	// Wait for any completion that occurs after our request was made.
+	err = s.waitForCompletion(ctx, requestNumber)
 	if err != nil {
 		return nil, fmt.Errorf("wait for completion: %w", err)
 	}
@@ -279,10 +376,11 @@ func (s *Server) Server() *mcp.Server {
 }
 
 func (s *Server) Close() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	close(s.eventCh)
+	// Wake up any waiting goroutines before closing.
+	s.mu.Lock()
+	s.completionCond.Broadcast()
+	s.mu.Unlock()
 }
 
 // Serve starts the MCP server.

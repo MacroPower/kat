@@ -49,11 +49,11 @@ type RunArgs struct {
 	*RootArgs
 
 	Path             string
-	StdinData        []byte
 	ConfigPath       string
 	CommandOrProfile string
-	Args             []string
 	ServeMCP         string
+	StdinData        []byte
+	Args             []string
 	Watch            bool
 	WriteConfig      bool
 	ShowConfig       bool
@@ -321,7 +321,7 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 	slog.SetDefault(slog.New(logHandler))
 
 	if rc.ServeMCP != "" {
-		mcpServer, err := mcp.NewServer(rc.ServeMCP, cr)
+		mcpServer, err := mcp.NewServer(rc.ServeMCP, cr, rc.Path)
 		if err != nil {
 			return fmt.Errorf("create MCP server: %w", err)
 		}

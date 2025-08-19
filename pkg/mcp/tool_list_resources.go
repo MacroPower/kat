@@ -11,7 +11,7 @@ import (
 
 // ListResourcesParams defines parameters for the list_resources tool.
 type ListResourcesParams struct {
-	// No parameters needed for resource listing.
+	Path string `json:"path" jsonschema:"description=the directory path to operate on, relative to the project root"`
 }
 
 // ListResourcesResult contains the result of listing resources.

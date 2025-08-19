@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -70,6 +71,10 @@ func (rg *Static) Run() Output {
 	rg.broadcast(EventEnd(out))
 
 	return out
+}
+
+func (rg *Static) RunContext(_ context.Context) Output {
+	return rg.Run()
 }
 
 func (rg *Static) RunOnEvent() {

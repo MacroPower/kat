@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -14,6 +15,7 @@ import (
 
 type Commander interface {
 	Run() command.Output
+	RunContext(ctx context.Context) command.Output
 	RunOnEvent()
 	String() string
 	Subscribe(ch chan<- command.Event)

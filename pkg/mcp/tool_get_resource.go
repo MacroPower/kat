@@ -14,6 +14,7 @@ type GetResourceParams struct {
 	Kind       string `json:"kind"                jsonschema:"the kind of the resource (e.g. Pod or Deployment)"`
 	Name       string `json:"name"                jsonschema:"the name of the resource"`
 	Namespace  string `json:"namespace,omitempty" jsonschema:"the namespace of the resource (optional for cluster-scoped resources)"`
+	Path       string `json:"path"                jsonschema:"the directory path to operate on, relative to the project root"`
 }
 
 // GetResourceResult contains the result of getting a single resource.
