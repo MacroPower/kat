@@ -117,7 +117,7 @@ func (m Model) View() string {
 }
 
 func (m Model) statusBarView() string {
-	return m.cm.GetStatusBar().RenderWithNote(".", "...")
+	return m.cm.GetStatusBar().RenderWithNote("menu", m.cm.Theme.Ellipsis)
 }
 
 func (m *Model) SetSize(_, h int) {
