@@ -958,6 +958,52 @@
               ],
               "description": "KeyBinds.Escape: https://pkg.go.dev/github.com/macropower/kat/pkg/ui/common#KeyBinds"
             },
+            "menu": {
+              "properties": {
+                "description": {
+                  "type": "string",
+                  "title": "Description",
+                  "description": "Description provides a description of what the key binding does.\n\nKeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
+                },
+                "keys": {
+                  "items": {
+                    "properties": {
+                      "code": {
+                        "type": "string",
+                        "title": "Code",
+                        "description": "Code is the key code identifier.\n\nKey.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      },
+                      "alias": {
+                        "type": "string",
+                        "title": "Alias",
+                        "description": "Alias is an alternative display name for the key.\n\nKey.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      },
+                      "hidden": {
+                        "type": "boolean",
+                        "title": "Hidden",
+                        "description": "Hidden determines if the key should be hidden from display.\n\nKey.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "code"
+                    ],
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                  },
+                  "type": "array",
+                  "title": "Keys",
+                  "description": "Keys contains the list of keys that trigger this binding.\n\nKeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
+                }
+              },
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "description",
+                "keys"
+              ],
+              "description": "KeyBinds.Menu: https://pkg.go.dev/github.com/macropower/kat/pkg/ui/common#KeyBinds"
+            },
             "up": {
               "properties": {
                 "description": {
@@ -1523,6 +1569,244 @@
           "type": "object",
           "title": "List Key Binds",
           "description": "List contains key bindings specific to list views.\n\nKeyBinds.List: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#KeyBinds"
+        },
+        "menu": {
+          "properties": {
+            "home": {
+              "properties": {
+                "description": {
+                  "type": "string",
+                  "title": "Description",
+                  "description": "Description provides a description of what the key binding does.\n\nKeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
+                },
+                "keys": {
+                  "items": {
+                    "properties": {
+                      "code": {
+                        "type": "string",
+                        "title": "Code",
+                        "description": "Code is the key code identifier.\n\nKey.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      },
+                      "alias": {
+                        "type": "string",
+                        "title": "Alias",
+                        "description": "Alias is an alternative display name for the key.\n\nKey.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      },
+                      "hidden": {
+                        "type": "boolean",
+                        "title": "Hidden",
+                        "description": "Hidden determines if the key should be hidden from display.\n\nKey.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "code"
+                    ],
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                  },
+                  "type": "array",
+                  "title": "Keys",
+                  "description": "Keys contains the list of keys that trigger this binding.\n\nKeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
+                }
+              },
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "description",
+                "keys"
+              ],
+              "description": "KeyBinds.Home: https://pkg.go.dev/github.com/macropower/kat/pkg/ui/menu#KeyBinds"
+            },
+            "end": {
+              "properties": {
+                "description": {
+                  "type": "string",
+                  "title": "Description",
+                  "description": "Description provides a description of what the key binding does.\n\nKeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
+                },
+                "keys": {
+                  "items": {
+                    "properties": {
+                      "code": {
+                        "type": "string",
+                        "title": "Code",
+                        "description": "Code is the key code identifier.\n\nKey.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      },
+                      "alias": {
+                        "type": "string",
+                        "title": "Alias",
+                        "description": "Alias is an alternative display name for the key.\n\nKey.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      },
+                      "hidden": {
+                        "type": "boolean",
+                        "title": "Hidden",
+                        "description": "Hidden determines if the key should be hidden from display.\n\nKey.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "code"
+                    ],
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                  },
+                  "type": "array",
+                  "title": "Keys",
+                  "description": "Keys contains the list of keys that trigger this binding.\n\nKeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
+                }
+              },
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "description",
+                "keys"
+              ],
+              "description": "KeyBinds.End: https://pkg.go.dev/github.com/macropower/kat/pkg/ui/menu#KeyBinds"
+            },
+            "pageUp": {
+              "properties": {
+                "description": {
+                  "type": "string",
+                  "title": "Description",
+                  "description": "Description provides a description of what the key binding does.\n\nKeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
+                },
+                "keys": {
+                  "items": {
+                    "properties": {
+                      "code": {
+                        "type": "string",
+                        "title": "Code",
+                        "description": "Code is the key code identifier.\n\nKey.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      },
+                      "alias": {
+                        "type": "string",
+                        "title": "Alias",
+                        "description": "Alias is an alternative display name for the key.\n\nKey.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      },
+                      "hidden": {
+                        "type": "boolean",
+                        "title": "Hidden",
+                        "description": "Hidden determines if the key should be hidden from display.\n\nKey.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "code"
+                    ],
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                  },
+                  "type": "array",
+                  "title": "Keys",
+                  "description": "Keys contains the list of keys that trigger this binding.\n\nKeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
+                }
+              },
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "description",
+                "keys"
+              ],
+              "description": "KeyBinds.PageUp: https://pkg.go.dev/github.com/macropower/kat/pkg/ui/menu#KeyBinds"
+            },
+            "pageDown": {
+              "properties": {
+                "description": {
+                  "type": "string",
+                  "title": "Description",
+                  "description": "Description provides a description of what the key binding does.\n\nKeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
+                },
+                "keys": {
+                  "items": {
+                    "properties": {
+                      "code": {
+                        "type": "string",
+                        "title": "Code",
+                        "description": "Code is the key code identifier.\n\nKey.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      },
+                      "alias": {
+                        "type": "string",
+                        "title": "Alias",
+                        "description": "Alias is an alternative display name for the key.\n\nKey.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      },
+                      "hidden": {
+                        "type": "boolean",
+                        "title": "Hidden",
+                        "description": "Hidden determines if the key should be hidden from display.\n\nKey.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "code"
+                    ],
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                  },
+                  "type": "array",
+                  "title": "Keys",
+                  "description": "Keys contains the list of keys that trigger this binding.\n\nKeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
+                }
+              },
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "description",
+                "keys"
+              ],
+              "description": "KeyBinds.PageDown: https://pkg.go.dev/github.com/macropower/kat/pkg/ui/menu#KeyBinds"
+            },
+            "select": {
+              "properties": {
+                "description": {
+                  "type": "string",
+                  "title": "Description",
+                  "description": "Description provides a description of what the key binding does.\n\nKeyBind.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
+                },
+                "keys": {
+                  "items": {
+                    "properties": {
+                      "code": {
+                        "type": "string",
+                        "title": "Code",
+                        "description": "Code is the key code identifier.\n\nKey.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      },
+                      "alias": {
+                        "type": "string",
+                        "title": "Alias",
+                        "description": "Alias is an alternative display name for the key.\n\nKey.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      },
+                      "hidden": {
+                        "type": "boolean",
+                        "title": "Hidden",
+                        "description": "Hidden determines if the key should be hidden from display.\n\nKey.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "code"
+                    ],
+                    "description": "Key represents a keyboard key with optional alias and visibility settings.\n\nKey: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                  },
+                  "type": "array",
+                  "title": "Keys",
+                  "description": "Keys contains the list of keys that trigger this binding.\n\nKeyBind.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#KeyBind"
+                }
+              },
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "description",
+                "keys"
+              ],
+              "description": "KeyBinds.Select: https://pkg.go.dev/github.com/macropower/kat/pkg/ui/menu#KeyBinds"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "title": "Menu Key Binds",
+          "description": "Menu contains key bindings specific to menu views.\n\nKeyBinds.Menu: https://pkg.go.dev/github.com/macropower/kat/pkg/ui#KeyBinds"
         },
         "pager": {
           "properties": {
