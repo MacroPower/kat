@@ -16,6 +16,7 @@ import (
 	"github.com/macropower/kat/pkg/kube"
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/list"
+	"github.com/macropower/kat/pkg/ui/menu"
 	"github.com/macropower/kat/pkg/ui/overlay"
 	"github.com/macropower/kat/pkg/ui/pager"
 	"github.com/macropower/kat/pkg/ui/statusbar"
@@ -44,6 +45,7 @@ const (
 	stateShowList State = iota
 	stateShowDocument
 	stateShowResult
+	stateShowMenu
 )
 
 type OverlayState int
@@ -59,6 +61,8 @@ func (s State) String() string {
 	return map[State]string{
 		stateShowList:     "showing file listing",
 		stateShowDocument: "showing document",
+		stateShowResult:   "showing result",
+		stateShowMenu:     "showing menu",
 	}[s]
 }
 
@@ -68,6 +72,7 @@ type model struct {
 	overlay      *overlay.Overlay
 	kb           *KeyBinds
 	result       string
+	menu         menu.Model
 	spinner      spinner.Model
 	pager        pager.PagerModel
 	fullResult   pager.PagerModel
@@ -89,6 +94,11 @@ func (m *model) unloadDocument() {
 		m.fullResult.Unload()
 
 		m.fullResult.ShowHelp = false
+
+	case stateShowMenu:
+		m.menu.Unload()
+
+		m.menu.ShowHelp = false
 	}
 
 	m.state = stateShowList
@@ -97,7 +107,7 @@ func (m *model) unloadDocument() {
 
 func newModel(cfg *Config, cmd common.Commander) tea.Model {
 	uiTheme := cfg.UI.Theme
-	profile := cmd.GetCurrentProfile()
+	_, profile := cmd.GetCurrentProfile()
 	if profile != nil && profile.UI != nil {
 		if profile.UI.Theme != "" {
 			uiTheme = profile.UI.Theme
@@ -143,12 +153,18 @@ func newModel(cfg *Config, cmd common.Commander) tea.Model {
 		ShowLineNumbers: false,
 	})
 
+	menuModel := menu.NewModel(menu.Config{
+		CommonModel: cm,
+		KeyBinds:    cfg.KeyBinds.Menu,
+	})
+
 	m := &model{
 		cm:         cm,
 		spinner:    sp,
 		state:      stateShowList,
 		pager:      pagerModel,
 		list:       listModel,
+		menu:       menuModel,
 		fullResult: fullResultModel,
 		overlay:    overlay.New(cm.Theme),
 		kb:         cfg.KeyBinds,
@@ -206,7 +222,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Handle plugin keybinds.
-		profile := m.cm.Cmd.GetCurrentProfile()
+		_, profile := m.cm.Cmd.GetCurrentProfile()
 		if profile != nil && !m.isTextInputFocused() {
 			if pluginName := profile.GetPluginNameByKey(key); pluginName != "" {
 				cmd := m.runPlugin(pluginName)
@@ -281,6 +297,25 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess))
 		}
 
+	case command.EventConfigure:
+		initCmds := m.Init()
+		cmds = append(cmds, initCmds)
+
+	case menu.ChangeConfigMsg:
+		m.list.YAMLs = nil
+		m.state = stateShowList
+		m.menu.Unload()
+
+		err := m.cm.Cmd.Configure(
+			command.WithProfile(msg.To.Profile),
+			command.WithPath(msg.To.File),
+			command.WithExtraArgs(msg.To.ExtraArgs...),
+		)
+		if err != nil {
+			m.err = err
+			m.overlayState = overlayStateError
+		}
+
 	case common.StatusMessageTimeoutMsg:
 		m.cm.ShowStatusMessage = false
 
@@ -327,6 +362,8 @@ func (m *model) View() string {
 		s = m.pager.View()
 	case stateShowResult:
 		s = m.fullResult.View()
+	case stateShowMenu:
+		s = m.menu.View()
 	default:
 		s = m.list.View()
 	}
@@ -392,7 +429,8 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	case m.matchAction(m.kb.Common.Escape, key):
 		isShowingDocument := m.state == stateShowDocument && m.pager.ViewState != pager.StateSearching
 		isShowingResult := m.state == stateShowResult && m.fullResult.ViewState != pager.StateSearching
-		if isShowingDocument || isShowingResult || !m.cm.Loaded {
+		isShowingMenu := m.state == stateShowMenu
+		if isShowingDocument || isShowingResult || isShowingMenu || !m.cm.Loaded {
 			m.unloadDocument()
 		}
 		if m.state == stateShowList {
@@ -406,6 +444,12 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		}
 
 		return m, nil, true
+
+	case m.matchAction(m.kb.Common.Menu, key):
+		m.state = stateShowMenu
+		initCmds := m.menu.Init()
+
+		return m, initCmds, true
 
 	case m.matchAction(m.kb.Common.Reload, key):
 		initCmds := m.Init()
@@ -435,6 +479,10 @@ func (m *model) isTextInputFocused() bool {
 	}
 	if m.state == stateShowResult && m.fullResult.ViewState == pager.StateSearching {
 		// Pass through to pager search handler.
+		return true
+	}
+	if m.state == stateShowMenu {
+		// Pass through to menu.
 		return true
 	}
 
@@ -499,6 +547,12 @@ func (m *model) updateChildModels(msg tea.Msg) []tea.Cmd {
 		m.fullResult = newResultModel
 
 		cmds = append(cmds, cmd)
+
+	case stateShowMenu:
+		newMenuModel, cmd := m.menu.Update(msg)
+		m.menu = newMenuModel
+
+		cmds = append(cmds, cmd)
 	}
 
 	return cmds
@@ -511,6 +565,7 @@ func (m *model) handleWindowResize(msg tea.WindowSizeMsg) {
 	m.list.SetSize(msg.Width, msg.Height)
 	m.pager.SetSize(msg.Width, msg.Height)
 	m.fullResult.SetSize(msg.Width, msg.Height)
+	m.menu.SetSize(msg.Width, msg.Height)
 	m.overlay.SetSize(msg.Width, msg.Height)
 }
 

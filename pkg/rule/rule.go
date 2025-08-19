@@ -7,7 +7,6 @@ import (
 	"github.com/google/cel-go/cel"
 
 	"github.com/macropower/kat/pkg/expr"
-	"github.com/macropower/kat/pkg/profile"
 )
 
 // Rule uses a CEL matcher to determine if its profile should be applied.
@@ -36,8 +35,7 @@ import (
 //
 // Use the `in` operator to check membership in lists, e.g.: pathBase(f) in ["Chart.yaml"].
 type Rule struct {
-	matchProgram cel.Program      // Compiled CEL program for matching file paths.
-	pfl          *profile.Profile // Profile associated with the rule.
+	matchProgram cel.Program // Compiled CEL program for matching file paths.
 
 	// Match is a CEL expression to match file paths.
 	Match string `json:"match" jsonschema:"title=Match Expression"`
@@ -117,22 +115,4 @@ func (r *Rule) MatchFiles(dirPath string, files []string) bool {
 
 	// If the result is not a boolean, treat as non-match.
 	return false
-}
-
-func (r *Rule) GetProfile() *profile.Profile {
-	if r.pfl == nil {
-		panic(errors.New("rule missing a profile"))
-	}
-
-	return r.pfl
-}
-
-func (r *Rule) SetProfile(p *profile.Profile) {
-	r.pfl = p
-}
-
-func (r *Rule) String() string {
-	p := r.GetProfile()
-
-	return fmt.Sprintf("%s: %s", r.Profile, p.String())
 }

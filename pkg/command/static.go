@@ -3,9 +3,12 @@ package command
 import (
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
 
 	"github.com/macropower/kat/pkg/kube"
 	"github.com/macropower/kat/pkg/profile"
+	"github.com/macropower/kat/pkg/rule"
 )
 
 type Static struct {
@@ -26,13 +29,31 @@ func NewStatic(input string) (*Static, error) {
 	return &Static{Resources: resources}, nil
 }
 
+func (rg *Static) Configure(_ ...RunnerOpt) error {
+	return nil
+}
+
 func (rg *Static) String() string {
 	return "static"
 }
 
-func (rg *Static) GetCurrentProfile() *profile.Profile {
+func (rg *Static) GetCurrentProfile() (string, *profile.Profile) {
 	// Static resources do not have a profile.
-	return &profile.Profile{}
+	return "static", &profile.Profile{}
+}
+
+func (rg *Static) GetProfiles() map[string]*profile.Profile {
+	return map[string]*profile.Profile{}
+}
+
+func (rg *Static) FindProfile(_ string) (string, *profile.Profile, error) {
+	// Static resources do not have a profile.
+	return "", nil, errors.ErrUnsupported
+}
+
+func (rg *Static) FindProfiles(_ string) ([]ProfileMatch, error) {
+	// Static resources do not have a profile.
+	return nil, errors.ErrUnsupported
 }
 
 func (rg *Static) Run() Output {
@@ -64,7 +85,10 @@ func (rg *Static) Subscribe(ch chan<- Event) {
 }
 
 func (rg *Static) broadcast(evt Event) {
-	// Send the event to all listeners.
+	slog.Debug("broadcasting event",
+		slog.String("event", fmt.Sprintf("%T", evt)),
+	)
+
 	for _, ch := range rg.listeners {
 		ch <- evt
 	}
@@ -81,4 +105,12 @@ func (rg *Static) RunPlugin(_ string) Output {
 	rg.broadcast(EventEnd(out))
 
 	return out
+}
+
+func (rg *Static) GetRules() []*rule.Rule {
+	return nil
+}
+
+func (rg *Static) FS() (*FilteredFS, error) {
+	return NewFilteredFS(os.TempDir())
 }

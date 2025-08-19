@@ -17,8 +17,12 @@ type Commander interface {
 	RunOnEvent()
 	String() string
 	Subscribe(ch chan<- command.Event)
-	GetCurrentProfile() *profile.Profile
+	GetProfiles() map[string]*profile.Profile
+	GetCurrentProfile() (string, *profile.Profile)
+	FindProfiles(path string) ([]command.ProfileMatch, error)
+	Configure(opts ...command.RunnerOpt) error
 	RunPlugin(name string) command.Output
+	FS() (*command.FilteredFS, error)
 }
 
 type CommonModel struct {
@@ -33,23 +37,14 @@ type CommonModel struct {
 	ShowStatusMessage  bool // Whether to show the status message in the status bar.
 }
 
-// ApplicationContext indicates the area of the application something applies
-// to. Occasionally used as an argument to commands and messages.
-type ApplicationContext int
-
-const (
-	ListContext ApplicationContext = iota
-	PagerContext
-
-	StatusMessageTimeout = time.Second * 3 // How long to show status messages.
-)
+const StatusMessageTimeout = time.Second * 3 // How long to show status messages.
 
 type (
 	StatusMessage struct {
 		Message string
 		Style   statusbar.Style
 	}
-	StatusMessageTimeoutMsg ApplicationContext
+	StatusMessageTimeoutMsg struct{}
 )
 
 func (m *CommonModel) GetStatusBar() *statusbar.StatusBarRenderer {
@@ -74,18 +69,18 @@ func (m *CommonModel) SendStatusMessage(msg string, style statusbar.Style) tea.C
 
 	m.StatusMessageTimer = time.NewTimer(StatusMessageTimeout)
 
-	return WaitForStatusMessageTimeout(ListContext, m.StatusMessageTimer)
+	return WaitForStatusMessageTimeout(m.StatusMessageTimer)
 }
 
 type ErrMsg struct{ Err error } //nolint:errname // Tea message.
 
 func (e ErrMsg) Error() string { return e.Err.Error() }
 
-func WaitForStatusMessageTimeout(appCtx ApplicationContext, t *time.Timer) tea.Cmd {
+func WaitForStatusMessageTimeout(t *time.Timer) tea.Cmd {
 	return func() tea.Msg {
 		<-t.C
 
-		return StatusMessageTimeoutMsg(appCtx)
+		return StatusMessageTimeoutMsg{}
 	}
 }
 
@@ -96,6 +91,7 @@ type KeyBinds struct {
 	Help    *keys.KeyBind `json:"help,omitempty"`
 	Error   *keys.KeyBind `json:"error,omitempty"`
 	Escape  *keys.KeyBind `json:"escape,omitempty"`
+	Menu    *keys.KeyBind `json:"menu,omitempty"`
 
 	// Navigation.
 	Up    *keys.KeyBind `json:"up,omitempty"`
@@ -130,6 +126,10 @@ func (kb *KeyBinds) EnsureDefaults() {
 	keys.SetDefaultBind(&kb.Error,
 		keys.NewBind("toggle error",
 			keys.New("!"),
+		))
+	keys.SetDefaultBind(&kb.Menu,
+		keys.NewBind("open menu",
+			keys.New(":"),
 		))
 
 	keys.SetDefaultBind(&kb.Up,
@@ -172,6 +172,7 @@ func (kb *KeyBinds) GetKeyBinds() []keys.KeyBind {
 		*kb.Escape,
 		*kb.Help,
 		*kb.Error,
+		*kb.Menu,
 		*kb.Up,
 		*kb.Down,
 		*kb.Left,
