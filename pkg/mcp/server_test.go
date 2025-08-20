@@ -53,6 +53,9 @@ func (m *mockCommandRunner) RunContext(_ context.Context) command.Output {
 		}
 	}
 
+	// Set timestamp to current time (like the real runner does).
+	output.Timestamp = time.Now()
+
 	// Send end event.
 	endEvent := command.EventEnd(output)
 	m.sendEvent(endEvent)
@@ -61,6 +64,16 @@ func (m *mockCommandRunner) RunContext(_ context.Context) command.Output {
 }
 
 func (m *mockCommandRunner) sendEvent(event command.Event) {
+	// Set timestamp for EventEnd events if not already set
+	if endEvent, ok := event.(command.EventEnd); ok {
+		if endEvent.Timestamp.IsZero() {
+			// Cast to Output, set timestamp, and cast back to EventEnd
+			output := command.Output(endEvent)
+			output.Timestamp = time.Now()
+			event = command.EventEnd(output)
+		}
+	}
+
 	for _, ch := range m.channels {
 		ch <- event
 	}
@@ -275,7 +288,6 @@ func TestServer_Integration(t *testing.T) {
 				},
 			},
 			want: map[string]any{
-				"status":        "completed",
 				"stdoutPreview": "command output",
 				"resourceCount": float64(2),
 				"resources": []any{
@@ -302,7 +314,6 @@ func TestServer_Integration(t *testing.T) {
 				},
 			},
 			want: map[string]any{
-				"status":        "completed",
 				"stdoutPreview": "command output",
 				"resourceCount": float64(2),
 				"resources": []any{
@@ -333,8 +344,7 @@ func TestServer_Integration(t *testing.T) {
 				},
 			},
 			want: map[string]any{
-				"status": "completed",
-				"found":  true,
+				"found": true,
 				"resource": map[string]any{
 					"metadata": map[string]any{
 						"apiVersion": "v1",
@@ -358,8 +368,7 @@ func TestServer_Integration(t *testing.T) {
 				},
 			},
 			want: map[string]any{
-				"status": "completed",
-				"found":  true,
+				"found": true,
 				"resource": map[string]any{
 					"metadata": map[string]any{
 						"apiVersion": "v1",
@@ -383,8 +392,7 @@ func TestServer_Integration(t *testing.T) {
 				},
 			},
 			want: map[string]any{
-				"status": "completed",
-				"found":  false,
+				"found": false,
 			},
 		},
 	}

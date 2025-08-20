@@ -1,6 +1,10 @@
 package command
 
-import "github.com/macropower/kat/pkg/kube"
+import (
+	"time"
+
+	"github.com/macropower/kat/pkg/kube"
+)
 
 type Type int
 
@@ -12,11 +16,34 @@ const (
 )
 
 type Output struct {
+	Timestamp time.Time
 	Error     error
 	Stdout    string
 	Stderr    string
 	Resources []*kube.Resource
 	Type      Type
+}
+
+// NewOutput creates a new [Output] timestamped with the current time.
+func NewOutput(t Type, opts ...OutputOpt) Output {
+	o := &Output{
+		Type:      t,
+		Timestamp: time.Now(),
+	}
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	return *o
+}
+
+type OutputOpt func(*Output)
+
+// WithError sets the error for the output.
+func WithError(err error) OutputOpt {
+	return func(o *Output) {
+		o.Error = err
+	}
 }
 
 // Event represents an event related to command execution.

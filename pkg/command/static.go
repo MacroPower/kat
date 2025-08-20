@@ -60,13 +60,12 @@ func (rg *Static) FindProfiles(_ string) ([]ProfileMatch, error) {
 func (rg *Static) Run() Output {
 	rg.broadcast(EventStart(TypeRun))
 
-	out := Output{
-		Type:      TypeRun,
-		Resources: rg.Resources,
-	}
+	out := NewOutput(TypeRun)
 	if rg.Resources == nil {
 		out.Error = errors.New("no resources available")
 	}
+
+	out.Resources = rg.Resources
 
 	rg.broadcast(EventEnd(out))
 
@@ -102,10 +101,7 @@ func (rg *Static) broadcast(evt Event) {
 func (rg *Static) RunPlugin(_ string) Output {
 	rg.broadcast(EventStart(TypePlugin))
 
-	out := Output{
-		Type:  TypePlugin,
-		Error: errors.New("plugins not supported in static resource mode"),
-	}
+	out := NewOutput(TypePlugin, WithError(errors.New("plugins not supported in static resource mode")))
 
 	rg.broadcast(EventEnd(out))
 

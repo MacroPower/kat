@@ -20,7 +20,6 @@ type GetResourceParams struct {
 // GetResourceResult contains the result of getting a single resource.
 type GetResourceResult struct {
 	Resource *ResourceDetails `json:"resource,omitempty"`
-	Status   string           `json:"status"`
 	Error    string           `json:"error,omitempty"`
 	Found    bool             `json:"found"`
 }
@@ -51,7 +50,11 @@ func formatResourceMessage(result GetResourceResult, params GetResourceParams) s
 	resourceID := formatResourceID(params)
 
 	if result.Found {
-		return fmt.Sprintf("Found resource %s. Status: %s", resourceID, result.Status)
+		return fmt.Sprintf("Found resource %s.", resourceID)
+	}
+
+	if result.Error != "" {
+		return result.Error
 	}
 
 	return fmt.Sprintf(

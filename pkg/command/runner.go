@@ -414,9 +414,7 @@ func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 		slog.String("name", name),
 	)
 
-	co := Output{
-		Type: TypePlugin,
-	}
+	co := NewOutput(TypePlugin)
 
 	plugin := p.GetPlugin(name)
 	if plugin == nil {
@@ -577,9 +575,9 @@ func (cr *Runner) RunOnEvent() {
 						slog.String("event", evt.String()),
 						slog.Any("error", err),
 					)
-					cr.broadcast(EventEnd(Output{
-						Error: fmt.Errorf("match file event: %w", err),
-					}))
+					cr.broadcast(EventEnd(
+						NewOutput(TypeRun, WithError(fmt.Errorf("match file event: %w", err))),
+					))
 
 					continue
 				}
@@ -599,9 +597,7 @@ func (cr *Runner) RunOnEvent() {
 				return
 			}
 
-			cr.broadcast(EventEnd(Output{
-				Error: err,
-			}))
+			cr.broadcast(EventEnd(NewOutput(TypeRun, WithError(err))))
 		}
 	}
 }
@@ -654,9 +650,7 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 
 	cr.broadcast(EventStart(TypeRun))
 
-	co := Output{
-		Type: TypeRun,
-	}
+	co := NewOutput(TypeRun)
 
 	_, err := os.Stat(path)
 	if err != nil {

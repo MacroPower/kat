@@ -16,7 +16,6 @@ type ListResourcesParams struct {
 
 // ListResourcesResult contains the result of listing resources.
 type ListResourcesResult struct {
-	Status        string                  `json:"status"`
 	Error         string                  `json:"error,omitempty"`
 	StdoutPreview string                  `json:"stdoutPreview,omitempty"`
 	StderrPreview string                  `json:"stderrPreview,omitempty"`
@@ -40,7 +39,7 @@ func createListResourcesResult(result ListResourcesResult) *mcp.CallToolResultFo
 }
 
 // populateResultFromOutput populates the result with data from command output.
-func populateResultFromOutput(result *ListResourcesResult, output *command.Output) {
+func populateResultFromOutput(result *ListResourcesResult, output command.Output) {
 	// Add stdout/stderr previews (truncated for readability).
 	result.StdoutPreview = truncateString(output.Stdout, 200)
 	result.StderrPreview = truncateString(output.Stderr, 200)
