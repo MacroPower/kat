@@ -11,6 +11,10 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
+
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/kube"
@@ -31,6 +35,7 @@ type CommandRunner interface {
 // Server implements the MCP server for kat.
 type Server struct {
 	runner         CommandRunner
+	tracer         trace.Tracer
 	completionCond *sync.Cond
 	server         *mcp.Server
 	eventCh        chan command.Event
@@ -42,6 +47,9 @@ type Server struct {
 
 // NewServer creates a new MCP server instance.
 func NewServer(address string, runner CommandRunner, initialPath string) (*Server, error) {
+	tp := sdktrace.NewTracerProvider()
+	otel.SetTracerProvider(tp)
+
 	impl := &mcp.Implementation{
 		Name:    "kat",
 		Version: version.GetVersion(),
@@ -60,6 +68,7 @@ func NewServer(address string, runner CommandRunner, initialPath string) (*Serve
 		eventCh:     make(chan command.Event, 100),
 		currentPath: initialPath,
 		state:       ExecutionState{},
+		tracer:      otel.Tracer("kat-mcp-server"),
 	}
 
 	s.completionCond = sync.NewCond(&s.mu)
@@ -90,7 +99,7 @@ func (s *Server) registerTools() {
 			},
 			Required: []string{"path"},
 		},
-	}, s.handleListResources)
+	}, WithTracing(s.tracer, s.handleListResources))
 
 	// Register the get_resource tool.
 	mcp.AddTool(s.server, &mcp.Tool{
@@ -122,7 +131,7 @@ func (s *Server) registerTools() {
 			},
 			Required: []string{"kind", "name", "path"},
 		},
-	}, s.handleGetResource)
+	}, WithTracing(s.tracer, s.handleGetResource))
 }
 
 // processEvents processes command events in a separate goroutine.
@@ -164,6 +173,9 @@ func (s *Server) reload(ctx context.Context, path string) error {
 		return nil // No path change, nothing to do.
 	}
 
+	logger := loggerFromContext(ctx)
+	logger.DebugContext(ctx, "reloading with new path", slog.String("path", path))
+
 	// Reconfigure the runner with the new path.
 	err := s.runner.Configure(
 		command.WithAutoProfile(),
@@ -185,6 +197,8 @@ func (s *Server) reload(ctx context.Context, path string) error {
 	if err != nil {
 		return fmt.Errorf("wait for completion: %w", err)
 	}
+
+	logger.DebugContext(ctx, "reload completed successfully")
 
 	return nil
 }
@@ -225,8 +239,6 @@ func (s *Server) handleListResources(
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	slog.DebugContext(ctx, "handling list_resources tool call", slog.Any("params", params))
-
 	err := s.reload(ctx, params.Arguments.Path)
 	if err != nil {
 		return nil, fmt.Errorf("reconfigure runner: %w", err)
@@ -242,13 +254,7 @@ func (s *Server) handleListResources(
 
 	populateResultFromOutput(&result, s.state.Output)
 
-	toolResult := createListResourcesResult(result)
-
-	slog.DebugContext(ctx, "list_resources execution completed",
-		slog.Int("resource_count", len(s.state.Output.Resources)),
-	)
-
-	return toolResult, nil
+	return createListResourcesResult(result), nil
 }
 
 // handleGetResource handles the get_resource tool call.
@@ -259,8 +265,6 @@ func (s *Server) handleGetResource(
 ) (*mcp.CallToolResultFor[GetResourceResult], error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	slog.DebugContext(ctx, "handling get_resource tool call", slog.Any("params", params))
 
 	err := s.reload(ctx, params.Arguments.Path)
 	if err != nil {

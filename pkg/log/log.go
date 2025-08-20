@@ -117,7 +117,7 @@ func newCharmLogHandler(w io.Writer, level slog.Level) slog.Handler {
 		Formatter:       charmlog.TextFormatter,
 		ReportTimestamp: true,
 		ReportCaller:    true,
-		TimeFormat:      time.Kitchen,
+		TimeFormat:      time.StampMilli,
 	})
 	logger.SetColorProfile(termenv.ColorProfile())
 
