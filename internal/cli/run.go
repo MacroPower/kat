@@ -9,7 +9,10 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
 	"golang.org/x/term"
+
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/config"
@@ -286,7 +289,10 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 		return nil
 	}
 
-	var cr common.Commander
+	tp := sdktrace.NewTracerProvider()
+	otel.SetTracerProvider(tp)
+
+	var cr command.Commander
 
 	if len(rc.StdinData) > 0 {
 		cr, err = command.NewStatic(string(rc.StdinData))
@@ -321,12 +327,7 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 	slog.SetDefault(slog.New(logHandler))
 
 	if rc.ServeMCP != "" {
-		mcpCr, ok := cr.(mcp.CommandRunner)
-		if !ok {
-			panic(fmt.Errorf("command runner does not implement mcp.CommandRunner: %T", cr))
-		}
-
-		mcpServer, err := mcp.NewServer(rc.ServeMCP, mcpCr, rc.Path)
+		mcpServer, err := mcp.NewServer(rc.ServeMCP, cr, rc.Path)
 		if err != nil {
 			return fmt.Errorf("create MCP server: %w", err)
 		}

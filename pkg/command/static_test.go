@@ -205,12 +205,12 @@ metadata:
 
 	// Verify events
 	assert.Len(t, events, 2)
-	assert.IsType(t, command.EventStart(command.TypePlugin), events[0])
+	assert.IsType(t, command.EventStart{}, events[0])
 	assert.IsType(t, command.EventEnd{}, events[1])
 
 	endEvent, ok := events[1].(command.EventEnd)
 	require.True(t, ok, "expected second event to be EventEnd")
-	assert.Equal(t, output, command.Output(endEvent))
+	assert.Equal(t, output, endEvent.Output)
 }
 
 func TestStatic_RunOnEvent(t *testing.T) {
@@ -276,7 +276,7 @@ metadata:
 		}
 
 		assert.Len(t, events, 2)
-		assert.IsType(t, command.EventStart(command.TypeRun), events[0])
+		assert.IsType(t, command.EventStart{}, events[0])
 		assert.IsType(t, command.EventEnd{}, events[1])
 	}
 }
@@ -313,10 +313,10 @@ func verifyStaticEvents(t *testing.T, events []command.Event, output command.Out
 	t.Helper()
 
 	assert.Len(t, events, 2)
-	assert.IsType(t, command.EventStart(command.TypeRun), events[0])
+	assert.IsType(t, command.EventStart{}, events[0])
 	assert.IsType(t, command.EventEnd{}, events[1])
 
 	endEvent, ok := events[1].(command.EventEnd)
 	require.True(t, ok, "expected second event to be EventEnd")
-	assert.Equal(t, output, command.Output(endEvent))
+	assert.Equal(t, output, endEvent.Output)
 }

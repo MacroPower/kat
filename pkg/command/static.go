@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/macropower/kat/pkg/kube"
+	"github.com/macropower/kat/pkg/log"
 	"github.com/macropower/kat/pkg/profile"
 	"github.com/macropower/kat/pkg/rule"
 )
@@ -31,6 +32,10 @@ func NewStatic(input string) (*Static, error) {
 }
 
 func (rg *Static) Configure(_ ...RunnerOpt) error {
+	return nil
+}
+
+func (rg *Static) ConfigureContext(_ context.Context, _ ...RunnerOpt) error {
 	return nil
 }
 
@@ -58,7 +63,11 @@ func (rg *Static) FindProfiles(_ string) ([]ProfileMatch, error) {
 }
 
 func (rg *Static) Run() Output {
-	rg.broadcast(EventStart(TypeRun))
+	return rg.RunContext(context.Background())
+}
+
+func (rg *Static) RunContext(ctx context.Context) Output {
+	rg.broadcast(NewEventStart(ctx, TypeRun))
 
 	out := NewOutput(TypeRun)
 	if rg.Resources == nil {
@@ -67,13 +76,9 @@ func (rg *Static) Run() Output {
 
 	out.Resources = rg.Resources
 
-	rg.broadcast(EventEnd(out))
+	rg.broadcast(NewEventEnd(ctx, out))
 
 	return out
-}
-
-func (rg *Static) RunContext(_ context.Context) Output {
-	return rg.Run()
 }
 
 func (rg *Static) RunOnEvent() {
@@ -89,7 +94,9 @@ func (rg *Static) Subscribe(ch chan<- Event) {
 }
 
 func (rg *Static) broadcast(evt Event) {
-	slog.Debug("broadcasting event",
+	ctx := evt.GetContext()
+
+	log.WithContext(ctx).DebugContext(ctx, "broadcasting event",
 		slog.String("event", fmt.Sprintf("%T", evt)),
 	)
 
@@ -104,11 +111,15 @@ func (rg *Static) SendEvent(evt Event) {
 }
 
 func (rg *Static) RunPlugin(_ string) Output {
-	rg.broadcast(EventStart(TypePlugin))
+	return rg.RunPluginContext(context.Background(), "")
+}
+
+func (rg *Static) RunPluginContext(ctx context.Context, _ string) Output {
+	rg.broadcast(NewEventStart(ctx, TypePlugin))
 
 	out := NewOutput(TypePlugin, WithError(errors.New("plugins not supported in static resource mode")))
 
-	rg.broadcast(EventEnd(out))
+	rg.broadcast(NewEventEnd(ctx, out))
 
 	return out
 }

@@ -1,6 +1,7 @@
 package log
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/muesli/termenv"
+	"go.opentelemetry.io/otel/trace"
 
 	charmlog "github.com/charmbracelet/log"
 )
@@ -17,6 +19,8 @@ import (
 type (
 	Format string
 	Level  string
+
+	contextKey string
 )
 
 const (
@@ -28,6 +32,8 @@ const (
 	LevelWarn  Level = "warn"
 	LevelInfo  Level = "info"
 	LevelDebug Level = "debug"
+
+	loggerContextKey contextKey = "logger"
 )
 
 var (
@@ -122,4 +128,26 @@ func newCharmLogHandler(w io.Writer, level slog.Level) slog.Handler {
 	logger.SetColorProfile(termenv.ColorProfile())
 
 	return logger
+}
+
+// WithContext returns the default logger with context.
+func WithContext(ctx context.Context) *slog.Logger {
+	// First check if there's a logger already stored in context.
+	if logger, ok := ctx.Value(loggerContextKey).(*slog.Logger); ok {
+		return logger
+	}
+
+	// Create logger with trace ID if span is available.
+	if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
+		traceID := span.SpanContext().TraceID().String()
+		// Truncate trace ID to first 8 characters for readability.
+		if len(traceID) > 8 {
+			traceID = traceID[:8]
+		}
+
+		return slog.With(slog.String("trace_id", traceID))
+	}
+
+	// Fallback: Just return the default logger.
+	return slog.Default()
 }

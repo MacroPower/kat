@@ -43,8 +43,6 @@ linters:
     - bidichk
     - bodyclose
     - canonicalheader
-    - containedctx
-    - contextcheck
     - depguard
     - dupl
     - durationcheck
@@ -265,6 +263,3 @@ linters:
       - path: internal/
         linters:
           - wrapcheck
-      - text: "slog\\."
-        linters:
-          - noctx

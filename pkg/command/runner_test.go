@@ -346,7 +346,7 @@ func TestCommandRunner_FileWatcher(t *testing.T) {
 			for i, event := range events {
 				switch i % 2 {
 				case 0: // Even indices should be start events
-					assert.IsType(t, command.EventStart(command.TypeRun), event)
+					assert.IsType(t, command.EventStart{}, event)
 				case 1: // Odd indices should be end events
 					assert.IsType(t, command.EventEnd{}, event)
 				}
@@ -449,7 +449,7 @@ func TestCommandRunner_RunPlugin(t *testing.T) {
 
 	// Verify events
 	assert.GreaterOrEqual(t, len(events), 2)
-	assert.IsType(t, command.EventStart(command.TypePlugin), events[0])
+	assert.IsType(t, command.EventStart{}, events[0])
 	assert.IsType(t, command.EventEnd{}, events[1])
 }
 
@@ -992,7 +992,7 @@ func TestRunner_ConfigureAfterCreation(t *testing.T) {
 	assert.NotNil(t, currentProfile)
 
 	// Reconfigure with extra args
-	err = runner.Configure(
+	err = runner.ConfigureContext(t.Context(),
 		command.WithPath(tempDir),
 		command.WithRules(TestConfig.Rules),
 		command.WithProfiles(TestConfig.Profiles),

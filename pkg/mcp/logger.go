@@ -6,30 +6,9 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/macropower/kat/pkg/log"
 )
-
-type contextKey string
-
-const (
-	loggerContextKey contextKey = "logger"
-)
-
-// loggerFromContext extracts a trace-aware logger from context.
-// It automatically gets the trace ID from the current span if available.
-func loggerFromContext(ctx context.Context) *slog.Logger {
-	// First check if there's a logger already stored in context.
-	if logger, ok := ctx.Value(loggerContextKey).(*slog.Logger); ok {
-		return logger
-	}
-
-	// Fallback: create logger with trace ID if span is available.
-	if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
-		traceID := span.SpanContext().TraceID().String()
-		return slog.With(slog.String("trace_id", traceID))
-	}
-
-	return slog.Default()
-}
 
 // TracedToolHandler wraps an MCP ToolHandlerFor with automatic tracing and logging.
 type TracedToolHandler[In, Out any] func(
@@ -55,7 +34,7 @@ func WithTracing[In, Out any](
 		ctx, span := tracer.Start(ctx, name)
 		defer span.End()
 
-		logger := loggerFromContext(ctx)
+		logger := log.WithContext(ctx)
 
 		// Log the start of the tool call.
 		logger.DebugContext(ctx, "handling tool call",

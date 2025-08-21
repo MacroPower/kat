@@ -11,8 +11,12 @@ import (
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/macropower/kat/pkg/kube"
+	"github.com/macropower/kat/pkg/log"
 	"github.com/macropower/kat/pkg/profile"
 	"github.com/macropower/kat/pkg/rule"
 )
@@ -25,15 +29,16 @@ var ErrNoCommandForPath = errors.New("no command for path")
 //   - Filesystem notifications / watching.
 //   - Concurrent command execution.
 type Runner struct {
-	currentProfile     *profile.Profile            // Currently active profile.
-	currentProfileName string                      // Name of the currently active profile.
-	profiles           map[string]*profile.Profile // All available profiles by name.
+	tracer             trace.Tracer
+	watchedFiles       map[string]struct{}
+	profiles           map[string]*profile.Profile
 	watcher            *fsnotify.Watcher
 	fsys               *FilteredFS
 	watchedDirs        map[string]struct{}
-	watchedFiles       map[string]struct{}
+	currentProfile     *profile.Profile
 	cancelFunc         context.CancelFunc
 	path               string
+	currentProfileName string
 	listeners          []chan<- Event
 	allRules           []*rule.Rule
 	extraArgs          []string
@@ -47,6 +52,7 @@ func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
 		watchedDirs:  make(map[string]struct{}),
 		watchedFiles: make(map[string]struct{}),
 		profiles:     make(map[string]*profile.Profile),
+		tracer:       otel.Tracer("kat-command-runner"),
 	}
 
 	var err error
@@ -73,13 +79,22 @@ func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
 	return cr, nil
 }
 
+func (cr *Runner) Configure(opts ...RunnerOpt) error {
+	return cr.ConfigureContext(context.Background(), opts...)
+}
+
 // Configure applies options to an existing runner.
 // This allows reconfiguration after creation.
-func (cr *Runner) Configure(opts ...RunnerOpt) error {
+func (cr *Runner) ConfigureContext(ctx context.Context, opts ...RunnerOpt) error {
+	ctx, span := cr.tracer.Start(ctx, "configure")
+	defer span.End()
+
+	logger := log.WithContext(ctx)
+
 	cr.mu.Lock()
 	defer cr.mu.Unlock()
 
-	cr.removeWatchers()
+	cr.removeWatchers(ctx)
 
 	// Cancel any currently running command.
 	if cr.cancelFunc != nil {
@@ -127,7 +142,7 @@ func (cr *Runner) Configure(opts ...RunnerOpt) error {
 	}
 
 	if cr.watch {
-		err := cr.watchSource()
+		err := cr.watchSource(ctx)
 		if err != nil {
 			return err
 		}
@@ -135,7 +150,7 @@ func (cr *Runner) Configure(opts ...RunnerOpt) error {
 
 	if cr.currentProfile != nil && cr.currentProfile.Hooks != nil {
 		for _, hook := range cr.currentProfile.Hooks.Init {
-			hr, err := hook.Exec(context.Background(), cr.path)
+			hr, err := hook.Exec(ctx, cr.path)
 			if err != nil && hr != nil {
 				return fmt.Errorf("%w: init: %w\n%s\n%s", profile.ErrHookExecution, err, hr.Stdout, hr.Stderr)
 			} else if err != nil {
@@ -144,8 +159,8 @@ func (cr *Runner) Configure(opts ...RunnerOpt) error {
 		}
 	}
 
-	cr.broadcast(EventConfigure{})
-	slog.Debug("configured runner",
+	cr.broadcast(NewEventConfigure(ctx))
+	logger.DebugContext(ctx, "configured runner",
 		slog.String("path", cr.path),
 		slog.String("profile", cr.currentProfile.String()),
 		slog.Bool("watch", cr.watch),
@@ -396,6 +411,12 @@ func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 		p    = cr.currentProfile
 	)
 
+	ctx, span := cr.tracer.Start(ctx, "plugin", trace.WithAttributes(
+		attribute.String("name", name),
+		attribute.String("path", path),
+	))
+	defer span.End()
+
 	// Cancel any currently running command.
 	if cr.cancelFunc != nil {
 		// Note: The cancel event is broadcast by the canceled goroutine.
@@ -407,19 +428,14 @@ func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 
 	cr.mu.Unlock()
 
-	cr.broadcast(EventStart(TypePlugin))
-
-	slog.DebugContext(ctx, "run plugin",
-		slog.String("path", path),
-		slog.String("name", name),
-	)
+	cr.broadcast(NewEventStart(ctx, TypePlugin))
 
 	co := NewOutput(TypePlugin)
 
 	plugin := p.GetPlugin(name)
 	if plugin == nil {
 		co.Error = fmt.Errorf("plugin %q: not found", name)
-		cr.broadcast(EventEnd(co))
+		cr.broadcast(NewEventEnd(ctx, co))
 
 		return co
 	}
@@ -427,7 +443,7 @@ func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 	_, err := os.Stat(path)
 	if err != nil {
 		co.Error = fmt.Errorf("stat path: %w", err)
-		cr.broadcast(EventEnd(co))
+		cr.broadcast(NewEventEnd(ctx, co))
 
 		return co
 	}
@@ -439,22 +455,22 @@ func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 
 	// Check if the command was canceled.
 	if co.Error != nil && errors.Is(ctx.Err(), context.Canceled) {
-		cr.broadcast(EventCancel{})
+		cr.broadcast(NewEventCancel(ctx))
 
 		return co
 	} else if co.Error != nil {
 		co.Error = fmt.Errorf("plugin %q: %w", plugin.Description, co.Error)
-		cr.broadcast(EventEnd(co))
+		cr.broadcast(NewEventEnd(ctx, co))
 
 		return co
 	}
 
-	cr.broadcast(EventEnd(co))
+	cr.broadcast(NewEventEnd(ctx, co))
 
 	return co
 }
 
-func (cr *Runner) watchSource() error {
+func (cr *Runner) watchSource(ctx context.Context) error {
 	p := cr.currentProfile
 
 	var files []string
@@ -490,7 +506,7 @@ func (cr *Runner) watchSource() error {
 		}
 	}
 
-	slog.Debug("added file watchers",
+	log.WithContext(ctx).DebugContext(ctx, "added file watchers",
 		slog.String("path", cr.path),
 		slog.Int("count", len(cr.watchedDirs)),
 	)
@@ -498,10 +514,12 @@ func (cr *Runner) watchSource() error {
 	return nil
 }
 
-func (cr *Runner) removeWatchers() {
+func (cr *Runner) removeWatchers(ctx context.Context) {
 	if cr.watcher == nil || len(cr.watchedDirs) == 0 {
 		return
 	}
+
+	logger := log.WithContext(ctx)
 
 	removedCount := 0
 	for dir := range cr.watchedDirs {
@@ -510,13 +528,13 @@ func (cr *Runner) removeWatchers() {
 			continue
 		}
 		if err != nil {
-			slog.Error("remove path from watcher", slog.Any("err", err))
+			logger.ErrorContext(ctx, "remove path from watcher", slog.Any("err", err))
 		}
 
 		removedCount++
 	}
 
-	slog.Debug("removed file watchers",
+	logger.DebugContext(ctx, "removed file watchers",
 		slog.String("path", cr.path),
 		slog.Int("count", removedCount),
 	)
@@ -531,7 +549,9 @@ func (cr *Runner) Subscribe(ch chan<- Event) {
 }
 
 func (cr *Runner) broadcast(evt Event) {
-	slog.Debug("broadcasting event",
+	ctx := evt.GetContext()
+
+	log.WithContext(ctx).DebugContext(ctx, "broadcasting event",
 		slog.String("event", fmt.Sprintf("%T", evt)),
 	)
 
@@ -564,9 +584,13 @@ func (cr *Runner) RunOnEvent() {
 				continue
 			}
 
+			// Create a new context for this command execution.
+			ctx := context.Background()
+			logger := log.WithContext(ctx)
+
 			_, p := cr.GetCurrentProfile()
 			if p == nil {
-				slog.Error("no profile set for command runner, cannot handle event",
+				logger.ErrorContext(ctx, "no profile set for command runner, cannot handle event",
 					slog.String("event", evt.String()),
 				)
 
@@ -576,11 +600,11 @@ func (cr *Runner) RunOnEvent() {
 			if p.Reload != "" {
 				matched, err := p.MatchFileEvent(evt.Name, evt.Op)
 				if err != nil {
-					slog.Error("match file event",
+					logger.ErrorContext(ctx, "match file event",
 						slog.String("event", evt.String()),
 						slog.Any("error", err),
 					)
-					cr.broadcast(EventEnd(
+					cr.broadcast(NewEventEnd(ctx,
 						NewOutput(TypeRun, WithError(fmt.Errorf("match file event: %w", err))),
 					))
 
@@ -591,9 +615,6 @@ func (cr *Runner) RunOnEvent() {
 				}
 			}
 
-			// Create a new context for this command execution.
-			ctx := context.Background()
-
 			// Run the command in a goroutine so we can handle cancellation properly.
 			go cr.RunContext(ctx)
 
@@ -602,7 +623,10 @@ func (cr *Runner) RunOnEvent() {
 				return
 			}
 
-			cr.broadcast(EventEnd(NewOutput(TypeRun, WithError(err))))
+			cr.broadcast(NewEventEnd(
+				context.Background(),
+				NewOutput(TypeRun, WithError(err)),
+			))
 		}
 	}
 }
@@ -642,6 +666,12 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 		cmd  = p.Command.Command
 	)
 
+	ctx, span := cr.tracer.Start(ctx, "run", trace.WithAttributes(
+		attribute.String("command", cmd),
+		attribute.String("path", path),
+	))
+	defer span.End()
+
 	// Cancel any currently running command.
 	if cr.cancelFunc != nil {
 		// Note: The cancel event is broadcast by the canceled goroutine.
@@ -653,14 +683,14 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 
 	cr.mu.Unlock()
 
-	cr.broadcast(EventStart(TypeRun))
+	cr.broadcast(NewEventStart(ctx, TypeRun))
 
 	co := NewOutput(TypeRun)
 
 	_, err := os.Stat(path)
 	if err != nil {
 		co.Error = fmt.Errorf("stat path: %w", err)
-		cr.broadcast(EventEnd(co))
+		cr.broadcast(NewEventEnd(ctx, co))
 
 		return co
 	}
@@ -674,12 +704,12 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 
 	// Check if the command was canceled.
 	if co.Error != nil && errors.Is(ctx.Err(), context.Canceled) {
-		cr.broadcast(EventCancel{})
+		cr.broadcast(NewEventCancel(ctx))
 
 		return co
 	} else if co.Error != nil {
 		co.Error = fmt.Errorf("%s: %w", cmd, co.Error)
-		cr.broadcast(EventEnd(co))
+		cr.broadcast(NewEventEnd(ctx, co))
 
 		return co
 	}
@@ -690,7 +720,7 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 	}
 
 	co.Resources = objects
-	cr.broadcast(EventEnd(co))
+	cr.broadcast(NewEventEnd(ctx, co))
 
 	return co
 }

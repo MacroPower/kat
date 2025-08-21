@@ -24,7 +24,7 @@ type mockCommandRunner struct {
 	outputIndex    int
 }
 
-func (m *mockCommandRunner) Configure(_ ...command.RunnerOpt) error {
+func (m *mockCommandRunner) ConfigureContext(_ context.Context, _ ...command.RunnerOpt) error {
 	m.configureCount++
 
 	return nil
@@ -34,9 +34,9 @@ func (m *mockCommandRunner) Subscribe(ch chan<- command.Event) {
 	m.channels = append(m.channels, ch)
 }
 
-func (m *mockCommandRunner) RunContext(_ context.Context) command.Output {
+func (m *mockCommandRunner) RunContext(ctx context.Context) command.Output {
 	// Send start event immediately.
-	m.SendEvent(command.EventStart(command.TypeRun))
+	m.SendEvent(command.NewEventStart(ctx, command.TypeRun))
 
 	// Simulate some work.
 	time.Sleep(10 * time.Millisecond)
@@ -57,7 +57,7 @@ func (m *mockCommandRunner) RunContext(_ context.Context) command.Output {
 	output.Timestamp = time.Now()
 
 	// Send end event.
-	endEvent := command.EventEnd(output)
+	endEvent := command.NewEventEnd(ctx, output)
 	m.SendEvent(endEvent)
 
 	return output
@@ -66,11 +66,10 @@ func (m *mockCommandRunner) RunContext(_ context.Context) command.Output {
 func (m *mockCommandRunner) SendEvent(evt command.Event) {
 	// Set timestamp for EventEnd events if not already set
 	if endEvent, ok := evt.(command.EventEnd); ok {
-		if endEvent.Timestamp.IsZero() {
-			// Cast to Output, set timestamp, and cast back to EventEnd
-			output := command.Output(endEvent)
-			output.Timestamp = time.Now()
-			evt = command.EventEnd(output)
+		if endEvent.Output.Timestamp.IsZero() {
+			// Update the timestamp in the Output field
+			endEvent.Output.Timestamp = time.Now()
+			evt = endEvent
 		}
 	}
 
@@ -112,7 +111,7 @@ func TestServer_GetResourceSendsOpenEvent(t *testing.T) {
 
 	// Simulate the MCP server sending an EventOpenResource.
 	// This tests that our new SendEvent functionality works correctly.
-	testRunner.SendEvent(command.EventOpenResource(*testResource))
+	testRunner.SendEvent(command.NewEventOpenResource(t.Context(), *testResource))
 
 	// Give some time for the event to be processed.
 	time.Sleep(50 * time.Millisecond)
@@ -126,7 +125,7 @@ func TestServer_GetResourceSendsOpenEvent(t *testing.T) {
 		select {
 		case event := <-eventCh:
 			if openEvent, ok := event.(command.EventOpenResource); ok {
-				assert.Equal(t, kube.Resource(openEvent), *testResource)
+				assert.Equal(t, openEvent.Resource, *testResource)
 
 				openResourceEventFound = true
 			}
@@ -180,65 +179,65 @@ func TestServer_EventProcessing(t *testing.T) {
 	}{
 		"start event sets status to running": {
 			events: []command.Event{
-				command.EventStart(command.TypeRun),
+				command.NewEventStart(t.Context(), command.TypeRun),
 			},
 			want: "running",
 			err:  nil,
 		},
 		"end event with success sets status to completed": {
 			events: []command.Event{
-				command.EventStart(command.TypeRun),
-				command.EventEnd{
+				command.NewEventStart(t.Context(), command.TypeRun),
+				command.NewEventEnd(t.Context(), command.Output{
 					Error:     nil,
 					Stdout:    "command output",
 					Stderr:    "",
 					Resources: testResources,
 					Type:      command.TypeRun,
-				},
+				}),
 			},
 			want: "completed",
 			err:  nil,
 		},
 		"end event with error sets status to error": {
 			events: []command.Event{
-				command.EventStart(command.TypeRun),
-				command.EventEnd{
+				command.NewEventStart(t.Context(), command.TypeRun),
+				command.NewEventEnd(t.Context(), command.Output{
 					Error:     errors.New("test error"),
 					Stdout:    "",
 					Stderr:    "error output",
 					Resources: nil,
 					Type:      command.TypeRun,
-				},
+				}),
 			},
 			want: "error",
 			err:  nil,
 		},
 		"cancel event sets status to idle": {
 			events: []command.Event{
-				command.EventStart(command.TypeRun),
-				command.EventCancel{},
+				command.NewEventStart(t.Context(), command.TypeRun),
+				command.NewEventCancel(t.Context()),
 			},
 			want: "idle",
 			err:  nil,
 		},
 		"multiple start/end cycles work correctly": {
 			events: []command.Event{
-				command.EventStart(command.TypeRun),
-				command.EventEnd{
+				command.NewEventStart(t.Context(), command.TypeRun),
+				command.NewEventEnd(t.Context(), command.Output{
 					Error:     nil,
 					Stdout:    "first command",
 					Stderr:    "",
 					Resources: testResources,
 					Type:      command.TypeRun,
-				},
-				command.EventStart(command.TypePlugin),
-				command.EventEnd{
+				}),
+				command.NewEventStart(t.Context(), command.TypePlugin),
+				command.NewEventEnd(t.Context(), command.Output{
 					Error:     errors.New("second error"),
 					Stdout:    "",
 					Stderr:    "second error output",
 					Resources: nil,
 					Type:      command.TypePlugin,
-				},
+				}),
 			},
 			want: "error",
 			err:  nil,
@@ -499,14 +498,14 @@ func TestServer_PathReconfiguration(t *testing.T) {
 	require.NoError(t, err)
 
 	// Send events to simulate command execution.
-	testRunner.SendEvent(command.EventStart(command.TypeRun))
-	testRunner.SendEvent(command.EventEnd{
+	testRunner.SendEvent(command.NewEventStart(t.Context(), command.TypeRun))
+	testRunner.SendEvent(command.NewEventEnd(t.Context(), command.Output{
 		Error:     nil,
 		Stdout:    "initial output",
 		Stderr:    "",
 		Resources: nil,
 		Type:      command.TypeRun,
-	})
+	}))
 
 	// Give time for events to be processed.
 	time.Sleep(100 * time.Millisecond)

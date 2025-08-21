@@ -1,6 +1,7 @@
 package menu
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/charmbracelet/lipgloss"
@@ -8,13 +9,15 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/macropower/kat/pkg/keys"
+	"github.com/macropower/kat/pkg/log"
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/configeditor"
 	"github.com/macropower/kat/pkg/ui/statusbar"
 )
 
 type ChangeConfigMsg struct {
-	To configeditor.Result
+	Context context.Context
+	To      configeditor.Result
 }
 
 type Model struct {
@@ -97,14 +100,23 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	if m.configeditor.IsCompleted() {
-		slog.Debug("config editor completed", slog.Any("data", m.configeditor.Result()))
-
-		cmds = append(cmds, func() tea.Msg {
-			return ChangeConfigMsg{To: m.configeditor.Result()}
-		})
+		cmds = append(cmds, m.submitResults(context.Background()))
 	}
 
 	return m, tea.Batch(cmds...)
+}
+
+func (m Model) submitResults(ctx context.Context) tea.Cmd {
+	log.WithContext(ctx).DebugContext(ctx, "config editor completed",
+		slog.Any("data", m.configeditor.Result()),
+	)
+
+	return func() tea.Msg {
+		return ChangeConfigMsg{
+			To:      m.configeditor.Result(),
+			Context: ctx,
+		}
+	}
 }
 
 func (m Model) View() string {

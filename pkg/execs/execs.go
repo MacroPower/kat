@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/macropower/kat/pkg/log"
 )
 
 type Executor struct {
@@ -30,6 +32,8 @@ func (e Executor) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (
 	if e.cmd.Command == "" {
 		return nil, ErrEmptyCommand
 	}
+
+	logger := log.WithContext(ctx)
 
 	start := time.Now()
 
@@ -59,7 +63,7 @@ func (e Executor) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (
 	}
 
 	if err != nil {
-		slog.DebugContext(ctx, "command failed",
+		logger.DebugContext(ctx, "command failed",
 			slog.String("command", e.String()),
 			slog.Duration("duration", time.Since(start)),
 			slog.Any("error", err),
@@ -72,7 +76,7 @@ func (e Executor) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (
 		return nil, fmt.Errorf("%w: %w", ErrCommandExecution, err)
 	}
 
-	slog.DebugContext(ctx, "command executed successfully",
+	logger.DebugContext(ctx, "command executed successfully",
 		slog.String("command", e.String()),
 		slog.Duration("duration", time.Since(start)),
 	)

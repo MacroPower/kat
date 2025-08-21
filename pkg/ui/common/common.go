@@ -14,7 +14,6 @@ import (
 )
 
 type Commander interface {
-	Run() command.Output
 	RunContext(ctx context.Context) command.Output
 	RunOnEvent()
 	String() string
@@ -22,8 +21,8 @@ type Commander interface {
 	GetProfiles() map[string]*profile.Profile
 	GetCurrentProfile() (string, *profile.Profile)
 	FindProfiles(path string) ([]command.ProfileMatch, error)
-	Configure(opts ...command.RunnerOpt) error
-	RunPlugin(name string) command.Output
+	ConfigureContext(ctx context.Context, opts ...command.RunnerOpt) error
+	RunPluginContext(ctx context.Context, name string) command.Output
 	FS() (*command.FilteredFS, error)
 }
 

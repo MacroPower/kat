@@ -14,10 +14,9 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/kube"
+	"github.com/macropower/kat/pkg/log"
 	"github.com/macropower/kat/pkg/version"
 )
 
@@ -28,7 +27,7 @@ type ExecutionState struct {
 
 type CommandRunner interface {
 	Subscribe(ch chan<- command.Event)
-	Configure(opts ...command.RunnerOpt) error
+	ConfigureContext(ctx context.Context, opts ...command.RunnerOpt) error
 	RunContext(ctx context.Context) command.Output
 	SendEvent(evt command.Event)
 }
@@ -48,9 +47,6 @@ type Server struct {
 
 // NewServer creates a new MCP server instance.
 func NewServer(address string, runner CommandRunner, initialPath string) (*Server, error) {
-	tp := sdktrace.NewTracerProvider()
-	otel.SetTracerProvider(tp)
-
 	impl := &mcp.Implementation{
 		Name:    "kat",
 		Version: version.GetVersion(),
@@ -157,7 +153,7 @@ func (s *Server) processEvents() {
 	for event := range s.eventCh {
 		switch e := event.(type) {
 		case command.EventEnd:
-			s.updateState(command.Output(e))
+			s.updateState(e.Output)
 
 			// Broadcast to all waiters.
 			s.completionCond.Broadcast()
@@ -191,11 +187,11 @@ func (s *Server) reload(ctx context.Context, path string) error {
 		return nil // No path change, nothing to do.
 	}
 
-	logger := loggerFromContext(ctx)
+	logger := log.WithContext(ctx)
 	logger.DebugContext(ctx, "reloading with new path", slog.String("path", path))
 
 	// Reconfigure the runner with the new path.
-	err := s.runner.Configure(
+	err := s.runner.ConfigureContext(ctx,
 		command.WithAutoProfile(),
 		command.WithPath(path),
 	)
@@ -272,7 +268,7 @@ func (s *Server) handleListResources(
 
 	populateResultFromOutput(&result, s.state.Output)
 
-	s.runner.SendEvent(command.EventListResources{})
+	s.runner.SendEvent(command.NewEventListResources(ctx))
 
 	return createListResourcesResult(result), nil
 }
@@ -309,7 +305,7 @@ func (s *Server) handleGetResource(
 		}
 
 		// Send event to open the resource in the pager.
-		s.runner.SendEvent(command.EventOpenResource(*resource))
+		s.runner.SendEvent(command.NewEventOpenResource(ctx, *resource))
 	}
 
 	return createGetResourceResult(result, params.Arguments), nil
