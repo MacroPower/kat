@@ -57,7 +57,20 @@ func NewServer(address string, runner CommandRunner, initialPath string) (*Serve
 	}
 
 	opts := &mcp.ServerOptions{
-		Instructions: "MCP Server for rendering and browsing Kubernetes manifests. Workflow: 1) Use the list_resources tool to get a list of resources. 2) STOP and READ the output. 3) Use the get_resource tool to get specific resources from the list_resources output.",
+		Instructions: `MCP Server for rendering, validating, and browsing Kubernetes manifests from Helm charts, Kustomize overlays, and any other manifest generators.
+
+Required workflow:
+1. ALWAYS use 'list_resources' first to render and list all resources at a given path
+2. STOP and carefully READ the output to understand what resources are available
+3. Use 'get_resource' to retrieve the full YAML content of specific resources using EXACT values from list_resources
+
+Use these tools whenever you need to:
+- See what resources a Helm chart or Kustomize overlay generates
+- Inspect the rendered YAML (not the templates)
+- Validate and review any Kubernetes resources locally
+- Understand what will be deployed to the cluster
+
+The tools handle all manifest rendering and validation internally.`,
 	}
 
 	mcpServer := mcp.NewServer(impl, opts)
@@ -88,8 +101,10 @@ func NewServer(address string, runner CommandRunner, initialPath string) (*Serve
 func (s *Server) registerTools() {
 	// Register the list_resources tool.
 	mcp.AddTool(s.server, &mcp.Tool{
-		Name:        "list_resources",
-		Description: "List Kubernetes resources rendered by a project (e.g., helm, kustomize) at a particular path. You MUST specify a path.",
+		Name: "list_resources",
+		Description: `List all Kubernetes resources that would be rendered by a manifest generator (Helm, Kustomize, etc.) at the specified path.
+
+Use this tool first before attempting to inspect any specific Kubernetes resources.`,
 		InputSchema: &jsonschema.Schema{
 			Type: "object",
 			Properties: map[string]*jsonschema.Schema{
@@ -104,33 +119,35 @@ func (s *Server) registerTools() {
 
 	// Register the get_resource tool.
 	mcp.AddTool(s.server, &mcp.Tool{
-		Name:        "get_resource",
-		Description: "Get details of a specific Kubernetes resource. You MUST use inputs from a list_resources output in the resources list EXACTLY.",
+		Name: "get_resource",
+		Description: `Get the fully rendered YAML content of a specific Kubernetes resource.
+
+IMPORTANT: You MUST first use 'list_resources' to get available resources, then use the EXACT values from its output.`,
 		InputSchema: &jsonschema.Schema{
 			Type: "object",
 			Properties: map[string]*jsonschema.Schema{
 				"apiVersion": {
 					Type:        "string",
-					Description: "The API version of the resource, if applicable",
+					Description: "The API version of the resource.",
 				},
 				"kind": {
 					Type:        "string",
-					Description: "The kind of the resource",
+					Description: "The kind of the resource.",
 				},
 				"namespace": {
 					Type:        "string",
-					Description: "The namespace of the resource, if applicable",
+					Description: "The namespace of the resource. Use an empty string for resources without a namespace.",
 				},
 				"name": {
 					Type:        "string",
-					Description: "The name of the resource",
+					Description: "The name of the resource.",
 				},
 				"path": {
 					Type:        "string",
 					Description: "The directory path to operate on, relative to the project root.",
 				},
 			},
-			Required: []string{"kind", "name", "path"},
+			Required: []string{"apiVersion", "kind", "namespace", "name", "path"},
 		},
 	}, WithTracing(s.tracer, s.handleGetResource))
 }

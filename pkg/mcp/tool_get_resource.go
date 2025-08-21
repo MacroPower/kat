@@ -10,17 +10,18 @@ import (
 
 // GetResourceParams defines parameters for the get_resource tool.
 type GetResourceParams struct {
-	APIVersion string `json:"apiVersion"          jsonschema:"the API version of the resource (e.g. v1 or apps/v1)"`
-	Kind       string `json:"kind"                jsonschema:"the kind of the resource (e.g. Pod or Deployment)"`
-	Name       string `json:"name"                jsonschema:"the name of the resource"`
-	Namespace  string `json:"namespace,omitempty" jsonschema:"the namespace of the resource (optional for cluster-scoped resources)"`
-	Path       string `json:"path"                jsonschema:"the directory path to operate on, relative to the project root"`
+	APIVersion string `json:"apiVersion" jsonschema:"the API version of the resource (e.g. v1 or apps/v1)"`
+	Kind       string `json:"kind"       jsonschema:"the kind of the resource (e.g. Pod or Deployment)"`
+	Name       string `json:"name"       jsonschema:"the name of the resource"`
+	Namespace  string `json:"namespace"  jsonschema:"the namespace of the resource (optional for cluster-scoped resources)"`
+	Path       string `json:"path"       jsonschema:"the directory path to operate on, relative to the project root"`
 }
 
 // GetResourceResult contains the result of getting a single resource.
 type GetResourceResult struct {
 	Resource *ResourceDetails `json:"resource,omitempty"`
 	Error    string           `json:"error,omitempty"`
+	Message  string           `json:"message"`
 	Found    bool             `json:"found"`
 }
 
@@ -36,6 +37,7 @@ func createGetResourceResult(
 	params GetResourceParams,
 ) *mcp.CallToolResultFor[GetResourceResult] {
 	text := formatResourceMessage(result, params)
+	result.Message = text
 
 	return &mcp.CallToolResultFor[GetResourceResult]{
 		Content: []mcp.Content{

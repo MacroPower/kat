@@ -351,6 +351,7 @@ func TestServer_Integration(t *testing.T) {
 			want: map[string]any{
 				"stdoutPreview": "command output",
 				"resourceCount": float64(2),
+				"message":       "Found 2 Kubernetes resources.",
 				"resources": []any{
 					map[string]any{
 						"apiVersion": "v1",
@@ -376,6 +377,7 @@ func TestServer_Integration(t *testing.T) {
 			},
 			want: map[string]any{
 				"stdoutPreview": "command output",
+				"message":       "Found 2 Kubernetes resources.",
 				"resourceCount": float64(2),
 				"resources": []any{
 					map[string]any{
@@ -405,7 +407,8 @@ func TestServer_Integration(t *testing.T) {
 				},
 			},
 			want: map[string]any{
-				"found": true,
+				"found":   true,
+				"message": "Found resource v1/Pod default/test-pod.",
 				"resource": map[string]any{
 					"metadata": map[string]any{
 						"apiVersion": "v1",
@@ -429,7 +432,8 @@ func TestServer_Integration(t *testing.T) {
 				},
 			},
 			want: map[string]any{
-				"found": true,
+				"found":   true,
+				"message": "Found resource v1/Pod default/test-pod.",
 				"resource": map[string]any{
 					"metadata": map[string]any{
 						"apiVersion": "v1",
@@ -453,7 +457,8 @@ func TestServer_Integration(t *testing.T) {
 				},
 			},
 			want: map[string]any{
-				"found": false,
+				"found":   false,
+				"message": "INVALID INPUT ERROR: Resource v1/Pod default/nonexistent-pod not found. Use an EXACT INPUT from the list_resources tool.",
 			},
 		},
 	}

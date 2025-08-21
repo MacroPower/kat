@@ -19,19 +19,20 @@ type ListResourcesResult struct {
 	Error         string                  `json:"error,omitempty"`
 	StdoutPreview string                  `json:"stdoutPreview,omitempty"`
 	StderrPreview string                  `json:"stderrPreview,omitempty"`
+	Message       string                  `json:"message"`
 	Resources     []kube.ResourceMetadata `json:"resources"`
 	ResourceCount int                     `json:"resourceCount"`
 }
 
 // createListResourcesResult creates the MCP tool result from ListResourcesResult.
 func createListResourcesResult(result ListResourcesResult) *mcp.CallToolResultFor[ListResourcesResult] {
+	msg := fmt.Sprintf("Found %d Kubernetes resources.", result.ResourceCount)
+	result.Message = msg
+
 	return &mcp.CallToolResultFor[ListResourcesResult]{
 		Content: []mcp.Content{
 			&mcp.TextContent{
-				Text: fmt.Sprintf(
-					"Found %d Kubernetes resources.",
-					result.ResourceCount,
-				),
+				Text: msg,
 			},
 		},
 		StructuredContent: result,
