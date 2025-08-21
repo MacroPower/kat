@@ -301,6 +301,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		initCmds := m.Init()
 		cmds = append(cmds, initCmds)
 
+	case command.EventListResources:
+		m.pager.Unload()
+		m.menu.Unload()
+
+		m.state = stateShowList
+
+	case command.EventOpenResource:
+		m.pager.Unload()
+		m.menu.Unload()
+
+		m.state = stateShowDocument
+
+		resource := kube.Resource(msg)
+		yamlDoc := kubeResourceToYAML(&resource)
+		m.pager.CurrentDocument = *yamlDoc
+
+		cmds = append(cmds, m.pager.Render(yamlDoc.Body))
+
 	case menu.ChangeConfigMsg:
 		m.list.YAMLs = nil
 		m.state = stateShowList

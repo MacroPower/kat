@@ -540,6 +540,11 @@ func (cr *Runner) broadcast(evt Event) {
 	}
 }
 
+// SendEvent allows external components to send events to all listeners.
+func (cr *Runner) SendEvent(evt Event) {
+	cr.broadcast(evt)
+}
+
 // RunOnEvent listens for file system events and runs the command in response.
 // The output should be collected via [Runner.Subscribe].
 func (cr *Runner) RunOnEvent() {

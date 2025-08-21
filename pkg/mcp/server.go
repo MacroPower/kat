@@ -30,6 +30,7 @@ type CommandRunner interface {
 	Subscribe(ch chan<- command.Event)
 	Configure(opts ...command.RunnerOpt) error
 	RunContext(ctx context.Context) command.Output
+	SendEvent(evt command.Event)
 }
 
 // Server implements the MCP server for kat.
@@ -254,6 +255,8 @@ func (s *Server) handleListResources(
 
 	populateResultFromOutput(&result, s.state.Output)
 
+	s.runner.SendEvent(command.EventListResources{})
+
 	return createListResourcesResult(result), nil
 }
 
@@ -287,6 +290,9 @@ func (s *Server) handleGetResource(
 			Metadata: resource.Object.GetMetadata(),
 			YAML:     resource.YAML,
 		}
+
+		// Send event to open the resource in the pager.
+		s.runner.SendEvent(command.EventOpenResource(*resource))
 	}
 
 	return createGetResourceResult(result, params.Arguments), nil

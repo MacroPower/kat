@@ -63,4 +63,10 @@ type (
 
 	// EventConfigure indicates that a command has been configured (or re-configured).
 	EventConfigure struct{}
+
+	// EventOpenResource indicates that a specific resource was opened.
+	EventOpenResource kube.Resource
+
+	// EventListResources indicates that a list of resources was requested.
+	EventListResources struct{}
 )

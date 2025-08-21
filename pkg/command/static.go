@@ -98,6 +98,11 @@ func (rg *Static) broadcast(evt Event) {
 	}
 }
 
+// SendEvent allows external components to send events to all listeners.
+func (rg *Static) SendEvent(evt Event) {
+	rg.broadcast(evt)
+}
+
 func (rg *Static) RunPlugin(_ string) Output {
 	rg.broadcast(EventStart(TypePlugin))
 

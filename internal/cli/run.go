@@ -321,7 +321,12 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 	slog.SetDefault(slog.New(logHandler))
 
 	if rc.ServeMCP != "" {
-		mcpServer, err := mcp.NewServer(rc.ServeMCP, cr, rc.Path)
+		mcpCr, ok := cr.(mcp.CommandRunner)
+		if !ok {
+			panic(fmt.Errorf("command runner does not implement mcp.CommandRunner: %T", cr))
+		}
+
+		mcpServer, err := mcp.NewServer(rc.ServeMCP, mcpCr, rc.Path)
 		if err != nil {
 			return fmt.Errorf("create MCP server: %w", err)
 		}
@@ -450,7 +455,7 @@ func runUI(cfg *ui.Config, cr common.Commander) error {
 			case command.EventStart:
 				p.Send(e)
 
-			case command.EventEnd:
+			case command.EventEnd, command.EventConfigure:
 				if time.Since(lastEventTime) < *cfg.UI.MinimumDelay {
 					// Add a delay if the command ran faster than MinimumDelay.
 					// This prevents the status from flickering in the UI.
@@ -459,7 +464,7 @@ func runUI(cfg *ui.Config, cr common.Commander) error {
 
 				p.Send(e)
 
-			case command.EventConfigure:
+			case command.EventOpenResource, command.EventListResources:
 				p.Send(e)
 
 			case command.EventCancel:

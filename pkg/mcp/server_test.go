@@ -36,7 +36,7 @@ func (m *mockCommandRunner) Subscribe(ch chan<- command.Event) {
 
 func (m *mockCommandRunner) RunContext(_ context.Context) command.Output {
 	// Send start event immediately.
-	m.sendEvent(command.EventStart(command.TypeRun))
+	m.SendEvent(command.EventStart(command.TypeRun))
 
 	// Simulate some work.
 	time.Sleep(10 * time.Millisecond)
@@ -58,25 +58,86 @@ func (m *mockCommandRunner) RunContext(_ context.Context) command.Output {
 
 	// Send end event.
 	endEvent := command.EventEnd(output)
-	m.sendEvent(endEvent)
+	m.SendEvent(endEvent)
 
 	return output
 }
 
-func (m *mockCommandRunner) sendEvent(event command.Event) {
+func (m *mockCommandRunner) SendEvent(evt command.Event) {
 	// Set timestamp for EventEnd events if not already set
-	if endEvent, ok := event.(command.EventEnd); ok {
+	if endEvent, ok := evt.(command.EventEnd); ok {
 		if endEvent.Timestamp.IsZero() {
 			// Cast to Output, set timestamp, and cast back to EventEnd
 			output := command.Output(endEvent)
 			output.Timestamp = time.Now()
-			event = command.EventEnd(output)
+			evt = command.EventEnd(output)
 		}
 	}
 
 	for _, ch := range m.channels {
-		ch <- event
+		ch <- evt
 	}
+}
+
+func TestServer_GetResourceSendsOpenEvent(t *testing.T) {
+	t.Parallel()
+
+	// Create test resource.
+	testResource := &kube.Resource{
+		Object: &kube.Object{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"metadata": map[string]any{
+				"name": "test",
+			},
+		},
+		YAML: "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test\n",
+	}
+
+	// Set up mock runner with the test resource.
+	testRunner := &mockCommandRunner{}
+	testOutput := command.Output{
+		Type:      command.TypeRun,
+		Resources: []*kube.Resource{testResource},
+	}
+	testRunner.addOutput(testOutput)
+
+	// Track events sent by the runner.
+	eventCh := make(chan command.Event, 10)
+	testRunner.Subscribe(eventCh)
+
+	// Create server.
+	_, err := mcp.NewServer("localhost:8081", testRunner, "/test/path")
+	require.NoError(t, err)
+
+	// Simulate the MCP server sending an EventOpenResource.
+	// This tests that our new SendEvent functionality works correctly.
+	testRunner.SendEvent(command.EventOpenResource(*testResource))
+
+	// Give some time for the event to be processed.
+	time.Sleep(50 * time.Millisecond)
+
+	// Check that an EventOpenResource was sent.
+	var openResourceEventFound bool
+
+	timeout := time.After(100 * time.Millisecond)
+
+	for !openResourceEventFound {
+		select {
+		case event := <-eventCh:
+			if openEvent, ok := event.(command.EventOpenResource); ok {
+				assert.Equal(t, kube.Resource(openEvent), *testResource)
+
+				openResourceEventFound = true
+			}
+
+		case <-timeout:
+			// Timeout - exit the loop.
+			openResourceEventFound = true
+		}
+	}
+
+	assert.True(t, openResourceEventFound, "EventOpenResource should have been sent")
 }
 
 func (m *mockCommandRunner) addOutput(output command.Output) {
@@ -194,7 +255,7 @@ func TestServer_EventProcessing(t *testing.T) {
 
 			// Send events
 			for _, event := range tc.events {
-				testRunner.sendEvent(event)
+				testRunner.SendEvent(event)
 			}
 
 			// Give time for events to be processed
@@ -433,8 +494,8 @@ func TestServer_PathReconfiguration(t *testing.T) {
 	require.NoError(t, err)
 
 	// Send events to simulate command execution.
-	testRunner.sendEvent(command.EventStart(command.TypeRun))
-	testRunner.sendEvent(command.EventEnd{
+	testRunner.SendEvent(command.EventStart(command.TypeRun))
+	testRunner.SendEvent(command.EventEnd{
 		Error:     nil,
 		Stdout:    "initial output",
 		Stderr:    "",
