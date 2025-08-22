@@ -10,9 +10,13 @@ import (
 
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
 	"golang.org/x/term"
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/config"
@@ -23,6 +27,7 @@ import (
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/theme"
 	"github.com/macropower/kat/pkg/ui/yamls"
+	"github.com/macropower/kat/pkg/version"
 )
 
 const (
@@ -55,8 +60,9 @@ type RunArgs struct {
 	ConfigPath       string
 	CommandOrProfile string
 	ServeMCP         string
-	StdinData        []byte
+	TracingEndpoint  string
 	Args             []string
+	StdinData        []byte
 	Watch            bool
 	WriteConfig      bool
 	ShowConfig       bool
@@ -74,6 +80,7 @@ func (ra *RunArgs) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&ra.Watch, "watch", "w", false, "Watch for changes and trigger reloading")
 	cmd.Flags().BoolVar(&ra.WriteConfig, "write-config", false, "Write the default configuration files and exit")
 	cmd.Flags().BoolVar(&ra.ShowConfig, "show-config", false, "Print the active configuration and exit")
+	cmd.Flags().StringVar(&ra.TracingEndpoint, "tracing-endpoint", "", "OpenTelemetry tracing endpoint")
 
 	err := cmd.MarkFlagFilename("config", "yaml", "yml")
 	if err != nil {
@@ -295,7 +302,11 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 		rc.Watch = true
 	}
 
-	tp := sdktrace.NewTracerProvider()
+	tp, err := setupTracerProvider(rc)
+	if err != nil {
+		return fmt.Errorf("setup tracer provider: %w", err)
+	}
+
 	otel.SetTracerProvider(tp)
 
 	var cr command.Commander
@@ -439,6 +450,47 @@ func setupCommandRunner(path string, cfg *config.Config, rc *RunArgs) (*command.
 	}
 
 	return cr, nil
+}
+
+// setupTracerProvider creates and configures an OpenTelemetry tracer provider based on CLI arguments.
+func setupTracerProvider(rc *RunArgs) (*sdktrace.TracerProvider, error) {
+	res, err := resource.Merge(
+		resource.Default(),
+		resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("kat"),
+			semconv.ServiceVersionKey.String(version.GetVersion()),
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create resource: %w", err)
+	}
+
+	opts := []sdktrace.TracerProviderOption{
+		sdktrace.WithResource(res),
+	}
+
+	// Configure exporter if endpoint is provided.
+	if rc.TracingEndpoint != "" {
+		slog.Info("adding opentelemetry exporter", slog.String("endpoint", rc.TracingEndpoint))
+
+		exporter, err := otlptracegrpc.New(
+			context.Background(),
+			otlptracegrpc.WithEndpointURL(rc.TracingEndpoint),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("create OTLP exporter: %w", err)
+		}
+
+		opts = append(opts, sdktrace.WithBatcher(exporter, sdktrace.WithBatchTimeout(1*time.Second)))
+
+		otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+			propagation.Baggage{},
+		))
+	}
+
+	return sdktrace.NewTracerProvider(opts...), nil
 }
 
 // runUI starts the UI program.

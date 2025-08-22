@@ -52,7 +52,7 @@ func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
 		watchedDirs:  make(map[string]struct{}),
 		watchedFiles: make(map[string]struct{}),
 		profiles:     make(map[string]*profile.Profile),
-		tracer:       otel.Tracer("kat-command-runner"),
+		tracer:       otel.Tracer("command-runner"),
 	}
 
 	var err error

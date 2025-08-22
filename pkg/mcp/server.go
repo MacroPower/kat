@@ -84,7 +84,7 @@ The tools automatically detect the project type and invoke the appropriate rende
 		eventCh:     make(chan command.Event, 100),
 		currentPath: initialPath,
 		state:       ExecutionState{},
-		tracer:      otel.Tracer("kat-mcp-server"),
+		tracer:      otel.Tracer("mcp-server"),
 	}
 
 	s.completionCond = sync.NewCond(&s.mu)
@@ -191,6 +191,9 @@ func (s *Server) pathChanged(newPath string) bool {
 }
 
 func (s *Server) reload(ctx context.Context, path string) error {
+	ctx, span := s.tracer.Start(ctx, "reload")
+	defer span.End()
+
 	if !s.pathChanged(path) {
 		return nil // No path change, nothing to do.
 	}
@@ -227,6 +230,9 @@ func (s *Server) reload(ctx context.Context, path string) error {
 
 // waitForCompletion blocks until any command execution completes or the context is canceled.
 func (s *Server) waitForCompletion(ctx context.Context, reloadTime time.Time) error {
+	ctx, span := s.tracer.Start(ctx, "wait")
+	defer span.End()
+
 	if reloadTime.IsZero() {
 		return nil // No reload happened.
 	}
