@@ -504,7 +504,7 @@ func runUI(cfg *ui.Config, cr common.Commander) error {
 
 	p := ui.NewProgram(cfg, cr)
 
-	ch := make(chan command.Event)
+	ch := make(chan command.Event, 100)
 	cr.Subscribe(ch)
 
 	go func() {
