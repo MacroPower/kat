@@ -29,12 +29,24 @@ var ErrNoCommandForPath = errors.New("no command for path")
 //   - Filesystem notifications / watching.
 //   - Concurrent command execution.
 type Runner struct {
-	tracer             trace.Tracer
-	watchedFiles       map[string]struct{}
-	profiles           map[string]*profile.Profile
-	watcher            *fsnotify.Watcher
-	fsys               *FilteredFS
-	watchedDirs        map[string]struct{}
+	tracer   trace.Tracer
+	profiles map[string]*profile.Profile
+	watcher  *fsnotify.Watcher
+
+	// The root filesystem to operate on. This prevents later re-configuration
+	// from escaping the originally configured root path.
+	root RootFS
+
+	// Track watched files.
+	// Enables directory watching to behave similarly to file watching.
+	// Note that it stores absolute file paths (not relative to the root).
+	watchedFiles map[string]struct{}
+
+	// Track watched directories.
+	// Enables un-watching in re-configuration scenarios.
+	// Note that it stores absolute directory paths (not relative to the root).
+	watchedDirs map[string]struct{}
+
 	currentProfile     *profile.Profile
 	cancelFunc         context.CancelFunc
 	path               string
@@ -46,20 +58,38 @@ type Runner struct {
 	watch              bool
 }
 
-// NewRunner creates a new [Runner].
+// NewRunner creates a new [Runner]. It uses the current working directory as
+// the filesystem root.
 func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("get current working directory: %w", err)
+	}
+
+	root, err := os.OpenRoot(wd)
+	if err != nil {
+		return nil, fmt.Errorf("open root directory %q: %w", wd, err)
+	}
+
+	return NewRunnerWithRoot(root, path, opts...)
+}
+
+// NewRunner creates a new [Runner] using the provided [RootFS].
+// This is not a normal opt since it cannot be re-configured after the runner
+// has been created.
+func NewRunnerWithRoot(root RootFS, path string, opts ...RunnerOpt) (*Runner, error) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, fmt.Errorf("create fsnotify watcher: %w", err)
+	}
+
 	cr := &Runner{
 		watchedDirs:  make(map[string]struct{}),
 		watchedFiles: make(map[string]struct{}),
 		profiles:     make(map[string]*profile.Profile),
 		tracer:       otel.Tracer("command-runner"),
-	}
-
-	var err error
-
-	cr.watcher, err = fsnotify.NewWatcher()
-	if err != nil {
-		return nil, fmt.Errorf("create fsnotify watcher: %w", err)
+		root:         root,
+		watcher:      watcher,
 	}
 
 	if len(opts) == 0 {
@@ -171,9 +201,16 @@ func (cr *Runner) ConfigureContext(ctx context.Context, opts ...RunnerOpt) error
 
 type RunnerOpt func(cr *Runner) error
 
-// WithPath sets the path for the runner.
+// WithPath sets the path for the runner (relative to the initial root).
+// If the path tries to escape the root, it returns an error early to avoid
+// runtime errors deeper in the stack.
 func WithPath(path string) RunnerOpt {
 	return func(cr *Runner) error {
+		_, err := cr.root.Stat(path)
+		if err != nil {
+			return fmt.Errorf("stat path %q: %w", path, err)
+		}
+
 		cr.path = path
 
 		return nil
@@ -273,7 +310,7 @@ func (cr *Runner) FindProfile(path string) (string, *profile.Profile, error) {
 // FindProfiles finds matching profiles for the given path using the configured rules.
 // The results are returned in order of priority.
 func (cr *Runner) FindProfiles(path string) ([]ProfileMatch, error) {
-	fileInfo, err := os.Stat(path)
+	fileInfo, err := cr.root.Stat(path)
 	if err != nil {
 		return nil, fmt.Errorf("stat path: %w", err)
 	}
@@ -282,7 +319,7 @@ func (cr *Runner) FindProfiles(path string) ([]ProfileMatch, error) {
 
 	if fileInfo.IsDir() {
 		// Path is a directory, find matching files inside.
-		cmds, err := findMatchInDirectory(path, cr.allRules)
+		cmds, err := cr.findMatchInDirectory(path)
 		if err != nil {
 			return nil, err
 		}
@@ -363,21 +400,12 @@ func (cr *Runner) SetProfile(name string) error {
 // FS creates a [FilteredFS] for the runner that hides directories and files
 // unless they match at least one of the configured rules.
 func (cr *Runner) FS() (*FilteredFS, error) {
-	if cr.fsys != nil {
-		return cr.fsys, nil
-	}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("get working directory: %w", err)
-	}
-
-	cr.fsys, err = NewFilteredFS(wd, cr.allRules...)
+	fsys, err := NewFilteredFS(cr.root, cr.allRules...)
 	if err != nil {
 		return nil, err
 	}
 
-	return cr.fsys, nil
+	return fsys, nil
 }
 
 // RunPlugin executes a plugin by name.
@@ -440,7 +468,7 @@ func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 		return co
 	}
 
-	_, err := os.Stat(path)
+	_, err := cr.root.Stat(path)
 	if err != nil {
 		co.Error = fmt.Errorf("stat path: %w", err)
 		cr.broadcast(NewEventEnd(ctx, co))
@@ -471,16 +499,17 @@ func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 }
 
 func (cr *Runner) watchSource(ctx context.Context) error {
-	p := cr.currentProfile
+	var (
+		files []string
+		p     = cr.currentProfile
+	)
 
-	var files []string
-
-	err := filepath.Walk(cr.path, func(path string, info fs.FileInfo, err error) error {
+	err := fs.WalkDir(cr.root.FS(), cr.path, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("walk %q: %w", path, err)
 		}
-		if info.IsDir() {
-			// Skip directories, we only want to watch files.
+		if d.IsDir() {
+			// Skip directories, we only want to match against files.
 			return nil
 		}
 
@@ -496,13 +525,28 @@ func (cr *Runner) watchSource(ctx context.Context) error {
 	if ok, matchedFiles := p.MatchFiles(cr.path, files); ok {
 		for _, file := range matchedFiles {
 			dir := filepath.Dir(file)
-			err := cr.watcher.Add(dir)
+
+			// Convert relative path to absolute path for fsnotify.
+			absDir, err := cr.root.Open(dir)
+			if err != nil {
+				return fmt.Errorf("open directory %q in root: %w", dir, err)
+			}
+
+			absDirPath := absDir.Name()
+			absFilePath := filepath.Join(absDirPath, filepath.Base(file))
+
+			err = absDir.Close()
+			if err != nil {
+				return fmt.Errorf("close directory %q: %w", absDirPath, err)
+			}
+
+			err = cr.watcher.Add(absDirPath)
 			if err != nil {
 				return fmt.Errorf("add path to watcher: %w", err)
 			}
 
-			cr.watchedDirs[dir] = struct{}{}
-			cr.watchedFiles[file] = struct{}{}
+			cr.watchedDirs[absDirPath] = struct{}{}
+			cr.watchedFiles[absFilePath] = struct{}{}
 		}
 	}
 
@@ -687,7 +731,7 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 
 	co := NewOutput(TypeRun)
 
-	_, err := os.Stat(path)
+	_, err := cr.root.Stat(path)
 	if err != nil {
 		co.Error = fmt.Errorf("stat path: %w", err)
 		cr.broadcast(NewEventEnd(ctx, co))
@@ -728,11 +772,11 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 // findMatchInDirectory looks for matching files in a directory.
 // It collects all files and allows CEL expressions to operate on the entire collection.
 // Returns (rule, files) where files contains the specific files to process, or nil to use profile.source.
-func findMatchInDirectory(dirPath string, rs []*rule.Rule) ([]*rule.Rule, error) {
+func (cr *Runner) findMatchInDirectory(dirPath string) ([]*rule.Rule, error) {
 	var files []string
 
 	// Collect all files in the directory (non-recursive).
-	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(cr.root.FS(), dirPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -751,7 +795,7 @@ func findMatchInDirectory(dirPath string, rs []*rule.Rule) ([]*rule.Rule, error)
 
 	// Try each rule with the full file collection.
 	matchedRules := []*rule.Rule{}
-	for _, r := range rs {
+	for _, r := range cr.allRules {
 		if r.MatchFiles(dirPath, files) {
 			matchedRules = append(matchedRules, r)
 		}

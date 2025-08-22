@@ -10,6 +10,28 @@ import (
 	"github.com/macropower/kat/pkg/command"
 )
 
+// collectStaticEventsWithTimeout collects up to maxEvents from the channel with a timeout
+func collectStaticEventsWithTimeout(
+	eventCh <-chan command.Event,
+	maxEvents int,
+	timeout time.Duration,
+) []command.Event {
+	var events []command.Event
+
+	timeoutTimer := time.After(timeout)
+
+	for len(events) < maxEvents {
+		select {
+		case event := <-eventCh:
+			events = append(events, event)
+		case <-timeoutTimer:
+			return events
+		}
+	}
+
+	return events
+}
+
 func TestNewStatic(t *testing.T) {
 	t.Parallel()
 
@@ -196,7 +218,7 @@ metadata:
 	output := static.RunPlugin("test-plugin")
 
 	// Collect events synchronously
-	events := collectEventsWithTimeout(eventCh, 2, 100*time.Millisecond)
+	events := collectStaticEventsWithTimeout(eventCh, 2, 100*time.Millisecond)
 
 	// Verify output
 	assert.Equal(t, command.TypePlugin, output.Type)
@@ -291,7 +313,7 @@ func runStaticWithEvents(t *testing.T, static *command.Static) ([]command.Event,
 	output := static.Run()
 
 	// Collect events from the channel synchronously
-	events := collectEventsWithTimeout(eventCh, 2, 100*time.Millisecond)
+	events := collectStaticEventsWithTimeout(eventCh, 2, 100*time.Millisecond)
 
 	return events, output
 }

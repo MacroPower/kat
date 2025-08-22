@@ -129,5 +129,5 @@ func (rg *Static) GetRules() []*rule.Rule {
 }
 
 func (rg *Static) FS() (*FilteredFS, error) {
-	return NewFilteredFS(os.TempDir())
+	return NewFilteredFSFromPath(os.TempDir())
 }
