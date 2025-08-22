@@ -49,24 +49,30 @@ type Server struct {
 func NewServer(address string, runner CommandRunner, initialPath string) (*Server, error) {
 	impl := &mcp.Implementation{
 		Name:    "kat",
+		Title:   "kat",
 		Version: version.GetVersion(),
 	}
 
 	opts := &mcp.ServerOptions{
-		Instructions: `MCP Server for rendering, validating, and browsing Kubernetes manifests from Helm charts, Kustomize overlays, and any other manifest generators.
+		Instructions: `MCP Server 'kat' enables rendering, validating, and browsing Kubernetes manifests from Helm charts, Kustomize overlays, and any other manifest generators.
+
+Unless otherwise specified in instructions, 'kat' should be used with ANY manifest generator that produces Kubernetes YAML, including but not limited to:
+- Helm charts, Kustomize overlays, raw YAML files
+- KCL, CUE, Jsonnet, Dhall configurations
+- Experimental or proprietary manifest generators
 
 Required workflow:
-1. ALWAYS use 'list_resources' first to render and list all resources at a given path
-2. STOP and carefully READ the output to understand what resources are available
-3. Use 'get_resource' to retrieve the full YAML content of specific resources using EXACT values from list_resources
+1. ALWAYS use 'list_resources' first with a directory path containing Kubernetes manifest sources (e.g., ".", "./helm-chart", "./kustomize-overlay")
+2. STOP and carefully READ the output to see all available resources with their metadata
+3. Use 'get_resource' to retrieve full YAML content using the EXACT apiVersion, kind, namespace, and name values from 'list_resources' output
 
-Use these tools whenever you need to:
-- See what resources a Helm chart or Kustomize overlay generates
-- Inspect the rendered YAML (not the templates)
-- Validate and review any Kubernetes resources locally
-- Understand what will be deployed to the cluster
+When to use these tools:
+- Analyzing what resources ANY manifest generator or configuration will produce
+- Inspecting the final rendered YAML (regardless of the source format or tool)
+- Validating Kubernetes resources before deployment
+- Debugging manifest generation issues from any toolchain
 
-The tools handle all manifest rendering and validation internally.`,
+The tools automatically detect the project type and invoke the appropriate rendering and validation commands internally.`,
 	}
 
 	mcpServer := mcp.NewServer(impl, opts)
@@ -98,9 +104,9 @@ func (s *Server) registerTools() {
 	// Register the list_resources tool.
 	mcp.AddTool(s.server, &mcp.Tool{
 		Name: "list_resources",
-		Description: `List all Kubernetes resources that would be rendered by a manifest generator (Helm, Kustomize, etc.) at the specified path.
+		Description: `Lists all Kubernetes resources that would be rendered by a manifest generator (Helm, Kustomize, etc.) at the specified path.
 
-Use this tool first before attempting to inspect any specific Kubernetes resources.`,
+IMPORTANT: Use this tool first before attempting to inspect any specific Kubernetes resources.`,
 		InputSchema: &jsonschema.Schema{
 			Type: "object",
 			Properties: map[string]*jsonschema.Schema{
@@ -116,7 +122,9 @@ Use this tool first before attempting to inspect any specific Kubernetes resourc
 	// Register the get_resource tool.
 	mcp.AddTool(s.server, &mcp.Tool{
 		Name: "get_resource",
-		Description: `Get the fully rendered YAML content of a specific Kubernetes resource.
+		Description: `Gets the fully rendered YAML content of a specific Kubernetes resource.
+
+Use this tool to retrieve the YAML representation of a resource after it has been rendered by the manifest generator.
 
 IMPORTANT: You MUST first use 'list_resources' to get available resources, then use the EXACT values from its output.`,
 		InputSchema: &jsonschema.Schema{
