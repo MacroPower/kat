@@ -289,6 +289,12 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 		return nil
 	}
 
+	if rc.ServeMCP != "" && !rc.Watch {
+		slog.Warn("enabling file watcher since MCP server is enabled")
+
+		rc.Watch = true
+	}
+
 	tp := sdktrace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
 
