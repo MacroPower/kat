@@ -206,6 +206,8 @@ type RunnerOpt func(cr *Runner) error
 // runtime errors deeper in the stack.
 func WithPath(path string) RunnerOpt {
 	return func(cr *Runner) error {
+		path = filepath.Clean(path)
+
 		_, err := cr.root.Stat(path)
 		if err != nil {
 			return fmt.Errorf("stat path %q: %w", path, err)
@@ -310,6 +312,8 @@ func (cr *Runner) FindProfile(path string) (string, *profile.Profile, error) {
 // FindProfiles finds matching profiles for the given path using the configured rules.
 // The results are returned in order of priority.
 func (cr *Runner) FindProfiles(path string) ([]ProfileMatch, error) {
+	path = filepath.Clean(path)
+
 	fileInfo, err := cr.root.Stat(path)
 	if err != nil {
 		return nil, fmt.Errorf("stat path: %w", err)
@@ -506,7 +510,7 @@ func (cr *Runner) watchSource(ctx context.Context) error {
 
 	err := fs.WalkDir(cr.root.FS(), cr.path, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return fmt.Errorf("walk %q: %w", path, err)
+			return err
 		}
 		if d.IsDir() {
 			// Skip directories, we only want to match against files.
@@ -790,7 +794,7 @@ func (cr *Runner) findMatchInDirectory(dirPath string) ([]*rule.Rule, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("walk directory: %w", err)
+		return nil, fmt.Errorf("walk %q: %w", dirPath, err)
 	}
 
 	// Try each rule with the full file collection.
