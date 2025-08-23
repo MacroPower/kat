@@ -3,18 +3,93 @@ package mcp
 import (
 	"fmt"
 
+	"github.com/modelcontextprotocol/go-sdk/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/macropower/kat/pkg/kube"
 )
 
+func newToolGetResource() *mcp.Tool {
+	return &mcp.Tool{
+		Name:  "get_resource",
+		Title: "Get Resource",
+		Description: `Gets the fully rendered YAML content of a specific Kubernetes resource.
+
+Use this tool to retrieve the YAML representation of a resource after it has been rendered by the manifest generator.
+
+IMPORTANT: Since resources can be very large, only call 'get_resource' on specific resources that you need to observe. Unnecessarily reading many different resources will negatively impact your performance.
+
+IMPORTANT: The most recent 'get_resource' call will be shown to the user. If you're about to edit a resource, ALWAYS call 'get_resource' immediately before making your change, so the user can observe the diff.
+
+IMPORTANT: You MUST first use 'list_resources' to get available resources, then use the EXACT values from its output.`,
+		InputSchema: &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"apiVersion": {
+					Type:        "string",
+					Description: "The API version of the resource (e.g. v1 or apps/v1).",
+				},
+				"kind": {
+					Type:        "string",
+					Description: "The kind of the resource (e.g. Pod or Deployment).",
+				},
+				"namespace": {
+					Type:        "string",
+					Description: "The namespace of the resource. Use an empty string for resources without a namespace.",
+				},
+				"name": {
+					Type:        "string",
+					Description: "The name of the resource.",
+				},
+				"path": {
+					Type:        "string",
+					Description: "The directory path to operate on, relative to the project root.",
+				},
+			},
+			Required: []string{"apiVersion", "kind", "namespace", "name", "path"},
+		},
+		OutputSchema: &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"resource": {
+					Type:        "object",
+					Description: "The Kubernetes resource details.",
+					Properties: map[string]*jsonschema.Schema{
+						"metadata": newResourceMetadataSchema(),
+						"yaml": {
+							Type:        "string",
+							Description: "The YAML representation of the resource.",
+						},
+					},
+				},
+				"error": {
+					Type:        "string",
+					Description: "Error message if the operation failed.",
+				},
+				"message": {
+					Type:        "string",
+					Description: "Human-readable message about the operation result.",
+				},
+				"found": {
+					Type:        "boolean",
+					Description: "Whether the resource was found.",
+				},
+			},
+			Required: []string{"message", "found"},
+		},
+		Annotations: &mcp.ToolAnnotations{
+			ReadOnlyHint: true,
+		},
+	}
+}
+
 // GetResourceParams defines parameters for the get_resource tool.
 type GetResourceParams struct {
-	APIVersion string `json:"apiVersion" jsonschema:"the API version of the resource (e.g. v1 or apps/v1)"`
-	Kind       string `json:"kind"       jsonschema:"the kind of the resource (e.g. Pod or Deployment)"`
-	Name       string `json:"name"       jsonschema:"the name of the resource"`
-	Namespace  string `json:"namespace"  jsonschema:"the namespace of the resource (optional for cluster-scoped resources)"`
-	Path       string `json:"path"       jsonschema:"the directory path to operate on, relative to the project root"`
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
+	Name       string `json:"name"`
+	Namespace  string `json:"namespace"`
+	Path       string `json:"path"`
 }
 
 // GetResourceResult contains the result of getting a single resource.
@@ -103,8 +178,8 @@ func findResource(resources []*kube.Resource, params GetResourceParams) *kube.Re
 			continue
 		}
 
-		// Match namespace (if specified).
-		if params.Namespace != "" && obj.GetNamespace() != params.Namespace {
+		// Match namespace.
+		if obj.GetNamespace() != params.Namespace {
 			continue
 		}
 

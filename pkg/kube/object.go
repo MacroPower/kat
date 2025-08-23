@@ -7,7 +7,7 @@ import (
 type ResourceMetadata struct {
 	APIVersion string `json:"apiVersion"`
 	Kind       string `json:"kind"`
-	Namespace  string `json:"namespace,omitempty"`
+	Namespace  string `json:"namespace"`
 	Name       string `json:"name"`
 }
 
