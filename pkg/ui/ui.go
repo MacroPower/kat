@@ -87,20 +87,19 @@ type model struct {
 // method alters the model we also need to send along any commands returned.
 func (m *model) unloadDocument() {
 	switch m.state {
-	case stateShowDocument:
-		m.pager.Unload()
-
-		m.pager.ShowHelp = false
-
-	case stateShowResult:
-		m.fullResult.Unload()
-
-		m.fullResult.ShowHelp = false
-
 	case stateShowMenu:
 		m.menu.Unload()
 
 		m.menu.ShowHelp = false
+
+		fallthrough
+
+	case stateShowDocument, stateShowResult:
+		m.pager.Unload()
+		m.fullResult.Unload()
+
+		m.pager.ShowHelp = false
+		m.fullResult.ShowHelp = false
 	}
 
 	m.state = stateShowList
@@ -304,10 +303,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, initCmds)
 
 	case command.EventListResources:
-		m.pager.Unload()
-		m.menu.Unload()
-
-		m.state = stateShowList
+		m.unloadDocument()
 
 	case command.EventOpenResource:
 		m.pager.Unload()
@@ -323,8 +319,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case menu.ChangeConfigMsg:
 		m.list.YAMLs = nil
-		m.state = stateShowList
-		m.menu.Unload()
+		m.unloadDocument()
 
 		err := m.cm.Cmd.ConfigureContext(msg.Context,
 			command.WithProfile(msg.To.Profile),
