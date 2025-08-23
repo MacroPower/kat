@@ -511,19 +511,16 @@ func runUI(cfg *ui.Config, cr common.Commander) error {
 		lastEventTime := time.Now()
 		for event := range ch {
 			switch e := event.(type) {
-			case command.EventStart:
+			case command.EventStart, command.EventListResources:
 				p.Send(e)
 
-			case command.EventEnd, command.EventConfigure:
+			case command.EventEnd, command.EventConfigure, command.EventOpenResource:
 				if time.Since(lastEventTime) < *cfg.UI.MinimumDelay {
 					// Add a delay if the command ran faster than MinimumDelay.
 					// This prevents the status from flickering in the UI.
 					time.Sleep(*cfg.UI.MinimumDelay - time.Since(lastEventTime))
 				}
 
-				p.Send(e)
-
-			case command.EventOpenResource, command.EventListResources:
 				p.Send(e)
 
 			case command.EventCancel:
