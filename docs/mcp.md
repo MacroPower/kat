@@ -1,24 +1,45 @@
 # MCP Server
 
-You can optionally start `kat` with an MCP server by using the `--serve-mcp` flag:
+The `kat` MCP server enables AI agents to interact with `kat` programmatically, reading output in a structured format and testing changes through file watching.
+
+You can optionally start `kat` with its MCP server using the `--serve-mcp` flag:
 
 ```sh
 kat --serve-mcp :50165
 ```
 
-The MCP server allows AI agents to read output from `kat` in a structured way, and test changes when source files are edited (via the file watcher).
+The UI remains active alongside the MCP server, allowing you to supervise and redirect agent actions in real-time.
 
-The `kat` UI will follow along with whatever tool calls are being made, so that you can easily supervise and redirect agents as needed. The downside of this is that the UI and MCP server are tightly coupled and you may find yourself interfering with your agent unintentionally (or vice versa). If needed, you can always start multiple instances of `kat`, one for the MCP server and one for manual use.
+> Note: The tight coupling between UI and MCP server may occasionally lead to unintended interference. If this becomes problematic, consider running a separate `kat` instance for the MCP server.
 
-Note: The MCP server will only work with agents able to read output, think, and then make additional calls. For example, "Ask" and "Edit" modes in VSCode will not work properly. I recommend using Claude Sonnet 4.
+## Use Cases
 
-Note: The MCP server contains instructions that will encourage agents to use `kat`. However, especially for less common project types, your agent may require additional instructions.
+AI agents perform best when provided well-defined, narrowly-scoped tasks with clear, testable success criteria. When attempting to use AI with Helm, Kustomize, and so on, tasks will often tend to deviate from these characteristics, which can often result in degraded performance or unpredictable behavior.
 
-### 🧰 Tools
+The `kat` MCP server is designed to make AI usage feasible in these scenarios. It does this by:
 
-- `list_resources`: List all resources that were rendered by kat.
-- `get_resource`: Get a full YAML representation of a specific resource.
+- Limiting access to context that is irrelevant to the task
+- Forcing your AI to always follow the same rendering/validation pipeline
+- Enabling iterative testing without needing human approval
 
-### ⚠️ WARNING
+Additionally, as a side effect of limiting access to complete manifests, it will normally reduce token consumption by orders of magnitude.
 
-Remember that `kat` is meant to be read-only, and is only meant to have access to your local environment. However, nothing is stopping you (or your AI agent) from adding any arbitrary, possibly dangerous configuration.
+## Available Tools
+
+- `list_resources`: Lists all resources rendered by `kat`
+- `get_resource`: Retrieves the full YAML representation of a specific resource
+
+> Note: Reloading is implicitly allowed if you allow your AI to modify files autonomously.
+
+You **must** use a chat mode that supports iterative tool calling. E.g., "Agent" mode in VS Code. "Ask" and "Edit" modes will not function correctly with these tools. Claude Sonnet 4 or similar models with strong tool-use capabilities are recommended.
+
+The MCP server includes built-in instructions to guide AI agents in using these tools effectively. However, less common project types may require additional custom instructions for optimal performance. If your AI is being difficult, try appending "Use #kat" to your instructions in chat for explicit tool engagement.
+
+> Note: To provide specific tool-use instructions in VS Code, reference tools as `#mcp_kat_<tool_name>`.
+
+## Security Considerations
+
+- While `kat` is designed to operate as a read-only tool with local environment access only, the `kat` configuration does not in any way restrict what tools can be called. Please use caution when editing your config, and never allow your AI to autonomously edit your `kat` configuration files.
+- Remember that you are handing over parts of other tools, which may have their own security implications. For example, it would be inadvisable to disable kustomize load restrictions.
+- Use caution when combining the `kat` MCP server with other tools that can interact with external systems (e.g. `#fetch`).
+- Always review AI-generated changes before applying them to production environments.
