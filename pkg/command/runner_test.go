@@ -399,6 +399,7 @@ func TestCommandRunner_FileWatcher(t *testing.T) {
 				".",
 				command.WithCustomProfile("echo", p),
 				command.WithWatch(true),
+				command.WithWatcherBatchDuration(50*time.Millisecond),
 			)
 			require.NoError(t, err)
 

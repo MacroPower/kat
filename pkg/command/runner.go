@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"go.opentelemetry.io/otel"
@@ -55,7 +56,11 @@ type Runner struct {
 	allRules           []*rule.Rule
 	extraArgs          []string
 	mu                 sync.Mutex
-	watch              bool
+
+	// Batch duration for file system events.
+	watcherBatchDuration time.Duration
+
+	watch bool
 }
 
 // NewRunner creates a new [Runner]. It uses the current working directory as
@@ -84,12 +89,13 @@ func NewRunnerWithRoot(root RootFS, path string, opts ...RunnerOpt) (*Runner, er
 	}
 
 	cr := &Runner{
-		watchedDirs:  make(map[string]struct{}),
-		watchedFiles: make(map[string]struct{}),
-		profiles:     make(map[string]*profile.Profile),
-		tracer:       otel.Tracer("command-runner"),
-		root:         root,
-		watcher:      watcher,
+		watchedDirs:          make(map[string]struct{}),
+		watchedFiles:         make(map[string]struct{}),
+		profiles:             make(map[string]*profile.Profile),
+		tracer:               otel.Tracer("command-runner"),
+		root:                 root,
+		watcher:              watcher,
+		watcherBatchDuration: 50 * time.Millisecond,
 	}
 
 	if len(opts) == 0 {
@@ -223,6 +229,15 @@ func WithPath(path string) RunnerOpt {
 func WithWatch(watch bool) RunnerOpt {
 	return func(cr *Runner) error {
 		cr.watch = watch
+
+		return nil
+	}
+}
+
+// WithWatcherBatchDuration sets the batch duration for file system events.
+func WithWatcherBatchDuration(dur time.Duration) RunnerOpt {
+	return func(cr *Runner) error {
+		cr.watcherBatchDuration = dur
 
 		return nil
 	}
@@ -616,6 +631,14 @@ func (cr *Runner) SendEvent(evt Event) {
 // RunOnEvent listens for file system events and runs the command in response.
 // The output should be collected via [Runner.Subscribe].
 func (cr *Runner) RunOnEvent() {
+	var (
+		eventTimer *time.Timer
+		// Filename -> combined operations.
+		pendingEvents = make(map[string]fsnotify.Op)
+		// Timer channel that never fires initially.
+		timerCh = make(<-chan time.Time)
+	)
+
 	for {
 		select {
 		case evt, ok := <-cr.watcher.Events:
@@ -632,39 +655,34 @@ func (cr *Runner) RunOnEvent() {
 				continue
 			}
 
-			// Create a new context for this command execution.
-			ctx := context.Background()
-			logger := log.WithContext(ctx)
-
-			_, p := cr.GetCurrentProfile()
-			if p == nil {
-				logger.ErrorContext(ctx, "no profile set for command runner, cannot handle event",
-					slog.String("event", evt.String()),
-				)
-
-				continue
+			// Combine operations for the same file.
+			if existingOp, exists := pendingEvents[evt.Name]; exists {
+				pendingEvents[evt.Name] = existingOp | evt.Op
+			} else {
+				pendingEvents[evt.Name] = evt.Op
 			}
 
-			if p.Reload != "" {
-				matched, err := p.MatchFileEvent(evt.Name, evt.Op)
-				if err != nil {
-					logger.ErrorContext(ctx, "match file event",
-						slog.String("event", evt.String()),
-						slog.Any("error", err),
-					)
-					cr.broadcast(NewEventEnd(ctx,
-						NewOutput(TypeRun, WithError(fmt.Errorf("match file event: %w", err))),
-					))
-
-					continue
-				}
-				if !matched {
-					continue
-				}
+			// Reset or start the timer.
+			if eventTimer != nil {
+				eventTimer.Stop()
 			}
 
-			// Run the command in a goroutine so we can handle cancellation properly.
-			go cr.RunContext(ctx)
+			eventTimer = time.NewTimer(cr.watcherBatchDuration)
+			timerCh = eventTimer.C
+
+		case <-timerCh:
+			// Timer expired, flush events.
+			if cr.flushFileEvents(context.Background(), pendingEvents) {
+				// Reset the timer state.
+				if eventTimer != nil {
+					eventTimer.Stop()
+				}
+
+				eventTimer = nil
+				timerCh = make(<-chan time.Time) // Reset to a channel that never fires.
+			}
+
+			clear(pendingEvents)
 
 		case err, ok := <-cr.watcher.Errors:
 			if !ok {
@@ -677,6 +695,56 @@ func (cr *Runner) RunOnEvent() {
 			))
 		}
 	}
+}
+
+// flushFileEvents processes batched file system events and triggers command
+// execution if needed. It returns true if the timer should be reset.
+func (cr *Runner) flushFileEvents(ctx context.Context, pendingEvents map[string]fsnotify.Op) bool {
+	if len(pendingEvents) == 0 {
+		return false
+	}
+
+	logger := log.WithContext(ctx)
+
+	_, p := cr.GetCurrentProfile()
+	if p == nil {
+		logger.ErrorContext(ctx, "no profile set for command runner, cannot handle batched events")
+
+		return false
+	}
+
+	shouldRun := false
+	if p.Reload != "" {
+		// Check if any of the batched events match the profile reload expression.
+		for filename, combinedOp := range pendingEvents {
+			matched, err := p.MatchFileEvent(filename, combinedOp)
+			if err != nil {
+				logger.ErrorContext(ctx, "match file event in batch",
+					slog.String("filename", filename),
+					slog.Any("error", err),
+				)
+				cr.broadcast(NewEventEnd(ctx,
+					NewOutput(TypeRun, WithError(fmt.Errorf("match file event: %w", err))),
+				))
+
+				return false
+			}
+			if matched {
+				shouldRun = true
+				break // At least one file matches, that's enough to trigger the command.
+			}
+		}
+	} else {
+		// No reload criteria, run for any batched events.
+		shouldRun = true
+	}
+
+	// Run the command once for the entire batch if any event matched.
+	if shouldRun {
+		go cr.RunContext(ctx)
+	}
+
+	return true
 }
 
 func (cr *Runner) Close() {
