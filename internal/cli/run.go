@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
@@ -8,16 +9,25 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
 	"golang.org/x/term"
+
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/config"
 	"github.com/macropower/kat/pkg/log"
+	"github.com/macropower/kat/pkg/mcp"
 	"github.com/macropower/kat/pkg/profile"
 	"github.com/macropower/kat/pkg/ui"
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/theme"
 	"github.com/macropower/kat/pkg/ui/yamls"
+	"github.com/macropower/kat/pkg/version"
 )
 
 const (
@@ -47,10 +57,12 @@ type RunArgs struct {
 	*RootArgs
 
 	Path             string
-	StdinData        []byte
 	ConfigPath       string
 	CommandOrProfile string
+	ServeMCP         string
+	TracingEndpoint  string
 	Args             []string
+	StdinData        []byte
 	Watch            bool
 	WriteConfig      bool
 	ShowConfig       bool
@@ -64,9 +76,11 @@ func NewRunArgs(rootArgs *RootArgs) *RunArgs {
 
 func (ra *RunArgs) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&ra.ConfigPath, "config", "", "Path to the kat configuration file")
+	cmd.Flags().StringVar(&ra.ServeMCP, "serve-mcp", "", "Serve the MCP server at the specified address")
 	cmd.Flags().BoolVarP(&ra.Watch, "watch", "w", false, "Watch for changes and trigger reloading")
 	cmd.Flags().BoolVar(&ra.WriteConfig, "write-config", false, "Write the default configuration files and exit")
 	cmd.Flags().BoolVar(&ra.ShowConfig, "show-config", false, "Print the active configuration and exit")
+	cmd.Flags().StringVar(&ra.TracingEndpoint, "tracing-endpoint", "", "OpenTelemetry tracing endpoint")
 
 	err := cmd.MarkFlagFilename("config", "yaml", "yml")
 	if err != nil {
@@ -282,7 +296,20 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 		return nil
 	}
 
-	var cr common.Commander
+	if rc.ServeMCP != "" && !rc.Watch {
+		slog.Warn("enabling file watcher since MCP server is enabled")
+
+		rc.Watch = true
+	}
+
+	tp, err := setupTracerProvider(rc)
+	if err != nil {
+		return fmt.Errorf("setup tracer provider: %w", err)
+	}
+
+	otel.SetTracerProvider(tp)
+
+	var cr command.Commander
 
 	if len(rc.StdinData) > 0 {
 		cr, err = command.NewStatic(string(rc.StdinData))
@@ -315,6 +342,20 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 	}
 
 	slog.SetDefault(slog.New(logHandler))
+
+	if rc.ServeMCP != "" {
+		mcpServer, err := mcp.NewServer(rc.ServeMCP, cr, rc.Path)
+		if err != nil {
+			return fmt.Errorf("create MCP server: %w", err)
+		}
+
+		go func() {
+			err := mcpServer.Serve(context.Background())
+			if err != nil {
+				slog.Error("MCP server failed", slog.Any("err", err))
+			}
+		}()
+	}
 
 	err = runUI(cfg.UI, cr)
 	if err != nil {
@@ -411,6 +452,47 @@ func setupCommandRunner(path string, cfg *config.Config, rc *RunArgs) (*command.
 	return cr, nil
 }
 
+// setupTracerProvider creates and configures an OpenTelemetry tracer provider based on CLI arguments.
+func setupTracerProvider(rc *RunArgs) (*sdktrace.TracerProvider, error) {
+	res, err := resource.Merge(
+		resource.Default(),
+		resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("kat"),
+			semconv.ServiceVersionKey.String(version.GetVersion()),
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create resource: %w", err)
+	}
+
+	opts := []sdktrace.TracerProviderOption{
+		sdktrace.WithResource(res),
+	}
+
+	// Configure exporter if endpoint is provided.
+	if rc.TracingEndpoint != "" {
+		slog.Info("adding opentelemetry exporter", slog.String("endpoint", rc.TracingEndpoint))
+
+		exporter, err := otlptracegrpc.New(
+			context.Background(),
+			otlptracegrpc.WithEndpointURL(rc.TracingEndpoint),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("create OTLP exporter: %w", err)
+		}
+
+		opts = append(opts, sdktrace.WithBatcher(exporter, sdktrace.WithBatchTimeout(1*time.Second)))
+
+		otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+			propagation.Baggage{},
+		))
+	}
+
+	return sdktrace.NewTracerProvider(opts...), nil
+}
+
 // runUI starts the UI program.
 func runUI(cfg *ui.Config, cr common.Commander) error {
 	for name, tc := range cfg.Themes {
@@ -422,26 +504,23 @@ func runUI(cfg *ui.Config, cr common.Commander) error {
 
 	p := ui.NewProgram(cfg, cr)
 
-	ch := make(chan command.Event)
+	ch := make(chan command.Event, 100)
 	cr.Subscribe(ch)
 
 	go func() {
 		lastEventTime := time.Now()
 		for event := range ch {
 			switch e := event.(type) {
-			case command.EventStart:
+			case command.EventStart, command.EventListResources:
 				p.Send(e)
 
-			case command.EventEnd:
+			case command.EventEnd, command.EventConfigure, command.EventOpenResource:
 				if time.Since(lastEventTime) < *cfg.UI.MinimumDelay {
 					// Add a delay if the command ran faster than MinimumDelay.
 					// This prevents the status from flickering in the UI.
 					time.Sleep(*cfg.UI.MinimumDelay - time.Since(lastEventTime))
 				}
 
-				p.Send(e)
-
-			case command.EventConfigure:
 				p.Send(e)
 
 			case command.EventCancel:

@@ -9,10 +9,15 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/macropower/kat/pkg/kube"
+	"github.com/macropower/kat/pkg/log"
 	"github.com/macropower/kat/pkg/profile"
 	"github.com/macropower/kat/pkg/rule"
 )
@@ -25,35 +30,72 @@ var ErrNoCommandForPath = errors.New("no command for path")
 //   - Filesystem notifications / watching.
 //   - Concurrent command execution.
 type Runner struct {
-	currentProfile     *profile.Profile            // Currently active profile.
-	currentProfileName string                      // Name of the currently active profile.
-	profiles           map[string]*profile.Profile // All available profiles by name.
-	watcher            *fsnotify.Watcher
-	fsys               *FilteredFS
-	watchedDirs        map[string]struct{}
-	watchedFiles       map[string]struct{}
+	tracer   trace.Tracer
+	profiles map[string]*profile.Profile
+	watcher  *fsnotify.Watcher
+
+	// The root filesystem to operate on. This prevents later re-configuration
+	// from escaping the originally configured root path.
+	root RootFS
+
+	// Track watched files.
+	// Enables directory watching to behave similarly to file watching.
+	// Note that it stores absolute file paths (not relative to the root).
+	watchedFiles map[string]struct{}
+
+	// Track watched directories.
+	// Enables un-watching in re-configuration scenarios.
+	// Note that it stores absolute directory paths (not relative to the root).
+	watchedDirs map[string]struct{}
+
+	currentProfile     *profile.Profile
 	cancelFunc         context.CancelFunc
 	path               string
+	currentProfileName string
 	listeners          []chan<- Event
 	allRules           []*rule.Rule
 	extraArgs          []string
 	mu                 sync.Mutex
-	watch              bool
+
+	// Batch duration for file system events.
+	watcherBatchDuration time.Duration
+
+	watch bool
 }
 
-// NewRunner creates a new [Runner].
+// NewRunner creates a new [Runner]. It uses the current working directory as
+// the filesystem root.
 func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
-	cr := &Runner{
-		watchedDirs:  make(map[string]struct{}),
-		watchedFiles: make(map[string]struct{}),
-		profiles:     make(map[string]*profile.Profile),
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("get current working directory: %w", err)
 	}
 
-	var err error
+	root, err := os.OpenRoot(wd)
+	if err != nil {
+		return nil, fmt.Errorf("open root directory %q: %w", wd, err)
+	}
 
-	cr.watcher, err = fsnotify.NewWatcher()
+	return NewRunnerWithRoot(root, path, opts...)
+}
+
+// NewRunner creates a new [Runner] using the provided [RootFS].
+// This is not a normal opt since it cannot be re-configured after the runner
+// has been created.
+func NewRunnerWithRoot(root RootFS, path string, opts ...RunnerOpt) (*Runner, error) {
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("create fsnotify watcher: %w", err)
+	}
+
+	cr := &Runner{
+		watchedDirs:          make(map[string]struct{}),
+		watchedFiles:         make(map[string]struct{}),
+		profiles:             make(map[string]*profile.Profile),
+		tracer:               otel.Tracer("command-runner"),
+		root:                 root,
+		watcher:              watcher,
+		watcherBatchDuration: 50 * time.Millisecond,
 	}
 
 	if len(opts) == 0 {
@@ -73,13 +115,22 @@ func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
 	return cr, nil
 }
 
+func (cr *Runner) Configure(opts ...RunnerOpt) error {
+	return cr.ConfigureContext(context.Background(), opts...)
+}
+
 // Configure applies options to an existing runner.
 // This allows reconfiguration after creation.
-func (cr *Runner) Configure(opts ...RunnerOpt) error {
+func (cr *Runner) ConfigureContext(ctx context.Context, opts ...RunnerOpt) error {
+	ctx, span := cr.tracer.Start(ctx, "configure")
+	defer span.End()
+
+	logger := log.WithContext(ctx)
+
 	cr.mu.Lock()
 	defer cr.mu.Unlock()
 
-	cr.removeWatchers()
+	cr.removeWatchers(ctx)
 
 	// Cancel any currently running command.
 	if cr.cancelFunc != nil {
@@ -127,7 +178,7 @@ func (cr *Runner) Configure(opts ...RunnerOpt) error {
 	}
 
 	if cr.watch {
-		err := cr.watchSource()
+		err := cr.watchSource(ctx)
 		if err != nil {
 			return err
 		}
@@ -135,7 +186,7 @@ func (cr *Runner) Configure(opts ...RunnerOpt) error {
 
 	if cr.currentProfile != nil && cr.currentProfile.Hooks != nil {
 		for _, hook := range cr.currentProfile.Hooks.Init {
-			hr, err := hook.Exec(context.Background(), cr.path)
+			hr, err := hook.Exec(ctx, cr.path)
 			if err != nil && hr != nil {
 				return fmt.Errorf("%w: init: %w\n%s\n%s", profile.ErrHookExecution, err, hr.Stdout, hr.Stderr)
 			} else if err != nil {
@@ -144,8 +195,8 @@ func (cr *Runner) Configure(opts ...RunnerOpt) error {
 		}
 	}
 
-	cr.broadcast(EventConfigure{})
-	slog.Debug("configured runner",
+	cr.broadcast(NewEventConfigure(ctx))
+	logger.DebugContext(ctx, "configured runner",
 		slog.String("path", cr.path),
 		slog.String("profile", cr.currentProfile.String()),
 		slog.Bool("watch", cr.watch),
@@ -156,9 +207,18 @@ func (cr *Runner) Configure(opts ...RunnerOpt) error {
 
 type RunnerOpt func(cr *Runner) error
 
-// WithPath sets the path for the runner.
+// WithPath sets the path for the runner (relative to the initial root).
+// If the path tries to escape the root, it returns an error early to avoid
+// runtime errors deeper in the stack.
 func WithPath(path string) RunnerOpt {
 	return func(cr *Runner) error {
+		path = filepath.Clean(path)
+
+		_, err := cr.root.Stat(path)
+		if err != nil {
+			return fmt.Errorf("stat path %q: %w", path, err)
+		}
+
 		cr.path = path
 
 		return nil
@@ -169,6 +229,15 @@ func WithPath(path string) RunnerOpt {
 func WithWatch(watch bool) RunnerOpt {
 	return func(cr *Runner) error {
 		cr.watch = watch
+
+		return nil
+	}
+}
+
+// WithWatcherBatchDuration sets the batch duration for file system events.
+func WithWatcherBatchDuration(dur time.Duration) RunnerOpt {
+	return func(cr *Runner) error {
+		cr.watcherBatchDuration = dur
 
 		return nil
 	}
@@ -258,7 +327,9 @@ func (cr *Runner) FindProfile(path string) (string, *profile.Profile, error) {
 // FindProfiles finds matching profiles for the given path using the configured rules.
 // The results are returned in order of priority.
 func (cr *Runner) FindProfiles(path string) ([]ProfileMatch, error) {
-	fileInfo, err := os.Stat(path)
+	path = filepath.Clean(path)
+
+	fileInfo, err := cr.root.Stat(path)
 	if err != nil {
 		return nil, fmt.Errorf("stat path: %w", err)
 	}
@@ -267,7 +338,7 @@ func (cr *Runner) FindProfiles(path string) ([]ProfileMatch, error) {
 
 	if fileInfo.IsDir() {
 		// Path is a directory, find matching files inside.
-		cmds, err := findMatchInDirectory(path, cr.allRules)
+		cmds, err := cr.findMatchInDirectory(path)
 		if err != nil {
 			return nil, err
 		}
@@ -331,13 +402,13 @@ func (cr *Runner) GetProfiles() map[string]*profile.Profile {
 }
 
 func (cr *Runner) SetProfile(name string) error {
+	cr.mu.Lock()
+	defer cr.mu.Unlock()
+
 	p, exists := cr.profiles[name]
 	if !exists {
 		return fmt.Errorf("profile %q not found", name)
 	}
-
-	cr.mu.Lock()
-	defer cr.mu.Unlock()
 
 	cr.currentProfile = p
 	cr.currentProfileName = name
@@ -348,21 +419,12 @@ func (cr *Runner) SetProfile(name string) error {
 // FS creates a [FilteredFS] for the runner that hides directories and files
 // unless they match at least one of the configured rules.
 func (cr *Runner) FS() (*FilteredFS, error) {
-	if cr.fsys != nil {
-		return cr.fsys, nil
-	}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("get working directory: %w", err)
-	}
-
-	cr.fsys, err = NewFilteredFS(wd, cr.allRules...)
+	fsys, err := NewFilteredFS(cr.root, cr.allRules...)
 	if err != nil {
 		return nil, err
 	}
 
-	return cr.fsys, nil
+	return fsys, nil
 }
 
 // RunPlugin executes a plugin by name.
@@ -396,6 +458,12 @@ func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 		p    = cr.currentProfile
 	)
 
+	ctx, span := cr.tracer.Start(ctx, "plugin", trace.WithAttributes(
+		attribute.String("name", name),
+		attribute.String("path", path),
+	))
+	defer span.End()
+
 	// Cancel any currently running command.
 	if cr.cancelFunc != nil {
 		// Note: The cancel event is broadcast by the canceled goroutine.
@@ -407,29 +475,22 @@ func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 
 	cr.mu.Unlock()
 
-	cr.broadcast(EventStart(TypePlugin))
+	cr.broadcast(NewEventStart(ctx, TypePlugin))
 
-	slog.DebugContext(ctx, "run plugin",
-		slog.String("path", path),
-		slog.String("name", name),
-	)
-
-	co := Output{
-		Type: TypePlugin,
-	}
+	co := NewOutput(TypePlugin)
 
 	plugin := p.GetPlugin(name)
 	if plugin == nil {
 		co.Error = fmt.Errorf("plugin %q: not found", name)
-		cr.broadcast(EventEnd(co))
+		cr.broadcast(NewEventEnd(ctx, co))
 
 		return co
 	}
 
-	_, err := os.Stat(path)
+	_, err := cr.root.Stat(path)
 	if err != nil {
 		co.Error = fmt.Errorf("stat path: %w", err)
-		cr.broadcast(EventEnd(co))
+		cr.broadcast(NewEventEnd(ctx, co))
 
 		return co
 	}
@@ -441,32 +502,33 @@ func (cr *Runner) RunPluginContext(ctx context.Context, name string) Output {
 
 	// Check if the command was canceled.
 	if co.Error != nil && errors.Is(ctx.Err(), context.Canceled) {
-		cr.broadcast(EventCancel{})
+		cr.broadcast(NewEventCancel(ctx))
 
 		return co
 	} else if co.Error != nil {
 		co.Error = fmt.Errorf("plugin %q: %w", plugin.Description, co.Error)
-		cr.broadcast(EventEnd(co))
+		cr.broadcast(NewEventEnd(ctx, co))
 
 		return co
 	}
 
-	cr.broadcast(EventEnd(co))
+	cr.broadcast(NewEventEnd(ctx, co))
 
 	return co
 }
 
-func (cr *Runner) watchSource() error {
-	p := cr.currentProfile
+func (cr *Runner) watchSource(ctx context.Context) error {
+	var (
+		files []string
+		p     = cr.currentProfile
+	)
 
-	var files []string
-
-	err := filepath.Walk(cr.path, func(path string, info fs.FileInfo, err error) error {
+	err := fs.WalkDir(cr.root.FS(), cr.path, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return fmt.Errorf("walk %q: %w", path, err)
+			return err
 		}
-		if info.IsDir() {
-			// Skip directories, we only want to watch files.
+		if d.IsDir() {
+			// Skip directories, we only want to match against files.
 			return nil
 		}
 
@@ -482,17 +544,32 @@ func (cr *Runner) watchSource() error {
 	if ok, matchedFiles := p.MatchFiles(cr.path, files); ok {
 		for _, file := range matchedFiles {
 			dir := filepath.Dir(file)
-			err := cr.watcher.Add(dir)
+
+			// Convert relative path to absolute path for fsnotify.
+			absDir, err := cr.root.Open(dir)
+			if err != nil {
+				return fmt.Errorf("open directory %q in root: %w", dir, err)
+			}
+
+			absDirPath := absDir.Name()
+			absFilePath := filepath.Join(absDirPath, filepath.Base(file))
+
+			err = absDir.Close()
+			if err != nil {
+				return fmt.Errorf("close directory %q: %w", absDirPath, err)
+			}
+
+			err = cr.watcher.Add(absDirPath)
 			if err != nil {
 				return fmt.Errorf("add path to watcher: %w", err)
 			}
 
-			cr.watchedDirs[dir] = struct{}{}
-			cr.watchedFiles[file] = struct{}{}
+			cr.watchedDirs[absDirPath] = struct{}{}
+			cr.watchedFiles[absFilePath] = struct{}{}
 		}
 	}
 
-	slog.Debug("added file watchers",
+	log.WithContext(ctx).DebugContext(ctx, "added file watchers",
 		slog.String("path", cr.path),
 		slog.Int("count", len(cr.watchedDirs)),
 	)
@@ -500,10 +577,12 @@ func (cr *Runner) watchSource() error {
 	return nil
 }
 
-func (cr *Runner) removeWatchers() {
+func (cr *Runner) removeWatchers(ctx context.Context) {
 	if cr.watcher == nil || len(cr.watchedDirs) == 0 {
 		return
 	}
+
+	logger := log.WithContext(ctx)
 
 	removedCount := 0
 	for dir := range cr.watchedDirs {
@@ -512,13 +591,13 @@ func (cr *Runner) removeWatchers() {
 			continue
 		}
 		if err != nil {
-			slog.Error("remove path from watcher", slog.Any("err", err))
+			logger.ErrorContext(ctx, "remove path from watcher", slog.Any("err", err))
 		}
 
 		removedCount++
 	}
 
-	slog.Debug("removed file watchers",
+	logger.DebugContext(ctx, "removed file watchers",
 		slog.String("path", cr.path),
 		slog.Int("count", removedCount),
 	)
@@ -533,7 +612,9 @@ func (cr *Runner) Subscribe(ch chan<- Event) {
 }
 
 func (cr *Runner) broadcast(evt Event) {
-	slog.Debug("broadcasting event",
+	ctx := evt.GetContext()
+
+	log.WithContext(ctx).DebugContext(ctx, "broadcasting event",
 		slog.String("event", fmt.Sprintf("%T", evt)),
 	)
 
@@ -542,9 +623,22 @@ func (cr *Runner) broadcast(evt Event) {
 	}
 }
 
+// SendEvent allows external components to send events to all listeners.
+func (cr *Runner) SendEvent(evt Event) {
+	cr.broadcast(evt)
+}
+
 // RunOnEvent listens for file system events and runs the command in response.
 // The output should be collected via [Runner.Subscribe].
 func (cr *Runner) RunOnEvent() {
+	var (
+		eventTimer *time.Timer
+		// Filename -> combined operations.
+		pendingEvents = make(map[string]fsnotify.Op)
+		// Timer channel that never fires initially.
+		timerCh = make(<-chan time.Time)
+	)
+
 	for {
 		select {
 		case evt, ok := <-cr.watcher.Events:
@@ -561,49 +655,96 @@ func (cr *Runner) RunOnEvent() {
 				continue
 			}
 
-			_, p := cr.GetCurrentProfile()
-			if p == nil {
-				slog.Error("no profile set for command runner, cannot handle event",
-					slog.String("event", evt.String()),
-				)
-
-				continue
+			// Combine operations for the same file.
+			if existingOp, exists := pendingEvents[evt.Name]; exists {
+				pendingEvents[evt.Name] = existingOp | evt.Op
+			} else {
+				pendingEvents[evt.Name] = evt.Op
 			}
 
-			if p.Reload != "" {
-				matched, err := p.MatchFileEvent(evt.Name, evt.Op)
-				if err != nil {
-					slog.Error("match file event",
-						slog.String("event", evt.String()),
-						slog.Any("error", err),
-					)
-					cr.broadcast(EventEnd(Output{
-						Error: fmt.Errorf("match file event: %w", err),
-					}))
-
-					continue
-				}
-				if !matched {
-					continue
-				}
+			// Reset or start the timer.
+			if eventTimer != nil {
+				eventTimer.Stop()
 			}
 
-			// Create a new context for this command execution.
-			ctx := context.Background()
+			eventTimer = time.NewTimer(cr.watcherBatchDuration)
+			timerCh = eventTimer.C
 
-			// Run the command in a goroutine so we can handle cancellation properly.
-			go cr.RunContext(ctx)
+		case <-timerCh:
+			// Timer expired, flush events.
+			if cr.flushFileEvents(context.Background(), pendingEvents) {
+				// Reset the timer state.
+				if eventTimer != nil {
+					eventTimer.Stop()
+				}
+
+				eventTimer = nil
+				timerCh = make(<-chan time.Time) // Reset to a channel that never fires.
+			}
+
+			clear(pendingEvents)
 
 		case err, ok := <-cr.watcher.Errors:
 			if !ok {
 				return
 			}
 
-			cr.broadcast(EventEnd(Output{
-				Error: err,
-			}))
+			cr.broadcast(NewEventEnd(
+				context.Background(),
+				NewOutput(TypeRun, WithError(err)),
+			))
 		}
 	}
+}
+
+// flushFileEvents processes batched file system events and triggers command
+// execution if needed. It returns true if the timer should be reset.
+func (cr *Runner) flushFileEvents(ctx context.Context, pendingEvents map[string]fsnotify.Op) bool {
+	if len(pendingEvents) == 0 {
+		return false
+	}
+
+	logger := log.WithContext(ctx)
+
+	_, p := cr.GetCurrentProfile()
+	if p == nil {
+		logger.ErrorContext(ctx, "no profile set for command runner, cannot handle batched events")
+
+		return false
+	}
+
+	shouldRun := false
+	if p.Reload != "" {
+		// Check if any of the batched events match the profile reload expression.
+		for filename, combinedOp := range pendingEvents {
+			matched, err := p.MatchFileEvent(filename, combinedOp)
+			if err != nil {
+				logger.ErrorContext(ctx, "match file event in batch",
+					slog.String("filename", filename),
+					slog.Any("error", err),
+				)
+				cr.broadcast(NewEventEnd(ctx,
+					NewOutput(TypeRun, WithError(fmt.Errorf("match file event: %w", err))),
+				))
+
+				return false
+			}
+			if matched {
+				shouldRun = true
+				break // At least one file matches, that's enough to trigger the command.
+			}
+		}
+	} else {
+		// No reload criteria, run for any batched events.
+		shouldRun = true
+	}
+
+	// Run the command once for the entire batch if any event matched.
+	if shouldRun {
+		go cr.RunContext(ctx)
+	}
+
+	return true
 }
 
 func (cr *Runner) Close() {
@@ -641,6 +782,12 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 		cmd  = p.Command.Command
 	)
 
+	ctx, span := cr.tracer.Start(ctx, "run", trace.WithAttributes(
+		attribute.String("command", cmd),
+		attribute.String("path", path),
+	))
+	defer span.End()
+
 	// Cancel any currently running command.
 	if cr.cancelFunc != nil {
 		// Note: The cancel event is broadcast by the canceled goroutine.
@@ -652,16 +799,14 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 
 	cr.mu.Unlock()
 
-	cr.broadcast(EventStart(TypeRun))
+	cr.broadcast(NewEventStart(ctx, TypeRun))
 
-	co := Output{
-		Type: TypeRun,
-	}
+	co := NewOutput(TypeRun)
 
-	_, err := os.Stat(path)
+	_, err := cr.root.Stat(path)
 	if err != nil {
 		co.Error = fmt.Errorf("stat path: %w", err)
-		cr.broadcast(EventEnd(co))
+		cr.broadcast(NewEventEnd(ctx, co))
 
 		return co
 	}
@@ -675,12 +820,12 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 
 	// Check if the command was canceled.
 	if co.Error != nil && errors.Is(ctx.Err(), context.Canceled) {
-		cr.broadcast(EventCancel{})
+		cr.broadcast(NewEventCancel(ctx))
 
 		return co
 	} else if co.Error != nil {
 		co.Error = fmt.Errorf("%s: %w", cmd, co.Error)
-		cr.broadcast(EventEnd(co))
+		cr.broadcast(NewEventEnd(ctx, co))
 
 		return co
 	}
@@ -691,7 +836,7 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 	}
 
 	co.Resources = objects
-	cr.broadcast(EventEnd(co))
+	cr.broadcast(NewEventEnd(ctx, co))
 
 	return co
 }
@@ -699,11 +844,11 @@ func (cr *Runner) RunContext(ctx context.Context) Output {
 // findMatchInDirectory looks for matching files in a directory.
 // It collects all files and allows CEL expressions to operate on the entire collection.
 // Returns (rule, files) where files contains the specific files to process, or nil to use profile.source.
-func findMatchInDirectory(dirPath string, rs []*rule.Rule) ([]*rule.Rule, error) {
+func (cr *Runner) findMatchInDirectory(dirPath string) ([]*rule.Rule, error) {
 	var files []string
 
 	// Collect all files in the directory (non-recursive).
-	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(cr.root.FS(), dirPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -717,12 +862,12 @@ func findMatchInDirectory(dirPath string, rs []*rule.Rule) ([]*rule.Rule, error)
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("walk directory: %w", err)
+		return nil, fmt.Errorf("walk %q: %w", dirPath, err)
 	}
 
 	// Try each rule with the full file collection.
 	matchedRules := []*rule.Rule{}
-	for _, r := range rs {
+	for _, r := range cr.allRules {
 		if r.MatchFiles(dirPath, files) {
 			matchedRules = append(matchedRules, r)
 		}

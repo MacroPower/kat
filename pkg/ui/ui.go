@@ -2,6 +2,7 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/kube"
+	"github.com/macropower/kat/pkg/log"
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/list"
 	"github.com/macropower/kat/pkg/ui/menu"
@@ -85,20 +87,19 @@ type model struct {
 // method alters the model we also need to send along any commands returned.
 func (m *model) unloadDocument() {
 	switch m.state {
-	case stateShowDocument:
-		m.pager.Unload()
-
-		m.pager.ShowHelp = false
-
-	case stateShowResult:
-		m.fullResult.Unload()
-
-		m.fullResult.ShowHelp = false
-
 	case stateShowMenu:
 		m.menu.Unload()
 
 		m.menu.ShowHelp = false
+
+		fallthrough
+
+	case stateShowDocument, stateShowResult:
+		m.pager.Unload()
+		m.fullResult.Unload()
+
+		m.pager.ShowHelp = false
+		m.fullResult.ShowHelp = false
 	}
 
 	m.state = stateShowList
@@ -174,7 +175,7 @@ func newModel(cfg *Config, cmd common.Commander) tea.Model {
 }
 
 func (m *model) Init() tea.Cmd {
-	return m.runCommand()
+	return m.runCommand(context.Background())
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -225,7 +226,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		_, profile := m.cm.Cmd.GetCurrentProfile()
 		if profile != nil && !m.isTextInputFocused() {
 			if pluginName := profile.GetPluginNameByKey(key); pluginName != "" {
-				cmd := m.runPlugin(pluginName)
+				cmd := m.runPlugin(context.Background(), pluginName)
 
 				return m, cmd
 			}
@@ -288,12 +289,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, m.handleResourceUpdate(msg)...)
 
 		m.cm.Loaded = true
-		if msg.Type == command.TypeRun {
+		if msg.Output.Type == command.TypeRun {
 			m.overlayState = overlayStateNone
 		}
 
-		if msg.Error == nil && len(msg.Resources) > 0 {
-			statusMsg := fmt.Sprintf("rendered %d resources", len(msg.Resources))
+		if msg.Output.Error == nil && len(msg.Output.Resources) > 0 {
+			statusMsg := fmt.Sprintf("rendered %d resources", len(msg.Output.Resources))
 			cmds = append(cmds, m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess))
 		}
 
@@ -301,12 +302,26 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		initCmds := m.Init()
 		cmds = append(cmds, initCmds)
 
-	case menu.ChangeConfigMsg:
-		m.list.YAMLs = nil
-		m.state = stateShowList
+	case command.EventListResources:
+		m.unloadDocument()
+
+	case command.EventOpenResource:
+		m.pager.Unload()
 		m.menu.Unload()
 
-		err := m.cm.Cmd.Configure(
+		m.state = stateShowDocument
+
+		resource := msg.Resource
+		yamlDoc := kubeResourceToYAML(&resource)
+		m.pager.CurrentDocument = *yamlDoc
+
+		cmds = append(cmds, m.pager.Render(yamlDoc.Body))
+
+	case menu.ChangeConfigMsg:
+		m.list.YAMLs = nil
+		m.unloadDocument()
+
+		err := m.cm.Cmd.ConfigureContext(msg.Context,
 			command.WithProfile(msg.To.Profile),
 			command.WithPath(msg.To.File),
 			command.WithExtraArgs(msg.To.ExtraArgs...),
@@ -493,19 +508,19 @@ func (m *model) isTextInputFocused() bool {
 func (m *model) handleResourceUpdate(msg command.EventEnd) []tea.Cmd {
 	var cmds []tea.Cmd
 
-	if msg.Error != nil || msg.Type == command.TypePlugin {
+	if msg.Output.Error != nil || msg.Output.Type == command.TypePlugin {
 		cmds = append(cmds, func() tea.Msg {
-			return GotResultMsg(msg)
+			return GotResultMsg(msg.Output)
 		})
 	}
 
-	if len(msg.Resources) == 0 {
+	if len(msg.Output.Resources) == 0 {
 		return cmds
 	}
 
 	m.list.YAMLs = nil
 
-	for _, yml := range msg.Resources {
+	for _, yml := range msg.Output.Resources {
 		newYaml := kubeResourceToYAML(yml)
 		m.list.AddYAMLs(newYaml)
 
@@ -569,21 +584,21 @@ func (m *model) handleWindowResize(msg tea.WindowSizeMsg) {
 	m.overlay.SetSize(msg.Width, msg.Height)
 }
 
-func (m *model) runCommand() tea.Cmd {
+func (m *model) runCommand(ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
-		go m.cm.Cmd.Run()
+		go m.cm.Cmd.RunContext(ctx)
 
 		return nil
 	}
 }
 
-func (m *model) runPlugin(name string) tea.Cmd {
+func (m *model) runPlugin(ctx context.Context, name string) tea.Cmd {
 	return func() tea.Msg {
-		slog.Debug("running plugin",
+		log.WithContext(ctx).DebugContext(ctx, "running plugin",
 			slog.String("name", name),
 		)
 
-		go m.cm.Cmd.RunPlugin(name)
+		go m.cm.Cmd.RunPluginContext(ctx, name)
 
 		return nil
 	}
@@ -597,12 +612,4 @@ func kubeResourceToYAML(res *kube.Resource) *yamls.Document {
 		Title:  res.Object.GetNamespacedName(),
 		Desc:   res.Object.GetGroupKind(),
 	}
-}
-
-// LogKeyPress logs key presses for debugging (optional, can be enabled via config).
-func LogKeyPress(key, context string) {
-	slog.Debug("key pressed",
-		slog.String("key", key),
-		slog.String("context", context),
-	)
 }

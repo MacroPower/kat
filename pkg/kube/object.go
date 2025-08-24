@@ -4,7 +4,23 @@ import (
 	"strings"
 )
 
+type ResourceMetadata struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
+	Namespace  string `json:"namespace"`
+	Name       string `json:"name"`
+}
+
 type Object map[string]any
+
+func (o Object) GetMetadata() ResourceMetadata {
+	return ResourceMetadata{
+		APIVersion: o.GetAPIVersion(),
+		Kind:       o.GetKind(),
+		Namespace:  o.GetNamespace(),
+		Name:       o.GetName(),
+	}
+}
 
 // GetAPIVersion returns the apiVersion of the object.
 // If apiVersion is not set, it returns an empty string.

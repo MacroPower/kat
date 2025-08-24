@@ -55,7 +55,7 @@ func TestNewFilteredFS(t *testing.T) {
 			dirPath, rules, setupErr := tc.setupFunc()
 			require.NoError(t, setupErr)
 
-			fs, err := command.NewFilteredFS(dirPath, rules...)
+			fs, err := command.NewFilteredFSFromPath(dirPath, rules...)
 
 			if tc.expectError {
 				require.Error(t, err)
@@ -81,7 +81,7 @@ func TestFilteredFS_Close(t *testing.T) {
 
 	tmpDir := t.TempDir()
 
-	fs, err := command.NewFilteredFS(tmpDir,
+	fs, err := command.NewFilteredFSFromPath(tmpDir,
 		rule.MustNew("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`),
 	)
 	require.NoError(t, err)
@@ -99,7 +99,7 @@ func TestFilteredFS_Name(t *testing.T) {
 
 	tmpDir := t.TempDir()
 
-	fs, err := command.NewFilteredFS(tmpDir,
+	fs, err := command.NewFilteredFSFromPath(tmpDir,
 		rule.MustNew("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`),
 	)
 	require.NoError(t, err)
@@ -145,7 +145,7 @@ func TestFilteredFS_Open(t *testing.T) {
 			err := os.WriteFile(testFile, []byte("key: value"), 0o644)
 			require.NoError(t, err)
 
-			fs, err := command.NewFilteredFS(tmpDir,
+			fs, err := command.NewFilteredFSFromPath(tmpDir,
 				rule.MustNew("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`),
 			)
 			require.NoError(t, err)
@@ -205,7 +205,7 @@ func TestFilteredFS_OpenFile(t *testing.T) {
 			err := os.WriteFile(filepath.Join(tmpDir, testFile), []byte("key: value"), 0o644)
 			require.NoError(t, err)
 
-			fs, err := command.NewFilteredFS(tmpDir,
+			fs, err := command.NewFilteredFSFromPath(tmpDir,
 				rule.MustNew("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`),
 			)
 			require.NoError(t, err)
@@ -257,7 +257,7 @@ func TestFilteredFS_Stat(t *testing.T) {
 			err := os.WriteFile(filepath.Join(tmpDir, testFile), []byte("key: value"), 0o644)
 			require.NoError(t, err)
 
-			fs, err := command.NewFilteredFS(tmpDir,
+			fs, err := command.NewFilteredFSFromPath(tmpDir,
 				rule.MustNew("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`),
 			)
 			require.NoError(t, err)
@@ -399,7 +399,7 @@ func TestFilteredFS_ReadDir(t *testing.T) {
 
 			tmpDir, rules := tc.setupFunc()
 
-			fs, err := command.NewFilteredFS(tmpDir, rules...)
+			fs, err := command.NewFilteredFSFromPath(tmpDir, rules...)
 			require.NoError(t, err)
 
 			require.NotNil(t, fs)
@@ -444,7 +444,7 @@ func TestFilteredFS_ReadDir_NonExistentDirectory(t *testing.T) {
 
 	tmpDir := t.TempDir()
 
-	fs, err := command.NewFilteredFS(tmpDir,
+	fs, err := command.NewFilteredFSFromPath(tmpDir,
 		rule.MustNew("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`),
 	)
 	require.NoError(t, err)
@@ -472,7 +472,7 @@ func TestFilteredFS_MaxDepthLimiting(t *testing.T) {
 	// Add yaml file at the deepest level
 	require.NoError(t, os.WriteFile(filepath.Join(currentDir, "deep.yaml"), []byte("key: value"), 0o644))
 
-	fs, err := command.NewFilteredFS(tmpDir,
+	fs, err := command.NewFilteredFSFromPath(tmpDir,
 		rule.MustNew("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`),
 	)
 	require.NoError(t, err)

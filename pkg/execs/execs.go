@@ -8,15 +8,23 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/macropower/kat/pkg/log"
 )
 
 type Executor struct {
+	tracer    trace.Tracer
 	cmd       Command
 	extraArgs []string
 }
 
 func NewExecutor(cmd Command, args ...string) Executor {
 	return Executor{
+		tracer:    otel.Tracer("executor"),
 		cmd:       cmd,
 		extraArgs: args,
 	}
@@ -27,9 +35,20 @@ func (e Executor) Exec(ctx context.Context, dir string) (*Result, error) {
 }
 
 func (e Executor) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (*Result, error) {
+	ctx, span := e.tracer.Start(ctx, "exec", trace.WithAttributes(
+		attribute.String("command", e.String()),
+		attribute.String("path", dir),
+	))
+	defer span.End()
+
 	if e.cmd.Command == "" {
 		return nil, ErrEmptyCommand
 	}
+
+	logger := log.WithContext(ctx).With(
+		slog.String("command", e.String()),
+		slog.String("path", dir),
+	)
 
 	start := time.Now()
 
@@ -59,8 +78,7 @@ func (e Executor) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (
 	}
 
 	if err != nil {
-		slog.DebugContext(ctx, "command failed",
-			slog.String("command", e.String()),
+		logger.DebugContext(ctx, "command failed",
 			slog.Duration("duration", time.Since(start)),
 			slog.Any("error", err),
 		)
@@ -72,8 +90,7 @@ func (e Executor) ExecWithStdin(ctx context.Context, dir string, stdin []byte) (
 		return nil, fmt.Errorf("%w: %w", ErrCommandExecution, err)
 	}
 
-	slog.DebugContext(ctx, "command executed successfully",
-		slog.String("command", e.String()),
+	logger.DebugContext(ctx, "command executed successfully",
 		slog.Duration("duration", time.Since(start)),
 	)
 

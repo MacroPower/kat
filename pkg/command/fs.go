@@ -11,28 +11,43 @@ import (
 
 const defaultMaxDepth = 10
 
-// FilteredFS wraps an [os.Root] and filters the tree based on rule matches. It
+// RootFS is an interface for a filesystem that quacks like [os.Root].
+type RootFS interface {
+	Close() error
+	FS() fs.FS
+	Name() string
+	Open(name string) (*os.File, error)
+	OpenFile(name string, flag int, perm os.FileMode) (*os.File, error)
+	Remove(name string) error
+	Stat(name string) (os.FileInfo, error)
+}
+
+// FilteredFS wraps a [RootFS] and filters the tree based on rule matches. It
 // hides files and directories that do not match any rules. Note that it does
 // not directly prevent access to any files in the tree. (However, [os.Root]
 // will prevent leaving the initially provided directory tree.)
 type FilteredFS struct {
-	root     *os.Root
+	root     RootFS
 	rules    []*rule.Rule
 	maxDepth uint // Maximum depth to traverse directories. 0 means no limit.
 }
 
 // NewFilteredFS creates a new FilteredFS with the given directory path and rules.
-func NewFilteredFS(dirPath string, rules ...*rule.Rule) (*FilteredFS, error) {
-	root, err := os.OpenRoot(dirPath)
-	if err != nil {
-		return nil, fmt.Errorf("open directory %q: %w", dirPath, err)
-	}
-
+func NewFilteredFS(root RootFS, rules ...*rule.Rule) (*FilteredFS, error) {
 	return &FilteredFS{
 		root:     root,
 		rules:    rules,
 		maxDepth: defaultMaxDepth,
 	}, nil
+}
+
+func NewFilteredFSFromPath(dirPath string, rules ...*rule.Rule) (*FilteredFS, error) {
+	root, err := os.OpenRoot(dirPath)
+	if err != nil {
+		return nil, fmt.Errorf("open directory %q: %w", dirPath, err)
+	}
+
+	return NewFilteredFS(root, rules...)
 }
 
 // Close closes the [FilteredFS]. After Close is called, methods on [FilteredFS] return errors.

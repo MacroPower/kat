@@ -10,6 +10,28 @@ import (
 	"github.com/macropower/kat/pkg/command"
 )
 
+// collectStaticEventsWithTimeout collects up to maxEvents from the channel with a timeout
+func collectStaticEventsWithTimeout(
+	eventCh <-chan command.Event,
+	maxEvents int,
+	timeout time.Duration,
+) []command.Event {
+	var events []command.Event
+
+	timeoutTimer := time.After(timeout)
+
+	for len(events) < maxEvents {
+		select {
+		case event := <-eventCh:
+			events = append(events, event)
+		case <-timeoutTimer:
+			return events
+		}
+	}
+
+	return events
+}
+
 func TestNewStatic(t *testing.T) {
 	t.Parallel()
 
@@ -196,7 +218,7 @@ metadata:
 	output := static.RunPlugin("test-plugin")
 
 	// Collect events synchronously
-	events := collectEventsWithTimeout(eventCh, 2, 100*time.Millisecond)
+	events := collectStaticEventsWithTimeout(eventCh, 2, 100*time.Millisecond)
 
 	// Verify output
 	assert.Equal(t, command.TypePlugin, output.Type)
@@ -205,12 +227,12 @@ metadata:
 
 	// Verify events
 	assert.Len(t, events, 2)
-	assert.IsType(t, command.EventStart(command.TypePlugin), events[0])
+	assert.IsType(t, command.EventStart{}, events[0])
 	assert.IsType(t, command.EventEnd{}, events[1])
 
 	endEvent, ok := events[1].(command.EventEnd)
 	require.True(t, ok, "expected second event to be EventEnd")
-	assert.Equal(t, output, command.Output(endEvent))
+	assert.Equal(t, output, endEvent.Output)
 }
 
 func TestStatic_RunOnEvent(t *testing.T) {
@@ -276,7 +298,7 @@ metadata:
 		}
 
 		assert.Len(t, events, 2)
-		assert.IsType(t, command.EventStart(command.TypeRun), events[0])
+		assert.IsType(t, command.EventStart{}, events[0])
 		assert.IsType(t, command.EventEnd{}, events[1])
 	}
 }
@@ -291,7 +313,7 @@ func runStaticWithEvents(t *testing.T, static *command.Static) ([]command.Event,
 	output := static.Run()
 
 	// Collect events from the channel synchronously
-	events := collectEventsWithTimeout(eventCh, 2, 100*time.Millisecond)
+	events := collectStaticEventsWithTimeout(eventCh, 2, 100*time.Millisecond)
 
 	return events, output
 }
@@ -313,10 +335,10 @@ func verifyStaticEvents(t *testing.T, events []command.Event, output command.Out
 	t.Helper()
 
 	assert.Len(t, events, 2)
-	assert.IsType(t, command.EventStart(command.TypeRun), events[0])
+	assert.IsType(t, command.EventStart{}, events[0])
 	assert.IsType(t, command.EventEnd{}, events[1])
 
 	endEvent, ok := events[1].(command.EventEnd)
 	require.True(t, ok, "expected second event to be EventEnd")
-	assert.Equal(t, output, command.Output(endEvent))
+	assert.Equal(t, output, endEvent.Output)
 }

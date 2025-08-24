@@ -63,6 +63,12 @@ Together, these deliver a seamless development experience that maintains context
 - Add custom keybind-triggered commands for your specific workflows
 - Execute dry-runs, deployments, or any custom tooling without leaving kat
 
+**🤖 MCP server**
+
+- Limit access to irrelevant context, improving performance and reducing cost
+- Force your AI to always follow the same rendering and validation pipeline
+- Enable iterative testing _without_ handing over cluster or command-line access
+
 **🎨 Fully customizable**
 
 - Choose from any available Chroma themes, or define your own
@@ -238,6 +244,14 @@ Send output to a file (disables TUI):
 ```sh
 kat ./example/helm > manifest.yaml
 ```
+
+You can optionally start `kat` with an MCP server by using the `--serve-mcp` flag:
+
+```sh
+kat --serve-mcp :50165
+```
+
+> See [MCP Server](docs/mcp.md) for more details.
 
 ## ⚙️ Configuration
 
