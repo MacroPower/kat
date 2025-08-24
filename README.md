@@ -76,9 +76,8 @@ Together, these deliver a seamless development experience that maintains context
 
 ## 📦 Installation
 
-> Note: The default `kat` configuration contains references to `helm`, `kustomize`, and `yq`. If you want to use `kat` with these tools, you will need to install them separately.
-
-### Homebrew
+<details>
+<summary><strong>Homebrew</strong></summary>
 
 You can install `kat` using my [tap](https://github.com/MacroPower/homebrew-tap).
 
@@ -95,13 +94,19 @@ tap "macropower/tap"
 cask "kat"
 ```
 
-### Go
+</details>
+
+<details>
+<summary><strong>Go</strong></summary>
 
 ```sh
 go install github.com/macropower/kat/cmd/kat@latest
 ```
 
-### Docker
+</details>
+
+<details>
+<summary><strong>Docker</strong></summary>
 
 Docker images are published to [ghcr.io/macropower](https://github.com/MacroPower/kat/pkgs/container/kat).
 
@@ -124,7 +129,10 @@ COPY --from=ghcr.io/macropower/kat:latest /kat /usr/local/bin/kat
 ENTRYPOINT ["/usr/local/bin/kat"]
 ```
 
-### Nix
+</details>
+
+<details>
+<summary><strong>Nix (NUR)</strong></summary>
 
 You can install `kat` using my [NUR](https://github.com/MacroPower/nur-packages).
 
@@ -157,7 +165,10 @@ With [`devbox`](https://www.jetify.com/docs/devbox/):
 devbox add github:macropower/nur-packages#kat
 ```
 
-### GitHub CLI
+</details>
+
+<details>
+<summary><strong>GitHub CLI</strong></summary>
 
 ```sh
 gh release download -R macropower/kat -p "kat_$(uname -s)_$(uname -m).tar.gz" -O - | tar -xz
@@ -165,7 +176,10 @@ gh release download -R macropower/kat -p "kat_$(uname -s)_$(uname -m).tar.gz" -O
 
 And then move `kat` to a directory in your `PATH`.
 
-### Curl
+</details>
+
+<details>
+<summary><strong>Curl</strong></summary>
 
 ```sh
 curl -s https://api.github.com/repos/macropower/kat/releases/latest | \
@@ -177,9 +191,11 @@ curl -s https://api.github.com/repos/macropower/kat/releases/latest | \
 
 And then move `kat` to a directory in your `PATH`.
 
-### Manual
+</details>
 
-You can download binaries from [releases](https://github.com/macropower/kat/releases).
+Or, download a binary from [releases](https://github.com/macropower/kat/releases).
+
+> Note: The default `kat` configuration contains references to `helm`, `kustomize`, and `yq`. If you want to use `kat` with these tools, you will need to install them separately.
 
 ## 🔏 Verification
 
