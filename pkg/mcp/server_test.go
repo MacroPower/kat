@@ -324,11 +324,11 @@ func TestServer_Integration(t *testing.T) {
 
 	ctx := t.Context()
 
-	serverSession, err := testServer.Server().Connect(ctx, serverTransport)
+	serverSession, err := testServer.Server().Connect(ctx, serverTransport, nil)
 	require.NoError(t, err)
 
 	client := sdk.NewClient(&sdk.Implementation{Name: "client"}, nil)
-	clientSession, err := client.Connect(ctx, clientTransport)
+	clientSession, err := client.Connect(ctx, clientTransport, nil)
 	require.NoError(t, err)
 
 	// Add enough outputs for all the test cases.
@@ -492,11 +492,11 @@ func TestServer_PathReconfiguration(t *testing.T) {
 
 	ctx := t.Context()
 
-	serverSession, err := testServer.Server().Connect(ctx, serverTransport)
+	serverSession, err := testServer.Server().Connect(ctx, serverTransport, nil)
 	require.NoError(t, err)
 
 	client := sdk.NewClient(&sdk.Implementation{Name: "client"}, nil)
-	clientSession, err := client.Connect(ctx, clientTransport)
+	clientSession, err := client.Connect(ctx, clientTransport, nil)
 	require.NoError(t, err)
 
 	// Send events to simulate command execution.
@@ -626,11 +626,11 @@ func TestServer_LatestResultsAfterReload(t *testing.T) {
 
 	ctx := t.Context()
 
-	serverSession, err := testServer.Server().Connect(ctx, serverTransport)
+	serverSession, err := testServer.Server().Connect(ctx, serverTransport, nil)
 	require.NoError(t, err)
 
 	client := sdk.NewClient(&sdk.Implementation{Name: "client"}, nil)
-	clientSession, err := client.Connect(ctx, clientTransport)
+	clientSession, err := client.Connect(ctx, clientTransport, nil)
 	require.NoError(t, err)
 
 	// First call should get the first output.

@@ -3,7 +3,7 @@ package mcp
 import (
 	"fmt"
 
-	"github.com/modelcontextprotocol/go-sdk/jsonschema"
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/macropower/kat/pkg/kube"
@@ -107,18 +107,12 @@ type ResourceDetails struct {
 }
 
 // createGetResourceResult creates the MCP tool result from GetResourceResult.
-func createGetResourceResult(
-	result GetResourceResult,
-	params GetResourceParams,
-) *mcp.CallToolResultFor[GetResourceResult] {
-	text := formatResourceMessage(result, params)
-	result.Message = text
-
-	return &mcp.CallToolResultFor[GetResourceResult]{
+func createGetResourceResult(result GetResourceResult) *mcp.CallToolResult {
+	return &mcp.CallToolResult{
 		Content: []mcp.Content{
-			&mcp.TextContent{Text: text},
+			&mcp.TextContent{Text: result.Message},
 		},
-		StructuredContent: result,
+		IsError: result.Error != "",
 	}
 }
 

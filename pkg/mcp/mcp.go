@@ -1,6 +1,6 @@
 package mcp
 
-import "github.com/modelcontextprotocol/go-sdk/jsonschema"
+import "github.com/google/jsonschema-go/jsonschema"
 
 const (
 	name         = "kat"

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 
@@ -71,8 +70,12 @@ func NewServer(address string, runner CommandRunner, initialPath string) (*Serve
 	runner.Subscribe(s.eventCh)
 
 	// Register tools with the MCP server.
-	mcp.AddTool(s.server, newToolListResources(), withTracing(s.tracer, s.handleListResources))
-	mcp.AddTool(s.server, newToolGetResource(), withTracing(s.tracer, s.handleGetResource))
+	s.server.AddTool(
+		mcp.ToolFor(newToolListResources(), withTracing(s.tracer, s.handleListResources)),
+	)
+	s.server.AddTool(
+		mcp.ToolFor(newToolGetResource(), withTracing(s.tracer, s.handleGetResource)),
+	)
 
 	// Start event processing.
 	go s.processEvents()
@@ -83,15 +86,15 @@ func NewServer(address string, runner CommandRunner, initialPath string) (*Serve
 // handleListResources handles the list_resources tool call.
 func (s *Server) handleListResources(
 	ctx context.Context,
-	_ *mcp.ServerSession,
-	params *mcp.CallToolParamsFor[ListResourcesParams],
-) (*mcp.CallToolResultFor[ListResourcesResult], error) {
+	_ *mcp.CallToolRequest,
+	params ListResourcesParams,
+) (*mcp.CallToolResult, ListResourcesResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	err := s.reload(ctx, params.Arguments.Path)
+	err := s.reload(ctx, params.Path)
 	if err != nil {
-		return nil, fmt.Errorf("reconfigure runner: %w", err)
+		return nil, ListResourcesResult{}, fmt.Errorf("reconfigure runner: %w", err)
 	}
 
 	result := ListResourcesResult{
@@ -106,21 +109,23 @@ func (s *Server) handleListResources(
 
 	s.runner.SendEvent(command.NewEventListResources(ctx))
 
-	return createListResourcesResult(result), nil
+	result.Message = fmt.Sprintf("Found %d Kubernetes resources.", result.ResourceCount)
+
+	return createListResourcesResult(result), result, nil
 }
 
 // handleGetResource handles the get_resource tool call.
 func (s *Server) handleGetResource(
 	ctx context.Context,
-	_ *mcp.ServerSession,
-	params *mcp.CallToolParamsFor[GetResourceParams],
-) (*mcp.CallToolResultFor[GetResourceResult], error) {
+	_ *mcp.CallToolRequest,
+	params GetResourceParams,
+) (*mcp.CallToolResult, GetResourceResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	err := s.reload(ctx, params.Arguments.Path)
+	err := s.reload(ctx, params.Path)
 	if err != nil {
-		return nil, fmt.Errorf("reconfigure runner: %w", err)
+		return nil, GetResourceResult{}, fmt.Errorf("reconfigure runner: %w", err)
 	}
 
 	result := GetResourceResult{
@@ -132,7 +137,7 @@ func (s *Server) handleGetResource(
 	}
 
 	// Search for the requested resource.
-	resource := findResource(s.state.Output.Resources, params.Arguments)
+	resource := findResource(s.state.Output.Resources, params)
 	if resource != nil {
 		result.Found = true
 		result.Resource = &ResourceDetails{
@@ -144,7 +149,9 @@ func (s *Server) handleGetResource(
 		s.runner.SendEvent(command.NewEventOpenResource(ctx, *resource))
 	}
 
-	return createGetResourceResult(result, params.Arguments), nil
+	result.Message = formatResourceMessage(result, params)
+
+	return createGetResourceResult(result), result, nil
 }
 
 func (s *Server) Server() *mcp.Server {
@@ -197,8 +204,7 @@ func (s *Server) serveHTTP() error {
 }
 
 func (s *Server) serveStdio(ctx context.Context) error {
-	t := mcp.NewLoggingTransport(mcp.NewStdioTransport(), os.Stderr)
-	err := s.server.Run(ctx, t)
+	err := s.server.Run(ctx, &mcp.StdioTransport{})
 	if err != nil {
 		return fmt.Errorf("MCP server failed: %w", err)
 	}
@@ -311,9 +317,9 @@ func (s *Server) waitForCompletion(ctx context.Context, reloadTime time.Time) er
 // TracedToolHandler wraps an MCP ToolHandlerFor with automatic tracing and logging.
 type TracedToolHandler[In, Out any] func(
 	context.Context,
-	*mcp.ServerSession,
-	*mcp.CallToolParamsFor[In],
-) (*mcp.CallToolResultFor[Out], error)
+	*mcp.CallToolRequest,
+	In,
+) (*mcp.CallToolResult, Out, error)
 
 // withTracing wraps a TracedToolHandler with automatic OpenTelemetry tracing and structured logging.
 // It creates a span for each tool call, adds trace IDs to logs, and records errors on spans.
@@ -323,10 +329,10 @@ func withTracing[In, Out any](
 ) mcp.ToolHandlerFor[In, Out] {
 	return func(
 		ctx context.Context,
-		session *mcp.ServerSession,
-		params *mcp.CallToolParamsFor[In],
-	) (*mcp.CallToolResultFor[Out], error) {
-		name := params.Name
+		req *mcp.CallToolRequest,
+		input In,
+	) (*mcp.CallToolResult, Out, error) {
+		name := req.Params.Name
 
 		// Start a new span for this tool call.
 		ctx, span := tracer.Start(ctx, name)
@@ -337,12 +343,11 @@ func withTracing[In, Out any](
 		// Log the start of the tool call.
 		logger.DebugContext(ctx, "handling tool call",
 			slog.String("name", name),
-			slog.Any("progress_token", params.GetProgressToken()),
-			slog.Any("args", params.Arguments),
+			slog.Any("args", input),
 		)
 
 		// Call the actual handler.
-		result, err := handler(ctx, session, params)
+		result, output, err := handler(ctx, req, input)
 
 		// Handle the result.
 		if err != nil {
@@ -355,6 +360,6 @@ func withTracing[In, Out any](
 			logger.DebugContext(ctx, "tool call completed successfully")
 		}
 
-		return result, err
+		return result, output, err
 	}
 }

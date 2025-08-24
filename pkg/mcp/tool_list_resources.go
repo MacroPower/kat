@@ -1,9 +1,7 @@
 package mcp
 
 import (
-	"fmt"
-
-	"github.com/modelcontextprotocol/go-sdk/jsonschema"
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/macropower/kat/pkg/command"
@@ -80,17 +78,14 @@ type ListResourcesResult struct {
 }
 
 // createListResourcesResult creates the MCP tool result from ListResourcesResult.
-func createListResourcesResult(result ListResourcesResult) *mcp.CallToolResultFor[ListResourcesResult] {
-	msg := fmt.Sprintf("Found %d Kubernetes resources.", result.ResourceCount)
-	result.Message = msg
-
-	return &mcp.CallToolResultFor[ListResourcesResult]{
+func createListResourcesResult(result ListResourcesResult) *mcp.CallToolResult {
+	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{
-				Text: msg,
+				Text: result.Message,
 			},
 		},
-		StructuredContent: result,
+		IsError: result.Error != "",
 	}
 }
 
