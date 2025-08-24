@@ -387,13 +387,13 @@ func (cr *Runner) GetProfiles() map[string]*profile.Profile {
 }
 
 func (cr *Runner) SetProfile(name string) error {
+	cr.mu.Lock()
+	defer cr.mu.Unlock()
+
 	p, exists := cr.profiles[name]
 	if !exists {
 		return fmt.Errorf("profile %q not found", name)
 	}
-
-	cr.mu.Lock()
-	defer cr.mu.Unlock()
 
 	cr.currentProfile = p
 	cr.currentProfileName = name

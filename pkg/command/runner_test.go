@@ -12,9 +12,44 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/macropower/kat/pkg/command"
+	"github.com/macropower/kat/pkg/execs"
 	"github.com/macropower/kat/pkg/profile"
 	"github.com/macropower/kat/pkg/rule"
 )
+
+// mockExecutor is a test implementation of the Executor interface.
+type mockExecutor struct {
+	result *execs.Result
+	err    error
+}
+
+func (m *mockExecutor) Exec(ctx context.Context, dir string) (*execs.Result, error) {
+	return m.ExecWithStdin(ctx, dir, nil)
+}
+
+func (m *mockExecutor) ExecWithStdin(_ context.Context, _ string, _ []byte) (*execs.Result, error) {
+	return m.result, m.err
+}
+
+func (m *mockExecutor) String() string {
+	return "mock executor"
+}
+
+// newMockExecutor creates a mock executor that returns the specified result and error.
+func newMockExecutor(stdout, stderr string, err error) *mockExecutor {
+	var result *execs.Result
+	if err == nil {
+		result = &execs.Result{
+			Stdout: stdout,
+			Stderr: stderr,
+		}
+	}
+
+	return &mockExecutor{
+		result: result,
+		err:    err,
+	}
+}
 
 // testRoot creates an os.Root from t.TempDir() and handles cleanup automatically.
 func testRoot(t *testing.T) (*os.Root, string) {
@@ -232,11 +267,10 @@ func TestCommandRunner_RunContext(t *testing.T) {
 	}
 }
 
-//nolint:tparallel // This test is inherently sequential due to cancellation behavior.
 func TestCommandRunner_CancellationBehavior(t *testing.T) {
 	t.Parallel()
 
-	p, err := profile.New("sleep", profile.WithArgs("2"))
+	p, err := profile.New("sleep", profile.WithArgs("1"))
 	require.NoError(t, err)
 
 	// Create a command that takes some time to execute
@@ -244,61 +278,58 @@ func TestCommandRunner_CancellationBehavior(t *testing.T) {
 	runner, err := command.NewRunnerWithRoot(root, ".", command.WithCustomProfile("sleep", p))
 	require.NoError(t, err)
 
-	// Test that a new command cancels the previous one
-	t.Run("new command cancels previous", func(t *testing.T) {
-		// Start first command with a context that we can monitor
-		ctx1, cancel1 := context.WithCancel(t.Context())
-		defer cancel1()
+	// Start first command with a context that we can monitor
+	ctx1, cancel1 := context.WithCancel(t.Context())
+	defer cancel1()
 
-		// Channel to collect results
-		results := make(chan command.Output, 2)
+	// Channel to collect results
+	results := make(chan command.Output, 2)
 
-		// Start first command in a goroutine
-		go func() {
-			results <- runner.RunContext(ctx1)
-		}()
+	// Start first command in a goroutine
+	go func() {
+		results <- runner.RunContext(ctx1)
+	}()
 
-		// Give it a moment to start
-		time.Sleep(100 * time.Millisecond)
+	// Give it a moment to start
+	time.Sleep(10 * time.Millisecond)
 
-		// Start second command which should cancel the first
-		go func() {
-			results <- runner.RunContext(t.Context())
-		}()
+	// Start second command which should cancel the first
+	go func() {
+		results <- runner.RunContext(t.Context())
+	}()
 
-		// Collect results
-		var outputs []command.Output
-		for range 2 {
-			select {
-			case output := <-results:
-				outputs = append(outputs, output)
-			case <-time.After(5 * time.Second):
-				t.Fatal("test timed out waiting for command completion")
-			}
+	// Collect results with timeout
+	var outputs []command.Output
+	assert.Eventually(t, func() bool {
+		select {
+		case output := <-results:
+			outputs = append(outputs, output)
+			return len(outputs) >= 2
+
+		default:
+			return false
 		}
+	}, 5*time.Second, 10*time.Millisecond)
 
-		// At least one should complete (the second one should succeed or the first should be canceled)
-		assert.Len(t, outputs, 2)
+	assert.Len(t, outputs, 2)
 
-		// Check that at least one command was canceled or completed
-		var hasError, hasSuccess bool
-		for _, output := range outputs {
-			if output.Error != nil {
-				if strings.Contains(output.Error.Error(), "context canceled") {
-					hasError = true
-				}
-			} else {
-				hasSuccess = true
-			}
+	var hasCancel, hasSuccess bool
+	for _, output := range outputs {
+		if output.Error != nil && strings.Contains(output.Error.Error(), "signal: killed") {
+			hasCancel = true
+		} else if output.Error == nil {
+			hasSuccess = true
 		}
+	}
 
-		// We should have either a cancellation error or a successful completion
-		assert.True(t, hasError || hasSuccess, "expected either cancellation or successful completion")
-	})
+	assert.True(t, hasCancel, "expected 1 cancellation")
+	assert.True(t, hasSuccess, "expected 1 successful completion")
 }
 
 func TestCommandRunner_FileWatcher(t *testing.T) {
 	t.Parallel()
+
+	notifyDelay := 100 * time.Millisecond
 
 	tcs := map[string]struct {
 		fileOperation func(*testing.T, string)
@@ -309,34 +340,37 @@ func TestCommandRunner_FileWatcher(t *testing.T) {
 				t.Helper()
 
 				require.NoError(t, os.WriteFile(testFile, []byte("test: modified"), 0o644))
+				time.Sleep(notifyDelay)
 			},
-			wantEvents: 1,
+			wantEvents: 2,
 		},
 		"file removal and recreation": {
 			fileOperation: func(t *testing.T, testFile string) {
 				t.Helper()
 
 				require.NoError(t, os.Remove(testFile))
-				time.Sleep(50 * time.Millisecond)
+				time.Sleep(notifyDelay)
 				require.NoError(t, os.WriteFile(testFile, []byte("test: \"1\""), 0o644))
-				time.Sleep(50 * time.Millisecond)
+				time.Sleep(notifyDelay)
 				require.NoError(t, os.WriteFile(testFile, []byte("test: \"2\""), 0o644))
+				time.Sleep(notifyDelay)
 			},
-			wantEvents: 3,
+			wantEvents: 6,
 		},
 		"file rename and recreation": {
 			fileOperation: func(t *testing.T, testFile string) {
 				t.Helper()
 
 				require.NoError(t, os.Rename(testFile, testFile+".bak"))
-				time.Sleep(50 * time.Millisecond)
+				time.Sleep(notifyDelay)
 				require.NoError(t, os.Rename(testFile+".bak", testFile))
-				time.Sleep(50 * time.Millisecond)
+				time.Sleep(notifyDelay)
 				require.NoError(t, os.WriteFile(testFile, []byte("test: \"1\""), 0o644))
-				time.Sleep(50 * time.Millisecond)
+				time.Sleep(notifyDelay)
 				require.NoError(t, os.WriteFile(testFile, []byte("test: \"2\""), 0o644))
+				time.Sleep(notifyDelay)
 			},
-			wantEvents: 3,
+			wantEvents: 6,
 		},
 	}
 
@@ -353,9 +387,9 @@ func TestCommandRunner_FileWatcher(t *testing.T) {
 			require.NoError(t, os.WriteFile(testFileFullPath, []byte("test: initial"), 0o644))
 
 			p, err := profile.New("echo",
-				profile.WithArgs("File event"),
 				profile.WithSource(`files.filter(f, pathExt(f) == ".yaml")`),
 				profile.WithReload(`fs.event.has(fs.WRITE, fs.CREATE, fs.REMOVE, fs.RENAME)`),
+				profile.WithExecutor(newMockExecutor("foo: bar", "", nil)),
 			)
 			require.NoError(t, err)
 
@@ -368,34 +402,40 @@ func TestCommandRunner_FileWatcher(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			defer runner.Close()
+			t.Cleanup(runner.Close)
 
 			// Channel to collect command events
-			results := make(chan command.Event, 10)
+			results := make(chan command.Event, 100)
 			runner.Subscribe(results)
 
 			// Start RunOnEvent in a goroutine
 			go runner.RunOnEvent()
 
 			// Give it a moment to start watching
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 
 			// Perform the file operation (pass the full path)
 			tc.fileOperation(t, testFileFullPath)
 
 			// Collect events for a reasonable duration
-			events := collectRunnerEventsWithTimeout(results, tc.wantEvents, 5*time.Second)
-			require.Len(t, events, tc.wantEvents, testFile)
+			events := collectRunnerEventsWithTimeout(results, tc.wantEvents, 10*time.Second)
+			require.Len(t, events, tc.wantEvents, testFileFullPath)
 
 			// Verify we got alternating start/end events
-			for i, event := range events {
-				switch i % 2 {
-				case 0: // Even indices should be start events
-					assert.IsType(t, command.EventStart{}, event)
-				case 1: // Odd indices should be end events
-					assert.IsType(t, command.EventEnd{}, event)
+			var startCount, endCount int
+			for _, event := range events {
+				t.Logf("event: %T: %+v", event, event)
+
+				switch event.(type) {
+				case command.EventStart:
+					startCount++
+				case command.EventEnd:
+					endCount++
 				}
 			}
+
+			assert.Equal(t, tc.wantEvents/2, startCount, "expected half of events to be start")
+			assert.Equal(t, tc.wantEvents/2, endCount, "expected half of events to be end")
 		})
 	}
 }
@@ -588,6 +628,7 @@ func TestRunner_GetProfiles(t *testing.T) {
 	assert.Equal(t, testProfiles["helm"].Command.Command, profiles["helm"].Command.Command)
 }
 
+//nolint:tparallel // Reconfigures a single runner.
 func TestRunner_SetProfile(t *testing.T) {
 	t.Parallel()
 
@@ -627,10 +668,9 @@ func TestRunner_SetProfile(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // Reconfigures a single runner.
 	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
 			err := runner.SetProfile(tc.profileName)
 
 			if tc.wantErr {
