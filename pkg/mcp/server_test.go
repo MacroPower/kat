@@ -349,6 +349,7 @@ func TestServer_Integration(t *testing.T) {
 			},
 			want: map[string]any{
 				"stdoutPreview": "command output",
+				"stderrPreview": "",
 				"resourceCount": float64(2),
 				"message":       "Found 2 Kubernetes resources.",
 				"resources": []any{
@@ -376,6 +377,7 @@ func TestServer_Integration(t *testing.T) {
 			},
 			want: map[string]any{
 				"stdoutPreview": "command output",
+				"stderrPreview": "",
 				"message":       "Found 2 Kubernetes resources.",
 				"resourceCount": float64(2),
 				"resources": []any{
