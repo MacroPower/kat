@@ -63,7 +63,7 @@ Together, these deliver a seamless development experience that maintains context
 - Add custom keybind-triggered commands for your specific workflows
 - Execute dry-runs, deployments, or any custom tooling without leaving kat
 
-**🤖 MCP server**
+**🤖 MCP server** (Experimental)
 
 - Limit access to irrelevant context, improving performance and reducing cost
 - Force your AI to always follow the same rendering and validation pipeline

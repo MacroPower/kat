@@ -1,4 +1,4 @@
-# MCP Server
+# MCP Server (Experimental)
 
 The `kat` MCP server enables AI agents to interact with `kat` programmatically, reading output in a structured format and testing changes through file watching.
 
