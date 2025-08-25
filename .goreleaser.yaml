@@ -109,8 +109,6 @@ changelog:
 
 homebrew_casks:
   - name: kat
-    conflicts:
-      - formula: kat
     repository:
       owner: MacroPower
       name: homebrew-tap
