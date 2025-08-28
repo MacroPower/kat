@@ -22,7 +22,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/goccy/go-yaml v1.18.0
-	github.com/google/cel-go v0.26.0
+	github.com/google/cel-go v0.26.1
 	github.com/google/jsonschema-go v0.2.0
 	github.com/invopop/jsonschema v0.13.0
 	github.com/mattn/go-shellwords v1.0.12
