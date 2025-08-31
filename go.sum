@@ -32,8 +32,8 @@ github.com/charmbracelet/colorprofile v0.3.1 h1:k8dTHMd7fgw4bnFd7jXTLZrSU/CQrKnL
 github.com/charmbracelet/colorprofile v0.3.1/go.mod h1:/GkGusxNs8VB/RSOh3fu0TJmQ4ICMMPApIIVn0KszZ0=
 github.com/charmbracelet/fang v0.4.0 h1:boBxmdcFghTeotqkD2itXi7SMBozdIlcslRqjboSJDg=
 github.com/charmbracelet/fang v0.4.0/go.mod h1:9gCUAHmVx5BwSafeyNr3GI0GgvlB1WYjL21SkPp1jyU=
-github.com/charmbracelet/huh v0.7.1-0.20250811123337-95b882db3fb0 h1:AEe7zBTjOsGd8RUg+lhzeU7Qwa5H+d8ZbLZ8D0HXDUs=
-github.com/charmbracelet/huh v0.7.1-0.20250811123337-95b882db3fb0/go.mod h1:5YVc+SlZ1IhQALxRPpkGwwEKftN/+OlJlnJYlDRFqN4=
+github.com/charmbracelet/huh v0.7.1-0.20250826160502-fa7f8a27cd5c h1:TQYA5Ty0PiCfK8//nHs8ukxkLd1mBvUmdx+aeoinrg8=
+github.com/charmbracelet/huh v0.7.1-0.20250826160502-fa7f8a27cd5c/go.mod h1:5YVc+SlZ1IhQALxRPpkGwwEKftN/+OlJlnJYlDRFqN4=
 github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834 h1:ZR7e0ro+SZZiIZD7msJyA+NjkCNNavuiPBLgerbOziE=
 github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834/go.mod h1:aKC/t2arECF6rNOnaKaVU6y4t4ZeHQzqfxedE/VkVhA=
 github.com/charmbracelet/lipgloss/v2 v2.0.0-beta.3 h1:W6DpZX6zSkZr0iFq6JVh1vItLoxfYtNlaxOJtWp8Kis=
