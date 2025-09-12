@@ -23,7 +23,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/goccy/go-yaml v1.18.0
 	github.com/google/cel-go v0.26.1
-	github.com/google/jsonschema-go v0.2.2
+	github.com/google/jsonschema-go v0.2.3
 	github.com/invopop/jsonschema v0.13.0
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/modelcontextprotocol/go-sdk v0.3.1
