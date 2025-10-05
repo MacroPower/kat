@@ -11,7 +11,7 @@ require (
 	github.com/charmbracelet/bubbles v0.21.1-0.20250623103423-23b8fd6302d7
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/fang v0.4.3
-	github.com/charmbracelet/huh v0.7.1-0.20250826160502-fa7f8a27cd5c
+	github.com/charmbracelet/huh v0.7.1-0.20251005153135-a01a1e304532
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
 	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta1
 	github.com/charmbracelet/log v0.4.2
