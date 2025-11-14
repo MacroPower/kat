@@ -173,51 +173,51 @@
         }
       }
     },
-    "cosign@2.6.1": {
-      "last_modified": "2025-10-07T08:41:47Z",
-      "resolved": "github:NixOS/nixpkgs/bce5fe2bb998488d8e7e7856315f90496723793c#cosign",
+    "cosign@3.0.2": {
+      "last_modified": "2025-10-22T20:59:19Z",
+      "resolved": "github:NixOS/nixpkgs/01b6809f7f9d1183a2b3e081f0a1e6f8f415cb09#cosign",
       "source": "devbox-search",
-      "version": "2.6.1",
+      "version": "3.0.2",
       "systems": {
         "aarch64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/3l1yiiqb6xp0dim0nq46nqr0abn396ja-cosign-2.6.1",
+              "path": "/nix/store/593fyxwvw5dyl9lzq9ldcnd91qibwa3i-cosign-3.0.2",
               "default": true
             }
           ],
-          "store_path": "/nix/store/3l1yiiqb6xp0dim0nq46nqr0abn396ja-cosign-2.6.1"
+          "store_path": "/nix/store/593fyxwvw5dyl9lzq9ldcnd91qibwa3i-cosign-3.0.2"
         },
         "aarch64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/d46x1fj76zg1z1igpiik5nrzq1wwngdp-cosign-2.6.1",
+              "path": "/nix/store/3gr8kyn4ylpslnnzv2ghsrzqmh71zaj8-cosign-3.0.2",
               "default": true
             }
           ],
-          "store_path": "/nix/store/d46x1fj76zg1z1igpiik5nrzq1wwngdp-cosign-2.6.1"
+          "store_path": "/nix/store/3gr8kyn4ylpslnnzv2ghsrzqmh71zaj8-cosign-3.0.2"
         },
         "x86_64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/j63xi2k125q351s4iqda4a48z9ksblg1-cosign-2.6.1",
+              "path": "/nix/store/ds2qib4yn5kdr5b2i5rccyd8g9a4ygm2-cosign-3.0.2",
               "default": true
             }
           ],
-          "store_path": "/nix/store/j63xi2k125q351s4iqda4a48z9ksblg1-cosign-2.6.1"
+          "store_path": "/nix/store/ds2qib4yn5kdr5b2i5rccyd8g9a4ygm2-cosign-3.0.2"
         },
         "x86_64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/3g531habxk3akfbjv83vd2gjhgpnaizh-cosign-2.6.1",
+              "path": "/nix/store/cq5n2n8daaq1s922jfz03hhpi2jn1bn1-cosign-3.0.2",
               "default": true
             }
           ],
-          "store_path": "/nix/store/3g531habxk3akfbjv83vd2gjhgpnaizh-cosign-2.6.1"
+          "store_path": "/nix/store/cq5n2n8daaq1s922jfz03hhpi2jn1bn1-cosign-3.0.2"
         }
       }
     },

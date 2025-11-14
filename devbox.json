@@ -13,7 +13,7 @@
     "bashInteractive": "5.2p37",
     "tmux": "3.5",
     "syft": "1.37.0",
-    "cosign": "2.6.1"
+    "cosign": "3.0.2"
   },
   "shell": {
     "init_hook": ["echo 'Welcome to devbox!' > /dev/null"]
