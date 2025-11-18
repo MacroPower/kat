@@ -5,7 +5,7 @@
     "goreleaser": "2.12.7",
     "golangci-lint": "2.6.1",
     "go": "1.25.2",
-    "git": "2.51.0",
+    "git": "2.51.2",
     "nodePackages.prettier": "3.5.3",
     "zizmor": "1.16.3",
     "conform": "0.1.0-alpha.29",
