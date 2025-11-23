@@ -3,7 +3,6 @@ package execs
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"slices"
 	"strings"
 )
@@ -30,7 +29,7 @@ type EnvFromSource struct {
 
 // CallerRef represents a reference to environment variables from the caller process.
 type CallerRef struct {
-	compiledPattern *regexp.Regexp // Compiled regex pattern for matching environment variables.
+	compiledPattern *LazyRegexp // Compiled regex pattern for matching environment variables.
 
 	// Pattern is a regex pattern for matching environment variable names.
 	Pattern string `json:"pattern,omitempty" jsonschema:"title=Pattern,format=regex"`
@@ -56,16 +55,17 @@ type EnvVarSource struct {
 
 // Compile compiles the caller reference pattern into a regex if a pattern is provided.
 func (c *CallerRef) Compile() error {
-	if c.compiledPattern == nil && c.Pattern != "" {
-		pattern, err := regexp.Compile(c.Pattern)
-		if err != nil {
-			return fmt.Errorf("compile pattern %q: %w", c.Pattern, err)
-		}
-
-		c.compiledPattern = pattern
+	if c.Pattern == "" {
+		return nil
 	}
 
-	return nil
+	if c.compiledPattern == nil {
+		c.compiledPattern = NewLazyRegexp(c.Pattern)
+	}
+
+	_, err := c.compiledPattern.Get()
+
+	return err
 }
 
 // Command manages common command execution properties.
@@ -176,11 +176,13 @@ func (e *Command) applyEnvFrom(envMap map[string]string) {
 		}
 
 		// Handle pattern-based inheritance.
-		pattern := envFromSource.CallerRef.compiledPattern
-		if pattern != nil {
-			for key, value := range e.baseEnv {
-				if pattern.MatchString(key) {
-					envMap[key] = value
+		if envFromSource.CallerRef.compiledPattern != nil {
+			pattern, err := envFromSource.CallerRef.compiledPattern.Get()
+			if err == nil && pattern != nil {
+				for key, value := range e.baseEnv {
+					if pattern.MatchString(key) {
+						envMap[key] = value
+					}
 				}
 			}
 		}

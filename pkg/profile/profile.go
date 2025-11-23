@@ -41,8 +41,8 @@ type StatusManager interface {
 
 // Profile represents a command profile.
 type Profile struct {
-	sourceProgram cel.Program
-	reloadProgram cel.Program
+	sourceProgram *expr.LazyProgram
+	reloadProgram *expr.LazyProgram
 	executor      Executor
 	status        StatusManager
 
@@ -247,7 +247,11 @@ func (p *Profile) Build() error {
 
 // CompileSource compiles the profile's source expression into a CEL program.
 func (p *Profile) CompileSource() error {
-	if p.sourceProgram == nil && p.Source != "" {
+	if p.Source == "" {
+		return nil
+	}
+
+	if p.sourceProgram == nil {
 		env, err := expr.NewEnvironment(
 			cel.Variable("files", cel.ListType(cel.StringType)),
 			cel.Variable("dir", cel.StringType),
@@ -256,12 +260,12 @@ func (p *Profile) CompileSource() error {
 			return fmt.Errorf("environment: %w", err)
 		}
 
-		program, err := env.Compile(p.Source)
-		if err != nil {
-			return fmt.Errorf("expression: %w", err)
-		}
+		p.sourceProgram = expr.NewLazyProgram(p.Source, env)
+	}
 
-		p.sourceProgram = program
+	_, err := p.sourceProgram.Get()
+	if err != nil {
+		return fmt.Errorf("expression: %w", err)
 	}
 
 	return nil
@@ -269,7 +273,11 @@ func (p *Profile) CompileSource() error {
 
 // CompileReload compiles the profile's reload expression into a CEL program.
 func (p *Profile) CompileReload() error {
-	if p.reloadProgram == nil && p.Reload != "" {
+	if p.Reload == "" {
+		return nil
+	}
+
+	if p.reloadProgram == nil {
 		env, err := expr.NewEnvironment(
 			cel.Variable("file", cel.StringType),
 			cel.Variable("fs.event", cel.IntType),
@@ -279,12 +287,12 @@ func (p *Profile) CompileReload() error {
 			return fmt.Errorf("environment: %w", err)
 		}
 
-		program, err := env.Compile(p.Reload)
-		if err != nil {
-			return fmt.Errorf("expression: %w", err)
-		}
+		p.reloadProgram = expr.NewLazyProgram(p.Reload, env)
+	}
 
-		p.reloadProgram = program
+	_, err := p.reloadProgram.Get()
+	if err != nil {
+		return fmt.Errorf("expression: %w", err)
 	}
 
 	return nil
@@ -302,7 +310,13 @@ func (p *Profile) MatchFiles(dirPath string, files []string) (bool, []string) {
 		return true, nil // If no source expression is defined, use default file filtering.
 	}
 
-	result, _, err := p.sourceProgram.Eval(map[string]any{
+	program, err := p.sourceProgram.Get()
+	if err != nil {
+		// If compilation fails, consider it a non-match.
+		return false, nil
+	}
+
+	result, _, err := program.Eval(map[string]any{
 		"files": files,
 		"dir":   dirPath,
 	})
@@ -339,13 +353,18 @@ func (p *Profile) MatchFileEvent(filePath string, fsOp fsnotify.Op) (bool, error
 		return true, nil // If no reload expression is defined, always reload.
 	}
 
+	program, err := p.reloadProgram.Get()
+	if err != nil {
+		return false, fmt.Errorf("compile reload expression: %w", err)
+	}
+
 	evalVars := map[string]any{
 		"file":     filePath,
 		"fs.event": int64(fsOp),
 		"render":   p.status.RenderMap(),
 	}
 
-	result, _, err := p.reloadProgram.Eval(evalVars)
+	result, _, err := program.Eval(evalVars)
 	if err != nil {
 		return false, fmt.Errorf("evaluate reload expression: %w", err)
 	}

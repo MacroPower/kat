@@ -35,7 +35,7 @@ import (
 //
 // Use the `in` operator to check membership in lists, e.g.: pathBase(f) in ["Chart.yaml"].
 type Rule struct {
-	matchProgram cel.Program // Compiled CEL program for matching file paths.
+	matchProgram *expr.LazyProgram // Compiled CEL program for matching file paths.
 
 	// Match is a CEL expression to match file paths.
 	Match string `json:"match" jsonschema:"title=Match Expression"`
@@ -69,6 +69,10 @@ func MustNew(profileName, match string) *Rule {
 
 // CompileMatch compiles the rule's match expression into a CEL program.
 func (r *Rule) CompileMatch() error {
+	if r.Match == "" {
+		return errors.New("compile match expression: match expression is required")
+	}
+
 	if r.matchProgram == nil {
 		env, err := expr.NewEnvironment(
 			cel.Variable("files", cel.ListType(cel.StringType)),
@@ -78,12 +82,12 @@ func (r *Rule) CompileMatch() error {
 			return fmt.Errorf("create CEL environment: %w", err)
 		}
 
-		program, err := env.Compile(r.Match)
-		if err != nil {
-			return fmt.Errorf("compile match expression: %w", err)
-		}
+		r.matchProgram = expr.NewLazyProgram(r.Match, env)
+	}
 
-		r.matchProgram = program
+	_, err := r.matchProgram.Get()
+	if err != nil {
+		return fmt.Errorf("compile match expression: %w", err)
 	}
 
 	return nil
@@ -99,7 +103,13 @@ func (r *Rule) MatchFiles(dirPath string, files []string) bool {
 		panic(errors.New("rule missing a match expression"))
 	}
 
-	result, _, err := r.matchProgram.Eval(map[string]any{
+	program, err := r.matchProgram.Get()
+	if err != nil {
+		// If compilation fails, consider it a non-match.
+		return false
+	}
+
+	result, _, err := program.Eval(map[string]any{
 		"files": files,
 		"dir":   dirPath,
 	})

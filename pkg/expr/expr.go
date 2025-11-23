@@ -69,3 +69,43 @@ func (e *Environment) Compile(expression string) (cel.Program, error) {
 
 	return program, nil
 }
+
+// LazyProgram provides thread-safe lazy compilation of a CEL expression.
+// The expression is compiled at most once, even when accessed concurrently.
+type LazyProgram struct {
+	program    cel.Program
+	err        error
+	env        *Environment
+	expression string
+	once       sync.Once
+}
+
+// NewLazyProgram creates a new LazyProgram that will compile the given expression
+// using the provided environment when Get() is first called.
+func NewLazyProgram(expression string, env *Environment) *LazyProgram {
+	return &LazyProgram{
+		expression: expression,
+		env:        env,
+	}
+}
+
+// Get returns the compiled program, compiling it on the first call.
+// Subsequent calls return the cached result.
+//
+//nolint:ireturn // Following CEL's function signature.
+func (lp *LazyProgram) Get() (cel.Program, error) {
+	lp.once.Do(func() {
+		if lp.expression == "" {
+			return
+		}
+
+		lp.program, lp.err = lp.env.Compile(lp.expression)
+	})
+
+	return lp.program, lp.err
+}
+
+// IsCompiled returns true if the program has been compiled.
+func (lp *LazyProgram) IsCompiled() bool {
+	return lp.program != nil || lp.err != nil
+}
