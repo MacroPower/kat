@@ -320,6 +320,13 @@ func (m *ListModel) ResetFiltering() {
 	m.updatePagination()
 }
 
+// ApplyFilter transitions from actively filtering to filter applied state.
+func (m *ListModel) ApplyFilter() {
+	m.filterInput.Blur()
+
+	m.FilterState = FilterApplied
+}
+
 // Update pagination according to the amount of yamls for the current
 // state.
 func (m *ListModel) updatePagination() {
@@ -371,7 +378,7 @@ func (m ListModel) GetSelectedYAML() *yamls.Document {
 
 // Returns the yamls that should be currently shown.
 func (m ListModel) getVisibleYAMLs() []*yamls.Document {
-	if m.FilterState == Filtering || m.currentSection().key == SectionFilter {
+	if m.FilterState != Unfiltered {
 		return m.filteredYAMLs
 	}
 

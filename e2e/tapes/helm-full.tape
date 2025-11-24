@@ -26,5 +26,11 @@ Enter
 Type "n"
 Type "N"
 
+# Back to List
+Escape
+
+# Reset Filter
+Escape
+
 # Exit
 Type "q"

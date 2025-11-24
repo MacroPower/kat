@@ -181,7 +181,7 @@ func (h *KeyHandler) handleFilterKeys(m ListModel, key string) (ListModel, tea.C
 
 		// When there's only one filtered yaml left we can just "open" it directly.
 		if len(visibleYAMLs) == 1 {
-			m.ResetFiltering()
+			m.ApplyFilter()
 
 			cmd := m.OpenYAML(visibleYAMLs[0])
 
@@ -198,9 +198,8 @@ func (h *KeyHandler) handleFilterKeys(m ListModel, key string) (ListModel, tea.C
 
 		m.sectionIndex = len(m.sections) - 1
 
-		m.filterInput.Blur()
+		m.ApplyFilter()
 
-		m.FilterState = FilterApplied
 		if m.filterInput.Value() == "" {
 			m.ResetFiltering()
 		}

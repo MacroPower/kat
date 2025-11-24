@@ -445,10 +445,11 @@ func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		isShowingDocument := m.state == stateShowDocument && m.pager.ViewState != pager.StateSearching
 		isShowingResult := m.state == stateShowResult && m.fullResult.ViewState != pager.StateSearching
 		isShowingMenu := m.state == stateShowMenu
+		isShowingList := m.state == stateShowList
 		if isShowingDocument || isShowingResult || isShowingMenu || !m.cm.Loaded {
 			m.unloadDocument()
 		}
-		if m.state == stateShowList {
+		if isShowingList {
 			m.list.ResetFiltering()
 		}
 		if m.state == stateShowDocument {
