@@ -297,6 +297,52 @@ Search: container
   47              requests:
  kat unknown  match 1/2                                                            93%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
+
+   6 resources
+
+ │ release-name-example
+ │ apps/Deployment
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ kat unknown  match 1/2                                                            1/1  ? Help
+────────────────────────────────────────────────────────────────────────────────
+
+   6 resources
+
+ │ release-name-example
+ │ apps/Deployment
+
+   release-name-example-hpa
+   autoscaling/HorizontalPodAutoscaler
+
+   release-name-example-test-connection
+   core/Pod
+
+   release-name-example-sa
+   core/ServiceAccount
+
+   release-name-example-svc
+   core/Service
+
+
+  •◦
+
+ kat unknown  match 1/2                                                            1/2  ? Help
+────────────────────────────────────────────────────────────────────────────────
 > ./kat example/helm --config=pkg/config/config.yaml
 >
 
