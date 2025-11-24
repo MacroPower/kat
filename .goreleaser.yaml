@@ -34,6 +34,7 @@ builds:
       - -X github.com/macropower/kat/pkg/version.BuildDate={{.Date}}
     flags:
       - -trimpath
+      - -buildmode=exe
 
 archives:
   - formats: [tar.gz]
