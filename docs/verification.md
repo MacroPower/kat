@@ -9,9 +9,8 @@ KAT_TAG=v0.13.1
 curl -LO https://github.com/MacroPower/kat/releases/download/$KAT_TAG/checksums.txt
 cosign verify-blob \
   --certificate-identity https://github.com/MacroPower/kat/.github/workflows/release.yaml@refs/tags/$KAT_TAG \
-  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-  --cert https://github.com/MacroPower/kat/releases/download/$KAT_TAG/checksums.txt.pem \
-  --signature https://github.com/MacroPower/kat/releases/download/$KAT_TAG/checksums.txt.sig \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --bundle https://github.com/MacroPower/kat/releases/download/$KAT_TAG/checksums.txt.sigstore.json \
   ./checksums.txt
 ```
 
