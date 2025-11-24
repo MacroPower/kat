@@ -69,11 +69,12 @@ jobs:
         env:
           GITHUB_TOKEN: "${{ steps.app-token.outputs.token }}"
 
-      - name: Attest Build Provenance
+      - name: Attest Build Provenance (checksums.txt)
         uses: actions/attest-build-provenance@v3
         with:
           subject-checksums: ./dist/checksums.txt
 
-      - uses: actions/attest-build-provenance@v2
+      - name: Attest Build Provenance (digests.txt)
+        uses: actions/attest-build-provenance@v3
         with:
           subject-checksums: ./dist/digests.txt
