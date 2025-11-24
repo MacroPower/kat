@@ -302,18 +302,21 @@ func truncateWithEllipsis(s string, maxWidth int) string {
 
 	// Simple truncation - could be improved with proper text handling.
 	availableWidth := maxWidth - lenEllipsis
-	truncated := ""
 	currentWidth := 0
 
+	var truncated strings.Builder
 	for _, r := range s {
 		runeWidth := ansi.PrintableRuneWidth(string(r))
 		if currentWidth+runeWidth > availableWidth {
 			break
 		}
 
-		truncated += string(r)
+		truncated.WriteRune(r)
+
 		currentWidth += runeWidth
 	}
 
-	return truncated + theme.Ellipsis
+	truncated.WriteString(theme.Ellipsis)
+
+	return truncated.String()
 }

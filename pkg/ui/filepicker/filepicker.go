@@ -202,6 +202,7 @@ func newStack() stack {
 		Pop: func() int {
 			res := slice[len(slice)-1]
 			slice = slice[:len(slice)-1]
+
 			return res
 		},
 		Length: func() int {

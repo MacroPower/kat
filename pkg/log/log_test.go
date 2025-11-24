@@ -135,7 +135,9 @@ func TestCreateHandler(t *testing.T) {
 			format: log.FormatJSON,
 			checkFunc: func(t *testing.T, output []byte) {
 				t.Helper()
+
 				var logEntry map[string]any
+
 				err := json.Unmarshal(output, &logEntry)
 				require.NoError(t, err)
 				assert.Equal(t, "test message", logEntry["msg"])
@@ -147,6 +149,7 @@ func TestCreateHandler(t *testing.T) {
 			format: log.FormatLogfmt,
 			checkFunc: func(t *testing.T, output []byte) {
 				t.Helper()
+
 				outputStr := string(output)
 				assert.Contains(t, outputStr, "level=INFO")
 				assert.Contains(t, outputStr, "msg=\"test message\"")
@@ -157,6 +160,7 @@ func TestCreateHandler(t *testing.T) {
 			format: log.FormatText,
 			checkFunc: func(t *testing.T, output []byte) {
 				t.Helper()
+
 				outputStr := string(output)
 				assert.Contains(t, outputStr, "INFO")
 				assert.Contains(t, outputStr, "test message")
@@ -199,7 +203,9 @@ func TestCreateHandlerWithStrings(t *testing.T) {
 			message:     "test message",
 			checkOutput: func(t *testing.T, buf *bytes.Buffer) {
 				t.Helper()
+
 				var logEntry map[string]any
+
 				err := json.Unmarshal(buf.Bytes(), &logEntry)
 				require.NoError(t, err)
 				assert.Equal(t, "test message", logEntry["msg"])

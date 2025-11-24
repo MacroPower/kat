@@ -87,6 +87,7 @@ func NewModel(cmd Commander, t *huh.Theme, km *huh.KeyMap) Model {
 					if m.selectedProfileName != nil && *m.selectedProfileName != "" {
 						return fmt.Sprintf("Extra Arguments (%s)", *m.selectedProfileName)
 					}
+
 					return "Extra Arguments"
 				}, m.selectedProfileName).
 				Lines(1).
@@ -96,6 +97,7 @@ func NewModel(cmd Commander, t *huh.Theme, km *huh.KeyMap) Model {
 							return strings.Join(p.ExtraArgs, " ")
 						}
 					}
+
 					return ""
 				}, m.selectedProfileName),
 		),

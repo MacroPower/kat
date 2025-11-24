@@ -308,6 +308,7 @@ func TestOverlay_PlaceEdgeCases(t *testing.T) {
 			setup: func() (*overlay.Overlay, string, string, float64, lipgloss.Style) {
 				o := overlay.New(theme.Default)
 				o.SetSize(80, 20)
+
 				bg := "line1\nline2"
 				fg := "overlay1\noverlay2\noverlay3\noverlay4\noverlay5\noverlay6"
 

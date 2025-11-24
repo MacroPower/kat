@@ -610,9 +610,7 @@ func (m *ListModel) GoToEnd() {
 
 // SetHelpVisible sets help visibility.
 func (m *ListModel) SetHelpVisible(visible bool) {
-	if visible && !m.ShowHelp {
-		m.ToggleHelp()
-	} else if !visible && m.ShowHelp {
+	if visible != m.ShowHelp {
 		m.ToggleHelp()
 	}
 }

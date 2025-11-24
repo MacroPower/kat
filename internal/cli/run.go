@@ -105,6 +105,7 @@ func NewRunCmd(ra *RunArgs) *cobra.Command {
 				// Too many args before the dash.
 				return fmt.Errorf("accepts at most 2 args before --, received %d", dashPos)
 			}
+
 			return nil
 		},
 		ValidArgsFunction: runCompletion(ra),

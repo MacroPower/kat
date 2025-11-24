@@ -288,8 +288,10 @@ func TestGenerator_Generate_ComplexStructures(t *testing.T) {
 
 				defs, ok := schemaData["$defs"].(map[string]any)
 				require.True(t, ok, "Expected $defs to be a map[string]any")
+
 				complexStructDef, ok := defs["ComplexStruct"].(map[string]any)
 				require.True(t, ok, "Expected ComplexStruct to be a map[string]any")
+
 				properties, ok := complexStructDef["properties"].(map[string]any)
 				require.True(t, ok, "Expected properties to be a map[string]any")
 
@@ -302,6 +304,7 @@ func TestGenerator_Generate_ComplexStructures(t *testing.T) {
 				sliceField, ok := properties["slice_field"].(map[string]any)
 				require.True(t, ok, "Expected slice_field to be a map[string]any")
 				assert.Equal(t, "array", sliceField["type"])
+
 				items, ok := sliceField["items"].(map[string]any)
 				require.True(t, ok, "Expected items to be a map[string]any")
 				assert.Equal(t, "string", items["type"])
@@ -310,6 +313,7 @@ func TestGenerator_Generate_ComplexStructures(t *testing.T) {
 				mapField, ok := properties["map_field"].(map[string]any)
 				require.True(t, ok, "Expected map_field to be a map[string]any")
 				assert.Equal(t, "object", mapField["type"])
+
 				additionalProps, ok := mapField["additionalProperties"].(map[string]any)
 				require.True(t, ok, "Expected additionalProperties to be a map[string]any")
 				assert.Equal(t, "integer", additionalProps["type"])
@@ -350,6 +354,7 @@ func TestGenerator_Generate_ComplexStructures(t *testing.T) {
 				// Check deeply nested structure.
 				nestedDef, ok := defs["NestedComplexStruct"].(map[string]any)
 				require.True(t, ok, "Expected NestedComplexStruct to be a map[string]any")
+
 				properties, ok := nestedDef["properties"].(map[string]any)
 				require.True(t, ok, "Expected properties to be a map[string]any")
 
@@ -362,6 +367,7 @@ func TestGenerator_Generate_ComplexStructures(t *testing.T) {
 				itemsField, ok := properties["items"].(map[string]any)
 				require.True(t, ok, "Expected items to be a map[string]any")
 				assert.Equal(t, "array", itemsField["type"])
+
 				items, ok := itemsField["items"].(map[string]any)
 				require.True(t, ok, "Expected items to be a map[string]any")
 				assert.Contains(t, items, "$ref")
@@ -378,8 +384,10 @@ func TestGenerator_Generate_ComplexStructures(t *testing.T) {
 
 				defs, ok := schemaData["$defs"].(map[string]any)
 				require.True(t, ok, "Expected $defs to be a map[string]any")
+
 				embeddedDef, ok := defs["EmbeddedStruct"].(map[string]any)
 				require.True(t, ok, "Expected EmbeddedStruct to be a map[string]any")
+
 				properties, ok := embeddedDef["properties"].(map[string]any)
 				require.True(t, ok, "Expected properties to be a map[string]any")
 
@@ -637,10 +645,12 @@ func TestGenerator_Generate_CommentExtractionPipeline(t *testing.T) {
 				// The Name field should have its actual comment extracted.
 				nameField, ok := properties["name"].(map[string]any)
 				require.True(t, ok, "Expected nameField to be a map[string]any")
+
 				description, hasDescription := nameField["description"]
 
 				if hasDescription {
 					t.Logf("Name field description: %s", description)
+
 					descStr, ok := description.(string)
 					require.True(t, ok, "Expected description to be a string")
 					// This should contain the actual comment, not just the URL.
@@ -654,10 +664,12 @@ func TestGenerator_Generate_CommentExtractionPipeline(t *testing.T) {
 				// The Age field should also have its comment.
 				ageField, ok := properties["age"].(map[string]any)
 				require.True(t, ok, "Expected ageField to be a map[string]any")
+
 				ageDesc, hasAgeDesc := ageField["description"]
 
 				if hasAgeDesc {
 					t.Logf("Age field description: %s", ageDesc)
+
 					ageDescStr, ok := ageDesc.(string)
 					require.True(t, ok, "Expected ageDesc to be a string")
 					if !strings.Contains(ageDescStr, "Age is the age of the person") {
@@ -681,10 +693,12 @@ func TestGenerator_Generate_CommentExtractionPipeline(t *testing.T) {
 				// Check that BasicField has its comment.
 				basicField, ok := properties["basic_field"].(map[string]any)
 				require.True(t, ok, "Expected basicField to be a map[string]any")
+
 				basicDesc, hasBasicDesc := basicField["description"]
 
 				if hasBasicDesc {
 					t.Logf("BasicField description: %s", basicDesc)
+
 					basicDescStr, ok := basicDesc.(string)
 					require.True(t, ok, "Expected basicDesc to be a string")
 					if !strings.Contains(basicDescStr, "BasicField is a simple string field") {
@@ -697,10 +711,12 @@ func TestGenerator_Generate_CommentExtractionPipeline(t *testing.T) {
 				// Check that SliceField has its comment.
 				sliceField, ok := properties["slice_field"].(map[string]any)
 				require.True(t, ok, "Expected sliceField to be a map[string]any")
+
 				sliceDesc, hasSliceDesc := sliceField["description"]
 
 				if hasSliceDesc {
 					t.Logf("SliceField description: %s", sliceDesc)
+
 					sliceDescStr, ok := sliceDesc.(string)
 					require.True(t, ok, "Expected sliceDesc to be a string")
 					if !strings.Contains(sliceDescStr, "SliceField contains a slice of strings") {
@@ -720,14 +736,17 @@ func TestGenerator_Generate_CommentExtractionPipeline(t *testing.T) {
 				// When using $defs structure, check the definition.
 				defs, ok := schemaData["$defs"].(map[string]any)
 				require.True(t, ok, "Expected $defs to be a map[string]any")
+
 				testStructDef, ok := defs["TestStruct"].(map[string]any)
 				require.True(t, ok, "Expected TestStruct to be a map[string]any")
+
 				properties, ok := testStructDef["properties"].(map[string]any)
 				require.True(t, ok, "Expected properties to be a map[string]any")
 
 				// Without package paths, fields should have no descriptions at all.
 				nameField, ok := properties["name"].(map[string]any)
 				require.True(t, ok, "Expected nameField to be a map[string]any")
+
 				_, hasDescription := nameField["description"]
 
 				if hasDescription {

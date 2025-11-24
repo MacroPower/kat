@@ -574,6 +574,7 @@ func TestCommandRunner_RunPluginContext(t *testing.T) {
 			setupContext: func() context.Context {
 				ctx, cancel := context.WithTimeout(t.Context(), 1*time.Millisecond)
 				defer cancel()
+
 				time.Sleep(5 * time.Millisecond) // Ensure timeout
 
 				return ctx
@@ -981,6 +982,7 @@ func TestRunner_Configure(t *testing.T) {
 			},
 			checkFunc: func(t *testing.T, r *command.Runner) {
 				t.Helper()
+
 				name, currentProfile := r.GetCurrentProfile()
 				assert.Equal(t, "yaml", name)
 				assert.NotNil(t, currentProfile)
@@ -992,6 +994,7 @@ func TestRunner_Configure(t *testing.T) {
 			},
 			checkFunc: func(t *testing.T, r *command.Runner) {
 				t.Helper()
+
 				name, currentProfile := r.GetCurrentProfile()
 				assert.Equal(t, "custom", name)
 				assert.Equal(t, "echo", currentProfile.Command.Command)
@@ -1005,6 +1008,7 @@ func TestRunner_Configure(t *testing.T) {
 			},
 			checkFunc: func(t *testing.T, r *command.Runner) {
 				t.Helper()
+
 				_, currentProfile := r.GetCurrentProfile()
 				assert.Equal(t, []string{"--debug", "--verbose"}, currentProfile.ExtraArgs)
 			},

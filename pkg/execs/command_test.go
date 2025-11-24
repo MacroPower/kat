@@ -128,6 +128,7 @@ func TestCommand_Build(t *testing.T) {
 		"empty environment with base env": {
 			setupEnv: func() execs.Command {
 				t.Helper()
+
 				baseEnv := []string{"PATH=/usr/bin", "HOME=/home/test", "NON_ESSENTIAL=value"}
 
 				return execs.NewCommand(baseEnv)
@@ -146,6 +147,7 @@ func TestCommand_Build(t *testing.T) {
 		"static environment variable": {
 			setupEnv: func() execs.Command {
 				t.Helper()
+
 				env := execs.NewCommand([]string{})
 				env.AddEnvVar(execs.EnvVar{
 					Name:  "STATIC_VAR",
@@ -232,6 +234,7 @@ func TestCommand_Build(t *testing.T) {
 		"envFrom with name reference": {
 			setupEnv: func() execs.Command {
 				t.Helper()
+
 				baseEnv := []string{"TEST_ENVFROM_VAR=envfrom_value", "PATH=/usr/bin"}
 				env := execs.NewCommand(baseEnv)
 				env.AddEnvFrom([]execs.EnvFromSource{
@@ -252,6 +255,7 @@ func TestCommand_Build(t *testing.T) {
 		"envFrom with pattern reference": {
 			setupEnv: func() execs.Command {
 				t.Helper()
+
 				baseEnv := []string{
 					"TEST_PATTERN_VAR1=pattern_value1",
 					"TEST_PATTERN_VAR2=pattern_value2",
@@ -285,6 +289,7 @@ func TestCommand_Build(t *testing.T) {
 		"static variable overrides base environment": {
 			setupEnv: func() execs.Command {
 				t.Helper()
+
 				baseEnv := []string{"OVERRIDE_VAR=old_value", "PATH=/usr/bin"}
 				env := execs.NewCommand(baseEnv)
 				env.AddEnvVar(execs.EnvVar{
@@ -306,6 +311,7 @@ func TestCommand_Build(t *testing.T) {
 		"missing caller reference": {
 			setupEnv: func() execs.Command {
 				t.Helper()
+
 				env := execs.NewCommand([]string{})
 				env.AddEnvVar(execs.EnvVar{
 					Name: "MISSING_REF",
@@ -329,6 +335,7 @@ func TestCommand_Build(t *testing.T) {
 		"envFrom with missing name reference": {
 			setupEnv: func() execs.Command {
 				t.Helper()
+
 				baseEnv := []string{"PATH=/usr/bin"}
 				env := execs.NewCommand(baseEnv)
 				env.AddEnvFrom([]execs.EnvFromSource{
@@ -384,6 +391,7 @@ func TestCommand_CompilePatterns(t *testing.T) {
 			name: "valid env pattern",
 			setup: func() execs.Command {
 				t.Helper()
+
 				env := execs.NewCommand([]string{})
 				env.AddEnvVar(execs.EnvVar{
 					Name: "TEST_VAR",
@@ -402,6 +410,7 @@ func TestCommand_CompilePatterns(t *testing.T) {
 			name: "valid envFrom pattern",
 			setup: func() execs.Command {
 				t.Helper()
+
 				env := execs.NewCommand([]string{})
 				env.AddEnvFrom([]execs.EnvFromSource{
 					{
@@ -419,6 +428,7 @@ func TestCommand_CompilePatterns(t *testing.T) {
 			name: "invalid env pattern",
 			setup: func() execs.Command {
 				t.Helper()
+
 				env := execs.NewCommand([]string{})
 				env.AddEnvVar(execs.EnvVar{
 					Name: "TEST_VAR",
@@ -438,6 +448,7 @@ func TestCommand_CompilePatterns(t *testing.T) {
 			name: "invalid envFrom pattern",
 			setup: func() execs.Command {
 				t.Helper()
+
 				env := execs.NewCommand([]string{})
 				env.AddEnvFrom([]execs.EnvFromSource{
 					{
@@ -456,6 +467,7 @@ func TestCommand_CompilePatterns(t *testing.T) {
 			name: "nil caller ref in env",
 			setup: func() execs.Command {
 				t.Helper()
+
 				env := execs.NewCommand([]string{})
 				env.AddEnvVar(execs.EnvVar{
 					Name:      "TEST_VAR",
@@ -470,6 +482,7 @@ func TestCommand_CompilePatterns(t *testing.T) {
 			name: "nil caller ref in envFrom",
 			setup: func() execs.Command {
 				t.Helper()
+
 				env := execs.NewCommand([]string{})
 				env.AddEnvFrom([]execs.EnvFromSource{
 					{CallerRef: nil},
@@ -633,6 +646,7 @@ func TestCommand_Build_EdgeCases(t *testing.T) {
 			name: "base environment with malformed entry",
 			setupEnv: func() execs.Command {
 				t.Helper()
+
 				baseEnv := []string{"VALID_VAR=value", "MALFORMED_NO_EQUALS", "PATH=/usr/bin", "ANOTHER_VALID=another"}
 
 				return execs.NewCommand(baseEnv)
@@ -649,6 +663,7 @@ func TestCommand_Build_EdgeCases(t *testing.T) {
 						break
 					}
 				}
+
 				assert.False(t, found, "Malformed environment variable should not be included")
 			},
 		},
@@ -656,6 +671,7 @@ func TestCommand_Build_EdgeCases(t *testing.T) {
 			name: "environment variable with empty value",
 			setupEnv: func() execs.Command {
 				t.Helper()
+
 				env := execs.NewCommand([]string{})
 				env.AddEnvVar(execs.EnvVar{
 					Name:  "EMPTY_VAR",

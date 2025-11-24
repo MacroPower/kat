@@ -26,6 +26,7 @@ func TestNewFilteredFS(t *testing.T) {
 				rules := []*rule.Rule{
 					rule.MustNew("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`),
 				}
+
 				return tmpDir, rules, nil
 			},
 			expectError: false,
@@ -42,6 +43,7 @@ func TestNewFilteredFS(t *testing.T) {
 				rules := []*rule.Rule{
 					rule.MustNew("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`),
 				}
+
 				return "/nonexistent/path", rules, nil
 			},
 			expectError: true,

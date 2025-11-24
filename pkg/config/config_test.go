@@ -53,6 +53,7 @@ func TestNewConfigLoaderFromFile(t *testing.T) {
 		"valid file": {
 			setupFile: func(t *testing.T) string {
 				t.Helper()
+
 				content := `apiVersion: kat.jacobcolvin.com/v1beta1
 kind: Configuration
 `
@@ -210,6 +211,7 @@ func TestConfig_Write(t *testing.T) {
 		"existing file": {
 			setupPath: func(t *testing.T) string {
 				t.Helper()
+
 				path := filepath.Join(t.TempDir(), "config.yaml")
 				err := os.WriteFile(path, []byte("existing"), 0o600)
 				require.NoError(t, err)
@@ -221,6 +223,7 @@ func TestConfig_Write(t *testing.T) {
 		"directory exists": {
 			setupPath: func(t *testing.T) string {
 				t.Helper()
+
 				dir := t.TempDir()
 
 				return filepath.Join(dir, "subdir", "config.yaml")
@@ -281,6 +284,7 @@ func TestWriteDefaultConfig(t *testing.T) {
 		"existing file": {
 			setupPath: func(t *testing.T) string {
 				t.Helper()
+
 				path := filepath.Join(t.TempDir(), "config.yaml")
 				err := os.WriteFile(path, []byte("existing"), 0o600)
 				require.NoError(t, err)
@@ -293,6 +297,7 @@ func TestWriteDefaultConfig(t *testing.T) {
 		"create parent directories": {
 			setupPath: func(t *testing.T) string {
 				t.Helper()
+
 				dir := t.TempDir()
 
 				return filepath.Join(dir, "nested", "deep", "config.yaml")
@@ -322,6 +327,7 @@ func TestWriteDefaultConfig(t *testing.T) {
 		"force existing file creates backup": {
 			setupPath: func(t *testing.T) string {
 				t.Helper()
+
 				path := filepath.Join(t.TempDir(), "config.yaml")
 				err := os.WriteFile(path, []byte("existing content"), 0o600)
 				require.NoError(t, err)
@@ -469,6 +475,7 @@ func TestGetPath(t *testing.T) {
 		"XDG_CONFIG_HOME is not set and HOME is set": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
+
 				err := os.Unsetenv("XDG_CONFIG_HOME")
 				require.NoError(t, err)
 				t.Setenv("HOME", "/test/home")
@@ -486,6 +493,7 @@ func TestGetPath(t *testing.T) {
 		"XDG_CONFIG_HOME is not set and HOME is empty": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
+
 				err := os.Unsetenv("XDG_CONFIG_HOME")
 				require.NoError(t, err)
 				t.Setenv("HOME", "")
