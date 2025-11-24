@@ -7,7 +7,8 @@ ENV XDG_CONFIG_HOME=/config
 
 COPY kat /usr/local/bin/kat
 
-RUN kat --write-config
+RUN ls -la /usr/local/bin/kat \
+  && /usr/local/bin/kat --write-config
 
 FROM scratch
 
