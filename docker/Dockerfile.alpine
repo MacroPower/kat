@@ -14,7 +14,8 @@ RUN apk add --no-cache \
     git \
     man-pages \
     man-db \
-    bash-completion
+    bash-completion \
+    binutils
 
 # Install helm
 RUN curl -s https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
@@ -36,8 +37,16 @@ COPY man/ /usr/share/man/man1/
 # Update man database
 RUN mandb -c
 
-# Write the default configuration
-RUN kat --write-config
+RUN echo "=== Binary Info ===" \
+    && ls -lh /usr/local/bin/kat \
+    && echo "=== Architecture Check ===" \
+    && readelf -h /usr/local/bin/kat | grep -E "(Class|Machine)" \
+    && echo "=== Dynamic Dependencies ===" \
+    && (readelf -d /usr/local/bin/kat 2>&1 || echo "No dynamic section (static binary)") \
+    && echo "=== Go Version ===" \
+    && (strings /usr/local/bin/kat | grep -E "^go[0-9]+\.[0-9]+") \
+    && echo "==================" \
+    && kat --write-config
 
 WORKDIR /data
 
