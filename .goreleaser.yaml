@@ -71,7 +71,7 @@ signs:
     signature: "${artifact}.sigstore.json"
     args:
       - sign-blob
-      - "--bundle=${artifact}.bundle"
+      - "--bundle=${signature}"
       - "${artifact}"
       - "--yes"
     artifacts: checksum
