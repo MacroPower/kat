@@ -1,8 +1,8 @@
 module github.com/macropower/kat
 
-go 1.24.2
+go 1.25.0
 
-toolchain go1.25.4
+toolchain go1.25.3
 
 require (
 	github.com/alecthomas/chroma/v2 v2.20.0
