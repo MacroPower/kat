@@ -35,7 +35,7 @@ jobs:
           cp pkg/config/config.*.json _site/schemas/
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
 
   deploy:
     name: deploy
