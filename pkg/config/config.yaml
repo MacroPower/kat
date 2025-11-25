@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=./config.v1beta1.json
+# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/config.v1beta1.json
 apiVersion: kat.jacobcolvin.com/v1beta1
 kind: Configuration
 
