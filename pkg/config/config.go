@@ -308,17 +308,6 @@ func WriteDefaultConfig(path string, force bool) error {
 		)
 	}
 
-	// Write the JSON schema file alongside the config file.
-	schemaPath := filepath.Join(filepath.Dir(path), "config.v1beta1.json")
-	slog.Debug("write JSON schema",
-		slog.String("path", schemaPath),
-	)
-
-	err = os.WriteFile(schemaPath, schemaJSON, 0o600)
-	if err != nil {
-		return fmt.Errorf("write schema file: %w", err)
-	}
-
 	return nil
 }
 
