@@ -68,7 +68,9 @@ func NewModel(c Config) Model {
 	return m
 }
 
-func (m Model) Init() tea.Cmd {
+func (m *Model) Init() tea.Cmd {
+	m.addConfigEditor()
+
 	return m.configeditor.Init()
 }
 

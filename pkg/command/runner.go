@@ -401,6 +401,10 @@ func (cr *Runner) GetProfiles() map[string]*profile.Profile {
 	return cr.profiles
 }
 
+func (cr *Runner) GetPath() string {
+	return cr.path
+}
+
 func (cr *Runner) SetProfile(name string) error {
 	cr.mu.Lock()
 	defer cr.mu.Unlock()

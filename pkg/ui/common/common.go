@@ -20,6 +20,7 @@ type Commander interface {
 	Subscribe(ch chan<- command.Event)
 	GetProfiles() map[string]*profile.Profile
 	GetCurrentProfile() (string, *profile.Profile)
+	GetPath() string
 	FindProfiles(path string) ([]command.ProfileMatch, error)
 	ConfigureContext(ctx context.Context, opts ...command.RunnerOpt) error
 	RunPluginContext(ctx context.Context, name string) command.Output
