@@ -52,6 +52,10 @@ func (rg *Static) GetProfiles() map[string]*profile.Profile {
 	return map[string]*profile.Profile{}
 }
 
+func (rg *Static) GetPath() string {
+	return "."
+}
+
 func (rg *Static) FindProfile(_ string) (string, *profile.Profile, error) {
 	// Static resources do not have a profile.
 	return "", nil, errors.ErrUnsupported

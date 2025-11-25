@@ -3,6 +3,7 @@ package configeditor
 import (
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -45,6 +46,7 @@ type Config struct {
 type Commander interface {
 	GetProfiles() map[string]*profile.Profile
 	GetCurrentProfile() (string, *profile.Profile)
+	GetPath() string
 	FindProfiles(path string) ([]command.ProfileMatch, error)
 	FS() (*command.FilteredFS, error)
 }
@@ -69,11 +71,15 @@ func NewModel(cmd Commander, t *huh.Theme, km *huh.KeyMap) Model {
 		panic(err)
 	}
 
+	// Start the file picker in the parent of the current path.
+	startDir := filepath.Dir(cmd.GetPath())
+
 	m.form = huh.NewForm(
 		huh.NewGroup(
 			NewFilePicker(filepicker.New(fsys)).
 				Key(FieldFile).
 				Picking(true).
+				CurrentDirectory(startDir).
 				Title("Select a file or directory").
 				ShowPermissions(true).
 				ShowSize(true).

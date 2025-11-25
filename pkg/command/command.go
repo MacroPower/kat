@@ -16,6 +16,7 @@ type Commander interface {
 	Subscribe(ch chan<- Event)
 	GetProfiles() map[string]*profile.Profile
 	GetCurrentProfile() (string, *profile.Profile)
+	GetPath() string
 	FindProfiles(path string) ([]ProfileMatch, error)
 	Configure(opts ...RunnerOpt) error
 	ConfigureContext(ctx context.Context, opts ...RunnerOpt) error
