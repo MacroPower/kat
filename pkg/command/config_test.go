@@ -275,3 +275,130 @@ func TestConfig_Validate_EdgeCases(t *testing.T) {
 		})
 	}
 }
+
+func TestConfig_Merge(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		global  *command.Config
+		project *command.Config
+		checkFn func(*testing.T, *command.Config)
+	}{
+		"nil project config": {
+			global: &command.Config{
+				Profiles: map[string]*profile.Profile{
+					"global": profile.MustNew("echo", profile.WithArgs("global")),
+				},
+				Rules: []*rule.Rule{
+					rule.MustNew("global", `true`),
+				},
+			},
+			project: nil,
+			checkFn: func(t *testing.T, c *command.Config) {
+				t.Helper()
+				assert.Len(t, c.Profiles, 1)
+				assert.Contains(t, c.Profiles, "global")
+				assert.Len(t, c.Rules, 1)
+			},
+		},
+		"project profiles override global": {
+			global: &command.Config{
+				Profiles: map[string]*profile.Profile{
+					"shared": profile.MustNew("echo", profile.WithArgs("global")),
+					"global": profile.MustNew("echo", profile.WithArgs("global-only")),
+				},
+				Rules: []*rule.Rule{
+					rule.MustNew("shared", `true`),
+				},
+			},
+			project: &command.Config{
+				Profiles: map[string]*profile.Profile{
+					"shared":  profile.MustNew("echo", profile.WithArgs("project")),
+					"project": profile.MustNew("echo", profile.WithArgs("project-only")),
+				},
+				Rules: []*rule.Rule{},
+			},
+			checkFn: func(t *testing.T, c *command.Config) {
+				t.Helper()
+				assert.Len(t, c.Profiles, 3) // shared, global, project
+				assert.Contains(t, c.Profiles, "shared")
+				assert.Contains(t, c.Profiles, "global")
+				assert.Contains(t, c.Profiles, "project")
+				// The shared profile should be from project (override)
+				assert.Equal(t, []string{"project"}, c.Profiles["shared"].Command.Args)
+			},
+		},
+		"project rules prepended": {
+			global: &command.Config{
+				Profiles: map[string]*profile.Profile{
+					"global":  profile.MustNew("echo", profile.WithArgs("global")),
+					"project": profile.MustNew("echo", profile.WithArgs("project")),
+				},
+				Rules: []*rule.Rule{
+					rule.MustNew("global", `true`),
+				},
+			},
+			project: &command.Config{
+				Profiles: map[string]*profile.Profile{},
+				Rules: []*rule.Rule{
+					rule.MustNew("project", `true`),
+				},
+			},
+			checkFn: func(t *testing.T, c *command.Config) {
+				t.Helper()
+				assert.Len(t, c.Rules, 2)
+				// Project rule should be first (prepended)
+				assert.Equal(t, "project", c.Rules[0].Profile)
+				assert.Equal(t, "global", c.Rules[1].Profile)
+			},
+		},
+		"empty project config": {
+			global: &command.Config{
+				Profiles: map[string]*profile.Profile{
+					"global": profile.MustNew("echo", profile.WithArgs("global")),
+				},
+				Rules: []*rule.Rule{
+					rule.MustNew("global", `true`),
+				},
+			},
+			project: &command.Config{
+				Profiles: map[string]*profile.Profile{},
+				Rules:    []*rule.Rule{},
+			},
+			checkFn: func(t *testing.T, c *command.Config) {
+				t.Helper()
+				assert.Len(t, c.Profiles, 1)
+				assert.Len(t, c.Rules, 1)
+			},
+		},
+		"global nil profiles": {
+			global: &command.Config{
+				Profiles: nil,
+				Rules:    []*rule.Rule{},
+			},
+			project: &command.Config{
+				Profiles: map[string]*profile.Profile{
+					"project": profile.MustNew("echo", profile.WithArgs("project")),
+				},
+				Rules: []*rule.Rule{
+					rule.MustNew("project", `true`),
+				},
+			},
+			checkFn: func(t *testing.T, c *command.Config) {
+				t.Helper()
+				assert.NotNil(t, c.Profiles)
+				assert.Len(t, c.Profiles, 1)
+				assert.Contains(t, c.Profiles, "project")
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			tc.global.Merge(tc.project)
+			tc.checkFn(t, tc.global)
+		})
+	}
+}

@@ -1,0 +1,9 @@
+[dependencies]
+  [dependencies.k8s]
+    name = "k8s"
+    full_name = "k8s_1.32"
+    version = "1.32"
+    sum = "f9zO0Ysjbelb0Gn4T5Wa/X6yEmrxipm13pXWU4yK86Y="
+    reg = "ghcr.io"
+    repo = "kcl-lang/k8s"
+    oci_tag = "1.32"

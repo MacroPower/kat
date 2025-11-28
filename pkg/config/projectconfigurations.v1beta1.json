@@ -1,0 +1,713 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/macropower/kat/pkg/config/project-config",
+  "properties": {
+    "profiles": {
+      "additionalProperties": {
+        "properties": {
+          "hooks": {
+            "properties": {
+              "init": {
+                "items": {
+                  "properties": {
+                    "command": {
+                      "type": "string",
+                      "pattern": "^\\S+$",
+                      "title": "Command",
+                      "description": "Command is the command to execute.\n\nCommand.Command: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                    },
+                    "args": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array",
+                      "title": "Arguments",
+                      "description": "Args contains the immutable command line arguments.\n\nCommand.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                    },
+                    "env": {
+                      "items": {
+                        "properties": {
+                          "valueFrom": {
+                            "properties": {
+                              "callerRef": {
+                                "properties": {
+                                  "pattern": {
+                                    "type": "string",
+                                    "format": "regex",
+                                    "title": "Pattern",
+                                    "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "title": "Name",
+                                    "description": "Name is the specific environment variable name to inherit.\n\nCallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                                  }
+                                },
+                                "additionalProperties": false,
+                                "type": "object",
+                                "title": "Caller Reference",
+                                "description": "CallerRef specifies how to get the value from the caller process environment.\n\nEnvVarSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVarSource"
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "title": "Value From",
+                            "description": "ValueFrom specifies a source for the environment variable value.\n\nEnvVar.ValueFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                          },
+                          "name": {
+                            "type": "string",
+                            "title": "Name",
+                            "description": "Name is the environment variable name.\n\nEnvVar.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                          },
+                          "value": {
+                            "type": "string",
+                            "title": "Value",
+                            "description": "Value is the environment variable value.\n\nEnvVar.Value: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "name"
+                        ],
+                        "description": "EnvVar represents an environment variable definition.\n\nEnvVar: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                      },
+                      "type": "array",
+                      "title": "Environment Variables",
+                      "description": "Env contains environment variable definitions.\n\nCommand.Env: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                    },
+                    "envFrom": {
+                      "items": {
+                        "properties": {
+                          "callerRef": {
+                            "properties": {
+                              "pattern": {
+                                "type": "string",
+                                "format": "regex",
+                                "title": "Pattern",
+                                "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                              },
+                              "name": {
+                                "type": "string",
+                                "title": "Name",
+                                "description": "Name is the specific environment variable name to inherit.\n\nCallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "title": "Caller Reference",
+                            "description": "CallerRef specifies how to inherit environment variables from the caller process.\n\nEnvFromSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
+                        "description": "EnvFromSource represents a source for inheriting environment variables.\n\nEnvFromSource: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
+                      },
+                      "type": "array",
+                      "title": "Environment Variables From",
+                      "description": "EnvFrom contains sources for inheriting environment variables.\n\nCommand.EnvFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "command"
+                  ],
+                  "description": "HookCommand represents a single hook command to execute.\n\nHookCommand: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#HookCommand"
+                },
+                "type": "array",
+                "title": "Init Hooks",
+                "description": "Init contains commands to run during initialization.\n\nHooks.Init: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Hooks"
+              },
+              "preRender": {
+                "items": {
+                  "properties": {
+                    "command": {
+                      "type": "string",
+                      "pattern": "^\\S+$",
+                      "title": "Command",
+                      "description": "Command is the command to execute.\n\nCommand.Command: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                    },
+                    "args": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array",
+                      "title": "Arguments",
+                      "description": "Args contains the immutable command line arguments.\n\nCommand.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                    },
+                    "env": {
+                      "items": {
+                        "properties": {
+                          "valueFrom": {
+                            "properties": {
+                              "callerRef": {
+                                "properties": {
+                                  "pattern": {
+                                    "type": "string",
+                                    "format": "regex",
+                                    "title": "Pattern",
+                                    "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "title": "Name",
+                                    "description": "Name is the specific environment variable name to inherit.\n\nCallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                                  }
+                                },
+                                "additionalProperties": false,
+                                "type": "object",
+                                "title": "Caller Reference",
+                                "description": "CallerRef specifies how to get the value from the caller process environment.\n\nEnvVarSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVarSource"
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "title": "Value From",
+                            "description": "ValueFrom specifies a source for the environment variable value.\n\nEnvVar.ValueFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                          },
+                          "name": {
+                            "type": "string",
+                            "title": "Name",
+                            "description": "Name is the environment variable name.\n\nEnvVar.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                          },
+                          "value": {
+                            "type": "string",
+                            "title": "Value",
+                            "description": "Value is the environment variable value.\n\nEnvVar.Value: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "name"
+                        ],
+                        "description": "EnvVar represents an environment variable definition.\n\nEnvVar: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                      },
+                      "type": "array",
+                      "title": "Environment Variables",
+                      "description": "Env contains environment variable definitions.\n\nCommand.Env: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                    },
+                    "envFrom": {
+                      "items": {
+                        "properties": {
+                          "callerRef": {
+                            "properties": {
+                              "pattern": {
+                                "type": "string",
+                                "format": "regex",
+                                "title": "Pattern",
+                                "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                              },
+                              "name": {
+                                "type": "string",
+                                "title": "Name",
+                                "description": "Name is the specific environment variable name to inherit.\n\nCallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "title": "Caller Reference",
+                            "description": "CallerRef specifies how to inherit environment variables from the caller process.\n\nEnvFromSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
+                        "description": "EnvFromSource represents a source for inheriting environment variables.\n\nEnvFromSource: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
+                      },
+                      "type": "array",
+                      "title": "Environment Variables From",
+                      "description": "EnvFrom contains sources for inheriting environment variables.\n\nCommand.EnvFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "command"
+                  ],
+                  "description": "HookCommand represents a single hook command to execute.\n\nHookCommand: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#HookCommand"
+                },
+                "type": "array",
+                "title": "Pre Render Hooks",
+                "description": "PreRender contains commands to run before rendering.\n\nHooks.PreRender: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Hooks"
+              },
+              "postRender": {
+                "items": {
+                  "properties": {
+                    "command": {
+                      "type": "string",
+                      "pattern": "^\\S+$",
+                      "title": "Command",
+                      "description": "Command is the command to execute.\n\nCommand.Command: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                    },
+                    "args": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array",
+                      "title": "Arguments",
+                      "description": "Args contains the immutable command line arguments.\n\nCommand.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                    },
+                    "env": {
+                      "items": {
+                        "properties": {
+                          "valueFrom": {
+                            "properties": {
+                              "callerRef": {
+                                "properties": {
+                                  "pattern": {
+                                    "type": "string",
+                                    "format": "regex",
+                                    "title": "Pattern",
+                                    "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "title": "Name",
+                                    "description": "Name is the specific environment variable name to inherit.\n\nCallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                                  }
+                                },
+                                "additionalProperties": false,
+                                "type": "object",
+                                "title": "Caller Reference",
+                                "description": "CallerRef specifies how to get the value from the caller process environment.\n\nEnvVarSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVarSource"
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "title": "Value From",
+                            "description": "ValueFrom specifies a source for the environment variable value.\n\nEnvVar.ValueFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                          },
+                          "name": {
+                            "type": "string",
+                            "title": "Name",
+                            "description": "Name is the environment variable name.\n\nEnvVar.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                          },
+                          "value": {
+                            "type": "string",
+                            "title": "Value",
+                            "description": "Value is the environment variable value.\n\nEnvVar.Value: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "name"
+                        ],
+                        "description": "EnvVar represents an environment variable definition.\n\nEnvVar: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                      },
+                      "type": "array",
+                      "title": "Environment Variables",
+                      "description": "Env contains environment variable definitions.\n\nCommand.Env: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                    },
+                    "envFrom": {
+                      "items": {
+                        "properties": {
+                          "callerRef": {
+                            "properties": {
+                              "pattern": {
+                                "type": "string",
+                                "format": "regex",
+                                "title": "Pattern",
+                                "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                              },
+                              "name": {
+                                "type": "string",
+                                "title": "Name",
+                                "description": "Name is the specific environment variable name to inherit.\n\nCallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "title": "Caller Reference",
+                            "description": "CallerRef specifies how to inherit environment variables from the caller process.\n\nEnvFromSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
+                        "description": "EnvFromSource represents a source for inheriting environment variables.\n\nEnvFromSource: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
+                      },
+                      "type": "array",
+                      "title": "Environment Variables From",
+                      "description": "EnvFrom contains sources for inheriting environment variables.\n\nCommand.EnvFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "command"
+                  ],
+                  "description": "HookCommand represents a single hook command to execute.\n\nHookCommand: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#HookCommand"
+                },
+                "type": "array",
+                "title": "Post Render Hooks",
+                "description": "PostRender contains commands to run after rendering.\n\nHooks.PostRender: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Hooks"
+              }
+            },
+            "additionalProperties": false,
+            "type": "object",
+            "title": "Hooks",
+            "description": "Hooks contains lifecycle hooks for the profile.\n\nProfile.Hooks: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
+          },
+          "ui": {
+            "properties": {
+              "compact": {
+                "type": "boolean",
+                "title": "Enable Compact Display",
+                "description": "Compact enables compact display mode with reduced spacing.\n\nUIConfig.Compact: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#UIConfig"
+              },
+              "wordWrap": {
+                "type": "boolean",
+                "title": "Enable Word Wrap",
+                "description": "WordWrap enables automatic word wrapping for long text.\n\nUIConfig.WordWrap: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#UIConfig"
+              },
+              "lineNumbers": {
+                "type": "boolean",
+                "title": "Enable Line Numbers",
+                "description": "LineNumbers enables line numbers in the display.\n\nUIConfig.LineNumbers: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#UIConfig"
+              },
+              "theme": {
+                "type": "string",
+                "title": "Theme Name",
+                "description": "Theme specifies the theme name to use. This can be a custom theme added under `themes`,\nor a theme from the Chroma Style Gallery: https://xyproto.github.io/splash/docs/\n\nUIConfig.Theme: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#UIConfig"
+              }
+            },
+            "additionalProperties": false,
+            "type": "object",
+            "title": "UI Overrides",
+            "description": "UI contains UI configuration overrides for this profile.\n\nProfile.UI: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
+          },
+          "plugins": {
+            "additionalProperties": {
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "pattern": "^\\S+$",
+                  "title": "Command",
+                  "description": "Command is the command to execute.\n\nCommand.Command: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                },
+                "args": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "title": "Arguments",
+                  "description": "Args contains the immutable command line arguments.\n\nCommand.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                },
+                "env": {
+                  "items": {
+                    "properties": {
+                      "valueFrom": {
+                        "properties": {
+                          "callerRef": {
+                            "properties": {
+                              "pattern": {
+                                "type": "string",
+                                "format": "regex",
+                                "title": "Pattern",
+                                "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                              },
+                              "name": {
+                                "type": "string",
+                                "title": "Name",
+                                "description": "Name is the specific environment variable name to inherit.\n\nCallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "title": "Caller Reference",
+                            "description": "CallerRef specifies how to get the value from the caller process environment.\n\nEnvVarSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVarSource"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
+                        "title": "Value From",
+                        "description": "ValueFrom specifies a source for the environment variable value.\n\nEnvVar.ValueFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                      },
+                      "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name is the environment variable name.\n\nEnvVar.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                      },
+                      "value": {
+                        "type": "string",
+                        "title": "Value",
+                        "description": "Value is the environment variable value.\n\nEnvVar.Value: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "name"
+                    ],
+                    "description": "EnvVar represents an environment variable definition.\n\nEnvVar: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                  },
+                  "type": "array",
+                  "title": "Environment Variables",
+                  "description": "Env contains environment variable definitions.\n\nCommand.Env: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                },
+                "envFrom": {
+                  "items": {
+                    "properties": {
+                      "callerRef": {
+                        "properties": {
+                          "pattern": {
+                            "type": "string",
+                            "format": "regex",
+                            "title": "Pattern",
+                            "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                          },
+                          "name": {
+                            "type": "string",
+                            "title": "Name",
+                            "description": "Name is the specific environment variable name to inherit.\n\nCallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
+                        "title": "Caller Reference",
+                        "description": "CallerRef specifies how to inherit environment variables from the caller process.\n\nEnvFromSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
+                    "description": "EnvFromSource represents a source for inheriting environment variables.\n\nEnvFromSource: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
+                  },
+                  "type": "array",
+                  "title": "Environment Variables From",
+                  "description": "EnvFrom contains sources for inheriting environment variables.\n\nCommand.EnvFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+                },
+                "description": {
+                  "type": "string",
+                  "title": "Description",
+                  "description": "Description provides a description of what the plugin does.\n\nPlugin.Description: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Plugin"
+                },
+                "keys": {
+                  "items": {
+                    "properties": {
+                      "code": {
+                        "type": "string",
+                        "title": "Code",
+                        "description": "Key.Code: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      },
+                      "alias": {
+                        "type": "string",
+                        "title": "Alias",
+                        "description": "Key.Alias: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      },
+                      "hidden": {
+                        "type": "boolean",
+                        "title": "Hidden",
+                        "description": "Key.Hidden: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "code"
+                    ],
+                    "description": "Key: https://pkg.go.dev/github.com/macropower/kat/pkg/keys#Key"
+                  },
+                  "type": "array",
+                  "title": "Keys",
+                  "description": "Keys defines the key bindings that trigger this plugin.\n\nPlugin.Keys: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Plugin"
+                }
+              },
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "command",
+                "description"
+              ],
+              "description": "Plugin represents a command plugin that can be executed on demand with keybinds.\n\nPlugin: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Plugin"
+            },
+            "type": "object",
+            "title": "Plugins",
+            "description": "Plugins contains a map of plugin names to Plugin configurations.\n\nProfile.Plugins: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "Source is a CEL expression that determines which files should be watched by\nthis profile, when file watching is enabled. The expression has access to:\n  - `files` (list\u003cstring\u003e): All file paths in directory\n  - `dir` (string): The directory path being processed\n\nSource CEL expressions must return a list of files:\n  - `files.filter(f, pathExt(f) in [\".yaml\", \".yml\"])` - returns all YAML files\n  - `files.filter(f, pathBase(f) in [\"Chart.yaml\", \"values.yaml\"])` - returns Chart and values files\n  - `files.filter(f, pathBase(f) == \"Chart.yaml\")` - returns files named Chart.yaml\n  - `files.filter(f, !pathBase(f).matches(\".*test.*\"))` - returns non-test files\n  - `files.filter(f, pathBase(f) == \"Chart.yaml\" \u0026\u0026 yamlPath(f, \"$.apiVersion\") == \"v2\")` - returns charts with apiVersion v2\n  - `files` - unfiltered list means all files should be processed\n  - `[]` - empty list means no files should be processed\n\nIf no Source expression is provided, the profile will match all files by default.\n\nProfile.Source: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
+          },
+          "reload": {
+            "type": "string",
+            "title": "Reload",
+            "description": "Reload contains a CEL expression that is evaluated on automated reload\nevents (e.g. from watch). If the expression returns true, the reload will proceed.\nIf it returns false, the reload will be skipped. The expression has access to:\n  - `file` (string): The file path that triggered the event\n  - `fs.event` (int): The file event type, at least one of `fs.CREATE`, `fs.WRITE`, `fs.REMOVE`, `fs.RENAME`, `fs.CHMOD`\n  - `render.stage` (int): The current render stage, one of `render.STAGE_NONE`, `render.STAGE_PRE_RENDER`, `render.STAGE_RENDER`, `render.STAGE_POST_RENDER`\n  - `render.result` (string): The result of the last render operation, one of `render.RESULT_OK`, `render.RESULT_ERROR`, `render.RESULT_CANCEL`\n\nReload CEL expressions must return a boolean value:\n  - `pathBase(file) != \"kustomization.yaml\"` - skip reload for kustomization.yaml files\n  - `fs.event.has(fs.WRITE, fs.RENAME)` - reload for write or rename events\n  - `render.result != render.RESULT_CANCEL` - skip reload if the last render was canceled\n  - `render.stage \u003c render.STAGE_RENDER` - only reload if the main render stage has not started\n\nIf no Reload expression is provided, the profile will always reload on any events.\n\nProfile.Reload: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
+          },
+          "command": {
+            "type": "string",
+            "pattern": "^\\S+$",
+            "title": "Command",
+            "description": "Command is the command to execute.\n\nCommand.Command: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+          },
+          "args": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Arguments",
+            "description": "Args contains the immutable command line arguments.\n\nCommand.Args: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+          },
+          "env": {
+            "items": {
+              "properties": {
+                "valueFrom": {
+                  "properties": {
+                    "callerRef": {
+                      "properties": {
+                        "pattern": {
+                          "type": "string",
+                          "format": "regex",
+                          "title": "Pattern",
+                          "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                        },
+                        "name": {
+                          "type": "string",
+                          "title": "Name",
+                          "description": "Name is the specific environment variable name to inherit.\n\nCallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "title": "Caller Reference",
+                      "description": "CallerRef specifies how to get the value from the caller process environment.\n\nEnvVarSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVarSource"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "title": "Value From",
+                  "description": "ValueFrom specifies a source for the environment variable value.\n\nEnvVar.ValueFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                },
+                "name": {
+                  "type": "string",
+                  "title": "Name",
+                  "description": "Name is the environment variable name.\n\nEnvVar.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                },
+                "value": {
+                  "type": "string",
+                  "title": "Value",
+                  "description": "Value is the environment variable value.\n\nEnvVar.Value: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+                }
+              },
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "name"
+              ],
+              "description": "EnvVar represents an environment variable definition.\n\nEnvVar: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvVar"
+            },
+            "type": "array",
+            "title": "Environment Variables",
+            "description": "Env contains environment variable definitions.\n\nCommand.Env: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+          },
+          "envFrom": {
+            "items": {
+              "properties": {
+                "callerRef": {
+                  "properties": {
+                    "pattern": {
+                      "type": "string",
+                      "format": "regex",
+                      "title": "Pattern",
+                      "description": "Pattern is a regex pattern for matching environment variable names.\n\nCallerRef.Pattern: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                    },
+                    "name": {
+                      "type": "string",
+                      "title": "Name",
+                      "description": "Name is the specific environment variable name to inherit.\n\nCallerRef.Name: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#CallerRef"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "title": "Caller Reference",
+                  "description": "CallerRef specifies how to inherit environment variables from the caller process.\n\nEnvFromSource.CallerRef: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
+                }
+              },
+              "additionalProperties": false,
+              "type": "object",
+              "description": "EnvFromSource represents a source for inheriting environment variables.\n\nEnvFromSource: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#EnvFromSource"
+            },
+            "type": "array",
+            "title": "Environment Variables From",
+            "description": "EnvFrom contains sources for inheriting environment variables.\n\nCommand.EnvFrom: https://pkg.go.dev/github.com/macropower/kat/pkg/execs#Command"
+          },
+          "extraArgs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Optional Arguments",
+            "description": "ExtraArgs contains extra arguments that can be overridden from the CLI.\nThey are appended to the Args of the Command.\n\nProfile.ExtraArgs: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "command"
+        ],
+        "description": "Profile represents a command profile.\n\nProfile: https://pkg.go.dev/github.com/macropower/kat/pkg/profile#Profile"
+      },
+      "type": "object",
+      "title": "Profiles",
+      "description": "Profiles contains a map of profile names to profile configurations.\n\nConfig.Profiles: https://pkg.go.dev/github.com/macropower/kat/pkg/command#Config"
+    },
+    "rules": {
+      "items": {
+        "properties": {
+          "match": {
+            "type": "string",
+            "title": "Match Expression",
+            "description": "Match is a CEL expression to match file paths.\n\nRule.Match: https://pkg.go.dev/github.com/macropower/kat/pkg/rule#Rule"
+          },
+          "profile": {
+            "type": "string",
+            "title": "Profile Name",
+            "description": "Profile is the name of the profile to use when this rule matches.\n\nRule.Profile: https://pkg.go.dev/github.com/macropower/kat/pkg/rule#Rule"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "match",
+          "profile"
+        ],
+        "description": "Rule uses a CEL matcher to determine if its profile should be applied.\n\nCEL expressions have access to variables:\n  - `files` (list\u003cstring\u003e): All file paths in directory\n  - `dir` (string): The directory path being processed\n\nCEL expressions must return a boolean value:\n  - files.exists(f, pathExt(f) in [\".yaml\", \".yml\"]) - true if any YAML files exist\n  - files.exists(f, pathBase(f) in [\"Chart.yaml\", \"values.yaml\"]) - true if Chart or values files exist\n  - files.exists(f, pathBase(f) == \"Chart.yaml\") - true if Chart.yaml exists\n  - files.exists(f, !pathBase(f).matches(\".*test.*\")) - true if non-test files exist\n  - files.exists(f, pathBase(f) == \"Chart.yaml\" \u0026\u0026 yamlPath(f, \"$.apiVersion\") == \"v2\") - true if Helm v2 charts exist\n  - false - rule doesn't match\n\nCEL path functions available:\n  - pathBase(string): Returns the last element of the path (filename)\n  - pathDir(string): Returns all but the last element of the path (directory)\n  - pathExt(string): Returns the file extension including the dot\n  - yamlPath(file, path): Reads a YAML file and extracts value at path (returns null if not found)\n\nCEL also provides standard functions like `endsWith`, `contains`,\n`startsWith`, `matches`, along with list functions like `filter`, `exists`, `in`, and\nlogical operators like `\u0026\u0026`, `||`, and `!`.\n\nUse the `in` operator to check membership in lists, e.g.: pathBase(f) in [\"Chart.yaml\"].\n\nRule: https://pkg.go.dev/github.com/macropower/kat/pkg/rule#Rule"
+      },
+      "type": "array",
+      "title": "Rules",
+      "description": "Rules defines the rules for matching files to profiles.\n\nConfig.Rules: https://pkg.go.dev/github.com/macropower/kat/pkg/command#Config"
+    },
+    "apiVersion": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "kat.jacobcolvin.com/v1beta1",
+          "title": "API Version"
+        }
+      ],
+      "type": "string",
+      "title": "API Version",
+      "description": "APIVersion specifies the API version for this configuration.\n\nProjectConfig.APIVersion: https://pkg.go.dev/github.com/macropower/kat/pkg/config#ProjectConfig"
+    },
+    "kind": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "ProjectConfiguration",
+          "title": "Kind"
+        }
+      ],
+      "type": "string",
+      "title": "Kind",
+      "description": "Kind defines the type of configuration.\n\nProjectConfig.Kind: https://pkg.go.dev/github.com/macropower/kat/pkg/config#ProjectConfig"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind"
+  ],
+  "description": "ProjectConfig represents project-level configuration.\n\nProjectConfig: https://pkg.go.dev/github.com/macropower/kat/pkg/config#ProjectConfig"
+}

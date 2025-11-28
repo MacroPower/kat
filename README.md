@@ -57,6 +57,7 @@ Together, these deliver a seamless development experience that maintains context
 
 - Select your defined profiles automatically using CEL expressions
 - Match projects based on file contents, structure, or naming patterns
+- Support for project-specific configurations via `.katrc.yaml` files
 
 **🔌 Plugin system**
 
@@ -450,6 +451,20 @@ profiles:
 ```
 
 For more details on CEL expressions and examples, see the [CEL documentation](docs/CEL.md).
+
+### 🪄 Project Configuration
+
+Projects can include their own `.katrc.yaml` file to define project-specific rules and profiles. For example, you can include a `.katrc.yaml` file at the root of your git repository to share and/or version your project-specific configuration. When `kat` runs, it searches for this file starting from the target path and walking up the directory tree.
+
+For your safety, when you execute `kat` in a location where a project configuration exists, you will be prompted to trust the project. This trust is maintained in your global configuration:
+
+```yaml
+projects:
+  trust:
+    - path: /path/to/trusted/project
+```
+
+See [Project Configuration](docs/projectconfigurations.md) for more details.
 
 ### 🔥 DRY Configuration
 

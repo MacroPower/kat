@@ -25,6 +25,7 @@ import (
 	"github.com/macropower/kat/pkg/profile"
 	"github.com/macropower/kat/pkg/ui"
 	"github.com/macropower/kat/pkg/ui/common"
+	"github.com/macropower/kat/pkg/ui/setup"
 	"github.com/macropower/kat/pkg/ui/theme"
 	"github.com/macropower/kat/pkg/ui/yamls"
 	"github.com/macropower/kat/pkg/version"
@@ -66,6 +67,8 @@ type RunArgs struct {
 	Watch            bool
 	WriteConfig      bool
 	ShowConfig       bool
+	Trust            bool
+	NoTrust          bool
 }
 
 func NewRunArgs(rootArgs *RootArgs) *RunArgs {
@@ -81,6 +84,10 @@ func (ra *RunArgs) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&ra.WriteConfig, "write-config", false, "Write the default configuration files and exit")
 	cmd.Flags().BoolVar(&ra.ShowConfig, "show-config", false, "Print the active configuration and exit")
 	cmd.Flags().StringVar(&ra.TracingEndpoint, "tracing-endpoint", "", "OpenTelemetry tracing endpoint")
+	cmd.Flags().BoolVar(&ra.Trust, "trust", false, "Trust project configurations without prompting")
+	cmd.Flags().BoolVar(&ra.NoTrust, "no-trust", false, "Skip project configurations without prompting")
+
+	cmd.MarkFlagsMutuallyExclusive("trust", "no-trust")
 
 	err := cmd.MarkFlagFilename("config", "yaml", "yml")
 	if err != nil {
@@ -253,6 +260,14 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 		return err
 	}
 
+	trustMode := config.TrustModePrompt
+	if rc.Trust {
+		trustMode = config.TrustModeAllow
+	}
+	if rc.NoTrust {
+		trustMode = config.TrustModeSkip
+	}
+
 	cl, err := config.NewConfigLoaderFromFile(configPath, config.WithThemeFromData())
 	if err != nil {
 		slog.Warn("could not read config, using defaults", slog.Any("err", err))
@@ -262,7 +277,9 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 			return fmt.Errorf("invalid config %q: %w", configPath, err)
 		}
 
-		cfg, err = cl.Load()
+		sp := setup.NewPrompter(cl.GetTheme())
+
+		cfg, err = cl.LoadWithProjectConfig(sp, trustMode, rc.Path)
 		if err != nil {
 			return fmt.Errorf("invalid config %q: %w", configPath, err)
 		}

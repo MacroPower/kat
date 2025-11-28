@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/projectconfigurations.v1beta1.json
+apiVersion: kat.jacobcolvin.com/v1beta1
+kind: ProjectConfiguration
+rules:
+  - match: >-
+      files.exists(f, pathExt(f) == ".k" || pathExt(f) == ".mod")
+    profile: kcl
+profiles:
+  kcl:
+    source: >-
+      files.filter(f, pathExt(f) == ".k" || pathExt(f) == ".mod")
+    command: kcl
+    args: [run]
+    extraArgs: []
+    hooks:
+      init:
+        - command: kcl
+          args: [--version]

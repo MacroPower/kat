@@ -6,13 +6,18 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
+var DefaultEncoderOptions = []yaml.EncodeOption{
+	yaml.Indent(2),
+	yaml.IndentSequence(true),
+}
+
 type Encoder struct {
 	e *yaml.Encoder
 }
 
 func NewEncoder(w io.Writer) *Encoder {
 	return &Encoder{
-		e: yaml.NewEncoder(w, yaml.Indent(2), yaml.IndentSequence(true)),
+		e: yaml.NewEncoder(w, DefaultEncoderOptions...),
 	}
 }
 

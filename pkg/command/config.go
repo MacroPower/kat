@@ -136,6 +136,30 @@ func (c *Config) EnsureDefaults() {
 	}
 }
 
+// Merge merges another Config into this one.
+// Project profiles override global profiles with the same key.
+// Project rules are prepended to global rules (evaluated first, higher priority).
+func (c *Config) Merge(project *Config) {
+	if project == nil {
+		return
+	}
+
+	// Initialize maps/slices if needed.
+	if c.Profiles == nil {
+		c.Profiles = make(map[string]*profile.Profile)
+	}
+
+	// Project profiles override global profiles with the same key.
+	for name, p := range project.Profiles {
+		c.Profiles[name] = p
+	}
+
+	// Project rules are prepended (evaluated first, higher priority).
+	if len(project.Rules) > 0 {
+		c.Rules = append(project.Rules, c.Rules...)
+	}
+}
+
 func (c *Config) Validate() error {
 	pb := yaml.NewPathBuilder()
 
