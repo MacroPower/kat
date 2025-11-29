@@ -280,7 +280,7 @@ Note that JSON schemas are also included in the configuration directory, which c
 
 Over time, the default configuration may change, and the schema is currently still evolving. If you want to reset your configuration to the latest defaults, you can use `kat --write-config`, which will move your existing configuration to a backup file and generate a new default configuration.
 
-> You can find the default configuration file as well as JSON schemas in [pkg/config](pkg/config).
+> You can find the default configuration file as well as JSON schemas in [api](api).
 
 ## 🛠️ Rules and Profiles
 
@@ -457,6 +457,7 @@ For more details on CEL expressions and examples, see the [CEL documentation](do
 Projects can include their own `.katrc.yaml` file to define project-specific rules and profiles. For example, you can include a `.katrc.yaml` file at the root of your git repository to share and/or version your project-specific runtime config. When `kat` runs, it searches for this file starting from the target path and walking up the directory tree. If found, the config is merged with your global runtime config, meaning that you can define overrides or extend your global config on a per-project basis.
 
 ```yaml
+# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/runtimeconfigs.v1beta1.json
 apiVersion: kat.jacobcolvin.com/v1beta1
 kind: RuntimeConfig
 profiles:
@@ -465,17 +466,9 @@ profiles:
     args: [template, .]
 ```
 
-For your safety, when you execute `kat` in a location where a runtime configuration exists, you will be prompted to trust the project. This trust is maintained in a separate `policy.yaml` file in your config directory:
+> For your safety, when you execute `kat` in a location where a runtime configuration exists, you will be prompted to trust the project. This trust is maintained in a separate `policy.yaml` file in your config directory.
 
-```yaml
-apiVersion: kat.jacobcolvin.com/v1beta1
-kind: Policy
-projects:
-  trust:
-    - path: /path/to/trusted/project
-```
-
-See [docs/katrc.md](docs/katrc.md) for more details.
+See the [katrc documentation](docs/katrc.md) for more details.
 
 ### 🔥 DRY Configuration
 

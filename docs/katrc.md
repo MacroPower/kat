@@ -74,14 +74,13 @@ This allows projects to override specific profiles while falling back to global 
 A project that adds a custom profile for a specific tool:
 
 ```yaml
+# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/runtimeconfigs.v1beta1.json
 apiVersion: kat.jacobcolvin.com/v1beta1
 kind: RuntimeConfig
-
 rules:
   - match: >-
       files.exists(f, pathExt(f) == ".jsonnet")
     profile: jsonnet
-
 profiles:
   jsonnet:
     source: >-
