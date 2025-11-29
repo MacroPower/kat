@@ -40,7 +40,7 @@ type TrustedProject struct {
 	Path string `json:"path" jsonschema:"title=Path"`
 }
 
-// ProjectsPolicyConfig controls handling of project-specific configurations (.kat.yaml files).
+// ProjectsPolicyConfig controls handling of project-specific configurations (.katrc.yaml files).
 type ProjectsPolicyConfig struct {
 	// Trust contains a list of trusted projects.
 	// Projects in this list will have their configs loaded without prompting.

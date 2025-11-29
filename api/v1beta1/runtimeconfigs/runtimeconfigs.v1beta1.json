@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/macropower/kat/api/v1beta1/projectconfigs/project-config",
+  "$id": "https://github.com/macropower/kat/api/v1beta1/runtimeconfigs/runtime-config",
   "properties": {
     "profiles": {
       "additionalProperties": {
@@ -694,7 +694,7 @@
       "oneOf": [
         {
           "type": "string",
-          "const": "ProjectConfig",
+          "const": "RuntimeConfig",
           "title": "Kind"
         }
       ],
@@ -709,5 +709,5 @@
     "apiVersion",
     "kind"
   ],
-  "description": "ProjectConfig represents project-level configuration.\n\nProjectConfig: https://pkg.go.dev/github.com/macropower/kat/api/v1beta1/projectconfigs#ProjectConfig"
+  "description": "RuntimeConfig represents runtime-level configuration.\n\nRuntimeConfig: https://pkg.go.dev/github.com/macropower/kat/api/v1beta1/runtimeconfigs#RuntimeConfig"
 }

@@ -6,5 +6,5 @@
 // Configuration types are defined in sub-packages of [github.com/macropower/kat/api/v1beta1]:
 //   - [github.com/macropower/kat/api/v1beta1/configs] - Global configuration
 //   - [github.com/macropower/kat/api/v1beta1/policies] - Policy configuration
-//   - [github.com/macropower/kat/api/v1beta1/projectconfigs] - Project configuration
+//   - [github.com/macropower/kat/api/v1beta1/runtimeconfigs] - Runtime configuration
 package config

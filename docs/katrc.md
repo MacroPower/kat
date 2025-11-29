@@ -1,22 +1,22 @@
-# Project Configuration (.kat.yaml files)
+# Runtime Configs (.katrc.yaml files)
 
-Project configuration files allow repository owners to define custom rendering rules and profiles that are specific to their project. When `kat` is run, it searches for a project config file starting from the target path and walking up the directory tree.
+Runtime config files allow repository owners to define custom rendering rules and profiles that are specific to their project. When `kat` is run, it searches for a runtime config file starting from the target path and walking up the directory tree.
 
 ## File Names
 
 The following file names are recognized (in order of precedence):
 
-1. `.kat.yaml`
-2. `kat.yaml`
+1. `.katrc.yaml`
+2. `katrc.yaml`
 
 ## Trust System
 
-Because project configurations can define arbitrary rendering commands, `kat` implements a trust system to protect users from potentially malicious configurations.
+Because runtime configurations can define arbitrary rendering commands, `kat` implements a trust system to protect users from potentially malicious configurations.
 
-When a project config file is found in an untrusted project:
+When a runtime config file is found in an untrusted project:
 
-1. **Interactive mode**: A prompt asks the user to trust or skip the project configuration
-2. **Non-interactive mode**: The project configuration is skipped with a warning
+1. **Interactive mode**: A prompt asks the user to trust or skip the runtime configuration
+2. **Non-interactive mode**: The runtime configuration is skipped with a warning
 
 ### CLI Flags
 
@@ -24,8 +24,8 @@ You can control trust behavior without prompting using CLI flags:
 
 | Flag         | Description                                                            |
 | ------------ | ---------------------------------------------------------------------- |
-| `--trust`    | Trust the project configuration without prompting (adds to trust list) |
-| `--no-trust` | Skip the project configuration without prompting                       |
+| `--trust`    | Trust the runtime configuration without prompting (adds to trust list) |
+| `--no-trust` | Skip the runtime configuration without prompting                       |
 
 These flags are mutually exclusive.
 
@@ -45,12 +45,12 @@ projects:
 
 ## Configuration Schema
 
-Project configurations use `kind: ProjectConfig` and can define rules and/or profiles.
+Runtime configurations use `kind: RuntimeConfig` and can define rules and/or profiles.
 
 ```yaml
-# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/projectconfigs.v1beta1.json
+# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/runtimeconfigs.v1beta1.json
 apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfig
+kind: RuntimeConfig
 rules:
   - match: <expression>
     profile: <profile name>
@@ -62,10 +62,10 @@ profiles:
 
 ## Merge Behavior
 
-When a project configuration is loaded, it merges with the global configuration:
+When a runtime configuration is loaded, it merges with the global configuration:
 
-- **Profiles**: Project profiles override global profiles with the same key
-- **Rules**: Project rules are prepended to global rules (i.e. they are evaluated first)
+- **Profiles**: Runtime profiles override global profiles with the same key
+- **Rules**: Runtime rules are prepended to global rules (i.e. they are evaluated first)
 
 This allows projects to override specific profiles while falling back to global defaults for others.
 
@@ -75,7 +75,7 @@ A project that adds a custom profile for a specific tool:
 
 ```yaml
 apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfig
+kind: RuntimeConfig
 
 rules:
   - match: >-
@@ -92,7 +92,7 @@ profiles:
 
 ## Security Considerations
 
-- Project configurations can execute arbitrary commands defined in profiles
-- Always review project config files before trusting a project
+- Runtime configurations can execute arbitrary commands defined in profiles
+- Always review runtime config files before trusting a project
 - Use `--no-trust` in CI/CD pipelines or automated environments where you want to use only the global configuration
 - The trust prompt displays the full path to both the configuration file and project directory

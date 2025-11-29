@@ -57,7 +57,7 @@ Together, these deliver a seamless development experience that maintains context
 
 - Select your defined profiles automatically using CEL expressions
 - Match projects based on file contents, structure, or naming patterns
-- Support for project-specific configurations via `.kat.yaml` files
+- Support for project-specific runtime configs via `.katrc.yaml` files
 
 **🔌 Plugin system**
 
@@ -454,9 +454,18 @@ For more details on CEL expressions and examples, see the [CEL documentation](do
 
 ### 🪄 Project Configuration
 
-Projects can include their own `.kat.yaml` file to define project-specific rules and profiles. For example, you can include a `.kat.yaml` file at the root of your git repository to share and/or version your project-specific configuration. When `kat` runs, it searches for this file starting from the target path and walking up the directory tree.
+Projects can include their own `.katrc.yaml` file to define project-specific rules and profiles. For example, you can include a `.katrc.yaml` file at the root of your git repository to share and/or version your project-specific runtime config. When `kat` runs, it searches for this file starting from the target path and walking up the directory tree. If found, the config is merged with your global runtime config, meaning that you can define overrides or extend your global config on a per-project basis.
 
-For your safety, when you execute `kat` in a location where a project configuration exists, you will be prompted to trust the project. This trust is maintained in a separate `policy.yaml` file in your config directory:
+```yaml
+apiVersion: kat.jacobcolvin.com/v1beta1
+kind: RuntimeConfig
+profiles:
+  helm:
+    command: my-custom-helm-wrapper
+    args: [template, .]
+```
+
+For your safety, when you execute `kat` in a location where a runtime configuration exists, you will be prompted to trust the project. This trust is maintained in a separate `policy.yaml` file in your config directory:
 
 ```yaml
 apiVersion: kat.jacobcolvin.com/v1beta1
@@ -466,7 +475,7 @@ projects:
     - path: /path/to/trusted/project
 ```
 
-See [Project Configuration](docs/projectconfigs.md) for more details.
+See [docs/katrc.md](docs/katrc.md) for more details.
 
 ### 🔥 DRY Configuration
 

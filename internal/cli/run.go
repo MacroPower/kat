@@ -309,13 +309,13 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 		trustMgr := policy.NewTrustManager(pol, policyPath)
 		sp := setup.NewPrompter(cl.GetTheme())
 
-		projectCfg, projErr := trustMgr.LoadTrustedProjectConfig(rc.Path, sp, trustMode)
-		if projErr != nil {
-			return fmt.Errorf("load project config: %w", projErr)
+		runtimeCfg, runtimeErr := trustMgr.LoadTrustedRuntimeConfig(rc.Path, sp, trustMode)
+		if runtimeErr != nil {
+			return fmt.Errorf("load runtime config: %w", runtimeErr)
 		}
 
-		if projectCfg != nil {
-			cfg.Command.Merge(projectCfg.Command)
+		if runtimeCfg != nil {
+			cfg.Command.Merge(runtimeCfg.Command)
 		}
 	}
 

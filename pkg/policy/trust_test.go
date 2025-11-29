@@ -22,21 +22,21 @@ func (m *mockTrustPrompter) Prompt(_, _ string) (policy.TrustDecision, error) {
 	return m.decision, m.err
 }
 
-// validProjectConfig returns valid project config YAML content.
-func validProjectConfig() string {
+// validRuntimeConfig returns valid runtime config YAML content.
+func validRuntimeConfig() string {
 	return `apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfig
+kind: RuntimeConfig
 `
 }
 
-// setupProjectDir creates a temp directory with a .kat.yaml file.
+// setupProjectDir creates a temp project directory with a .katrc.yaml file.
 func setupProjectDir(t *testing.T, content string) string {
 	t.Helper()
 
 	dir := t.TempDir()
 
 	if content != "" {
-		err := os.WriteFile(filepath.Join(dir, ".kat.yaml"), []byte(content), 0o600)
+		err := os.WriteFile(filepath.Join(dir, ".katrc.yaml"), []byte(content), 0o600)
 		require.NoError(t, err)
 	}
 
@@ -82,7 +82,7 @@ func TestNewTrustManager(t *testing.T) {
 	})
 }
 
-func TestTrustManager_LoadTrustedProjectConfig(t *testing.T) {
+func TestTrustManager_LoadTrustedRuntimeConfig(t *testing.T) {
 	t.Parallel()
 
 	tcs := map[string]struct {
@@ -94,7 +94,7 @@ func TestTrustManager_LoadTrustedProjectConfig(t *testing.T) {
 		wantErr        bool
 		checkTrustList bool
 	}{
-		"no project config found": {
+		"no runtime config found": {
 			setupFunc: func(t *testing.T) (string, string, *policies.Policy) {
 				t.Helper()
 
@@ -112,7 +112,7 @@ func TestTrustManager_LoadTrustedProjectConfig(t *testing.T) {
 			setupFunc: func(t *testing.T) (string, string, *policies.Policy) {
 				t.Helper()
 
-				dir := setupProjectDir(t, validProjectConfig())
+				dir := setupProjectDir(t, validRuntimeConfig())
 				policyDir := t.TempDir()
 				policyPath := setupPolicyFile(t, policyDir)
 
@@ -126,7 +126,7 @@ func TestTrustManager_LoadTrustedProjectConfig(t *testing.T) {
 			setupFunc: func(t *testing.T) (string, string, *policies.Policy) {
 				t.Helper()
 
-				dir := setupProjectDir(t, validProjectConfig())
+				dir := setupProjectDir(t, validRuntimeConfig())
 				policyDir := t.TempDir()
 				policyPath := setupPolicyFile(t, policyDir)
 
@@ -141,7 +141,7 @@ func TestTrustManager_LoadTrustedProjectConfig(t *testing.T) {
 			setupFunc: func(t *testing.T) (string, string, *policies.Policy) {
 				t.Helper()
 
-				dir := setupProjectDir(t, validProjectConfig())
+				dir := setupProjectDir(t, validRuntimeConfig())
 				policyDir := t.TempDir()
 				policyPath := setupPolicyFile(t, policyDir)
 
@@ -158,7 +158,7 @@ func TestTrustManager_LoadTrustedProjectConfig(t *testing.T) {
 			setupFunc: func(t *testing.T) (string, string, *policies.Policy) {
 				t.Helper()
 
-				dir := setupProjectDir(t, validProjectConfig())
+				dir := setupProjectDir(t, validRuntimeConfig())
 				policyDir := t.TempDir()
 				policyPath := setupPolicyFile(t, policyDir)
 
@@ -173,7 +173,7 @@ func TestTrustManager_LoadTrustedProjectConfig(t *testing.T) {
 			setupFunc: func(t *testing.T) (string, string, *policies.Policy) {
 				t.Helper()
 
-				dir := setupProjectDir(t, validProjectConfig())
+				dir := setupProjectDir(t, validRuntimeConfig())
 				policyDir := t.TempDir()
 				policyPath := setupPolicyFile(t, policyDir)
 
@@ -188,7 +188,7 @@ func TestTrustManager_LoadTrustedProjectConfig(t *testing.T) {
 			setupFunc: func(t *testing.T) (string, string, *policies.Policy) {
 				t.Helper()
 
-				dir := setupProjectDir(t, validProjectConfig())
+				dir := setupProjectDir(t, validRuntimeConfig())
 				policyDir := t.TempDir()
 				policyPath := setupPolicyFile(t, policyDir)
 
@@ -203,7 +203,7 @@ func TestTrustManager_LoadTrustedProjectConfig(t *testing.T) {
 			setupFunc: func(t *testing.T) (string, string, *policies.Policy) {
 				t.Helper()
 
-				dir := setupProjectDir(t, validProjectConfig())
+				dir := setupProjectDir(t, validRuntimeConfig())
 				policyDir := t.TempDir()
 				policyPath := setupPolicyFile(t, policyDir)
 
@@ -215,7 +215,7 @@ func TestTrustManager_LoadTrustedProjectConfig(t *testing.T) {
 			wantErr:        false,
 			checkTrustList: true,
 		},
-		"invalid project config returns error": {
+		"invalid runtime config returns error": {
 			setupFunc: func(t *testing.T) (string, string, *policies.Policy) {
 				t.Helper()
 
@@ -230,7 +230,7 @@ func TestTrustManager_LoadTrustedProjectConfig(t *testing.T) {
 			},
 			mode:    policy.TrustModePrompt,
 			wantErr: true,
-			errMsg:  "validate project config",
+			errMsg:  "validate runtime config",
 		},
 	}
 
@@ -241,7 +241,7 @@ func TestTrustManager_LoadTrustedProjectConfig(t *testing.T) {
 			targetPath, policyPath, pol := tc.setupFunc(t)
 			tm := policy.NewTrustManager(pol, policyPath)
 
-			got, err := tm.LoadTrustedProjectConfig(targetPath, tc.prompter, tc.mode)
+			got, err := tm.LoadTrustedRuntimeConfig(targetPath, tc.prompter, tc.mode)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -257,7 +257,7 @@ func TestTrustManager_LoadTrustedProjectConfig(t *testing.T) {
 			} else {
 				assert.NotNil(t, got)
 				assert.Equal(t, "kat.jacobcolvin.com/v1beta1", got.GetAPIVersion())
-				assert.Equal(t, "ProjectConfig", got.GetKind())
+				assert.Equal(t, "RuntimeConfig", got.GetKind())
 			}
 
 			if tc.checkTrustList {

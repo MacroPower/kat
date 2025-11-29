@@ -1,4 +1,4 @@
-package projectconfigs_test
+package runtimeconfigs_test
 
 import (
 	"os"
@@ -8,25 +8,25 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/macropower/kat/api/v1beta1/projectconfigs"
+	"github.com/macropower/kat/api/v1beta1/runtimeconfigs"
 	"github.com/macropower/kat/pkg/config"
 )
 
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	cfg := projectconfigs.New()
+	cfg := runtimeconfigs.New()
 
 	assert.NotNil(t, cfg)
 	assert.Equal(t, "kat.jacobcolvin.com/v1beta1", cfg.GetAPIVersion())
-	assert.Equal(t, "ProjectConfig", cfg.GetKind())
+	assert.Equal(t, "RuntimeConfig", cfg.GetKind())
 	assert.NotNil(t, cfg.Command)
 }
 
-func TestProjectConfig_EnsureDefaults(t *testing.T) {
+func TestRuntimeConfig_EnsureDefaults(t *testing.T) {
 	t.Parallel()
 
-	cfg := &projectconfigs.ProjectConfig{}
+	cfg := &runtimeconfigs.RuntimeConfig{}
 
 	// Before EnsureDefaults, Command should be nil.
 	assert.Nil(t, cfg.Command)
@@ -50,17 +50,17 @@ func TestFind(t *testing.T) {
 				t.Helper()
 
 				dir := t.TempDir()
-				configPath := filepath.Join(dir, ".kat.yaml")
+				configPath := filepath.Join(dir, ".katrc.yaml")
 				err := os.WriteFile(
 					configPath,
-					[]byte("apiVersion: kat.jacobcolvin.com/v1beta1\nkind: ProjectConfig\n"),
+					[]byte("apiVersion: kat.jacobcolvin.com/v1beta1\nkind: RuntimeConfig\n"),
 					0o600,
 				)
 				require.NoError(t, err)
 
 				return dir
 			},
-			want:    ".kat.yaml",
+			want:    ".katrc.yaml",
 			wantErr: false,
 		},
 		"finds config in parent directory": {
@@ -68,10 +68,10 @@ func TestFind(t *testing.T) {
 				t.Helper()
 
 				dir := t.TempDir()
-				configPath := filepath.Join(dir, ".kat.yaml")
+				configPath := filepath.Join(dir, ".katrc.yaml")
 				err := os.WriteFile(
 					configPath,
-					[]byte("apiVersion: kat.jacobcolvin.com/v1beta1\nkind: ProjectConfig\n"),
+					[]byte("apiVersion: kat.jacobcolvin.com/v1beta1\nkind: RuntimeConfig\n"),
 					0o600,
 				)
 				require.NoError(t, err)
@@ -83,7 +83,7 @@ func TestFind(t *testing.T) {
 
 				return subDir
 			},
-			want:    ".kat.yaml",
+			want:    ".katrc.yaml",
 			wantErr: false,
 		},
 		"returns empty when not found": {
@@ -100,10 +100,10 @@ func TestFind(t *testing.T) {
 				t.Helper()
 
 				dir := t.TempDir()
-				configPath := filepath.Join(dir, ".kat.yaml")
+				configPath := filepath.Join(dir, ".katrc.yaml")
 				err := os.WriteFile(
 					configPath,
-					[]byte("apiVersion: kat.jacobcolvin.com/v1beta1\nkind: ProjectConfig\n"),
+					[]byte("apiVersion: kat.jacobcolvin.com/v1beta1\nkind: RuntimeConfig\n"),
 					0o600,
 				)
 				require.NoError(t, err)
@@ -115,43 +115,43 @@ func TestFind(t *testing.T) {
 
 				return filePath
 			},
-			want:    ".kat.yaml",
+			want:    ".katrc.yaml",
 			wantErr: false,
 		},
-		"prefers .kat.yaml over kat.yaml": {
+		"prefers .katrc.yaml over katrc.yaml": {
 			setup: func(t *testing.T) string {
 				t.Helper()
 
 				dir := t.TempDir()
 
 				// Create both files.
-				dotKatPath := filepath.Join(dir, ".kat.yaml")
+				dotKatPath := filepath.Join(dir, ".katrc.yaml")
 				err := os.WriteFile(dotKatPath, []byte("dot-kat"), 0o600)
 				require.NoError(t, err)
 
-				katPath := filepath.Join(dir, "kat.yaml")
+				katPath := filepath.Join(dir, "katrc.yaml")
 				err = os.WriteFile(katPath, []byte("kat"), 0o600)
 				require.NoError(t, err)
 
 				return dir
 			},
-			want:    ".kat.yaml",
+			want:    ".katrc.yaml",
 			wantErr: false,
 		},
-		"finds kat.yaml if .kat.yaml not present": {
+		"finds katrc.yaml if .katrc.yaml not present": {
 			setup: func(t *testing.T) string {
 				t.Helper()
 
 				dir := t.TempDir()
 
-				// Create only kat.yaml.
-				katPath := filepath.Join(dir, "kat.yaml")
+				// Create only katrc.yaml.
+				katPath := filepath.Join(dir, "katrc.yaml")
 				err := os.WriteFile(katPath, []byte("kat"), 0o600)
 				require.NoError(t, err)
 
 				return dir
 			},
-			want:    "kat.yaml",
+			want:    "katrc.yaml",
 			wantErr: false,
 		},
 	}
@@ -162,7 +162,7 @@ func TestFind(t *testing.T) {
 
 			targetPath := tc.setup(t)
 
-			got, err := projectconfigs.Find(targetPath)
+			got, err := runtimeconfigs.Find(targetPath)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -178,7 +178,7 @@ func TestFind(t *testing.T) {
 	}
 }
 
-func TestProjectConfigLoader_Load(t *testing.T) {
+func TestRuntimeConfigLoader_Load(t *testing.T) {
 	t.Parallel()
 
 	tcs := map[string]struct {
@@ -187,13 +187,13 @@ func TestProjectConfigLoader_Load(t *testing.T) {
 	}{
 		"valid minimal config": {
 			input: `apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfig
+kind: RuntimeConfig
 `,
 			wantErr: false,
 		},
 		"valid config with profiles": {
 			input: `apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfig
+kind: RuntimeConfig
 profiles:
   custom:
     command: make
@@ -203,7 +203,7 @@ profiles:
 		},
 		"valid config with rules": {
 			input: `apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfig
+kind: RuntimeConfig
 rules:
   - match: 'files.exists(f, pathBase(f) == "Makefile")'
     profile: custom
@@ -216,7 +216,7 @@ profiles:
 		},
 		"invalid yaml": {
 			input: `apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfig
+kind: RuntimeConfig
   invalid: yaml
 `,
 			wantErr: true,
@@ -227,7 +227,7 @@ kind: ProjectConfig
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			pcl := config.NewLoaderFromBytes([]byte(tc.input), projectconfigs.New, projectconfigs.DefaultValidator)
+			pcl := config.NewLoaderFromBytes([]byte(tc.input), runtimeconfigs.New, runtimeconfigs.DefaultValidator)
 
 			cfg, err := pcl.Load()
 
@@ -238,13 +238,13 @@ kind: ProjectConfig
 				require.NoError(t, err)
 				assert.NotNil(t, cfg)
 				assert.Equal(t, "kat.jacobcolvin.com/v1beta1", cfg.GetAPIVersion())
-				assert.Equal(t, "ProjectConfig", cfg.GetKind())
+				assert.Equal(t, "RuntimeConfig", cfg.GetKind())
 			}
 		})
 	}
 }
 
-func TestProjectConfigLoader_Validate(t *testing.T) {
+func TestRuntimeConfigLoader_Validate(t *testing.T) {
 	t.Parallel()
 
 	tcs := map[string]struct {
@@ -253,12 +253,12 @@ func TestProjectConfigLoader_Validate(t *testing.T) {
 	}{
 		"valid config": {
 			input: `apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfig
+kind: RuntimeConfig
 `,
 			wantErr: false,
 		},
 		"missing apiVersion": {
-			input: `kind: ProjectConfig
+			input: `kind: RuntimeConfig
 `,
 			wantErr: true,
 		},
@@ -279,7 +279,7 @@ kind: Configuration
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			pcl := config.NewLoaderFromBytes([]byte(tc.input), projectconfigs.New, projectconfigs.DefaultValidator)
+			pcl := config.NewLoaderFromBytes([]byte(tc.input), runtimeconfigs.New, runtimeconfigs.DefaultValidator)
 
 			err := pcl.Validate()
 
@@ -292,7 +292,7 @@ kind: Configuration
 	}
 }
 
-func TestNewProjectConfigLoaderFromFile(t *testing.T) {
+func TestNewRuntimeConfigLoaderFromFile(t *testing.T) {
 	t.Parallel()
 
 	tcs := map[string]struct {
@@ -304,10 +304,10 @@ func TestNewProjectConfigLoaderFromFile(t *testing.T) {
 				t.Helper()
 
 				content := `apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfig
+kind: RuntimeConfig
 `
 				dir := t.TempDir()
-				path := filepath.Join(dir, ".kat.yaml")
+				path := filepath.Join(dir, ".katrc.yaml")
 				err := os.WriteFile(path, []byte(content), 0o600)
 				require.NoError(t, err)
 
@@ -331,7 +331,7 @@ kind: ProjectConfig
 
 			path := tc.setupFile(t)
 
-			got, err := config.NewLoaderFromFile(path, projectconfigs.New, projectconfigs.DefaultValidator)
+			got, err := config.NewLoaderFromFile(path, runtimeconfigs.New, runtimeconfigs.DefaultValidator)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -344,20 +344,20 @@ kind: ProjectConfig
 	}
 }
 
-func TestProjectConfig_Validate(t *testing.T) {
+func TestRuntimeConfig_Validate(t *testing.T) {
 	t.Parallel()
 
 	tcs := map[string]struct {
-		setup   func() *projectconfigs.ProjectConfig
+		setup   func() *runtimeconfigs.RuntimeConfig
 		wantErr bool
 	}{
 		"valid config": {
-			setup:   projectconfigs.New,
+			setup:   runtimeconfigs.New,
 			wantErr: false,
 		},
 		"nil command": {
-			setup: func() *projectconfigs.ProjectConfig {
-				cfg := &projectconfigs.ProjectConfig{}
+			setup: func() *runtimeconfigs.RuntimeConfig {
+				cfg := &runtimeconfigs.RuntimeConfig{}
 
 				return cfg
 			},

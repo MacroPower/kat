@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 
 	"github.com/macropower/kat/api/v1beta1/policies"
-	"github.com/macropower/kat/api/v1beta1/projectconfigs"
+	"github.com/macropower/kat/api/v1beta1/runtimeconfigs"
 	"github.com/macropower/kat/pkg/config"
 )
 
-// TrustMode controls how project configuration trust is handled.
+// TrustMode controls how runtime configuration trust is handled.
 type TrustMode int
 
 // TrustDecision represents the user's choice when prompted about an untrusted project.
@@ -21,21 +21,21 @@ type TrustDecision int
 const (
 	// TrustModePrompt prompts the user interactively (default).
 	TrustModePrompt TrustMode = iota
-	// TrustModeAllow trusts project configs without prompting (--trust).
+	// TrustModeAllow trusts runtime configs without prompting (--trust).
 	TrustModeAllow
-	// TrustModeSkip skips project configs without prompting (--no-trust).
+	// TrustModeSkip skips runtime configs without prompting (--no-trust).
 	TrustModeSkip
 )
 
 const ( //nolint:grouper // Separate iota sequences require separate const blocks.
-	// TrustDecisionSkip means the user chose to skip loading the project config.
+	// TrustDecisionSkip means the user chose to skip loading the runtime config.
 	TrustDecisionSkip TrustDecision = iota
 	// TrustDecisionAllow means the user trusts the project and wants to add it to the trust list.
 	TrustDecisionAllow
 )
 
 // ErrNotInteractive is returned when a trust prompt is needed but the terminal
-// is not interactive. The caller should skip loading the project config.
+// is not interactive. The caller should skip loading the runtime config.
 var ErrNotInteractive = errors.New("terminal is not interactive")
 
 // TrustPrompter handles interactive trust prompts for project configurations.
@@ -63,81 +63,81 @@ func NewTrustManager(pol *policies.Policy, policyPath string) *TrustManager {
 	}
 }
 
-// LoadTrustedProjectConfig finds and loads a project config if it exists and is trusted.
-// Returns nil (not an error) if no project config found or if untrusted.
+// LoadTrustedRuntimeConfig finds and loads a runtime config if it exists and is trusted.
+// Returns nil (not an error) if no runtime config found or if untrusted.
 //
 //nolint:nilnil // Returning nil with nil error is intentional for "not found" and "untrusted" cases.
-func (m *TrustManager) LoadTrustedProjectConfig(
+func (m *TrustManager) LoadTrustedRuntimeConfig(
 	targetPath string,
 	prompter TrustPrompter,
 	mode TrustMode,
-) (*projectconfigs.ProjectConfig, error) {
-	projectCfgPath, err := projectconfigs.Find(targetPath)
+) (*runtimeconfigs.RuntimeConfig, error) {
+	runtimeCfgPath, err := runtimeconfigs.Find(targetPath)
 	if err != nil {
-		return nil, fmt.Errorf("find project config: %w", err)
+		return nil, fmt.Errorf("find runtime config: %w", err)
 	}
 
-	if projectCfgPath == "" {
+	if runtimeCfgPath == "" {
 		return nil, nil
 	}
 
-	projectDir := filepath.Dir(projectCfgPath)
+	projectDir := filepath.Dir(runtimeCfgPath)
 
-	trusted, err := m.ensureTrusted(projectDir, projectCfgPath, prompter, mode)
+	trusted, err := m.ensureTrusted(projectDir, runtimeCfgPath, prompter, mode)
 	if err != nil {
 		return nil, err
 	}
 
 	if !trusted {
-		slog.Warn("skipping untrusted project configuration", slog.String("path", projectCfgPath))
+		slog.Warn("skipping untrusted runtime configuration", slog.String("path", runtimeCfgPath))
 
 		return nil, nil
 	}
 
 	loader, err := config.NewLoaderFromFile(
-		projectCfgPath,
-		projectconfigs.New,
-		projectconfigs.DefaultValidator,
+		runtimeCfgPath,
+		runtimeconfigs.New,
+		runtimeconfigs.DefaultValidator,
 		config.WithThemeFromData(),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create project loader: %w", err)
+		return nil, fmt.Errorf("create runtime loader: %w", err)
 	}
 
 	err = loader.Validate()
 	if err != nil {
-		return nil, fmt.Errorf("validate project config %q: %w", projectCfgPath, err)
+		return nil, fmt.Errorf("validate runtime config %q: %w", runtimeCfgPath, err)
 	}
 
 	cfg, err := loader.Load()
 	if err != nil {
-		return nil, fmt.Errorf("load project config %q: %w", projectCfgPath, err)
+		return nil, fmt.Errorf("load runtime config %q: %w", runtimeCfgPath, err)
 	}
 
 	// Validate business logic after loading.
 	err = cfg.Validate()
 	if err != nil {
-		return nil, fmt.Errorf("validate project config %q: %w", projectCfgPath, err)
+		return nil, fmt.Errorf("validate runtime config %q: %w", runtimeCfgPath, err)
 	}
 
-	slog.Debug("loaded project configuration", slog.String("path", projectCfgPath))
+	slog.Debug("loaded runtime configuration", slog.String("path", runtimeCfgPath))
 
 	return cfg, nil
 }
 
 func (m *TrustManager) ensureTrusted(
-	projectDir, projectCfgPath string,
+	projectDir, runtimeCfgPath string,
 	prompter TrustPrompter,
 	mode TrustMode,
 ) (bool, error) {
 	switch mode {
 	case TrustModeSkip:
-		slog.Info("skipping project config (--no-trust)", slog.String("path", projectCfgPath))
+		slog.Info("skipping runtime config (--no-trust)", slog.String("path", runtimeCfgPath))
 
 		return false, nil
 
 	case TrustModeAllow:
-		slog.Info("trusting project config (--trust)", slog.String("path", projectCfgPath))
+		slog.Info("trusting runtime config (--trust)", slog.String("path", runtimeCfgPath))
 
 		err := m.policy.TrustProject(projectDir, m.policyPath)
 		if err != nil {
@@ -154,18 +154,18 @@ func (m *TrustManager) ensureTrusted(
 
 		if prompter == nil {
 			slog.Warn(
-				"skipping untrusted project config (no prompter)",
-				slog.String("path", projectCfgPath),
+				"skipping untrusted runtime config (no prompter)",
+				slog.String("path", runtimeCfgPath),
 			)
 
 			return false, nil
 		}
 
-		decision, err := prompter.Prompt(projectDir, projectCfgPath)
+		decision, err := prompter.Prompt(projectDir, runtimeCfgPath)
 		if errors.Is(err, ErrNotInteractive) {
 			slog.Warn(
-				"skipping untrusted project config (non-interactive)",
-				slog.String("path", projectCfgPath),
+				"skipping untrusted runtime config (non-interactive)",
+				slog.String("path", runtimeCfgPath),
 				slog.String(
 					"hint",
 					"run kat interactively to trust this project, or use --trust/--no-trust flags",

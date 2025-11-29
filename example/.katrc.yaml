@@ -1,6 +1,6 @@
-# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/projectconfigs.v1beta1.json
+# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/runtimeconfigs.v1beta1.json
 apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfig
+kind: RuntimeConfig
 rules:
   - match: >-
       files.exists(f, pathExt(f) == ".k" || pathExt(f) == ".mod")
