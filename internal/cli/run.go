@@ -317,6 +317,11 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 		if runtimeCfg != nil {
 			cfg.Command.Merge(runtimeCfg.Command)
 		}
+
+		err = cfg.Validate()
+		if err != nil {
+			return fmt.Errorf("validate config: %w", err)
+		}
 	}
 
 	err = cfg.UI.KeyBinds.Validate()
