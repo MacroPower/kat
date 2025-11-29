@@ -18,8 +18,6 @@ When a project config file is found in an untrusted project:
 1. **Interactive mode**: A prompt asks the user to trust or skip the project configuration
 2. **Non-interactive mode**: The project configuration is skipped with a warning
 
-Trusted projects are stored in the global configuration file at `~/.config/kat/config.yaml` under `projects.trust`.
-
 ### CLI Flags
 
 You can control trust behavior without prompting using CLI flags:
@@ -31,13 +29,14 @@ You can control trust behavior without prompting using CLI flags:
 
 These flags are mutually exclusive.
 
-### Global Configuration
+### Policy File
 
-To pre-trust projects, add them to your global configuration:
+Trusted projects are stored in a policy file at `~/.config/kat/policy.yaml` under `projects.trust`:
 
 ```yaml
+# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/policies.v1beta1.json
 apiVersion: kat.jacobcolvin.com/v1beta1
-kind: Configuration
+kind: Policy
 projects:
   trust:
     - path: /path/to/trusted/project

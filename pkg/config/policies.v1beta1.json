@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/macropower/kat/pkg/config/policy",
+  "properties": {
+    "projects": {
+      "properties": {
+        "trust": {
+          "items": {
+            "properties": {
+              "path": {
+                "type": "string",
+                "title": "Path",
+                "description": "Path is the absolute path to a trusted directory.\n\nTrustedProject.Path: https://pkg.go.dev/github.com/macropower/kat/pkg/config#TrustedProject"
+              }
+            },
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "path"
+            ],
+            "description": "TrustedProject represents a trusted project.\n\nTrustedProject: https://pkg.go.dev/github.com/macropower/kat/pkg/config#TrustedProject"
+          },
+          "type": "array",
+          "title": "Trust",
+          "description": "Trust contains a list of trusted projects.\nProjects in this list will have their configs loaded without prompting.\nNOTE: You can also use `--trust` or `--no-trust` flags to control this behavior.\n\nProjectsPolicyConfig.Trust: https://pkg.go.dev/github.com/macropower/kat/pkg/config#ProjectsPolicyConfig"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "title": "Projects",
+      "description": "Projects controls handling of project-specific configurations (katrc files).\n\nPolicy.Projects: https://pkg.go.dev/github.com/macropower/kat/pkg/config#Policy"
+    },
+    "apiVersion": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "kat.jacobcolvin.com/v1beta1",
+          "title": "API Version"
+        }
+      ],
+      "type": "string",
+      "title": "API Version",
+      "description": "APIVersion specifies the API version for this configuration.\n\nPolicy.APIVersion: https://pkg.go.dev/github.com/macropower/kat/pkg/config#Policy"
+    },
+    "kind": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "Policy",
+          "title": "Kind"
+        }
+      ],
+      "type": "string",
+      "title": "Kind",
+      "description": "Kind defines the type of configuration.\n\nPolicy.Kind: https://pkg.go.dev/github.com/macropower/kat/pkg/config#Policy"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind"
+  ],
+  "description": "Policy represents the policy configuration file.\n\nPolicy: https://pkg.go.dev/github.com/macropower/kat/pkg/config#Policy"
+}

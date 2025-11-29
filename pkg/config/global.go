@@ -36,27 +36,10 @@ var (
 	DefaultValidator = yaml.MustNewValidator("/config.v1beta1.json", schemaJSON)
 )
 
-// ProjectsConfig controls handling of project-specific configurations (katrc files).
-type ProjectsConfig struct {
-	// Trust contains a list of trusted projects.
-	// Projects in this list will have their configs loaded without prompting.
-	// NOTE: You can also use `--trust` or `--no-trust` flags to control this behavior.
-	Trust []*TrustedProject `json:"trust,omitempty" jsonschema:"title=Trust"`
-}
-
-// EnsureDefaults initializes nil fields to their default values.
-func (c *ProjectsConfig) EnsureDefaults() {
-	if c.Trust == nil {
-		c.Trust = []*TrustedProject{}
-	}
-}
-
 //nolint:recvcheck // Must satisfy the jsonschema interface.
 type Config struct {
 	Command *command.Config `json:",inline"`
 	UI      *ui.Config      `json:",inline"`
-	// Projects controls handling of project-specific configurations (katrc files).
-	Projects *ProjectsConfig `json:"projects,omitempty" jsonschema:"title=Projects"`
 	// APIVersion specifies the API version for this configuration.
 	APIVersion string `json:"apiVersion" jsonschema:"title=API Version"`
 	// Kind defines the type of configuration.
@@ -87,87 +70,6 @@ func (c *Config) EnsureDefaults() {
 	} else {
 		c.Command.EnsureDefaults()
 	}
-
-	if c.Projects == nil {
-		c.Projects = &ProjectsConfig{}
-	}
-
-	c.Projects.EnsureDefaults()
-}
-
-// IsTrusted checks if a project path is in the trusted list.
-func (c *Config) IsTrusted(projectPath string) bool {
-	if c.Projects == nil {
-		return false
-	}
-
-	absPath, err := filepath.Abs(projectPath)
-	if err != nil {
-		return false
-	}
-
-	cleanPath := filepath.Clean(absPath)
-
-	for _, tp := range c.Projects.Trust {
-		trustedClean := filepath.Clean(tp.Path)
-		if cleanPath == trustedClean {
-			return true
-		}
-	}
-
-	return false
-}
-
-// TrustProject adds a project to the trust list and persists it to the config file.
-// This function preserves comments and structure in the config file.
-func (c *Config) TrustProject(projectPath, configPath string) error {
-	if c.Projects == nil {
-		c.Projects = &ProjectsConfig{}
-	}
-
-	c.Projects.EnsureDefaults()
-
-	absPath, err := filepath.Abs(projectPath)
-	if err != nil {
-		absPath = projectPath
-	}
-
-	cleanPath := filepath.Clean(absPath)
-
-	// Check for duplicates.
-	for _, tp := range c.Projects.Trust {
-		if filepath.Clean(tp.Path) == cleanPath {
-			return nil // Already trusted.
-		}
-	}
-
-	c.Projects.Trust = append(c.Projects.Trust, &TrustedProject{Path: cleanPath})
-
-	// Read the existing config file.
-	data, err := readConfig(configPath)
-	if err != nil {
-		return fmt.Errorf("read config: %w", err)
-	}
-
-	// Merge the projects section into the config, preserving comments.
-	projectsUpdate := struct {
-		Projects *ProjectsConfig `json:"projects"`
-	}{
-		Projects: c.Projects,
-	}
-
-	merged, err := yaml.MergeRootFromValue(data, projectsUpdate)
-	if err != nil {
-		return fmt.Errorf("merge projects section: %w", err)
-	}
-
-	// Write the modified file back.
-	err = os.WriteFile(configPath, merged, 0o600)
-	if err != nil {
-		return fmt.Errorf("write config: %w", err)
-	}
-
-	return nil
 }
 
 func (c Config) JSONSchemaExtend(jss *jsonschema.Schema) {
@@ -231,7 +133,8 @@ func (c Config) Write(path string) error {
 // ConfigLoader loads and validates global configuration files.
 type ConfigLoader struct {
 	*baseLoader
-	configPath string // Path to the config file (for persisting trust).
+	policy     *Policy // Policy for trust decisions.
+	policyPath string  // Path to the policy file (for persisting trust).
 }
 
 // NewConfigLoaderFromBytes creates a [ConfigLoader] from byte data.
@@ -246,9 +149,27 @@ func NewConfigLoaderFromFile(path string, opts ...ConfigLoaderOpt) (*ConfigLoade
 		return nil, fmt.Errorf("read config file: %w", err)
 	}
 
+	// Load policy file for trust decisions.
+	policyPath := GetPolicyPath()
+
+	var policy *Policy
+
+	pl, plErr := NewPolicyLoaderFromFile(policyPath, opts...)
+	if plErr == nil {
+		validateErr := pl.Validate()
+		if validateErr == nil {
+			policy, _ = pl.Load() //nolint:errcheck // We use nil check below.
+		}
+	}
+
+	if policy == nil {
+		policy = NewPolicy()
+	}
+
 	return &ConfigLoader{
 		baseLoader: newBaseLoader(data, DefaultValidator, opts...),
-		configPath: path,
+		policy:     policy,
+		policyPath: policyPath,
 	}, nil
 }
 
@@ -291,7 +212,7 @@ func (cl *ConfigLoader) LoadWithProjectConfig(tp TrustPrompter, tm TrustMode, ta
 
 	projectDir := filepath.Dir(projectCfgPath)
 
-	trusted, err := cl.ensureProjectTrusted(cfg, projectDir, projectCfgPath, tp, tm)
+	trusted, err := cl.ensureProjectTrusted(projectDir, projectCfgPath, tp, tm)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +248,6 @@ func (cl *ConfigLoader) LoadWithProjectConfig(tp TrustPrompter, tm TrustMode, ta
 // ensureProjectTrusted checks if a project is trusted and prompts the user if not.
 // Returns true if the project is trusted (or user allowed it), false if skipped.
 func (cl *ConfigLoader) ensureProjectTrusted(
-	cfg *Config,
 	projectDir, projectCfgPath string,
 	tp TrustPrompter,
 	tm TrustMode,
@@ -341,7 +261,7 @@ func (cl *ConfigLoader) ensureProjectTrusted(
 	case TrustModeAllow:
 		slog.Info("trusting project config (--trust)", slog.String("path", projectCfgPath))
 
-		err := cfg.TrustProject(projectDir, cl.configPath)
+		err := cl.policy.TrustProject(projectDir, cl.policyPath)
 		if err != nil {
 			slog.Warn("could not save trusted project", slog.Any("err", err))
 		}
@@ -349,8 +269,8 @@ func (cl *ConfigLoader) ensureProjectTrusted(
 		return true, nil
 
 	case TrustModePrompt:
-		// Check if already trusted in config.
-		if cfg.IsTrusted(projectDir) {
+		// Check if already trusted in policy.
+		if cl.policy.IsTrusted(projectDir) {
 			return true, nil
 		}
 
@@ -384,7 +304,7 @@ func (cl *ConfigLoader) ensureProjectTrusted(
 			return false, nil
 		}
 
-		err = cfg.TrustProject(projectDir, cl.configPath)
+		err = cl.policy.TrustProject(projectDir, cl.policyPath)
 		if err != nil {
 			slog.Warn("could not save trusted project", slog.Any("err", err))
 		}
@@ -439,6 +359,14 @@ func WriteDefaultConfig(path string, force bool) error {
 		}
 	} else {
 		slog.Debug("configuration file already exists, skipping write", slog.String("path", path))
+	}
+
+	// Also write default policy file if it doesn't exist.
+	policyPath := GetPolicyPath()
+
+	err = WriteDefaultPolicy(policyPath, false)
+	if err != nil {
+		slog.Warn("could not write default policy file", slog.Any("err", err))
 	}
 
 	return nil
