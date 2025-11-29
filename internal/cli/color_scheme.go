@@ -7,15 +7,21 @@ import (
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/x/exp/charmtone"
 
+	"github.com/macropower/kat/api/v1beta1/configs"
 	"github.com/macropower/kat/pkg/config"
 	"github.com/macropower/kat/pkg/ui/theme"
 )
 
 // Try to get the theme from the config, otherwise use the default color scheme.
 func ColorSchemeFunc(c lipgloss.LightDarkFunc) fang.ColorScheme {
-	configPath := config.GetPath()
+	configPath := configs.GetPath()
 
-	cl, err := config.NewConfigLoaderFromFile(configPath, config.WithThemeFromData())
+	cl, err := config.NewLoaderFromFile(
+		configPath,
+		configs.New,
+		configs.DefaultValidator,
+		config.WithThemeFromData(),
+	)
 	if err != nil {
 		return ThemeColorScheme(theme.Default, c)
 	}

@@ -1,4 +1,4 @@
-package config_test
+package projectconfigs_test
 
 import (
 	"os"
@@ -8,13 +8,39 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/macropower/kat/api/v1beta1/projectconfigs"
 	"github.com/macropower/kat/pkg/config"
 )
 
-func TestFindProjectConfig(t *testing.T) {
+func TestNew(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
+	cfg := projectconfigs.New()
+
+	assert.NotNil(t, cfg)
+	assert.Equal(t, "kat.jacobcolvin.com/v1beta1", cfg.GetAPIVersion())
+	assert.Equal(t, "ProjectConfig", cfg.GetKind())
+	assert.NotNil(t, cfg.Command)
+}
+
+func TestProjectConfig_EnsureDefaults(t *testing.T) {
+	t.Parallel()
+
+	cfg := &projectconfigs.ProjectConfig{}
+
+	// Before EnsureDefaults, Command should be nil.
+	assert.Nil(t, cfg.Command)
+
+	cfg.EnsureDefaults()
+
+	// After EnsureDefaults, Command should be set.
+	assert.NotNil(t, cfg.Command)
+}
+
+func TestFind(t *testing.T) {
+	t.Parallel()
+
+	tcs := map[string]struct {
 		setup   func(t *testing.T) string
 		want    string
 		wantErr bool
@@ -92,15 +118,51 @@ func TestFindProjectConfig(t *testing.T) {
 			want:    ".kat.yaml",
 			wantErr: false,
 		},
+		"prefers .kat.yaml over kat.yaml": {
+			setup: func(t *testing.T) string {
+				t.Helper()
+
+				dir := t.TempDir()
+
+				// Create both files.
+				dotKatPath := filepath.Join(dir, ".kat.yaml")
+				err := os.WriteFile(dotKatPath, []byte("dot-kat"), 0o600)
+				require.NoError(t, err)
+
+				katPath := filepath.Join(dir, "kat.yaml")
+				err = os.WriteFile(katPath, []byte("kat"), 0o600)
+				require.NoError(t, err)
+
+				return dir
+			},
+			want:    ".kat.yaml",
+			wantErr: false,
+		},
+		"finds kat.yaml if .kat.yaml not present": {
+			setup: func(t *testing.T) string {
+				t.Helper()
+
+				dir := t.TempDir()
+
+				// Create only kat.yaml.
+				katPath := filepath.Join(dir, "kat.yaml")
+				err := os.WriteFile(katPath, []byte("kat"), 0o600)
+				require.NoError(t, err)
+
+				return dir
+			},
+			want:    "kat.yaml",
+			wantErr: false,
+		},
 	}
 
-	for name, tc := range tests {
+	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
 			targetPath := tc.setup(t)
 
-			got, err := config.FindProjectConfig(targetPath)
+			got, err := projectconfigs.Find(targetPath)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -119,7 +181,7 @@ func TestFindProjectConfig(t *testing.T) {
 func TestProjectConfigLoader_Load(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
+	tcs := map[string]struct {
 		input   string
 		wantErr bool
 	}{
@@ -161,11 +223,11 @@ kind: ProjectConfig
 		},
 	}
 
-	for name, tc := range tests {
+	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			pcl := config.NewProjectConfigLoaderFromBytes([]byte(tc.input))
+			pcl := config.NewLoaderFromBytes([]byte(tc.input), projectconfigs.New, projectconfigs.DefaultValidator)
 
 			cfg, err := pcl.Load()
 
@@ -175,8 +237,8 @@ kind: ProjectConfig
 			} else {
 				require.NoError(t, err)
 				assert.NotNil(t, cfg)
-				assert.Equal(t, "kat.jacobcolvin.com/v1beta1", cfg.APIVersion)
-				assert.Equal(t, "ProjectConfig", cfg.Kind)
+				assert.Equal(t, "kat.jacobcolvin.com/v1beta1", cfg.GetAPIVersion())
+				assert.Equal(t, "ProjectConfig", cfg.GetKind())
 			}
 		})
 	}
@@ -185,7 +247,7 @@ kind: ProjectConfig
 func TestProjectConfigLoader_Validate(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
+	tcs := map[string]struct {
 		input   string
 		wantErr bool
 	}{
@@ -213,11 +275,11 @@ kind: Configuration
 		},
 	}
 
-	for name, tc := range tests {
+	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			pcl := config.NewProjectConfigLoaderFromBytes([]byte(tc.input))
+			pcl := config.NewLoaderFromBytes([]byte(tc.input), projectconfigs.New, projectconfigs.DefaultValidator)
 
 			err := pcl.Validate()
 
@@ -233,7 +295,7 @@ kind: Configuration
 func TestNewProjectConfigLoaderFromFile(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
+	tcs := map[string]struct {
 		setupFile func(t *testing.T) string
 		wantErr   bool
 	}{
@@ -263,13 +325,13 @@ kind: ProjectConfig
 		},
 	}
 
-	for name, tc := range tests {
+	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
 			path := tc.setupFile(t)
 
-			got, err := config.NewProjectConfigLoaderFromFile(path)
+			got, err := config.NewLoaderFromFile(path, projectconfigs.New, projectconfigs.DefaultValidator)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -277,6 +339,44 @@ kind: ProjectConfig
 			} else {
 				require.NoError(t, err)
 				assert.NotNil(t, got)
+			}
+		})
+	}
+}
+
+func TestProjectConfig_Validate(t *testing.T) {
+	t.Parallel()
+
+	tcs := map[string]struct {
+		setup   func() *projectconfigs.ProjectConfig
+		wantErr bool
+	}{
+		"valid config": {
+			setup:   projectconfigs.New,
+			wantErr: false,
+		},
+		"nil command": {
+			setup: func() *projectconfigs.ProjectConfig {
+				cfg := &projectconfigs.ProjectConfig{}
+
+				return cfg
+			},
+			wantErr: false,
+		},
+	}
+
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := tc.setup()
+
+			err := cfg.Validate()
+
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}

@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/config.v1beta1.json
+# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/configs.v1beta1.json
 apiVersion: kat.jacobcolvin.com/v1beta1
 kind: Configuration
 
@@ -40,8 +40,8 @@ profiles:
     #     valueFrom:
     #       callerRef:
     #         name: EXAMPLE_VAR
-    envFrom: &helmEnvFrom
-      # Inherit environment variables from the caller process.
+    envFrom:
+      &helmEnvFrom # Inherit environment variables from the caller process.
       - callerRef:
           pattern: ^HELM_.+
     hooks:
@@ -90,7 +90,6 @@ profiles:
       init:
         - command: yq
           args: [-V]
-
 # ui:
 #   # Chroma theme.
 #   # Choose from the Chroma Style Gallery: https://xyproto.github.io/splash/docs/

@@ -8,127 +8,141 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/invopop/jsonschema"
-
+	"github.com/macropower/kat/api/v1beta1"
 	"github.com/macropower/kat/pkg/ui/theme"
 	"github.com/macropower/kat/pkg/yaml"
 )
 
-// ValidAPIVersions contains the valid API versions for all configuration kinds.
-var ValidAPIVersions = []string{
-	"kat.jacobcolvin.com/v1beta1",
-}
-
-// ConfigValidator validates configuration data against a schema.
-type ConfigValidator interface {
+// Validator validates configuration data against a schema.
+type Validator interface {
 	Validate(data any) error
 }
 
-// baseLoader contains shared loader functionality.
-type baseLoader struct {
-	cv        ConfigValidator
+// LoaderOpt configures a [Loader].
+type LoaderOpt func(*loaderOptions)
+
+type loaderOptions struct {
+	validator    Validator
+	extractTheme bool
+}
+
+// WithValidator sets a custom validator.
+func WithValidator(v Validator) LoaderOpt {
+	return func(o *loaderOptions) {
+		o.validator = v
+	}
+}
+
+// WithThemeFromData extracts the theme from the config data for error formatting.
+func WithThemeFromData() LoaderOpt {
+	return func(o *loaderOptions) {
+		o.extractTheme = true
+	}
+}
+
+// Loader is a generic configuration loader that handles validation,
+// YAML parsing, and error formatting for any config type T.
+type Loader[T v1beta1.Object] struct {
+	validator Validator
+	newFunc   func() T
 	theme     *theme.Theme
 	yamlError *yaml.ErrorWrapper
 	data      []byte
 }
 
-// ConfigLoaderOpt configures a loader.
-type ConfigLoaderOpt func(*baseLoader)
-
-// WithConfigValidator sets a custom validator.
-func WithConfigValidator(cv ConfigValidator) ConfigLoaderOpt {
-	return func(bl *baseLoader) {
-		bl.cv = cv
+// NewLoaderFromBytes creates a [Loader] from byte data.
+// The newFunc parameter is the constructor for type T (e.g., config.New).
+func NewLoaderFromBytes[T v1beta1.Object](
+	data []byte,
+	newFunc func() T,
+	defaultValidator Validator,
+	opts ...LoaderOpt,
+) *Loader[T] {
+	options := &loaderOptions{
+		validator: defaultValidator,
 	}
-}
-
-// WithThemeFromData extracts the theme from the config data.
-func WithThemeFromData() ConfigLoaderOpt {
-	return func(bl *baseLoader) {
-		bl.theme = getTheme(bl.data)
-	}
-}
-
-func newBaseLoader(data []byte, defaultValidator ConfigValidator, opts ...ConfigLoaderOpt) *baseLoader {
-	bl := &baseLoader{
-		cv:    defaultValidator,
-		theme: theme.Default,
-		data:  data,
-	}
-
 	for _, opt := range opts {
-		opt(bl)
+		opt(options)
 	}
 
-	bl.yamlError = yaml.NewErrorWrapper(
-		yaml.WithTheme(bl.theme),
-		yaml.WithSource(bl.data),
-		yaml.WithSourceLines(4),
-	)
+	t := theme.Default
+	if options.extractTheme {
+		t = getTheme(data)
+	}
 
-	return bl
+	return &Loader[T]{
+		data:      data,
+		newFunc:   newFunc,
+		validator: options.validator,
+		theme:     t,
+		yamlError: yaml.NewErrorWrapper(
+			yaml.WithTheme(t),
+			yaml.WithSource(data),
+			yaml.WithSourceLines(4),
+		),
+	}
 }
 
-// Validate validates configuration data against the schema.
-func (bl *baseLoader) Validate() error {
+// NewLoaderFromFile creates a [Loader] from a file path.
+func NewLoaderFromFile[T v1beta1.Object](
+	path string,
+	newFunc func() T,
+	defaultValidator Validator,
+	opts ...LoaderOpt,
+) (*Loader[T], error) {
+	data, err := readFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewLoaderFromBytes(data, newFunc, defaultValidator, opts...), nil
+}
+
+// Validate validates the configuration data against the schema.
+func (l *Loader[T]) Validate() error {
 	var anyConfig any
 
-	dec := yaml.NewDecoder(bytes.NewReader(bl.data))
+	dec := yaml.NewDecoder(bytes.NewReader(l.data))
 
 	err := dec.Decode(&anyConfig)
 	if err != nil {
-		return bl.yamlError.Wrap(err)
+		return l.yamlError.Wrap(err)
 	}
 
-	if bl.cv != nil {
-		err = bl.cv.Validate(anyConfig)
+	if l.validator != nil {
+		err = l.validator.Validate(anyConfig)
 		if err != nil {
-			return bl.yamlError.Wrap(err)
+			return l.yamlError.Wrap(err)
 		}
 	}
 
 	return nil
 }
 
+// Load parses and returns the configuration.
+//
+//nolint:ireturn // Generic type parameter return is intentional.
+func (l *Loader[T]) Load() (T, error) {
+	cfg := l.newFunc()
+
+	dec := yaml.NewDecoder(bytes.NewReader(l.data))
+	err := dec.Decode(cfg)
+	if err != nil {
+		var zero T
+		return zero, l.yamlError.Wrap(err)
+	}
+
+	cfg.EnsureDefaults()
+
+	return cfg, nil
+}
+
 // GetTheme returns the theme for error formatting.
-func (bl *baseLoader) GetTheme() *theme.Theme {
-	return bl.theme
+func (l *Loader[T]) GetTheme() *theme.Theme {
+	return l.theme
 }
 
-// extendSchemaWithEnums adds apiVersion and kind enum constraints to a JSON schema.
-func extendSchemaWithEnums(jss *jsonschema.Schema, apiVersions, kinds []string) {
-	apiVersion, ok := jss.Properties.Get("apiVersion")
-	if !ok {
-		panic("apiVersion property not found in schema")
-	}
-
-	for _, version := range apiVersions {
-		apiVersion.OneOf = append(apiVersion.OneOf, &jsonschema.Schema{
-			Type:  "string",
-			Const: version,
-			Title: "API Version",
-		})
-	}
-
-	_, _ = jss.Properties.Set("apiVersion", apiVersion)
-
-	kind, ok := jss.Properties.Get("kind")
-	if !ok {
-		panic("kind property not found in schema")
-	}
-
-	for _, kindValue := range kinds {
-		kind.OneOf = append(kind.OneOf, &jsonschema.Schema{
-			Type:  "string",
-			Const: kindValue,
-			Title: "Kind",
-		})
-	}
-
-	_, _ = jss.Properties.Set("kind", kind)
-}
-
-func readConfig(path string) ([]byte, error) {
+func readFile(path string) ([]byte, error) {
 	pathInfo, err := os.Stat(path)
 	if pathInfo != nil {
 		if err == nil && pathInfo.IsDir() {
@@ -173,7 +187,7 @@ func getTheme(data []byte) *theme.Theme {
 	return theme.Default
 }
 
-// ExtractThemeWithRegex attempts to extract the theme from YAML data using regex.
+// extractThemeWithRegex attempts to extract the theme from YAML data using regex.
 // This is done so that we can style the error output when the config is not valid YAML.
 // It looks for the pattern:
 //

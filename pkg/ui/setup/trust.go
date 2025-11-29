@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"golang.org/x/term"
 
-	"github.com/macropower/kat/pkg/config"
+	"github.com/macropower/kat/pkg/policy"
 	"github.com/macropower/kat/pkg/ui/theme"
 )
 
@@ -24,13 +24,13 @@ func NewPrompter(t *theme.Theme) *Prompter {
 	}
 }
 
-// Trust displays a CLI prompt asking the user about project trust.
-func (p *Prompter) Trust(projectPath, configPath string) (config.TrustDecision, error) {
+// Prompt displays a CLI prompt asking the user about project trust.
+func (p *Prompter) Prompt(projectPath, configPath string) (policy.TrustDecision, error) {
 	ctx := context.Background()
 
 	// Check if we're running interactively.
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
-		return config.TrustSkip, config.ErrNotInteractive
+		return policy.TrustDecisionSkip, policy.ErrNotInteractive
 	}
 
 	var decision string
@@ -61,12 +61,12 @@ func (p *Prompter) Trust(projectPath, configPath string) (config.TrustDecision, 
 
 	err := form.RunWithContext(ctx)
 	if err != nil {
-		return config.TrustSkip, fmt.Errorf("run trust prompt: %w", err)
+		return policy.TrustDecisionSkip, fmt.Errorf("run trust prompt: %w", err)
 	}
 
 	if decision == "trust" {
-		return config.TrustAllow, nil
+		return policy.TrustDecisionAllow, nil
 	}
 
-	return config.TrustSkip, nil
+	return policy.TrustDecisionSkip, nil
 }

@@ -1,4 +1,4 @@
-package config_test
+package policies_test
 
 import (
 	"os"
@@ -8,13 +8,41 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/macropower/kat/api/v1beta1/policies"
 	"github.com/macropower/kat/pkg/config"
 )
+
+func TestNew(t *testing.T) {
+	t.Parallel()
+
+	policy := policies.New()
+
+	assert.NotNil(t, policy)
+	assert.Equal(t, "kat.jacobcolvin.com/v1beta1", policy.GetAPIVersion())
+	assert.Equal(t, "Policy", policy.GetKind())
+	assert.NotNil(t, policy.Projects)
+	assert.NotNil(t, policy.Projects.Trust)
+}
+
+func TestPolicy_EnsureDefaults(t *testing.T) {
+	t.Parallel()
+
+	policy := &policies.Policy{}
+
+	// Before EnsureDefaults, Projects should be nil.
+	assert.Nil(t, policy.Projects)
+
+	policy.EnsureDefaults()
+
+	// After EnsureDefaults, Projects should be set.
+	assert.NotNil(t, policy.Projects)
+	assert.NotNil(t, policy.Projects.Trust)
+}
 
 func TestPolicy_IsTrusted(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
+	tcs := map[string]struct {
 		checkPath    string
 		trustedPaths []string
 		want         bool
@@ -46,17 +74,17 @@ func TestPolicy_IsTrusted(t *testing.T) {
 		},
 	}
 
-	for name, tc := range tests {
+	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			policy := config.NewPolicy()
+			policy := policies.New()
 
 			if tc.trustedPaths == nil {
 				policy.Projects = nil
 			} else {
 				for _, path := range tc.trustedPaths {
-					policy.Projects.Trust = append(policy.Projects.Trust, &config.TrustedProject{Path: path})
+					policy.Projects.Trust = append(policy.Projects.Trust, &policies.TrustedProject{Path: path})
 				}
 			}
 
@@ -70,7 +98,7 @@ func TestPolicy_IsTrusted(t *testing.T) {
 func TestPolicy_TrustProject(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
+	tcs := map[string]struct {
 		addPath      string
 		wantContains string
 		initialPaths []string
@@ -96,7 +124,7 @@ func TestPolicy_TrustProject(t *testing.T) {
 		},
 	}
 
-	for name, tc := range tests {
+	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -104,11 +132,11 @@ func TestPolicy_TrustProject(t *testing.T) {
 			dir := t.TempDir()
 			policyPath := filepath.Join(dir, "policy.yaml")
 
-			policy := config.NewPolicy()
+			policy := policies.New()
 
 			// Set up initial paths.
 			for _, path := range tc.initialPaths {
-				policy.Projects.Trust = append(policy.Projects.Trust, &config.TrustedProject{Path: path})
+				policy.Projects.Trust = append(policy.Projects.Trust, &policies.TrustedProject{Path: path})
 			}
 
 			// Write initial policy.
@@ -137,7 +165,7 @@ func TestPolicy_TrustProject(t *testing.T) {
 			assert.True(t, found, "expected path %q to be in trust list", tc.wantContains)
 
 			// Verify persisted state by reloading.
-			pl, err := config.NewPolicyLoaderFromFile(policyPath)
+			pl, err := config.NewLoaderFromFile(policyPath, policies.New, policies.DefaultValidator)
 			require.NoError(t, err)
 
 			reloaded, err := pl.Load()
@@ -154,7 +182,7 @@ func TestPolicy_TrustProject_NilProjects(t *testing.T) {
 	dir := t.TempDir()
 	policyPath := filepath.Join(dir, "policy.yaml")
 
-	policy := config.NewPolicy()
+	policy := policies.New()
 
 	// Write initial policy.
 	b, err := policy.MarshalYAML()
@@ -193,7 +221,7 @@ projects:
 	require.NoError(t, err)
 
 	// Load and trust a project.
-	pl, err := config.NewPolicyLoaderFromFile(policyPath)
+	pl, err := config.NewLoaderFromFile(policyPath, policies.New, policies.DefaultValidator)
 	require.NoError(t, err)
 
 	policy, err := pl.Load()
@@ -216,9 +244,8 @@ projects:
 	assert.Contains(t, content, "/path/to/project", "trusted project path should be present")
 }
 
-func TestGetPolicyPath(t *testing.T) {
-	// Note: Cannot use t.Parallel() with t.Setenv.
-	tests := map[string]struct {
+func TestGetPath(t *testing.T) {
+	tcs := map[string]struct {
 		xdgHome string
 		home    string
 		want    string
@@ -235,7 +262,7 @@ func TestGetPolicyPath(t *testing.T) {
 		},
 	}
 
-	for name, tc := range tests {
+	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			// Set test values.
 			if tc.xdgHome != "" {
@@ -246,7 +273,7 @@ func TestGetPolicyPath(t *testing.T) {
 
 			t.Setenv("HOME", tc.home)
 
-			got := config.GetPolicyPath()
+			got := policies.GetPath()
 
 			assert.Equal(t, tc.want, got)
 		})
@@ -256,8 +283,8 @@ func TestGetPolicyPath(t *testing.T) {
 func TestPolicyLoader_Load(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
-		want    *config.Policy
+	tcs := map[string]struct {
+		want    *policies.Policy
 		input   string
 		wantErr bool
 	}{
@@ -268,9 +295,9 @@ projects:
   trust:
     - path: /path/to/project
 `,
-			want: func() *config.Policy {
-				p := config.NewPolicy()
-				p.Projects.Trust = []*config.TrustedProject{{Path: "/path/to/project"}}
+			want: func() *policies.Policy {
+				p := policies.New()
+				p.Projects.Trust = []*policies.TrustedProject{{Path: "/path/to/project"}}
 
 				return p
 			}(),
@@ -280,26 +307,27 @@ projects:
 			input: `apiVersion: kat.jacobcolvin.com/v1beta1
 kind: Policy
 `,
-			want:    config.NewPolicy(),
+			want:    policies.New(),
 			wantErr: false,
 		},
 	}
 
-	for name, tc := range tests {
+	for name, tc := range tcs {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			pl := config.NewPolicyLoaderFromBytes([]byte(tc.input))
+			pl := config.NewLoaderFromBytes([]byte(tc.input), policies.New, policies.DefaultValidator)
 
 			got, err := pl.Load()
 			if tc.wantErr {
 				require.Error(t, err)
+
 				return
 			}
 
 			require.NoError(t, err)
-			assert.Equal(t, tc.want.APIVersion, got.APIVersion)
-			assert.Equal(t, tc.want.Kind, got.Kind)
+			assert.Equal(t, tc.want.GetAPIVersion(), got.GetAPIVersion())
+			assert.Equal(t, tc.want.GetKind(), got.GetKind())
 			assert.Len(t, got.Projects.Trust, len(tc.want.Projects.Trust))
 		})
 	}
@@ -312,11 +340,11 @@ func TestDefaultPolicyYAMLIsValid(t *testing.T) {
 	dir := t.TempDir()
 	policyPath := filepath.Join(dir, "policy.yaml")
 
-	err := config.WriteDefaultPolicy(policyPath, false)
+	err := policies.WriteDefault(policyPath, false)
 	require.NoError(t, err)
 
 	// Load and validate.
-	pl, err := config.NewPolicyLoaderFromFile(policyPath)
+	pl, err := config.NewLoaderFromFile(policyPath, policies.New, policies.DefaultValidator)
 	require.NoError(t, err)
 
 	err = pl.Validate()
@@ -325,13 +353,13 @@ func TestDefaultPolicyYAMLIsValid(t *testing.T) {
 	policy, err := pl.Load()
 	require.NoError(t, err)
 
-	assert.Equal(t, "kat.jacobcolvin.com/v1beta1", policy.APIVersion)
-	assert.Equal(t, "Policy", policy.Kind)
+	assert.Equal(t, "kat.jacobcolvin.com/v1beta1", policy.GetAPIVersion())
+	assert.Equal(t, "Policy", policy.GetKind())
 	assert.NotNil(t, policy.Projects)
 	assert.Empty(t, policy.Projects.Trust)
 }
 
-func TestWriteDefaultPolicy(t *testing.T) {
+func TestWriteDefault(t *testing.T) {
 	t.Parallel()
 
 	t.Run("creates policy file when not exists", func(t *testing.T) {
@@ -340,7 +368,7 @@ func TestWriteDefaultPolicy(t *testing.T) {
 		dir := t.TempDir()
 		policyPath := filepath.Join(dir, "policy.yaml")
 
-		err := config.WriteDefaultPolicy(policyPath, false)
+		err := policies.WriteDefault(policyPath, false)
 		require.NoError(t, err)
 
 		_, err = os.Stat(policyPath)
@@ -359,7 +387,7 @@ func TestWriteDefaultPolicy(t *testing.T) {
 		require.NoError(t, err)
 
 		// Try to write default (should not overwrite).
-		err = config.WriteDefaultPolicy(policyPath, false)
+		err = policies.WriteDefault(policyPath, false)
 		require.NoError(t, err)
 
 		// Verify content unchanged.
@@ -380,7 +408,7 @@ func TestWriteDefaultPolicy(t *testing.T) {
 		require.NoError(t, err)
 
 		// Write default with force.
-		err = config.WriteDefaultPolicy(policyPath, true)
+		err = policies.WriteDefault(policyPath, true)
 		require.NoError(t, err)
 
 		// Verify content changed.
@@ -389,4 +417,21 @@ func TestWriteDefaultPolicy(t *testing.T) {
 		assert.NotEqual(t, customContent, string(data))
 		assert.Contains(t, string(data), "apiVersion")
 	})
+}
+
+func TestPolicy_MarshalYAML(t *testing.T) {
+	t.Parallel()
+
+	policy := policies.New()
+	policy.Projects.Trust = append(policy.Projects.Trust, &policies.TrustedProject{Path: "/test/path"})
+
+	data, err := policy.MarshalYAML()
+	require.NoError(t, err)
+	assert.NotEmpty(t, data)
+
+	// Verify the marshaled YAML contains expected fields.
+	yamlStr := string(data)
+	assert.Contains(t, yamlStr, "apiVersion: kat.jacobcolvin.com/v1beta1")
+	assert.Contains(t, yamlStr, "kind: Policy")
+	assert.Contains(t, yamlStr, "/test/path")
 }
