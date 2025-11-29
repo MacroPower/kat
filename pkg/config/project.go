@@ -14,24 +14,24 @@ import (
 	"github.com/macropower/kat/pkg/yaml"
 )
 
-//go:generate go run ../../internal/schemagen/project/main.go -o projectconfigurations.v1beta1.json
+//go:generate go run ../../internal/schemagen/project/main.go -o projectconfigs.v1beta1.json
 
 var (
 	// ProjectConfigFileNames contains the valid names for project configuration files.
 	ProjectConfigFileNames = []string{
-		".katrc.yaml",
-		"katrc.yaml",
+		".kat.yaml",
+		"kat.yaml",
 	}
 
-	//go:embed projectconfigurations.v1beta1.json
+	//go:embed projectconfigs.v1beta1.json
 	projectSchemaJSON []byte
 
 	// ProjectValidator validates project configuration against the JSON schema.
-	ProjectValidator = yaml.MustNewValidator("/projectconfigurations.v1beta1.json", projectSchemaJSON)
+	ProjectValidator = yaml.MustNewValidator("/projectconfigs.v1beta1.json", projectSchemaJSON)
 
 	// ValidProjectKinds contains the valid kind values for project configurations.
 	ValidProjectKinds = []string{
-		"ProjectConfiguration",
+		"ProjectConfig",
 	}
 )
 
@@ -48,7 +48,7 @@ type ProjectConfig struct {
 func NewProjectConfig() *ProjectConfig {
 	return &ProjectConfig{
 		APIVersion: "kat.jacobcolvin.com/v1beta1",
-		Kind:       "ProjectConfiguration",
+		Kind:       "ProjectConfig",
 		Command:    &command.Config{},
 	}
 }

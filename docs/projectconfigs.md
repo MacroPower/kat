@@ -1,4 +1,4 @@
-# Project Configuration (katrc files)
+# Project Configuration (.kat.yaml files)
 
 Project configuration files allow repository owners to define custom rendering rules and profiles that are specific to their project. When `kat` is run, it searches for a project config file starting from the target path and walking up the directory tree.
 
@@ -6,8 +6,8 @@ Project configuration files allow repository owners to define custom rendering r
 
 The following file names are recognized (in order of precedence):
 
-1. `.katrc.yaml`
-2. `katrc.yaml`
+1. `.kat.yaml`
+2. `kat.yaml`
 
 ## Trust System
 
@@ -31,7 +31,7 @@ These flags are mutually exclusive.
 
 ### Policy File
 
-Trusted projects are stored in a policy file at `~/.config/kat/policy.yaml` under `projects.trust`:
+Trusted projects are stored in a `policy.yaml` file in your config directory, under `projects.trust`:
 
 ```yaml
 # yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/policies.v1beta1.json
@@ -45,12 +45,12 @@ projects:
 
 ## Configuration Schema
 
-Project configurations use `kind: ProjectConfiguration` and can define rules and/or profiles.
+Project configurations use `kind: ProjectConfig` and can define rules and/or profiles.
 
 ```yaml
-# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/projectconfigurations.v1beta1.json
+# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/projectconfigs.v1beta1.json
 apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfiguration
+kind: ProjectConfig
 rules:
   - match: <expression>
     profile: <profile name>
@@ -75,7 +75,7 @@ A project that adds a custom profile for a specific tool:
 
 ```yaml
 apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfiguration
+kind: ProjectConfig
 
 rules:
   - match: >-

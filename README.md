@@ -57,7 +57,7 @@ Together, these deliver a seamless development experience that maintains context
 
 - Select your defined profiles automatically using CEL expressions
 - Match projects based on file contents, structure, or naming patterns
-- Support for project-specific configurations via `.katrc.yaml` files
+- Support for project-specific configurations via `.kat.yaml` files
 
 **🔌 Plugin system**
 
@@ -454,9 +454,9 @@ For more details on CEL expressions and examples, see the [CEL documentation](do
 
 ### 🪄 Project Configuration
 
-Projects can include their own `.katrc.yaml` file to define project-specific rules and profiles. For example, you can include a `.katrc.yaml` file at the root of your git repository to share and/or version your project-specific configuration. When `kat` runs, it searches for this file starting from the target path and walking up the directory tree.
+Projects can include their own `.kat.yaml` file to define project-specific rules and profiles. For example, you can include a `.kat.yaml` file at the root of your git repository to share and/or version your project-specific configuration. When `kat` runs, it searches for this file starting from the target path and walking up the directory tree.
 
-For your safety, when you execute `kat` in a location where a project configuration exists, you will be prompted to trust the project. This trust is maintained in a separate policy file at `~/.config/kat/policy.yaml`:
+For your safety, when you execute `kat` in a location where a project configuration exists, you will be prompted to trust the project. This trust is maintained in a separate `policy.yaml` file in your config directory:
 
 ```yaml
 apiVersion: kat.jacobcolvin.com/v1beta1
@@ -466,7 +466,7 @@ projects:
     - path: /path/to/trusted/project
 ```
 
-See [Project Configuration](docs/projectconfigurations.md) for more details.
+See [Project Configuration](docs/projectconfigs.md) for more details.
 
 ### 🔥 DRY Configuration
 

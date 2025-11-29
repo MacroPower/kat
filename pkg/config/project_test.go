@@ -24,17 +24,17 @@ func TestFindProjectConfig(t *testing.T) {
 				t.Helper()
 
 				dir := t.TempDir()
-				configPath := filepath.Join(dir, ".katrc.yaml")
+				configPath := filepath.Join(dir, ".kat.yaml")
 				err := os.WriteFile(
 					configPath,
-					[]byte("apiVersion: kat.jacobcolvin.com/v1beta1\nkind: ProjectConfiguration\n"),
+					[]byte("apiVersion: kat.jacobcolvin.com/v1beta1\nkind: ProjectConfig\n"),
 					0o600,
 				)
 				require.NoError(t, err)
 
 				return dir
 			},
-			want:    ".katrc.yaml",
+			want:    ".kat.yaml",
 			wantErr: false,
 		},
 		"finds config in parent directory": {
@@ -42,10 +42,10 @@ func TestFindProjectConfig(t *testing.T) {
 				t.Helper()
 
 				dir := t.TempDir()
-				configPath := filepath.Join(dir, ".katrc.yaml")
+				configPath := filepath.Join(dir, ".kat.yaml")
 				err := os.WriteFile(
 					configPath,
-					[]byte("apiVersion: kat.jacobcolvin.com/v1beta1\nkind: ProjectConfiguration\n"),
+					[]byte("apiVersion: kat.jacobcolvin.com/v1beta1\nkind: ProjectConfig\n"),
 					0o600,
 				)
 				require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestFindProjectConfig(t *testing.T) {
 
 				return subDir
 			},
-			want:    ".katrc.yaml",
+			want:    ".kat.yaml",
 			wantErr: false,
 		},
 		"returns empty when not found": {
@@ -74,10 +74,10 @@ func TestFindProjectConfig(t *testing.T) {
 				t.Helper()
 
 				dir := t.TempDir()
-				configPath := filepath.Join(dir, ".katrc.yaml")
+				configPath := filepath.Join(dir, ".kat.yaml")
 				err := os.WriteFile(
 					configPath,
-					[]byte("apiVersion: kat.jacobcolvin.com/v1beta1\nkind: ProjectConfiguration\n"),
+					[]byte("apiVersion: kat.jacobcolvin.com/v1beta1\nkind: ProjectConfig\n"),
 					0o600,
 				)
 				require.NoError(t, err)
@@ -89,7 +89,7 @@ func TestFindProjectConfig(t *testing.T) {
 
 				return filePath
 			},
-			want:    ".katrc.yaml",
+			want:    ".kat.yaml",
 			wantErr: false,
 		},
 	}
@@ -125,13 +125,13 @@ func TestProjectConfigLoader_Load(t *testing.T) {
 	}{
 		"valid minimal config": {
 			input: `apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfiguration
+kind: ProjectConfig
 `,
 			wantErr: false,
 		},
 		"valid config with profiles": {
 			input: `apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfiguration
+kind: ProjectConfig
 profiles:
   custom:
     command: make
@@ -141,7 +141,7 @@ profiles:
 		},
 		"valid config with rules": {
 			input: `apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfiguration
+kind: ProjectConfig
 rules:
   - match: 'files.exists(f, pathBase(f) == "Makefile")'
     profile: custom
@@ -154,7 +154,7 @@ profiles:
 		},
 		"invalid yaml": {
 			input: `apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfiguration
+kind: ProjectConfig
   invalid: yaml
 `,
 			wantErr: true,
@@ -176,7 +176,7 @@ kind: ProjectConfiguration
 				require.NoError(t, err)
 				assert.NotNil(t, cfg)
 				assert.Equal(t, "kat.jacobcolvin.com/v1beta1", cfg.APIVersion)
-				assert.Equal(t, "ProjectConfiguration", cfg.Kind)
+				assert.Equal(t, "ProjectConfig", cfg.Kind)
 			}
 		})
 	}
@@ -191,12 +191,12 @@ func TestProjectConfigLoader_Validate(t *testing.T) {
 	}{
 		"valid config": {
 			input: `apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfiguration
+kind: ProjectConfig
 `,
 			wantErr: false,
 		},
 		"missing apiVersion": {
-			input: `kind: ProjectConfiguration
+			input: `kind: ProjectConfig
 `,
 			wantErr: true,
 		},
@@ -242,10 +242,10 @@ func TestNewProjectConfigLoaderFromFile(t *testing.T) {
 				t.Helper()
 
 				content := `apiVersion: kat.jacobcolvin.com/v1beta1
-kind: ProjectConfiguration
+kind: ProjectConfig
 `
 				dir := t.TempDir()
-				path := filepath.Join(dir, ".katrc.yaml")
+				path := filepath.Join(dir, ".kat.yaml")
 				err := os.WriteFile(path, []byte(content), 0o600)
 				require.NoError(t, err)
 

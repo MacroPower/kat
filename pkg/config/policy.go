@@ -33,7 +33,7 @@ var (
 	PolicyValidator = yaml.MustNewValidator("/policies.v1beta1.json", policySchemaJSON)
 )
 
-// ProjectsPolicyConfig controls handling of project-specific configurations (katrc files).
+// ProjectsPolicyConfig controls handling of project-specific configurations (.kat.yaml files).
 type ProjectsPolicyConfig struct {
 	// Trust contains a list of trusted projects.
 	// Projects in this list will have their configs loaded without prompting.
@@ -52,7 +52,7 @@ func (c *ProjectsPolicyConfig) EnsureDefaults() {
 //
 //nolint:recvcheck // Must satisfy the jsonschema interface.
 type Policy struct {
-	// Projects controls handling of project-specific configurations (katrc files).
+	// Projects controls handling of project-specific configurations (.kat.yaml files).
 	Projects *ProjectsPolicyConfig `json:"projects,omitempty" jsonschema:"title=Projects"`
 	// APIVersion specifies the API version for this configuration.
 	APIVersion string `json:"apiVersion" jsonschema:"title=API Version"`

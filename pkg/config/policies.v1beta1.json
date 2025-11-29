@@ -28,7 +28,7 @@
       "additionalProperties": false,
       "type": "object",
       "title": "Projects",
-      "description": "Projects controls handling of project-specific configurations (katrc files).\n\nPolicy.Projects: https://pkg.go.dev/github.com/macropower/kat/pkg/config#Policy"
+      "description": "Projects controls handling of project-specific configurations (.kat.yaml files).\n\nPolicy.Projects: https://pkg.go.dev/github.com/macropower/kat/pkg/config#Policy"
     },
     "apiVersion": {
       "oneOf": [
