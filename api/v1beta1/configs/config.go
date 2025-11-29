@@ -59,13 +59,13 @@ func New() *Config {
 // EnsureDefaults initializes nil fields to their default values.
 func (c *Config) EnsureDefaults() {
 	if c.UI == nil {
-		c.UI = ui.DefaultConfig
+		c.UI = ui.NewConfig()
 	} else {
 		c.UI.EnsureDefaults()
 	}
 
 	if c.Command == nil {
-		c.Command = command.DefaultConfig
+		c.Command = command.NewConfig()
 	} else {
 		c.Command.EnsureDefaults()
 	}

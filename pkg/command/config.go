@@ -24,79 +24,6 @@ const (
   pathExt(f) in [".yaml", ".yml"])`
 )
 
-var (
-	defaultProfiles = map[string]*profile.Profile{
-		"ks": profile.MustNew("kustomize",
-			profile.WithArgs("build", "."),
-			profile.WithSource(filterYAMLFiles),
-			profile.WithHooks(
-				profile.MustNewHooks(
-					profile.WithInit(
-						profile.MustNewHookCommand("kustomize", profile.WithHookArgs("version")),
-					),
-				),
-			)),
-		"ks-helm": profile.MustNew("kustomize",
-			profile.WithArgs("build", ".", "--enable-helm"),
-			profile.WithSource(filterYAMLFiles),
-			profile.WithHooks(
-				profile.MustNewHooks(
-					profile.WithInit(
-						profile.MustNewHookCommand("kustomize", profile.WithHookArgs("version")),
-					),
-				),
-			)),
-		"helm": profile.MustNew("helm",
-			profile.WithArgs("template", "."),
-			profile.WithExtraArgs("-g"),
-			profile.WithSource(filterHelmFiles),
-			profile.WithEnvFrom([]execs.EnvFromSource{
-				{
-					CallerRef: &execs.CallerRef{
-						Pattern: "^HELM_.+",
-					},
-				},
-			}),
-			profile.WithHooks(
-				profile.MustNewHooks(
-					profile.WithInit(
-						profile.MustNewHookCommand("helm", profile.WithHookArgs("version", "--short")),
-					),
-					profile.WithPreRender(
-						profile.MustNewHookCommand("helm",
-							profile.WithHookArgs("dependency", "build"),
-							profile.WithHookEnvFrom([]execs.EnvFromSource{
-								{
-									CallerRef: &execs.CallerRef{
-										Pattern: "^HELM_.+",
-									},
-								},
-							}),
-						),
-					),
-				),
-			)),
-		"yaml": profile.MustNew("sh",
-			profile.WithArgs("-c", "yq eval-all '.' *.yaml"),
-			profile.WithSource(filterYAMLFiles),
-			profile.WithHooks(
-				profile.MustNewHooks(
-					profile.WithInit(
-						profile.MustNewHookCommand("yq", profile.WithHookArgs("-V")),
-					),
-				),
-			)),
-	}
-
-	defaultRules = []*rule.Rule{
-		rule.MustNew("ks", existsKustomizeProject),
-		rule.MustNew("helm", existsHelmV3Project),
-		rule.MustNew("yaml", existsYAMLFiles),
-	}
-
-	DefaultConfig = MustNewConfig(defaultProfiles, defaultRules)
-)
-
 // Config defines the core (non-UI) kat configuration.
 type Config struct {
 	// Profiles contains a map of profile names to profile configurations.
@@ -105,34 +32,85 @@ type Config struct {
 	Rules []*rule.Rule `json:"rules,omitempty" jsonschema:"title=Rules"`
 }
 
-func NewConfig(ps map[string]*profile.Profile, rs []*rule.Rule) (*Config, error) {
-	c := &Config{
-		Profiles: ps,
-		Rules:    rs,
-	}
-	err := c.Validate()
-	if err != nil {
-		return nil, fmt.Errorf("validate config: %w", err)
-	}
-
-	return c, nil
-}
-
-func MustNewConfig(ps map[string]*profile.Profile, rs []*rule.Rule) *Config {
-	c, err := NewConfig(ps, rs)
-	if err != nil {
-		panic(fmt.Sprintf("failed to create config: %v", err))
-	}
+// NewConfig creates a new [Config] with default profiles and rules.
+func NewConfig() *Config {
+	c := &Config{}
+	c.EnsureDefaults()
 
 	return c
 }
 
 func (c *Config) EnsureDefaults() {
 	if c.Profiles == nil {
-		c.Profiles = defaultProfiles
+		c.Profiles = map[string]*profile.Profile{
+			"ks": profile.MustNew("kustomize",
+				profile.WithArgs("build", "."),
+				profile.WithSource(filterYAMLFiles),
+				profile.WithHooks(
+					profile.MustNewHooks(
+						profile.WithInit(
+							profile.MustNewHookCommand("kustomize", profile.WithHookArgs("version")),
+						),
+					),
+				)),
+			"ks-helm": profile.MustNew("kustomize",
+				profile.WithArgs("build", ".", "--enable-helm"),
+				profile.WithSource(filterYAMLFiles),
+				profile.WithHooks(
+					profile.MustNewHooks(
+						profile.WithInit(
+							profile.MustNewHookCommand("kustomize", profile.WithHookArgs("version")),
+						),
+					),
+				)),
+			"helm": profile.MustNew("helm",
+				profile.WithArgs("template", "."),
+				profile.WithExtraArgs("-g"),
+				profile.WithSource(filterHelmFiles),
+				profile.WithEnvFrom([]execs.EnvFromSource{
+					{
+						CallerRef: &execs.CallerRef{
+							Pattern: "^HELM_.+",
+						},
+					},
+				}),
+				profile.WithHooks(
+					profile.MustNewHooks(
+						profile.WithInit(
+							profile.MustNewHookCommand("helm", profile.WithHookArgs("version", "--short")),
+						),
+						profile.WithPreRender(
+							profile.MustNewHookCommand("helm",
+								profile.WithHookArgs("dependency", "build"),
+								profile.WithHookEnvFrom([]execs.EnvFromSource{
+									{
+										CallerRef: &execs.CallerRef{
+											Pattern: "^HELM_.+",
+										},
+									},
+								}),
+							),
+						),
+					),
+				)),
+			"yaml": profile.MustNew("sh",
+				profile.WithArgs("-c", "yq eval-all '.' *.yaml"),
+				profile.WithSource(filterYAMLFiles),
+				profile.WithHooks(
+					profile.MustNewHooks(
+						profile.WithInit(
+							profile.MustNewHookCommand("yq", profile.WithHookArgs("-V")),
+						),
+					),
+				)),
+		}
 	}
 	if c.Rules == nil {
-		c.Rules = defaultRules
+		c.Rules = []*rule.Rule{
+			rule.MustNew("ks", existsKustomizeProject),
+			rule.MustNew("helm", existsHelmV3Project),
+			rule.MustNew("yaml", existsYAMLFiles),
+		}
 	}
 }
 

@@ -19,18 +19,20 @@ func TestConfigError_Error_Format(t *testing.T) {
 	// since creating a yaml.Path requires complex setup
 
 	// Create an invalid config that will trigger a ConfigError
-	profiles := map[string]*profile.Profile{
-		"test": profile.MustNew("echo", profile.WithArgs("test")),
-	}
-	rules := []*rule.Rule{
-		rule.MustNew("nonexistent", `true`), // This will cause validation to fail
+	config := &command.Config{
+		Profiles: map[string]*profile.Profile{
+			"test": profile.MustNew("echo", profile.WithArgs("test")),
+		},
+		Rules: []*rule.Rule{
+			rule.MustNew("nonexistent", `true`), // This will cause validation to fail
+		},
 	}
 
-	_, err := command.NewConfig(profiles, rules)
+	err := config.Validate()
 	require.Error(t, err)
 
-	// The error should contain validation information
-	assert.Contains(t, err.Error(), "validate config")
+	// The error should contain validation information about the missing profile
+	assert.Contains(t, err.Error(), "nonexistent")
 }
 
 func TestConfig_EnsureDefaults(t *testing.T) {
@@ -113,54 +115,61 @@ func TestConfig_EnsureDefaults(t *testing.T) {
 	}
 }
 
-func TestNewConfig_ValidationErrors(t *testing.T) {
+func TestConfig_ValidationErrors(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
-		profiles    map[string]*profile.Profile
+		config      *command.Config
 		errorPath   string
-		rules       []*rule.Rule
 		expectError bool
 	}{
 		"invalid profile source": {
-			profiles: map[string]*profile.Profile{
-				"invalid": {
-					Source: "invalid CEL expression [[[",
+			config: &command.Config{
+				Profiles: map[string]*profile.Profile{
+					"invalid": {
+						Source: "invalid CEL expression [[[",
+					},
 				},
+				Rules: []*rule.Rule{},
 			},
-			rules:       []*rule.Rule{},
 			expectError: true,
 			errorPath:   "profiles.invalid.source",
 		},
 		"invalid rule match": {
-			profiles: map[string]*profile.Profile{
-				"test": profile.MustNew("echo", profile.WithArgs("test")),
-			},
-			rules: []*rule.Rule{
-				{
-					Profile: "test",
-					Match:   "invalid CEL expression [[[",
+			config: &command.Config{
+				Profiles: map[string]*profile.Profile{
+					"test": profile.MustNew("echo", profile.WithArgs("test")),
+				},
+				Rules: []*rule.Rule{
+					{
+						Profile: "test",
+						Match:   "invalid CEL expression [[[",
+					},
 				},
 			},
 			expectError: true,
 			errorPath:   "rules[0].match",
 		},
 		"rule references non-existent profile": {
-			profiles: map[string]*profile.Profile{
-				"test": profile.MustNew("echo", profile.WithArgs("test")),
-			},
-			rules: []*rule.Rule{
-				rule.MustNew("nonexistent", `true`),
+			config: &command.Config{
+				Profiles: map[string]*profile.Profile{
+					"test": profile.MustNew("echo", profile.WithArgs("test")),
+				},
+				Rules: []*rule.Rule{
+					rule.MustNew("nonexistent", `true`),
+				},
 			},
 			expectError: true,
 			errorPath:   "rules[0].profile",
 		},
 		"valid config": {
-			profiles: map[string]*profile.Profile{
-				"test": profile.MustNew("echo", profile.WithArgs("test")),
-			},
-			rules: []*rule.Rule{
-				rule.MustNew("test", `true`),
+			config: &command.Config{
+				Profiles: map[string]*profile.Profile{
+					"test": profile.MustNew("echo", profile.WithArgs("test")),
+				},
+				Rules: []*rule.Rule{
+					rule.MustNew("test", `true`),
+				},
 			},
 			expectError: false,
 		},
@@ -170,59 +179,38 @@ func TestNewConfig_ValidationErrors(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			config, err := command.NewConfig(tc.profiles, tc.rules)
+			err := tc.config.Validate()
 
 			if tc.expectError {
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "validate config")
 				if tc.errorPath != "" {
 					assert.Contains(t, err.Error(), tc.errorPath)
 				}
-
-				assert.Nil(t, config)
 			} else {
 				require.NoError(t, err)
-				assert.NotNil(t, config)
 			}
 		})
 	}
 }
 
-func TestMustNewConfig(t *testing.T) {
+func TestNewConfig(t *testing.T) {
 	t.Parallel()
 
-	// Test successful creation
-	t.Run("success", func(t *testing.T) {
-		t.Parallel()
+	// Test that NewConfig returns a valid config with defaults
+	config := command.NewConfig()
+	require.NotNil(t, config)
 
-		profiles := map[string]*profile.Profile{
-			"test": profile.MustNew("echo", profile.WithArgs("test")),
-		}
-		rules := []*rule.Rule{
-			rule.MustNew("test", `true`),
-		}
+	// Should have default profiles
+	assert.Contains(t, config.Profiles, "ks")
+	assert.Contains(t, config.Profiles, "helm")
+	assert.Contains(t, config.Profiles, "yaml")
 
-		config := command.MustNewConfig(profiles, rules)
-		assert.NotNil(t, config)
-		assert.Equal(t, profiles, config.Profiles)
-		assert.Equal(t, rules, config.Rules)
-	})
+	// Should have default rules
+	assert.Len(t, config.Rules, 3)
 
-	// Test panic on invalid config
-	t.Run("panic on invalid", func(t *testing.T) {
-		t.Parallel()
-
-		profiles := map[string]*profile.Profile{
-			"test": profile.MustNew("echo", profile.WithArgs("test")),
-		}
-		rules := []*rule.Rule{
-			rule.MustNew("nonexistent", `true`),
-		}
-
-		assert.Panics(t, func() {
-			command.MustNewConfig(profiles, rules)
-		})
-	})
+	// Default config should validate successfully
+	err := config.Validate()
+	require.NoError(t, err)
 }
 
 func TestConfig_Validate_EdgeCases(t *testing.T) {
