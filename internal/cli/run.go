@@ -309,7 +309,13 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 		trustMgr := policy.NewTrustManager(pol, policyPath)
 		sp := setup.NewPrompter(cl.GetTheme())
 
-		runtimeCfg, runtimeErr := trustMgr.LoadTrustedRuntimeConfig(rc.Path, sp, trustMode)
+		// When reading from stdin, look for runtime config in current directory.
+		runtimeConfigPath := rc.Path
+		if runtimeConfigPath == "-" {
+			runtimeConfigPath = "."
+		}
+
+		runtimeCfg, runtimeErr := trustMgr.LoadTrustedRuntimeConfig(runtimeConfigPath, sp, trustMode)
 		if runtimeErr != nil {
 			return fmt.Errorf("load runtime config: %w", runtimeErr)
 		}

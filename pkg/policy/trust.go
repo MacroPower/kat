@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 
 	"github.com/macropower/kat/api/v1beta1/policies"
@@ -73,7 +74,7 @@ func (m *TrustManager) LoadTrustedRuntimeConfig(
 	mode TrustMode,
 ) (*runtimeconfigs.RuntimeConfig, error) {
 	runtimeCfgPath, err := runtimeconfigs.Find(targetPath)
-	if err != nil {
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("find runtime config: %w", err)
 	}
 

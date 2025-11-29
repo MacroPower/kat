@@ -108,6 +108,21 @@ func TestTrustManager_LoadTrustedRuntimeConfig(t *testing.T) {
 			wantNil: true,
 			wantErr: false,
 		},
+		"non-existent target path returns nil": {
+			setupFunc: func(t *testing.T) (string, string, *policies.Policy) {
+				t.Helper()
+
+				// Target path that doesn't exist.
+				targetPath := filepath.Join(t.TempDir(), "non-existent-path")
+				policyDir := t.TempDir()
+				policyPath := setupPolicyFile(t, policyDir)
+
+				return targetPath, policyPath, policies.New()
+			},
+			mode:    policy.TrustModePrompt,
+			wantNil: true,
+			wantErr: false,
+		},
 		"TrustModeSkip returns nil": {
 			setupFunc: func(t *testing.T) (string, string, *policies.Policy) {
 				t.Helper()

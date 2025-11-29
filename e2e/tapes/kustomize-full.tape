@@ -2,7 +2,7 @@ Hide
   Source e2e/config.tape
   Output e2e/golden/kustomize-full.ascii
 
-  Type "./kat example/kustomize --config=pkg/config/config.yaml" Enter
+  Type "./kat example/kustomize --config=api/v1beta1/configs/config.yaml" Enter
   Sleep 6s
 Show
 

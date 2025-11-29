@@ -85,7 +85,7 @@ func (c RuntimeConfig) JSONSchemaExtend(jss *jsonschema.Schema) {
 func Find(targetPath string) (string, error) {
 	path, err := api.FindConfigFile(targetPath, FileNames)
 	if err != nil {
-		return "", fmt.Errorf("find runtime config: %w", err)
+		return "", fmt.Errorf("find config file: %w", err)
 	}
 
 	return path, nil
