@@ -1,13 +1,11 @@
-package menu
+package theme
 
 import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
-
-	"github.com/macropower/kat/pkg/ui/theme"
 )
 
-func themeToHuhTheme(t *theme.Theme) *huh.Theme {
+func HuhTheme(t *Theme) *huh.Theme {
 	h := huh.ThemeBase()
 
 	h.Focused.Base = h.Focused.Base.BorderForeground(t.SelectedStyle.GetForeground())

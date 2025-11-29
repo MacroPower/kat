@@ -100,9 +100,10 @@ func NewRunnerWithRoot(root RootFS, path string, opts ...RunnerOpt) (*Runner, er
 
 	if len(opts) == 0 {
 		// Defaults if no options are provided.
+		defaultCfg := NewConfig()
 		opts = append(opts,
-			WithRules(DefaultConfig.Rules),
-			WithProfiles(DefaultConfig.Profiles))
+			WithRules(defaultCfg.Rules),
+			WithProfiles(defaultCfg.Profiles))
 	}
 
 	opts = append(opts, WithPath(path))

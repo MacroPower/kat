@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - pkg/config/config.*.json
+      - api/**/*.json
       - .github/workflows/pages.yaml
   workflow_dispatch:
 
@@ -32,7 +32,7 @@ jobs:
       - name: Prepare schema files
         run: |
           mkdir -p _site/schemas
-          cp pkg/config/config.*.json _site/schemas/
+          find api -name '*.json' -exec cp {} _site/schemas/ \;
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4

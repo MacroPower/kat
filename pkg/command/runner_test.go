@@ -87,7 +87,10 @@ var (
 		rule.MustNew("yaml", `files.exists(f, pathExt(f) in [".yaml", ".yml"])`),
 	}
 
-	TestConfig = command.MustNewConfig(testProfiles, testRules)
+	TestConfig = &command.Config{
+		Profiles: testProfiles,
+		Rules:    testRules,
+	}
 )
 
 // collectRunnerEventsWithTimeout collects up to maxEvents from the channel with a timeout

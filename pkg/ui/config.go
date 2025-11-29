@@ -15,8 +15,6 @@ import (
 	"github.com/macropower/kat/pkg/ui/pager"
 )
 
-var DefaultConfig = NewConfig()
-
 // Config contains TUI-specific configuration.
 type Config struct {
 	// KeyBinds contains key binding configurations for different UI components.

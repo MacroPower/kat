@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/macropower/kat/pkg/config/config",
+  "$id": "https://github.com/macropower/kat/api/v1beta1/configs/config",
   "properties": {
     "profiles": {
       "additionalProperties": {
@@ -2359,7 +2359,7 @@
       ],
       "type": "string",
       "title": "API Version",
-      "description": "APIVersion specifies the API version for this configuration.\n\nConfig.APIVersion: https://pkg.go.dev/github.com/macropower/kat/pkg/config#Config"
+      "description": "APIVersion specifies the API version for this configuration.\n\nTypeMeta.APIVersion: https://pkg.go.dev/github.com/macropower/kat/api/v1beta1#TypeMeta"
     },
     "kind": {
       "oneOf": [
@@ -2371,7 +2371,7 @@
       ],
       "type": "string",
       "title": "Kind",
-      "description": "Kind defines the type of configuration.\n\nConfig.Kind: https://pkg.go.dev/github.com/macropower/kat/pkg/config#Config"
+      "description": "Kind defines the type of configuration.\n\nTypeMeta.Kind: https://pkg.go.dev/github.com/macropower/kat/api/v1beta1#TypeMeta"
     }
   },
   "additionalProperties": false,
@@ -2380,5 +2380,5 @@
     "apiVersion",
     "kind"
   ],
-  "description": "Config: https://pkg.go.dev/github.com/macropower/kat/pkg/config#Config"
+  "description": "Config represents the global kat configuration.\n\nConfig: https://pkg.go.dev/github.com/macropower/kat/api/v1beta1/configs#Config"
 }
