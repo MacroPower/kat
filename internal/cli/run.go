@@ -281,6 +281,11 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 		return err
 	}
 
+	err = cfg.Validate()
+	if err != nil {
+		return fmt.Errorf("invalid config: %w", err)
+	}
+
 	err = cfg.UI.KeyBinds.Validate()
 	if err != nil {
 		return fmt.Errorf("validate key binds: %w", err)
@@ -481,7 +486,7 @@ func loadAnyRuntimeConfigs(grcPath, prcPath string, tm policy.TrustMode) (*confi
 	thm := cl.GetTheme()
 	sp := setup.NewPrompter(thm)
 
-	trc, rcPath, rcErr := trustMgr.LoadTrustedRuntimeConfig(prcPath, sp, tm)
+	trc, _, rcErr := trustMgr.LoadTrustedRuntimeConfig(prcPath, sp, tm)
 	if rcErr != nil {
 		return nil, nil, fmt.Errorf("load runtime config: %w", rcErr)
 	}
@@ -493,12 +498,6 @@ func loadAnyRuntimeConfigs(grcPath, prcPath string, tm policy.TrustMode) (*confi
 	// We found a trusted runtime config.
 	// Merge the trusted project runtime config into the global runtime config.
 	cfg.Command.Merge(trc.Command)
-
-	// Re-validate the merged config.
-	err = cfg.Validate()
-	if err != nil {
-		return nil, thm, fmt.Errorf("invalid merged config %q, %q: %w", grcPath, rcPath, err)
-	}
 
 	return cfg, thm, nil
 }
