@@ -80,7 +80,7 @@ linters:
     - nilnil
     - noctx
     - noinlineerr
-    - nolintlint
+    # - nolintlint
     - nonamedreturns
     - nosprintfhostport
     - paralleltest
