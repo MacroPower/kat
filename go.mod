@@ -15,7 +15,7 @@ require (
 	github.com/charmbracelet/huh v0.8.0
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
 	github.com/charmbracelet/log v0.4.2
-	github.com/charmbracelet/x/ansi v0.11.1
+	github.com/charmbracelet/x/ansi v0.11.2
 	github.com/charmbracelet/x/cellbuf v0.0.14
 	github.com/charmbracelet/x/exp/charmtone v0.0.0-20250708181618-a60a724ba6c3
 	github.com/charmbracelet/x/exp/strings v0.0.0-20250708181618-a60a724ba6c3
