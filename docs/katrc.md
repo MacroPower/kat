@@ -8,6 +8,8 @@ The following file names are recognized (in order of precedence):
 
 1. `.katrc.yaml`
 2. `katrc.yaml`
+3. `.katrc.yml`
+4. `katrc.yml`
 
 ## Trust System
 

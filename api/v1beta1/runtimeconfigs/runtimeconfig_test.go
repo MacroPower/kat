@@ -154,6 +154,58 @@ func TestFind(t *testing.T) {
 			want:    "katrc.yaml",
 			wantErr: false,
 		},
+		"finds .katrc.yml if .yaml not present": {
+			setup: func(t *testing.T) string {
+				t.Helper()
+
+				dir := t.TempDir()
+
+				// Create only .katrc.yml.
+				ymlPath := filepath.Join(dir, ".katrc.yml")
+				err := os.WriteFile(ymlPath, []byte("yml"), 0o600)
+				require.NoError(t, err)
+
+				return dir
+			},
+			want:    ".katrc.yml",
+			wantErr: false,
+		},
+		"finds katrc.yml if other options not present": {
+			setup: func(t *testing.T) string {
+				t.Helper()
+
+				dir := t.TempDir()
+
+				// Create only katrc.yml.
+				ymlPath := filepath.Join(dir, "katrc.yml")
+				err := os.WriteFile(ymlPath, []byte("yml"), 0o600)
+				require.NoError(t, err)
+
+				return dir
+			},
+			want:    "katrc.yml",
+			wantErr: false,
+		},
+		"prefers .yaml over .yml": {
+			setup: func(t *testing.T) string {
+				t.Helper()
+
+				dir := t.TempDir()
+
+				// Create both .yaml and .yml files.
+				yamlPath := filepath.Join(dir, ".katrc.yaml")
+				err := os.WriteFile(yamlPath, []byte("yaml"), 0o600)
+				require.NoError(t, err)
+
+				ymlPath := filepath.Join(dir, ".katrc.yml")
+				err = os.WriteFile(ymlPath, []byte("yml"), 0o600)
+				require.NoError(t, err)
+
+				return dir
+			},
+			want:    ".katrc.yaml",
+			wantErr: false,
+		},
 	}
 
 	for name, tc := range tcs {

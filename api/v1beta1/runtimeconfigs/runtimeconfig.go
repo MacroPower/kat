@@ -18,9 +18,12 @@ import (
 
 var (
 	// FileNames contains the valid names for runtime configuration files.
+	// The slice order determines precedence when searching for config files.
 	FileNames = []string{
 		".katrc.yaml",
 		"katrc.yaml",
+		".katrc.yml",
+		"katrc.yml",
 	}
 
 	//go:embed runtimeconfigs.v1beta1.json
