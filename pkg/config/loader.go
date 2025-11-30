@@ -2,12 +2,11 @@ package config
 
 import (
 	"bytes"
-	"fmt"
 	"log/slog"
-	"os"
 	"regexp"
 	"strings"
 
+	"github.com/macropower/kat/api"
 	"github.com/macropower/kat/api/v1beta1"
 	"github.com/macropower/kat/pkg/ui/theme"
 	"github.com/macropower/kat/pkg/yaml"
@@ -90,9 +89,9 @@ func NewLoaderFromFile[T v1beta1.Object](
 	defaultValidator Validator,
 	opts ...LoaderOpt,
 ) (*Loader[T], error) {
-	data, err := readFile(path)
+	data, err := api.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck // Return the original error.
 	}
 
 	return NewLoaderFromBytes(data, newFunc, defaultValidator, opts...), nil
@@ -140,28 +139,6 @@ func (l *Loader[T]) Load() (T, error) {
 // GetTheme returns the theme for error formatting.
 func (l *Loader[T]) GetTheme() *theme.Theme {
 	return l.theme
-}
-
-func readFile(path string) ([]byte, error) {
-	pathInfo, err := os.Stat(path)
-	if pathInfo != nil {
-		if err == nil && pathInfo.IsDir() {
-			return nil, fmt.Errorf("%s: path is a directory", path)
-		}
-		if err == nil && !pathInfo.Mode().IsRegular() {
-			return nil, fmt.Errorf("%s: unknown file state", path)
-		}
-	}
-	if err != nil {
-		return nil, fmt.Errorf("stat file: %w", err)
-	}
-
-	data, err := os.ReadFile(path) //nolint:gosec // G304: Potential file inclusion via variable.
-	if err != nil {
-		return nil, fmt.Errorf("read file: %w", err)
-	}
-
-	return data, nil
 }
 
 func getTheme(data []byte) *theme.Theme {
