@@ -241,10 +241,9 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 			return fmt.Errorf("read stdin: %w", err)
 		}
 
+		rc.Path = "."
 		rc.StdinData = b
 	}
-
-	cfg := configs.New()
 
 	var configPath string
 	if rc.ConfigPath != "" {
@@ -277,57 +276,9 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 		trustMode = policy.TrustModeSkip
 	}
 
-	cl, err := config.NewLoaderFromFile(
-		configPath,
-		configs.New,
-		configs.DefaultValidator,
-		config.WithThemeFromData(),
-	)
-	//nolint:nestif // Intentional: config loading is optional, continue with defaults on error.
+	cfg, thm, err := loadAnyRuntimeConfigs(configPath, rc.Path, trustMode)
 	if err != nil {
-		slog.Warn("could not read config, using defaults", slog.Any("err", err))
-	} else {
-		err = cl.Validate()
-		if err != nil {
-			return fmt.Errorf("invalid config %q: %w", configPath, err)
-		}
-
-		cfg, err = cl.Load()
-		if err != nil {
-			return fmt.Errorf("load config %q: %w", configPath, err)
-		}
-
-		// Load and merge project config if found and trusted.
-		policyPath := policies.GetPath()
-		pol, polErr := loadPolicy(policyPath)
-		if polErr != nil {
-			slog.Warn("could not load policy, using defaults", slog.Any("err", polErr))
-
-			pol = policies.New()
-		}
-
-		trustMgr := policy.NewTrustManager(pol, policyPath)
-		sp := setup.NewPrompter(cl.GetTheme())
-
-		// When reading from stdin, look for runtime config in current directory.
-		runtimeConfigPath := rc.Path
-		if runtimeConfigPath == "-" {
-			runtimeConfigPath = "."
-		}
-
-		runtimeCfg, runtimeErr := trustMgr.LoadTrustedRuntimeConfig(runtimeConfigPath, sp, trustMode)
-		if runtimeErr != nil {
-			return fmt.Errorf("load runtime config: %w", runtimeErr)
-		}
-
-		if runtimeCfg != nil {
-			cfg.Command.Merge(runtimeCfg.Command)
-		}
-
-		err = cfg.Validate()
-		if err != nil {
-			return fmt.Errorf("validate config: %w", err)
-		}
+		return err
 	}
 
 	err = cfg.UI.KeyBinds.Validate()
@@ -346,7 +297,7 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 
 		yamlConfig := string(yamlBytes)
 
-		cr := yamls.NewChromaRenderer(cl.GetTheme(), yamls.WithLineNumbersDisabled(true))
+		cr := yamls.NewChromaRenderer(thm, yamls.WithLineNumbersDisabled(true))
 		prettyConfig, err := cr.RenderContent(yamlConfig, 0)
 		if err != nil {
 			mustN(fmt.Fprintln(cmd.OutOrStdout(), yamlConfig))
@@ -481,6 +432,75 @@ func getProfile(cfg *configs.Config, cmd string, args []string) (*profile.Profil
 	}
 
 	return p, nil
+}
+
+func loadPolicyOrDefault(policyPath string) *policies.Policy {
+	var pol *policies.Policy
+
+	pol, err := loadPolicy(policyPath)
+	if err != nil {
+		slog.Warn("could not load policy, using defaults", slog.Any("err", err))
+
+		pol = policies.New()
+	}
+
+	return pol
+}
+
+// loadAnyRuntimeConfigs loads the global configuration and merges it with
+// a trusted project runtime configuration if one is found. Otherwise,
+// it returns the default configuration.
+func loadAnyRuntimeConfigs(grcPath, prcPath string, tm policy.TrustMode) (*configs.Config, *theme.Theme, error) {
+	cl, err := config.NewLoaderFromFile(
+		grcPath,
+		configs.New,
+		configs.DefaultValidator,
+		config.WithThemeFromData(),
+	)
+	if err != nil {
+		slog.Warn("could not read config, using defaults", slog.Any("err", err))
+
+		return configs.New(), nil, nil
+	}
+
+	err = cl.Validate()
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid config %q: %w", grcPath, err)
+	}
+
+	cfg, err := cl.Load()
+	if err != nil {
+		return nil, nil, fmt.Errorf("load config %q: %w", grcPath, err)
+	}
+
+	// Load the project runtime config if found.
+	policyPath := policies.GetPath()
+	pol := loadPolicyOrDefault(policyPath)
+
+	trustMgr := policy.NewTrustManager(pol, policyPath)
+	thm := cl.GetTheme()
+	sp := setup.NewPrompter(thm)
+
+	trc, rcPath, rcErr := trustMgr.LoadTrustedRuntimeConfig(prcPath, sp, tm)
+	if rcErr != nil {
+		return nil, nil, fmt.Errorf("load runtime config: %w", rcErr)
+	}
+	if trc == nil {
+		// No trusted runtime config found, only use the global config.
+		return cfg, thm, nil
+	}
+
+	// We found a trusted runtime config.
+	// Merge the trusted project runtime config into the global runtime config.
+	cfg.Command.Merge(trc.Command)
+
+	// Re-validate the merged config.
+	err = cfg.Validate()
+	if err != nil {
+		return nil, thm, fmt.Errorf("invalid merged config %q, %q: %w", grcPath, rcPath, err)
+	}
+
+	return cfg, thm, nil
 }
 
 func loadPolicy(policyPath string) (*policies.Policy, error) {

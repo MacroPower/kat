@@ -256,7 +256,7 @@ func TestTrustManager_LoadTrustedRuntimeConfig(t *testing.T) {
 			targetPath, policyPath, pol := tc.setupFunc(t)
 			tm := policy.NewTrustManager(pol, policyPath)
 
-			got, err := tm.LoadTrustedRuntimeConfig(targetPath, tc.prompter, tc.mode)
+			got, _, err := tm.LoadTrustedRuntimeConfig(targetPath, tc.prompter, tc.mode)
 
 			if tc.wantErr {
 				require.Error(t, err)

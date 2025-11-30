@@ -66,64 +66,62 @@ func NewTrustManager(pol *policies.Policy, policyPath string) *TrustManager {
 
 // LoadTrustedRuntimeConfig finds and loads a runtime config if it exists and is trusted.
 // Returns nil (not an error) if no runtime config found or if untrusted.
-//
-//nolint:nilnil // Returning nil with nil error is intentional for "not found" and "untrusted" cases.
 func (m *TrustManager) LoadTrustedRuntimeConfig(
 	targetPath string,
 	prompter TrustPrompter,
 	mode TrustMode,
-) (*runtimeconfigs.RuntimeConfig, error) {
-	runtimeCfgPath, err := runtimeconfigs.Find(targetPath)
+) (*runtimeconfigs.RuntimeConfig, string, error) {
+	cfgPath, err := runtimeconfigs.Find(targetPath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("find runtime config: %w", err)
+		return nil, "", fmt.Errorf("find runtime config: %w", err)
 	}
 
-	if runtimeCfgPath == "" {
-		return nil, nil
+	if cfgPath == "" {
+		return nil, "", nil
 	}
 
-	projectDir := filepath.Dir(runtimeCfgPath)
+	projectDir := filepath.Dir(cfgPath)
 
-	trusted, err := m.ensureTrusted(projectDir, runtimeCfgPath, prompter, mode)
+	trusted, err := m.ensureTrusted(projectDir, cfgPath, prompter, mode)
 	if err != nil {
-		return nil, err
+		return nil, cfgPath, err
 	}
 
 	if !trusted {
-		slog.Warn("skipping untrusted runtime configuration", slog.String("path", runtimeCfgPath))
+		slog.Warn("skipping untrusted runtime configuration", slog.String("path", cfgPath))
 
-		return nil, nil
+		return nil, cfgPath, nil
 	}
 
 	loader, err := config.NewLoaderFromFile(
-		runtimeCfgPath,
+		cfgPath,
 		runtimeconfigs.New,
 		runtimeconfigs.DefaultValidator,
 		config.WithThemeFromData(),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create runtime loader: %w", err)
+		return nil, cfgPath, fmt.Errorf("create runtime loader: %w", err)
 	}
 
 	err = loader.Validate()
 	if err != nil {
-		return nil, fmt.Errorf("validate runtime config %q: %w", runtimeCfgPath, err)
+		return nil, cfgPath, fmt.Errorf("validate runtime config %q: %w", cfgPath, err)
 	}
 
 	cfg, err := loader.Load()
 	if err != nil {
-		return nil, fmt.Errorf("load runtime config %q: %w", runtimeCfgPath, err)
+		return nil, cfgPath, fmt.Errorf("load runtime config %q: %w", cfgPath, err)
 	}
 
 	// Validate business logic after loading.
 	err = cfg.Validate()
 	if err != nil {
-		return nil, fmt.Errorf("validate runtime config %q: %w", runtimeCfgPath, err)
+		return nil, cfgPath, fmt.Errorf("validate runtime config %q: %w", cfgPath, err)
 	}
 
-	slog.Debug("loaded runtime configuration", slog.String("path", runtimeCfgPath))
+	slog.Debug("loaded runtime configuration", slog.String("path", cfgPath))
 
-	return cfg, nil
+	return cfg, cfgPath, nil
 }
 
 func (m *TrustManager) ensureTrusted(
@@ -133,13 +131,9 @@ func (m *TrustManager) ensureTrusted(
 ) (bool, error) {
 	switch mode {
 	case TrustModeSkip:
-		slog.Info("skipping runtime config (--no-trust)", slog.String("path", runtimeCfgPath))
-
 		return false, nil
 
 	case TrustModeAllow:
-		slog.Info("trusting runtime config (--trust)", slog.String("path", runtimeCfgPath))
-
 		err := m.policy.TrustProject(projectDir, m.policyPath)
 		if err != nil {
 			slog.Warn("could not save trusted project", slog.Any("err", err))
@@ -153,19 +147,9 @@ func (m *TrustManager) ensureTrusted(
 			return true, nil
 		}
 
-		if prompter == nil {
-			slog.Warn(
-				"skipping untrusted runtime config (no prompter)",
-				slog.String("path", runtimeCfgPath),
-			)
-
-			return false, nil
-		}
-
 		decision, err := prompter.Prompt(projectDir, runtimeCfgPath)
 		if errors.Is(err, ErrNotInteractive) {
-			slog.Warn(
-				"skipping untrusted runtime config (non-interactive)",
+			slog.Warn("skipping untrusted runtime config",
 				slog.String("path", runtimeCfgPath),
 				slog.String(
 					"hint",
