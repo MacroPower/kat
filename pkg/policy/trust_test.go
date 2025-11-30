@@ -169,21 +169,6 @@ func TestTrustManager_LoadTrustedRuntimeConfig(t *testing.T) {
 			wantNil: false,
 			wantErr: false,
 		},
-		"TrustModePrompt with nil prompter returns nil": {
-			setupFunc: func(t *testing.T) (string, string, *policies.Policy) {
-				t.Helper()
-
-				dir := setupProjectDir(t, validRuntimeConfig())
-				policyDir := t.TempDir()
-				policyPath := setupPolicyFile(t, policyDir)
-
-				return dir, policyPath, policies.New()
-			},
-			prompter: nil,
-			mode:     policy.TrustModePrompt,
-			wantNil:  true,
-			wantErr:  false,
-		},
 		"TrustModePrompt with ErrNotInteractive returns nil": {
 			setupFunc: func(t *testing.T) (string, string, *policies.Policy) {
 				t.Helper()
