@@ -61,17 +61,17 @@ func MarshalYAML(obj any) ([]byte, error) {
 	b := &bytes.Buffer{}
 
 	enc := yaml.NewEncoder(b)
-	err := enc.Encode(obj)
-	if err != nil {
-		return nil, fmt.Errorf("marshal yaml: %w", err)
-	}
-
 	defer func() {
 		err := enc.Close()
 		if err != nil {
 			slog.Error("close YAML encoder", slog.Any("error", err))
 		}
 	}()
+
+	err := enc.Encode(obj)
+	if err != nil {
+		return nil, fmt.Errorf("marshal yaml: %w", err)
+	}
 
 	return b.Bytes(), nil
 }
