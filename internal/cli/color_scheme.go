@@ -3,8 +3,8 @@ package cli
 import (
 	"image/color"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/fang"
-	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/x/exp/charmtone"
 
 	"github.com/macropower/kat/api/v1beta1/configs"

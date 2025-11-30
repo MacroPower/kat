@@ -341,7 +341,7 @@ func (se *StyleEditor) processUnstyled() {
 
 // isResetSequence checks if the given escape sequence is a SGR reset.
 func isResetSequence(escapeSeq string) bool {
-	return escapeSeq == ansi.ResetStyle || escapeSeq == ansi.SGR(ansi.ResetAttr)
+	return escapeSeq == ansi.ResetStyle || escapeSeq == ansi.SGR(ansi.AttrReset)
 }
 
 // StylesEqual compares two [lipgloss.Style] objects for equality.

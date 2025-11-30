@@ -5,20 +5,20 @@ go 1.25.0
 toolchain go1.25.4
 
 require (
+	charm.land/lipgloss/v2 v2.0.0-beta.3.0.20251125170225-454007a0ad4e
 	github.com/alecthomas/chroma/v2 v2.20.0
 	github.com/atotto/clipboard v0.1.4
 	github.com/aymanbagabas/go-udiff v0.3.1
 	github.com/charmbracelet/bubbles v0.21.1-0.20250623103423-23b8fd6302d7
 	github.com/charmbracelet/bubbletea v1.3.10
-	github.com/charmbracelet/fang v0.4.3
+	github.com/charmbracelet/fang v0.4.4
 	github.com/charmbracelet/huh v0.8.0
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
-	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta1
 	github.com/charmbracelet/log v0.4.2
-	github.com/charmbracelet/x/ansi v0.10.3
-	github.com/charmbracelet/x/cellbuf v0.0.13
-	github.com/charmbracelet/x/exp/charmtone v0.0.0-20250603201427-c31516f43444
-	github.com/charmbracelet/x/exp/strings v0.0.0-20240722160745-212f7b056ed0
+	github.com/charmbracelet/x/ansi v0.11.1
+	github.com/charmbracelet/x/cellbuf v0.0.14
+	github.com/charmbracelet/x/exp/charmtone v0.0.0-20250708181618-a60a724ba6c3
+	github.com/charmbracelet/x/exp/strings v0.0.0-20250708181618-a60a724ba6c3
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/goccy/go-yaml v1.19.0
@@ -52,9 +52,12 @@ require (
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/catppuccin/go v0.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
-	github.com/charmbracelet/colorprofile v0.3.2 // indirect
-	github.com/charmbracelet/x/term v0.2.1 // indirect
-	github.com/clipperhouse/displaywidth v0.4.1 // indirect
+	github.com/charmbracelet/colorprofile v0.3.3 // indirect
+	github.com/charmbracelet/ultraviolet v0.0.0-20251120225753-26363bddd922 // indirect
+	github.com/charmbracelet/x/term v0.2.2 // indirect
+	github.com/charmbracelet/x/termios v0.1.1 // indirect
+	github.com/charmbracelet/x/windows v0.2.2 // indirect
+	github.com/clipperhouse/displaywidth v0.6.0 // indirect
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
