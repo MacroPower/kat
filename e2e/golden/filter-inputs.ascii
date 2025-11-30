@@ -320,9 +320,9 @@ Search: cdefghijklmnopqrstuvwxyz !@#$%^&*()-_=+{}[]\|;':"<>?/~ ABCDEFGHIJKLMNOPQ
   21              - containerPort: 80
  kat unknown  nginx-deployment                                                      0%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
-> cat example/kustomize/resources.yaml | ./kat - --config=pkg/config/config.yaml
+> cat example/kustomize/resources.yaml | ./kat - --config=api/v1beta1/configs/config.yaml --tru
+st
 >
-
 
 
 

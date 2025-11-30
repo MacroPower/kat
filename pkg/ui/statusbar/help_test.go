@@ -51,10 +51,12 @@ func TestNewHelpRenderer(t *testing.T) {
 func TestHelpRenderer_GetHelpCommands(t *testing.T) {
 	t.Parallel()
 
+	cfg := ui.NewConfig()
+
 	kbr := &keys.KeyBindRenderer{}
-	kbr.AddColumn(ui.DefaultConfig.KeyBinds.Common.GetKeyBinds()...)
-	kbr.AddColumn(ui.DefaultConfig.KeyBinds.Pager.GetKeyBinds()...)
-	kbr.AddColumn(ui.DefaultConfig.KeyBinds.List.GetKeyBinds()...)
+	kbr.AddColumn(cfg.KeyBinds.Common.GetKeyBinds()...)
+	kbr.AddColumn(cfg.KeyBinds.Pager.GetKeyBinds()...)
+	kbr.AddColumn(cfg.KeyBinds.List.GetKeyBinds()...)
 
 	helpView := kbr.Render(80)
 
@@ -103,10 +105,12 @@ func TestHelpRenderer_FillEmptySpaces(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
+			cfg := ui.NewConfig()
+
 			kbr := &keys.KeyBindRenderer{}
-			kbr.AddColumn(ui.DefaultConfig.KeyBinds.Common.GetKeyBinds()...)
-			kbr.AddColumn(ui.DefaultConfig.KeyBinds.Pager.GetKeyBinds()...)
-			kbr.AddColumn(ui.DefaultConfig.KeyBinds.List.GetKeyBinds()...)
+			kbr.AddColumn(cfg.KeyBinds.Common.GetKeyBinds()...)
+			kbr.AddColumn(cfg.KeyBinds.Pager.GetKeyBinds()...)
+			kbr.AddColumn(cfg.KeyBinds.List.GetKeyBinds()...)
 
 			helpView := kbr.Render(tc.width)
 

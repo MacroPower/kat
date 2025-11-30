@@ -13,6 +13,7 @@ import (
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/configeditor"
 	"github.com/macropower/kat/pkg/ui/statusbar"
+	"github.com/macropower/kat/pkg/ui/theme"
 )
 
 type ChangeConfigMsg struct {
@@ -77,7 +78,7 @@ func (m *Model) Init() tea.Cmd {
 func (m *Model) addConfigEditor() {
 	m.configeditor = configeditor.NewModel(
 		m.cm.Cmd,
-		themeToHuhTheme(m.cm.Theme),
+		theme.HuhTheme(m.cm.Theme),
 		m.keyHandler.HuhKeyMap(),
 	)
 }

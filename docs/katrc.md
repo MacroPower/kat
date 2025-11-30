@@ -1,0 +1,99 @@
+# Runtime Configs (.katrc.yaml files)
+
+Runtime config files allow repository owners to define custom rendering rules and profiles that are specific to their project. When `kat` is run, it searches for a runtime config file starting from the target path and walking up the directory tree.
+
+## File Names
+
+The following file names are recognized (in order of precedence):
+
+1. `.katrc.yaml`
+2. `katrc.yaml`
+3. `.katrc.yml`
+4. `katrc.yml`
+
+## Trust System
+
+Because runtime configurations can define arbitrary rendering commands, `kat` implements a trust system to protect users from potentially malicious configurations.
+
+When a runtime config file is found in an untrusted project:
+
+1. **Interactive mode**: A prompt asks the user to trust or skip the runtime configuration
+2. **Non-interactive mode**: The runtime configuration is skipped with a warning
+
+### CLI Flags
+
+You can control trust behavior without prompting using CLI flags:
+
+| Flag         | Description                                                            |
+| ------------ | ---------------------------------------------------------------------- |
+| `--trust`    | Trust the runtime configuration without prompting (adds to trust list) |
+| `--no-trust` | Skip the runtime configuration without prompting                       |
+
+These flags are mutually exclusive.
+
+### Policy File
+
+Trusted projects are stored in a `policy.yaml` file in your config directory, under `projects.trust`:
+
+```yaml
+# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/policies.v1beta1.json
+apiVersion: kat.jacobcolvin.com/v1beta1
+kind: Policy
+projects:
+  trust:
+    - path: /path/to/trusted/project
+    - path: /another/trusted/project
+```
+
+## Configuration Schema
+
+Runtime configurations use `kind: RuntimeConfig` and can define rules and/or profiles.
+
+```yaml
+# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/runtimeconfigs.v1beta1.json
+apiVersion: kat.jacobcolvin.com/v1beta1
+kind: RuntimeConfig
+rules:
+  - match: <expression>
+    profile: <profile name>
+profiles:
+  <profile name>:
+    command: <cmd>
+    args: [<arg>]
+```
+
+## Merge Behavior
+
+When a runtime configuration is loaded, it merges with the global configuration:
+
+- **Profiles**: Runtime profiles override global profiles with the same key
+- **Rules**: Runtime rules are prepended to global rules (i.e. they are evaluated first)
+
+This allows projects to override specific profiles while falling back to global defaults for others.
+
+## Example
+
+A project that adds a custom profile for a specific tool:
+
+```yaml
+# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/runtimeconfigs.v1beta1.json
+apiVersion: kat.jacobcolvin.com/v1beta1
+kind: RuntimeConfig
+rules:
+  - match: >-
+      files.exists(f, pathExt(f) == ".jsonnet")
+    profile: jsonnet
+profiles:
+  jsonnet:
+    source: >-
+      files.filter(f, pathExt(f) in [".jsonnet", ".libsonnet"])
+    command: jsonnet
+    args: ["-y", "main.jsonnet"]
+```
+
+## Security Considerations
+
+- Runtime configurations can execute arbitrary commands defined in profiles
+- Always review runtime config files before trusting a project
+- Use `--no-trust` in CI/CD pipelines or automated environments where you want to use only the global configuration
+- The trust prompt displays the full path to both the configuration file and project directory

@@ -1,8 +1,10 @@
-// Package config provides configuration management for the kat application.
+// Package config provides a generic configuration loader for the kat application.
 //
-// It wraps other package configuration to provide a single API for
-// loading, validating, and writing configuration files in YAML format.
+// It provides a [Loader] type that can load, validate, and parse configuration
+// files in YAML format for any type implementing [github.com/macropower/kat/api/v1beta1.Object].
 //
-// Additionally, it implements JSON schema generation and validation for the
-// configuration.
+// Configuration types are defined in sub-packages of [github.com/macropower/kat/api/v1beta1]:
+//   - [github.com/macropower/kat/api/v1beta1/configs] - Global configuration
+//   - [github.com/macropower/kat/api/v1beta1/policies] - Policy configuration
+//   - [github.com/macropower/kat/api/v1beta1/runtimeconfigs] - Runtime configuration
 package config

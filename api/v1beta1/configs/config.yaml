@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/config.v1beta1.json
+# yaml-language-server: $schema=https://jacobcolvin.com/kat/schemas/configs.v1beta1.json
 apiVersion: kat.jacobcolvin.com/v1beta1
 kind: Configuration
 
@@ -41,8 +41,8 @@ profiles:
     #       callerRef:
     #         name: EXAMPLE_VAR
     envFrom: &helmEnvFrom
-      # Inherit environment variables from the caller process.
       - callerRef:
+          # Inherit HELM environment variables from the caller process.
           pattern: ^HELM_.+
     hooks:
       init:

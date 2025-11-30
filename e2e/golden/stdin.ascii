@@ -67,9 +67,9 @@
 
  kat unknown  static                                                               1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
-> cat example/kustomize/resources.yaml | ./kat - --config=pkg/config/config.yaml
+> cat example/kustomize/resources.yaml | ./kat - --config=api/v1beta1/configs/config.yaml --tru
+st
 >
-
 
 
 

@@ -18,13 +18,17 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 
+	"github.com/macropower/kat/api/v1beta1/configs"
+	"github.com/macropower/kat/api/v1beta1/policies"
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/config"
 	"github.com/macropower/kat/pkg/log"
 	"github.com/macropower/kat/pkg/mcp"
+	"github.com/macropower/kat/pkg/policy"
 	"github.com/macropower/kat/pkg/profile"
 	"github.com/macropower/kat/pkg/ui"
 	"github.com/macropower/kat/pkg/ui/common"
+	"github.com/macropower/kat/pkg/ui/setup"
 	"github.com/macropower/kat/pkg/ui/theme"
 	"github.com/macropower/kat/pkg/ui/yamls"
 	"github.com/macropower/kat/pkg/version"
@@ -66,6 +70,8 @@ type RunArgs struct {
 	Watch            bool
 	WriteConfig      bool
 	ShowConfig       bool
+	Trust            bool
+	NoTrust          bool
 }
 
 func NewRunArgs(rootArgs *RootArgs) *RunArgs {
@@ -81,6 +87,10 @@ func (ra *RunArgs) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&ra.WriteConfig, "write-config", false, "Write the default configuration files and exit")
 	cmd.Flags().BoolVar(&ra.ShowConfig, "show-config", false, "Print the active configuration and exit")
 	cmd.Flags().StringVar(&ra.TracingEndpoint, "tracing-endpoint", "", "OpenTelemetry tracing endpoint")
+	cmd.Flags().BoolVar(&ra.Trust, "trust", false, "Trust project configurations without prompting")
+	cmd.Flags().BoolVar(&ra.NoTrust, "no-trust", false, "Skip project configurations without prompting")
+
+	cmd.MarkFlagsMutuallyExclusive("trust", "no-trust")
 
 	err := cmd.MarkFlagFilename("config", "yaml", "yml")
 	if err != nil {
@@ -147,10 +157,10 @@ func NewRunCmd(ra *RunArgs) *cobra.Command {
 // Try to load config to get available profiles.
 func tryGetProfileNames(configPath string) []cobra.Completion {
 	if configPath == "" {
-		configPath = config.GetPath()
+		configPath = configs.GetPath()
 	}
 
-	cl, err := config.NewConfigLoaderFromFile(configPath)
+	cl, err := config.NewLoaderFromFile(configPath, configs.New, configs.DefaultValidator)
 	if err != nil {
 		return nil
 	}
@@ -231,41 +241,44 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 			return fmt.Errorf("read stdin: %w", err)
 		}
 
+		rc.Path = "."
 		rc.StdinData = b
 	}
-
-	cfg := config.NewConfig()
 
 	var configPath string
 	if rc.ConfigPath != "" {
 		configPath = rc.ConfigPath
 	} else {
-		configPath = config.GetPath()
+		configPath = configs.GetPath()
 	}
 
-	err := config.WriteDefaultConfig(configPath, false)
+	err := configs.WriteDefault(configPath, false)
 	if err != nil {
 		slog.Error("write default config", slog.Any("err", err))
 	}
+
+	err = policies.WriteDefault(policies.GetPath(), false)
+	if err != nil {
+		slog.Error("write default policy", slog.Any("err", err))
+	}
+
 	if rc.WriteConfig {
 		// Exit early after writing the default config.
 		// Also, if there was an error, it should be fatal.
 		return err
 	}
 
-	cl, err := config.NewConfigLoaderFromFile(configPath, config.WithThemeFromData())
-	if err != nil {
-		slog.Warn("could not read config, using defaults", slog.Any("err", err))
-	} else {
-		err = cl.Validate()
-		if err != nil {
-			return fmt.Errorf("invalid config %q: %w", configPath, err)
-		}
+	trustMode := policy.TrustModePrompt
+	if rc.Trust {
+		trustMode = policy.TrustModeAllow
+	}
+	if rc.NoTrust {
+		trustMode = policy.TrustModeSkip
+	}
 
-		cfg, err = cl.Load()
-		if err != nil {
-			return fmt.Errorf("invalid config %q: %w", configPath, err)
-		}
+	cfg, thm, err := loadAnyRuntimeConfigs(configPath, rc.Path, trustMode)
+	if err != nil {
+		return err
 	}
 
 	err = cfg.UI.KeyBinds.Validate()
@@ -284,7 +297,7 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 
 		yamlConfig := string(yamlBytes)
 
-		cr := yamls.NewChromaRenderer(cl.GetTheme(), yamls.WithLineNumbersDisabled(true))
+		cr := yamls.NewChromaRenderer(thm, yamls.WithLineNumbersDisabled(true))
 		prettyConfig, err := cr.RenderContent(yamlConfig, 0)
 		if err != nil {
 			mustN(fmt.Fprintln(cmd.OutOrStdout(), yamlConfig))
@@ -404,7 +417,7 @@ func flushLogs(w io.Writer, buf *log.CircularBuffer) {
 	}
 }
 
-func getProfile(cfg *config.Config, cmd string, args []string) (*profile.Profile, error) {
+func getProfile(cfg *configs.Config, cmd string, args []string) (*profile.Profile, error) {
 	p, ok := cfg.Command.Profiles[cmd]
 	if !ok {
 		// If the command is not a profile, create a new profile with the command.
@@ -421,8 +434,91 @@ func getProfile(cfg *config.Config, cmd string, args []string) (*profile.Profile
 	return p, nil
 }
 
+func loadPolicyOrDefault(policyPath string) *policies.Policy {
+	var pol *policies.Policy
+
+	pol, err := loadPolicy(policyPath)
+	if err != nil {
+		slog.Warn("could not load policy, using defaults", slog.Any("err", err))
+
+		pol = policies.New()
+	}
+
+	return pol
+}
+
+// loadAnyRuntimeConfigs loads the global configuration and merges it with
+// a trusted project runtime configuration if one is found. Otherwise,
+// it returns the default configuration.
+func loadAnyRuntimeConfigs(grcPath, prcPath string, tm policy.TrustMode) (*configs.Config, *theme.Theme, error) {
+	cl, err := config.NewLoaderFromFile(
+		grcPath,
+		configs.New,
+		configs.DefaultValidator,
+		config.WithThemeFromData(),
+	)
+	if err != nil {
+		slog.Warn("could not read config, using defaults", slog.Any("err", err))
+
+		return configs.New(), nil, nil
+	}
+
+	err = cl.Validate()
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid config %q: %w", grcPath, err)
+	}
+
+	cfg, err := cl.Load()
+	if err != nil {
+		return nil, nil, fmt.Errorf("load config %q: %w", grcPath, err)
+	}
+
+	// Load the project runtime config if found.
+	policyPath := policies.GetPath()
+	pol := loadPolicyOrDefault(policyPath)
+
+	trustMgr := policy.NewTrustManager(pol, policyPath)
+	thm := cl.GetTheme()
+	sp := setup.NewPrompter(thm)
+
+	trc, rcPath, rcErr := trustMgr.LoadTrustedRuntimeConfig(prcPath, sp, tm)
+	if rcErr != nil {
+		return nil, nil, fmt.Errorf("load runtime config: %w", rcErr)
+	}
+	if trc == nil {
+		// No trusted runtime config found, only use the global config.
+		return cfg, thm, nil
+	}
+
+	// We found a trusted runtime config.
+	// Merge the trusted project runtime config into the global runtime config.
+	cfg.Command.Merge(trc.Command)
+
+	// Re-validate the merged config.
+	err = cfg.Validate()
+	if err != nil {
+		return nil, thm, fmt.Errorf("invalid merged config %q, %q: %w", grcPath, rcPath, err)
+	}
+
+	return cfg, thm, nil
+}
+
+func loadPolicy(policyPath string) (*policies.Policy, error) {
+	pl, err := config.NewLoaderFromFile(policyPath, policies.New, policies.DefaultValidator)
+	if err != nil {
+		return nil, err
+	}
+
+	err = pl.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	return pl.Load()
+}
+
 // setupCommandRunner creates and configures the command runner.
-func setupCommandRunner(path string, cfg *config.Config, rc *RunArgs) (*command.Runner, error) {
+func setupCommandRunner(path string, cfg *configs.Config, rc *RunArgs) (*command.Runner, error) {
 	var (
 		cr  *command.Runner
 		err error

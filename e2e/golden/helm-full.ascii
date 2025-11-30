@@ -343,7 +343,7 @@ Search: container
 
  kat unknown  match 1/2                                                            1/2  ? Help
 ────────────────────────────────────────────────────────────────────────────────
-> ./kat example/helm --config=pkg/config/config.yaml
+> ./kat example/helm --config=api/v1beta1/configs/config.yaml --trust
 >
 
 

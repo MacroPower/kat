@@ -2,7 +2,7 @@ Hide
   Source e2e/config.tape
   Output e2e/golden/filter-inputs.ascii
 
-  Type "cat example/kustomize/resources.yaml | ./kat - --config=pkg/config/config.yaml" Enter
+  Type "cat example/kustomize/resources.yaml | ./kat - --config=api/v1beta1/configs/config.yaml --trust" Enter
   Sleep 6s
 Show
 

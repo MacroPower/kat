@@ -159,7 +159,7 @@ Search: resources
   49                memory: 1Gi
  kat unknown  match 1/1                                                           100%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
-> ./kat example/helm --config=pkg/config/config.yaml -- -g -f values-prod.yaml
+> ./kat example/helm --config=api/v1beta1/configs/config.yaml --trust -- -g -f values-prod.yaml
 >
 
 
