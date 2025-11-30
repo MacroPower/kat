@@ -297,7 +297,7 @@ Search: container
   28                memory: 100Mi
  kat unknown  match 1/2                                                           100%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
-> ./kat example/kustomize yaml --config=api/v1beta1/configs/config.yaml
+> ./kat example/kustomize yaml --config=api/v1beta1/configs/config.yaml --trust
 >
 
 

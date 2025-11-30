@@ -2,7 +2,7 @@ Hide
   Source e2e/config.tape
   Output e2e/golden/yq-full.ascii
 
-  Type "./kat example/kustomize yaml --config=api/v1beta1/configs/config.yaml" Enter
+  Type "./kat example/kustomize yaml --config=api/v1beta1/configs/config.yaml --trust" Enter
   Sleep 6s
 Show
 
