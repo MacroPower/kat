@@ -17,7 +17,7 @@ require (
 	github.com/charmbracelet/log v0.4.2
 	github.com/charmbracelet/x/ansi v0.11.2
 	github.com/charmbracelet/x/cellbuf v0.0.14
-	github.com/charmbracelet/x/exp/charmtone v0.0.0-20250708181618-a60a724ba6c3
+	github.com/charmbracelet/x/exp/charmtone v0.0.0-20251201173703-9f73bfd934ff
 	github.com/charmbracelet/x/exp/strings v0.0.0-20250708181618-a60a724ba6c3
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fsnotify/fsnotify v1.9.0
