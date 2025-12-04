@@ -56,6 +56,8 @@ github.com/charmbracelet/x/exp/golden v0.0.0-20250806222409-83e3a29d542f h1:pk6g
 github.com/charmbracelet/x/exp/golden v0.0.0-20250806222409-83e3a29d542f/go.mod h1:IfZAMTHB6XkZSeXUqriemErjAWCCzT0LwjKFYCZyw0I=
 github.com/charmbracelet/x/exp/strings v0.0.0-20250708181618-a60a724ba6c3 h1:QTf5vyE6CO+zZiF83Je/r3zWol31h3sKRJ7Vt2PwJVg=
 github.com/charmbracelet/x/exp/strings v0.0.0-20250708181618-a60a724ba6c3/go.mod h1:Rgw3/F+xlcUc5XygUtimVSxAqCOsqyvJjqF5UHRvc5k=
+github.com/charmbracelet/x/exp/teatest v0.0.0-20251201173703-9f73bfd934ff h1:86n++6BM6xDDur1iI8fPnmfvP8zcxWLEGzon/PYhRvM=
+github.com/charmbracelet/x/exp/teatest v0.0.0-20251201173703-9f73bfd934ff/go.mod h1:aPVjFrBwbJgj5Qz1F0IXsnbcOVJcMKgu1ySUfTAxh7k=
 github.com/charmbracelet/x/term v0.2.2 h1:xVRT/S2ZcKdhhOuSP4t5cLi5o+JxklsoEObBSgfgZRk=
 github.com/charmbracelet/x/term v0.2.2/go.mod h1:kF8CY5RddLWrsgVwpw4kAa6TESp6EB5y3uxGLeCqzAI=
 github.com/charmbracelet/x/termios v0.1.1 h1:o3Q2bT8eqzGnGPOYheoYS8eEleT5ZVNYNy8JawjaNZY=
