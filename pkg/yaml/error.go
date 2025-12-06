@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/parser"
 	"github.com/goccy/go-yaml/token"
 
@@ -204,7 +206,58 @@ func getTokenFromPath(source []byte, path *yaml.Path) (*token.Token, error) {
 		return nil, fmt.Errorf("filter from ast.File by YAMLPath: %w", err)
 	}
 
+	// Try to find the key token by looking up parent.
+	// This is useful because path.FilterFile returns the VALUE node,
+	// but for error reporting we want to point to the KEY.
+	keyToken := findKeyToken(file, path)
+	if keyToken != nil {
+		return keyToken, nil
+	}
+
 	return node.GetToken(), nil
+}
+
+// findKeyToken attempts to find the KEY token for the given path by looking
+// in the parent node.
+func findKeyToken(file *ast.File, path *yaml.Path) *token.Token {
+	pathStr := path.String()
+
+	// Find the last segment and build parent path.
+	lastDot := strings.LastIndex(pathStr, ".")
+	lastBracket := strings.LastIndex(pathStr, "[")
+
+	if lastDot == -1 && lastBracket == -1 {
+		return nil // Root path, no parent.
+	}
+
+	if lastDot <= lastBracket {
+		// Array index case - no key to find.
+		return nil
+	}
+
+	parentPathStr := pathStr[:lastDot]
+	lastSegment := pathStr[lastDot+1:]
+
+	parentPath, err := yaml.PathString(parentPathStr)
+	if err != nil {
+		return nil
+	}
+
+	parentNode, err := parentPath.FilterFile(file)
+	if err != nil {
+		return nil
+	}
+
+	// Find matching key in parent mapping.
+	if mapping, ok := parentNode.(*ast.MappingNode); ok {
+		for _, val := range mapping.Values {
+			if val.Key.String() == lastSegment {
+				return val.Key.GetToken()
+			}
+		}
+	}
+
+	return nil
 }
 
 // getTokenPosition returns the start and end positions of the token in the source.

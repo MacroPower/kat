@@ -113,7 +113,8 @@ func TestValidator_Validate(t *testing.T) {
 				"properties": {
 					"value": {"type": "string"}
 				},
-				"required": ["value"]
+				"required": ["value"],
+				"additionalProperties": false
 			},
 			"users": {
 				"type": "array",
@@ -132,10 +133,12 @@ func TestValidator_Validate(t *testing.T) {
 									"items": {"type": "string"}
 								}
 							},
-							"required": ["firstName", "lastName"]
+							"required": ["firstName", "lastName"],
+							"additionalProperties": false
 						}
 					},
-					"required": ["id", "email", "profile"]
+					"required": ["id", "email", "profile"],
+					"additionalProperties": false
 				}
 			},
 			"matrix": {
@@ -146,7 +149,8 @@ func TestValidator_Validate(t *testing.T) {
 				}
 			}
 		},
-		"required": ["name"]
+		"required": ["name"],
+		"additionalProperties": false
 	}`)
 
 	validator, err := yaml.NewValidator("test", schemaData)
@@ -341,6 +345,43 @@ func TestValidator_Validate(t *testing.T) {
 			},
 			wantErr:      true,
 			expectedPath: "$.users[1]",
+		},
+		"additional property at root": {
+			data: map[string]any{
+				"name":      "John",
+				"extraProp": "not allowed",
+			},
+			wantErr:      true,
+			expectedPath: "$",
+		},
+		"additional property in nested object": {
+			data: map[string]any{
+				"name": "John",
+				"nested": map[string]any{
+					"value":       "valid",
+					"extraNested": "not allowed",
+				},
+			},
+			wantErr:      true,
+			expectedPath: "$.nested",
+		},
+		"additional property in array object": {
+			data: map[string]any{
+				"name": "John",
+				"users": []any{
+					map[string]any{
+						"id":    1,
+						"email": "john@example.com",
+						"profile": map[string]any{
+							"firstName": "John",
+							"lastName":  "Doe",
+						},
+						"extraUserProp": "not allowed",
+					},
+				},
+			},
+			wantErr:      true,
+			expectedPath: "$.users[0]",
 		},
 	}
 
