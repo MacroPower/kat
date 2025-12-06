@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/parser"
 	"github.com/goccy/go-yaml/token"
 
@@ -204,7 +205,33 @@ func getTokenFromPath(source []byte, path *yaml.Path) (*token.Token, error) {
 		return nil, fmt.Errorf("filter from ast.File by YAMLPath: %w", err)
 	}
 
+	// Try to find the key token by looking up parent.
+	// This is useful because path.FilterFile returns the VALUE node,
+	// but for error reporting we want to point to the KEY.
+	if keyToken := findKeyToken(file, node); keyToken != nil {
+		return keyToken, nil
+	}
+
 	return node.GetToken(), nil
+}
+
+// findKeyToken finds the KEY token for the given node by looking at its parent.
+// Returns nil if the node is not a value in a mapping (e.g., array element or root).
+func findKeyToken(file *ast.File, node ast.Node) *token.Token {
+	if file == nil || node == nil || len(file.Docs) == 0 {
+		return nil
+	}
+
+	parent := ast.Parent(file.Docs[0].Body, node)
+	if parent == nil {
+		return nil
+	}
+
+	if mv, ok := parent.(*ast.MappingValueNode); ok {
+		return mv.Key.GetToken()
+	}
+
+	return nil
 }
 
 // getTokenPosition returns the start and end positions of the token in the source.
