@@ -68,7 +68,7 @@ linters:
     - inamedparam
     - ineffassign
     - intrange
-    - ireturn
+    # - ireturn
     - makezero
     - mirror
     - misspell
