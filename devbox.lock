@@ -749,51 +749,51 @@
         }
       }
     },
-    "zizmor@1.18.0": {
-      "last_modified": "2025-12-02T02:29:13Z",
-      "resolved": "github:NixOS/nixpkgs/f720de59066162ee879adcc8c79e15c51fe6bfb4#zizmor",
+    "zizmor@1.19.0": {
+      "last_modified": "2025-12-21T10:48:17Z",
+      "resolved": "github:NixOS/nixpkgs/306ea70f9eb0fb4e040f8540e2deab32ed7e2055#zizmor",
       "source": "devbox-search",
-      "version": "1.18.0",
+      "version": "1.19.0",
       "systems": {
         "aarch64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/djld1nkchik71n2dxr26n2m4wkaiclz0-zizmor-1.18.0",
+              "path": "/nix/store/wnhd3cyqqb43g0l56bxxcdfyccvalgll-zizmor-1.19.0",
               "default": true
             }
           ],
-          "store_path": "/nix/store/djld1nkchik71n2dxr26n2m4wkaiclz0-zizmor-1.18.0"
+          "store_path": "/nix/store/wnhd3cyqqb43g0l56bxxcdfyccvalgll-zizmor-1.19.0"
         },
         "aarch64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/hqx1z2kqd4q4dz0yhy4r189q2j3f13n3-zizmor-1.18.0",
+              "path": "/nix/store/136lkhxagf77l9wlzm0xkjsn7jcqik6s-zizmor-1.19.0",
               "default": true
             }
           ],
-          "store_path": "/nix/store/hqx1z2kqd4q4dz0yhy4r189q2j3f13n3-zizmor-1.18.0"
+          "store_path": "/nix/store/136lkhxagf77l9wlzm0xkjsn7jcqik6s-zizmor-1.19.0"
         },
         "x86_64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/6lccnifc7xvm1dwwznd8lxa9znjsww9s-zizmor-1.18.0",
+              "path": "/nix/store/j277zhbd6nbbmia2938f83yvhf346vxv-zizmor-1.19.0",
               "default": true
             }
           ],
-          "store_path": "/nix/store/6lccnifc7xvm1dwwznd8lxa9znjsww9s-zizmor-1.18.0"
+          "store_path": "/nix/store/j277zhbd6nbbmia2938f83yvhf346vxv-zizmor-1.19.0"
         },
         "x86_64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/0gj44gwj4r689mfd65l0kib2fbvllx96-zizmor-1.18.0",
+              "path": "/nix/store/xnbskbsdcwwdgxaipwa6nmx58n8wr8d4-zizmor-1.19.0",
               "default": true
             }
           ],
-          "store_path": "/nix/store/0gj44gwj4r689mfd65l0kib2fbvllx96-zizmor-1.18.0"
+          "store_path": "/nix/store/xnbskbsdcwwdgxaipwa6nmx58n8wr8d4-zizmor-1.19.0"
         }
       }
     }
