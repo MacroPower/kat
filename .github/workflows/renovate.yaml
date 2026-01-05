@@ -63,7 +63,7 @@ jobs:
           persist-credentials: false
 
       - name: Renovate
-        uses: renovatebot/github-action@v44.2.2
+        uses: renovatebot/github-action@v44.2.3
         with:
           docker-cmd-file: .github/renovate-entrypoint.sh
           docker-user: root
