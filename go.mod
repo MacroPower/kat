@@ -6,7 +6,7 @@ toolchain go1.25.5
 
 require (
 	charm.land/lipgloss/v2 v2.0.0-beta.3.0.20251125170225-454007a0ad4e
-	github.com/alecthomas/chroma/v2 v2.21.1
+	github.com/alecthomas/chroma/v2 v2.22.0
 	github.com/atotto/clipboard v0.1.4
 	github.com/aymanbagabas/go-udiff v0.3.1
 	github.com/charmbracelet/bubbles v0.21.1-0.20250623103423-23b8fd6302d7
