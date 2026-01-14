@@ -3,7 +3,7 @@
   "packages": {
     "go-task": "3.45.5",
     "goreleaser": "2.13.2",
-    "golangci-lint": "2.7.2",
+    "golangci-lint": "2.8.0",
     "go": "1.25.4",
     "git": "2.52.0",
     "nodePackages.prettier": "3.5.3",
