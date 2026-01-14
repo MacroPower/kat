@@ -14,7 +14,7 @@
     "tmux": "3.5",
     "syft": "1.39.0",
     "cosign": "3.0.4",
-    "renovate": "42.57.1"
+    "renovate": "42.76.4"
   },
   "shell": {
     "init_hook": ["echo 'Welcome to devbox!' > /dev/null"]
