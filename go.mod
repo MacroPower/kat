@@ -2,7 +2,7 @@ module github.com/macropower/kat
 
 go 1.25.0
 
-toolchain go1.25.5
+toolchain go1.25.6
 
 require (
 	charm.land/lipgloss/v2 v2.0.0-beta.3.0.20251125170225-454007a0ad4e
