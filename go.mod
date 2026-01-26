@@ -18,7 +18,7 @@ require (
 	github.com/charmbracelet/x/ansi v0.11.4
 	github.com/charmbracelet/x/cellbuf v0.0.14
 	github.com/charmbracelet/x/exp/charmtone v0.0.0-20250708181618-a60a724ba6c3
-	github.com/charmbracelet/x/exp/strings v0.0.0-20250708181618-a60a724ba6c3
+	github.com/charmbracelet/x/exp/strings v0.0.0-20260126110915-444c5aa3ce8b
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/goccy/go-yaml v1.19.2
