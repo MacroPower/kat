@@ -176,7 +176,7 @@ func TestDefaultLookupCommentFunc(t *testing.T) {
 	}
 
 	lookupFunc := yaml.DefaultLookupCommentFunc(commentMap)
-	testType := reflect.TypeOf(TestStruct{})
+	testType := reflect.TypeFor[TestStruct]()
 
 	tcs := map[string]struct {
 		fieldName string
@@ -215,7 +215,7 @@ func TestDefaultLookupCommentFunc_EmptyCommentMap(t *testing.T) {
 
 	commentMap := map[string]string{}
 	lookupFunc := yaml.DefaultLookupCommentFunc(commentMap)
-	testType := reflect.TypeOf(TestStruct{})
+	testType := reflect.TypeFor[TestStruct]()
 
 	tcs := map[string]struct {
 		fieldName string
@@ -263,7 +263,7 @@ func TestGenerator_SetCustomLookupFunc(t *testing.T) {
 	// Test that the custom function works.
 	commentMap := make(map[string]string)
 	lookupFunc := gen.LookupCommentFunc(commentMap)
-	testType := reflect.TypeOf(TestStruct{})
+	testType := reflect.TypeFor[TestStruct]()
 	result := lookupFunc(testType, "Name")
 	assert.Equal(t, "custom comment", result)
 }
@@ -451,37 +451,37 @@ func TestDefaultLookupCommentFunc_ComplexStructures(t *testing.T) {
 		want       string
 	}{
 		"complex struct type comment": {
-			structType: reflect.TypeOf(ComplexStruct{}),
+			structType: reflect.TypeFor[ComplexStruct](),
 			fieldName:  "",
 			want:       "ComplexStruct demonstrates various Go type features.\n\nComplexStruct: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#ComplexStruct",
 		},
 		"complex struct basic field": {
-			structType: reflect.TypeOf(ComplexStruct{}),
+			structType: reflect.TypeFor[ComplexStruct](),
 			fieldName:  "BasicField",
 			want:       "BasicField is a simple field.\n\nComplexStruct.BasicField: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#ComplexStruct",
 		},
 		"complex struct slice field": {
-			structType: reflect.TypeOf(ComplexStruct{}),
+			structType: reflect.TypeFor[ComplexStruct](),
 			fieldName:  "SliceField",
 			want:       "SliceField contains multiple values.\n\nComplexStruct.SliceField: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#ComplexStruct",
 		},
 		"complex struct map field": {
-			structType: reflect.TypeOf(ComplexStruct{}),
+			structType: reflect.TypeFor[ComplexStruct](),
 			fieldName:  "MapField",
 			want:       "MapField contains key-value pairs.\n\nComplexStruct.MapField: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#ComplexStruct",
 		},
 		"embedded struct type comment": {
-			structType: reflect.TypeOf(EmbeddedStruct{}),
+			structType: reflect.TypeFor[EmbeddedStruct](),
 			fieldName:  "",
 			want:       "EmbeddedStruct provides embedded functionality.\n\nEmbeddedStruct: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#EmbeddedStruct",
 		},
 		"embedded struct field comment": {
-			structType: reflect.TypeOf(EmbeddedStruct{}),
+			structType: reflect.TypeFor[EmbeddedStruct](),
 			fieldName:  "EmbeddedValue",
 			want:       "EmbeddedValue is from an embedded struct.\n\nEmbeddedStruct.EmbeddedValue: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#EmbeddedStruct",
 		},
 		"missing comment for complex field": {
-			structType: reflect.TypeOf(ComplexStruct{}),
+			structType: reflect.TypeFor[ComplexStruct](),
 			fieldName:  "UndocumentedField",
 			want:       "ComplexStruct.UndocumentedField: https://pkg.go.dev/github.com/macropower/kat/pkg/yaml_test#ComplexStruct",
 		},

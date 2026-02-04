@@ -30,9 +30,7 @@ func BenchmarkOverlay_Place_Small(b *testing.B) {
 
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_ = o.Place(smallBG, smallFG, 0.5, style)
 	}
 }
@@ -43,9 +41,7 @@ func BenchmarkOverlay_Place_Medium(b *testing.B) {
 
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(1)
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_ = o.Place(mediumBG, mediumFG, 0.6, style)
 	}
 }
@@ -56,9 +52,7 @@ func BenchmarkOverlay_Place_Large(b *testing.B) {
 
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(2)
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_ = o.Place(largeBG, largeFG, 0.7, style)
 	}
 }
@@ -72,9 +66,7 @@ func BenchmarkOverlay_Place_TruncatedContent(b *testing.B) {
 	// Large foreground content that will be truncated
 	largeFGForTruncation := strings.Repeat("this line will be truncated\n", 50)
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_ = o.Place(mediumBG, largeFGForTruncation, 0.8, style)
 	}
 }
@@ -89,9 +81,7 @@ func BenchmarkOverlay_Place_WideContent(b *testing.B) {
 	wideBG := strings.Repeat(strings.Repeat("X", 280)+"\n", 40)
 	wideFG := strings.Repeat(strings.Repeat("O", 100)+"\n", 20)
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_ = o.Place(wideBG, wideFG, 0.4, style)
 	}
 }
@@ -102,9 +92,7 @@ func BenchmarkOverlay_Place_MinimalWidth(b *testing.B) {
 
 	style := lipgloss.NewStyle()
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_ = o.Place(smallBG, smallFG, 0.1, style) // Small fraction to test min width
 	}
 }
@@ -117,9 +105,8 @@ func BenchmarkOverlay_Place_Allocations(b *testing.B) {
 	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for range b.N {
+	for b.Loop() {
 		_ = o.Place(mediumBG, mediumFG, 0.5, style)
 	}
 }
@@ -134,9 +121,7 @@ func BenchmarkOverlay_Place_Unicode(b *testing.B) {
 	unicodeBG := strings.Repeat("背景内容 with 混合 content 🚀\n", 25)
 	unicodeFG := strings.Repeat("覆盖层内容 overlay 🎯\n", 15)
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_ = o.Place(unicodeBG, unicodeFG, 0.6, style)
 	}
 }

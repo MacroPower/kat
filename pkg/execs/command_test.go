@@ -2,6 +2,7 @@ package execs_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -655,14 +656,7 @@ func TestCommand_Build_EdgeCases(t *testing.T) {
 				t.Helper()
 				assert.Contains(t, result, "PATH=/usr/bin")
 				// Malformed entry should be ignored in base env parsing.
-				found := false
-				for _, env := range result {
-					if env == "MALFORMED_NO_EQUALS" {
-						found = true
-
-						break
-					}
-				}
+				found := slices.Contains(result, "MALFORMED_NO_EQUALS")
 
 				assert.False(t, found, "Malformed environment variable should not be included")
 			},

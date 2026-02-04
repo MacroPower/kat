@@ -68,10 +68,12 @@ linters:
     - inamedparam
     - ineffassign
     - intrange
+    - iotamixing
     # - ireturn
     - makezero
     - mirror
     - misspell
+    - modernize
     - musttag
     - nakedret
     - nestif
@@ -88,7 +90,7 @@ linters:
     - prealloc
     - predeclared
     - reassign
-    - recvcheck
+    # - recvcheck
     - revive
     - sloglint
     - staticcheck
@@ -177,7 +179,6 @@ linters:
         - os.RemoveAll
 
     grouper:
-      const-require-single-const: true
       import-require-single-import: true
       var-require-single-var: true
 
@@ -196,6 +197,9 @@ linters:
           disabled: true
         - name: max-public-structs
           disabled: true
+        - name: nested-structs
+          exclude:
+            - "**/*_test.go"
         # Needed for future use.
         - name: unused-receiver
           disabled: true
@@ -244,6 +248,8 @@ linters:
           - godot
           - gosec
           - gosmopolitan
+          - prealloc
+          - godoclint
       - path: /ui/
         linters:
           - grouper
@@ -251,6 +257,8 @@ linters:
           - recvcheck
           - exhaustive
           - nestif
+      - path: _test\.go
+        text: "fieldalignment:"
       - source: "= `"
         linters:
           - grouper

@@ -98,10 +98,8 @@ func (e *Command) SetBaseEnv(baseEnv []string) {
 	e.baseEnv = make(map[string]string)
 	// Parse new base environment into map.
 	for _, envVar := range baseEnv {
-		if eqIdx := strings.Index(envVar, "="); eqIdx != -1 {
-			key := envVar[:eqIdx]
-			value := envVar[eqIdx+1:]
-			e.baseEnv[key] = value
+		if before, after, ok := strings.Cut(envVar, "="); ok {
+			e.baseEnv[before] = after
 		}
 	}
 }

@@ -2,6 +2,7 @@ package command
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/macropower/kat/pkg/execs"
 	"github.com/macropower/kat/pkg/profile"
@@ -128,9 +129,7 @@ func (c *Config) Merge(project *Config) {
 	}
 
 	// Project profiles override global profiles with the same key.
-	for name, p := range project.Profiles {
-		c.Profiles[name] = p
-	}
+	maps.Copy(c.Profiles, project.Profiles)
 
 	// Project rules are prepended (evaluated first, higher priority).
 	if len(project.Rules) > 0 {

@@ -34,8 +34,8 @@ func verifyContentPresence(t *testing.T, plainResult, originalYaml string, width
 		return
 	}
 
-	lines := strings.Split(trimmedYaml, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(trimmedYaml, "\n")
+	for line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -60,8 +60,8 @@ func verifyWrappedContent(t *testing.T, plainResult, line string) {
 	}
 
 	// Handle key-value pairs that may be wrapped.
-	parts := strings.Split(line, ":")
-	for _, part := range parts {
+	parts := strings.SplitSeq(line, ":")
+	for part := range parts {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
