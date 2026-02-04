@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/reflow/truncate"
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/sahilm/fuzzy"
 
 	"github.com/macropower/kat/pkg/ui/theme"
@@ -189,9 +189,9 @@ func (li *DocumentListItem) Render(b *strings.Builder) {
 			subtleStyle   = li.Theme.SubtleStyle
 		)
 
-		group = truncate.StringWithTail(group, uint(groupWidth), li.Theme.Ellipsis) //nolint:gosec // Uses max.
-		kind = truncate.StringWithTail(kind, uint(kindWidth), li.Theme.Ellipsis)    //nolint:gosec // Uses max.
-		name = truncate.StringWithTail(name, uint(nameWidth), li.Theme.Ellipsis)    //nolint:gosec // Uses max.
+		group = ansi.Truncate(group, groupWidth, li.Theme.Ellipsis)
+		kind = ansi.Truncate(kind, kindWidth, li.Theme.Ellipsis)
+		name = ansi.Truncate(name, nameWidth, li.Theme.Ellipsis)
 
 		if shouldHighlight {
 			// Selected/highlighted styling.
@@ -233,11 +233,11 @@ func (li *DocumentListItem) Render(b *strings.Builder) {
 			gutter, styledTitle, styledDesc, separator string
 
 			// Calculate truncation width based on available space.
-			truncateTo = uint(max(0, li.Width-listViewHorizontalPadding*2)) //nolint:gosec // Uses max.
+			truncateTo = max(0, li.Width-listViewHorizontalPadding*2)
 
 			// Prepare content.
-			title = truncate.StringWithTail(li.Document.Title, truncateTo, li.Theme.Ellipsis)
-			desc  = truncate.StringWithTail(li.Document.Desc, truncateTo, li.Theme.Ellipsis)
+			title = ansi.Truncate(li.Document.Title, truncateTo, li.Theme.Ellipsis)
+			desc  = ansi.Truncate(li.Document.Desc, truncateTo, li.Theme.Ellipsis)
 		)
 		if shouldHighlight {
 			// Selected/highlighted styling.
@@ -270,8 +270,18 @@ func (li *DocumentListItem) Render(b *strings.Builder) {
 				styledTitle = li.Theme.SubtleStyle.Render(title)
 				styledDesc = li.Theme.SubtleStyle.Render(desc)
 			} else {
-				styledTitle = styleFilteredText(title, filterValue, li.Theme.GenericTextStyle, li.Theme.GenericTextStyle.Underline(true))
-				styledDesc = styleFilteredText(desc, filterValue, li.Theme.SubtleStyle, li.Theme.SubtleStyle.Underline(true))
+				styledTitle = styleFilteredText(
+					title,
+					filterValue,
+					li.Theme.GenericTextStyle,
+					li.Theme.GenericTextStyle.Underline(true),
+				)
+				styledDesc = styleFilteredText(
+					desc,
+					filterValue,
+					li.Theme.SubtleStyle,
+					li.Theme.SubtleStyle.Underline(true),
+				)
 			}
 		}
 

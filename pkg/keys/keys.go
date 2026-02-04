@@ -6,9 +6,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/muesli/reflow/ansi"
+	"github.com/charmbracelet/x/ansi"
 
-	bubblekey "github.com/charmbracelet/bubbles/key"
+	bubblekey "charm.land/bubbles/v2/key"
 
 	"github.com/macropower/kat/pkg/ui/theme"
 )
@@ -94,8 +94,8 @@ func (kb *KeyBind) StringRow(keyWidth, descWidth int) string {
 
 	truncDesc := truncateWithEllipsis(kb.Description, descWidth-2)
 
-	keySpaces := strings.Repeat(" ", max(0, keyWidth-ansi.PrintableRuneWidth(keys)))
-	descSpaces := strings.Repeat(" ", max(0, descWidth-ansi.PrintableRuneWidth(truncDesc)-2))
+	keySpaces := strings.Repeat(" ", max(0, keyWidth-ansi.StringWidth(keys)))
+	descSpaces := strings.Repeat(" ", max(0, descWidth-ansi.StringWidth(truncDesc)-2))
 
 	return fmt.Sprintf("%s%s  %s%s", keys, keySpaces, truncDesc, descSpaces)
 }
@@ -112,7 +112,7 @@ func (kb *KeyBind) Match(key string) bool {
 }
 
 func (kb *KeyBind) BubbleKey(opts ...bubblekey.BindingOpt) bubblekey.Binding {
-	codes := []string{}
+	codes := make([]string, 0, len(kb.Keys))
 	for _, k := range kb.Keys {
 		codes = append(codes, k.Code)
 	}
@@ -224,7 +224,7 @@ func stringColumn(width int, kbs ...KeyBind) []string {
 	// Get the maximum width for the keybinds.
 	maxKeyWidth := 0
 	for _, kb := range kbs {
-		chars := ansi.PrintableRuneWidth(kb.String())
+		chars := ansi.StringWidth(kb.String())
 		if chars > maxKeyWidth {
 			maxKeyWidth = chars
 		}
@@ -289,34 +289,6 @@ func truncateWithEllipsis(s string, maxWidth int) string {
 
 		return theme.Ellipsis
 	}
-	if ansi.PrintableRuneWidth(s) <= maxWidth {
-		return s
-	}
 
-	lenEllipsis := ansi.PrintableRuneWidth(theme.Ellipsis)
-
-	// Reserve space for ellipsis.
-	if maxWidth <= lenEllipsis {
-		return theme.Ellipsis[:maxWidth]
-	}
-
-	// Simple truncation - could be improved with proper text handling.
-	availableWidth := maxWidth - lenEllipsis
-	currentWidth := 0
-
-	var truncated strings.Builder
-	for _, r := range s {
-		runeWidth := ansi.PrintableRuneWidth(string(r))
-		if currentWidth+runeWidth > availableWidth {
-			break
-		}
-
-		truncated.WriteRune(r)
-
-		currentWidth += runeWidth
-	}
-
-	truncated.WriteString(theme.Ellipsis)
-
-	return truncated.String()
+	return ansi.Truncate(s, maxWidth, theme.Ellipsis)
 }

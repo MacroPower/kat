@@ -7,10 +7,10 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/lipgloss/v2"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/keys"
@@ -27,10 +27,9 @@ import (
 )
 
 // NewProgram returns a new Tea program.
-func NewProgram(cfg *Config, cmd common.Commander) *tea.Program {
+func NewProgram(cfg *Config, cmd common.Commander, opts ...tea.ProgramOption) *tea.Program {
 	slog.Debug("starting kat ui")
 
-	opts := []tea.ProgramOption{tea.WithAltScreen()}
 	m := newModel(cfg, cmd)
 
 	return tea.NewProgram(m, opts...)
@@ -182,7 +181,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		key := msg.String()
 		if m.matchAction(m.kb.Common.Error, key) {
 			if m.state != stateShowResult {
@@ -354,7 +353,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m *model) View() string {
+func (m *model) View() tea.View {
 	var (
 		s                   string
 		overlaySizeFraction float64
@@ -374,13 +373,13 @@ func (m *model) View() string {
 
 	switch m.state {
 	case stateShowDocument:
-		s = m.pager.View()
+		s = m.pager.View().Content
 	case stateShowResult:
-		s = m.fullResult.View()
+		s = m.fullResult.View().Content
 	case stateShowMenu:
-		s = m.menu.View()
+		s = m.menu.View().Content
 	default:
-		s = m.list.View()
+		s = m.list.View().Content
 	}
 
 	switch m.overlayState {
@@ -397,7 +396,10 @@ func (m *model) View() string {
 		s = m.overlay.Place(s, m.resultView(), overlaySizeFraction, resultOverlayStyle)
 	}
 
-	return strings.TrimRight(s, " \n")
+	v := tea.NewView(strings.TrimRight(s, " \n"))
+	v.AltScreen = true
+
+	return v
 }
 
 func (m *model) resultView() string {
@@ -429,7 +431,7 @@ func (m *model) loadingView() string {
 }
 
 // handleGlobalKeys handles keys that work across all contexts.
-func (m *model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+func (m *model) handleGlobalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 	key := msg.String()
 
 	// Always allow suspend to work regardless of current focus.

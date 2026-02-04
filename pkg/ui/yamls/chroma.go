@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/formatters"
 	"github.com/alecthomas/chroma/v2/lexers"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/x/cellbuf"
-	"github.com/muesli/termenv"
 
 	"github.com/macropower/kat/pkg/ui/theme"
 )
@@ -45,14 +46,14 @@ func NewChromaRenderer(t *theme.Theme, opts ...ChromaRendererOpt) *ChromaRendere
 	lexer = chroma.Coalesce(lexer)
 
 	formatterName := "noop" // Default to noop formatter.
-	switch termenv.ColorProfile() {
-	case termenv.TrueColor:
+	switch colorprofile.Detect(os.Stdout, os.Environ()) {
+	case colorprofile.TrueColor:
 		formatterName = "terminal16m"
 
-	case termenv.ANSI256:
+	case colorprofile.ANSI256:
 		formatterName = "terminal256"
 
-	case termenv.ANSI:
+	case colorprofile.ANSI:
 		formatterName = "terminal8"
 	}
 
@@ -201,7 +202,7 @@ func (gr *ChromaRenderer) formatLineWithNumber(line string, lineNum, width int) 
 
 	lines := cellbuf.Wrap(line, width, wrapOnCharacters)
 
-	fmtLines := []string{}
+	fmtLines := make([]string, 0, strings.Count(lines, "\n")+1)
 	for i, ln := range strings.Split(lines, "\n") {
 		if i == 0 {
 			// Add line number only to the first line.

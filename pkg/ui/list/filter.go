@@ -5,7 +5,7 @@ import (
 
 	"github.com/sahilm/fuzzy"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/macropower/kat/pkg/ui/yamls"
 )

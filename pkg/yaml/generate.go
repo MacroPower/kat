@@ -213,7 +213,7 @@ func buildCommentMapForPackage(pkg *packages.Package, commentMap map[string]stri
 // cleanComment removes leading comment markers and extra whitespace.
 func cleanComment(comment string) string {
 	lines := strings.Split(comment, "\n")
-	cleanLines := []string{}
+	cleanLines := make([]string, 0, len(lines))
 
 	for _, line := range lines {
 		line = strings.TrimPrefix(line, "//")

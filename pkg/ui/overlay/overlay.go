@@ -6,12 +6,9 @@ package overlay
 import (
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/cellbuf"
-	"github.com/muesli/reflow/ansi"
-	"github.com/muesli/reflow/truncate"
-
-	charmansi "github.com/charmbracelet/x/ansi"
 
 	"github.com/macropower/kat/pkg/ui/theme"
 )
@@ -171,8 +168,8 @@ func (o *Overlay) renderOverlappingLine(b *strings.Builder, bgLine, fgLine strin
 
 // renderLeftBackground renders the left portion of the background line before the overlay.
 func (o *Overlay) renderLeftBackground(b *strings.Builder, bgLine string, x int) int {
-	left := truncate.String(bgLine, uint(x)) //nolint:gosec // G115: integer overflow conversion int -> uint.
-	leftWidth := ansi.PrintableRuneWidth(left)
+	left := ansi.Truncate(bgLine, x, "")
+	leftWidth := ansi.StringWidth(left)
 	b.WriteString(left)
 
 	// Fill any gap with whitespace if truncated content is narrower than expected.
@@ -188,8 +185,8 @@ func (o *Overlay) renderLeftBackground(b *strings.Builder, bgLine string, x int)
 
 // renderRightBackground renders the right portion of the background line after the overlay.
 func (o *Overlay) renderRightBackground(b *strings.Builder, bgLine string, pos, bgLineWidth int) {
-	right := charmansi.TruncateLeft(bgLine, pos, "")
-	rightWidth := ansi.PrintableRuneWidth(right)
+	right := ansi.TruncateLeft(bgLine, pos, "")
+	rightWidth := ansi.StringWidth(right)
 
 	// Add whitespace padding if needed to maintain proper alignment.
 	paddingNeeded := bgLineWidth - rightWidth - pos
@@ -231,9 +228,9 @@ func (o *Overlay) prepareOverlayContent(content string, overlayWidth int) []stri
 
 // createTruncationMessage generates a styled message indicating content truncation.
 func (o *Overlay) createTruncationMessage(overlayWidth int) string {
-	maxTextWidth := uint(max(0, overlayWidth-4)) //nolint:gosec // G115: integer overflow conversion int -> uint.
+	maxTextWidth := max(0, overlayWidth-4)
 	helperText := "output truncated; press <!> to view full output"
-	truncatedText := truncate.StringWithTail(helperText, maxTextWidth, o.theme.Ellipsis)
+	truncatedText := ansi.Truncate(helperText, maxTextWidth, o.theme.Ellipsis)
 
 	return o.theme.SubtleStyle.Render(truncatedText)
 }
@@ -251,7 +248,7 @@ func calculatePosition(bgWidth, bgHeight, fgWidth, fgHeight int) (int, int) {
 func preCalculateLineWidths(lines []string) []int {
 	widths := make([]int, len(lines))
 	for i, line := range lines {
-		widths[i] = ansi.PrintableRuneWidth(line)
+		widths[i] = ansi.StringWidth(line)
 	}
 
 	return widths
@@ -274,7 +271,7 @@ func getLines(s string) ([]string, int) {
 
 	// Process all lines in a single pass for better cache locality.
 	for _, line := range lines {
-		if w := charmansi.StringWidth(line); w > widest {
+		if w := ansi.StringWidth(line); w > widest {
 			widest = w
 		}
 	}

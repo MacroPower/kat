@@ -5,12 +5,12 @@ import (
 	"io"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/huh/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/cellbuf"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	xstrings "github.com/charmbracelet/x/exp/strings"
 
 	"github.com/macropower/kat/pkg/ui/filepicker"
@@ -20,15 +20,16 @@ import (
 type FilePicker struct {
 	accessor    huh.Accessor[string]
 	err         error
+	theme       huh.Theme
 	validate    func(string) error
-	theme       *huh.Theme
-	title       string
 	key         string
+	title       string
 	description string
 	keymap      huh.FilePickerKeyMap
 	picker      filepicker.Model
 	width       int
 	height      int
+	hasDarkBg   bool
 	picking     bool
 	focused     bool
 }
@@ -195,10 +196,12 @@ func (f *FilePicker) Init() tea.Cmd {
 }
 
 // Update updates the file field.
-func (f *FilePicker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (f *FilePicker) Update(msg tea.Msg) (huh.Model, tea.Cmd) {
 	f.err = nil
 
 	switch msg := msg.(type) {
+	case tea.BackgroundColorMsg:
+		f.hasDarkBg = msg.IsDark()
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, f.keymap.Open):
@@ -247,13 +250,13 @@ func (f *FilePicker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (f *FilePicker) activeStyles() *huh.FieldStyles {
 	theme := f.theme
 	if theme == nil {
-		theme = huh.ThemeCharm()
+		theme = huh.ThemeFunc(huh.ThemeCharm)
 	}
 	if f.focused {
-		return &theme.Focused
+		return &theme.Theme(f.hasDarkBg).Focused
 	}
 
-	return &theme.Blurred
+	return &theme.Theme(f.hasDarkBg).Blurred
 }
 
 func (f *FilePicker) renderTitle() string {
@@ -290,7 +293,7 @@ func (f *FilePicker) View() string {
 
 func (f *FilePicker) pickerView() string {
 	if f.picking {
-		return f.picker.View()
+		return f.picker.View().Content
 	}
 
 	styles := f.activeStyles()
@@ -336,26 +339,29 @@ const (
 )
 
 // WithTheme sets the theme of the file field.
-func (f *FilePicker) WithTheme(theme *huh.Theme) huh.Field {
+func (f *FilePicker) WithTheme(theme huh.Theme) huh.Field {
 	if f.theme != nil || theme == nil {
 		return f
 	}
 
 	f.theme = theme
 
+	// Get styles from theme for the picker.
+	styles := theme.Theme(f.hasDarkBg)
+
 	// XXX: add specific themes.
 	f.picker.Styles = filepicker.Styles{
 		DisabledCursor:   lipgloss.Style{},
-		Cursor:           theme.Focused.TextInput.Prompt,
+		Cursor:           styles.Focused.TextInput.Prompt,
 		Symlink:          lipgloss.NewStyle(),
-		Directory:        theme.Focused.Directory,
-		File:             theme.Focused.File,
-		DisabledFile:     theme.Focused.TextInput.Placeholder,
-		Permission:       theme.Focused.TextInput.Placeholder,
-		Selected:         theme.Focused.SelectedOption,
-		DisabledSelected: theme.Focused.TextInput.Placeholder,
-		FileSize:         theme.Focused.TextInput.Placeholder.Width(fileSizeWidth).Align(lipgloss.Right),
-		EmptyDirectory:   theme.Focused.TextInput.Placeholder.PaddingLeft(paddingLeft).SetString("No files found."),
+		Directory:        styles.Focused.Directory,
+		File:             styles.Focused.File,
+		DisabledFile:     styles.Focused.TextInput.Placeholder,
+		Permission:       styles.Focused.TextInput.Placeholder,
+		Selected:         styles.Focused.SelectedOption,
+		DisabledSelected: styles.Focused.TextInput.Placeholder,
+		FileSize:         styles.Focused.TextInput.Placeholder.Width(fileSizeWidth).Align(lipgloss.Right),
+		EmptyDirectory:   styles.Focused.TextInput.Placeholder.PaddingLeft(paddingLeft).SetString("No files found."),
 	}
 
 	return f

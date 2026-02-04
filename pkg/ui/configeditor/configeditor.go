@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/huh/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/mattn/go-shellwords"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/profile"
@@ -51,7 +51,7 @@ type Commander interface {
 	FS() (*command.FilteredFS, error)
 }
 
-func NewModel(cmd Commander, t *huh.Theme, km *huh.KeyMap) Model {
+func NewModel(cmd Commander, t huh.Theme, km *huh.KeyMap) Model {
 	var (
 		m            Model
 		selectedPath string
@@ -129,7 +129,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	updateForm := false
 	switch msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		field := m.form.GetFocusedField()
 		switch field.GetKey() {
 		case FieldFile:

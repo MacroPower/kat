@@ -4,10 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
 	"github.com/alecthomas/chroma/v2/styles"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/muesli/termenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -139,8 +138,6 @@ func TestChromaRenderer_SetAndGetMethods(t *testing.T) {
 func TestChromaRenderer_RenderContent_Basic(t *testing.T) {
 	t.Parallel()
 
-	lipgloss.SetColorProfile(termenv.TrueColor)
-
 	testCases := map[string]struct {
 		yaml    string
 		width   int
@@ -219,8 +216,6 @@ data:
 
 func TestChromaRenderer_SearchHighlighting(t *testing.T) {
 	t.Parallel()
-
-	lipgloss.SetColorProfile(termenv.TrueColor)
 
 	testCases := map[string]struct {
 		yaml          string
@@ -306,8 +301,6 @@ func TestChromaRenderer_SearchHighlighting(t *testing.T) {
 
 func TestChromaRenderer_LineNumbers(t *testing.T) {
 	t.Parallel()
-
-	lipgloss.SetColorProfile(termenv.TrueColor)
 
 	testCases := map[string]struct {
 		yaml                 string
@@ -437,8 +430,6 @@ line3: other`
 func TestChromaRenderer_ANSIHandling(t *testing.T) {
 	t.Parallel()
 
-	lipgloss.SetColorProfile(termenv.TrueColor)
-
 	renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 	renderer.SetFormatter("terminal16m")
 
@@ -555,9 +546,6 @@ func TestChromaRenderer_DifferentFormatters(t *testing.T) {
 
 func TestChromaRenderer(t *testing.T) {
 	t.Parallel()
-
-	// Force lipgloss to use a specific renderer profile.
-	lipgloss.SetColorProfile(termenv.TrueColor)
 
 	// Create a basic theme for testing.
 	basicTheme := &theme.Theme{
@@ -837,8 +825,6 @@ message: "This is a quoted string with special chars: !@#$%"
 func TestChromaRenderer_SelectedMatchHighlighting(t *testing.T) {
 	t.Parallel()
 
-	lipgloss.SetColorProfile(termenv.TrueColor)
-
 	renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 	renderer.SetFormatter("terminal16m")
 
@@ -897,8 +883,6 @@ func TestChromaRenderer_SelectedMatchHighlighting(t *testing.T) {
 
 func TestChromaRenderer_InitialSearchHighlighting(t *testing.T) {
 	t.Parallel()
-
-	lipgloss.SetColorProfile(termenv.TrueColor)
 
 	renderer := yamls.NewChromaRenderer(testTheme(), yamls.WithLineNumbersDisabled(true))
 	renderer.SetFormatter("terminal16m")
@@ -972,8 +956,6 @@ func TestDiffPosition(t *testing.T) {
 func TestChromaRenderer_SetError(t *testing.T) {
 	t.Parallel()
 
-	lipgloss.SetColorProfile(termenv.TrueColor)
-
 	renderer := yamls.NewChromaRenderer(testTheme())
 
 	// Initially no errors
@@ -994,8 +976,6 @@ func TestChromaRenderer_SetError(t *testing.T) {
 
 func TestChromaRenderer_ClearErrors(t *testing.T) {
 	t.Parallel()
-
-	lipgloss.SetColorProfile(termenv.TrueColor)
 
 	renderer := yamls.NewChromaRenderer(testTheme())
 
@@ -1020,8 +1000,6 @@ func TestChromaRenderer_ClearErrors(t *testing.T) {
 func TestChromaRenderer_MultipleErrors(t *testing.T) {
 	t.Parallel()
 
-	lipgloss.SetColorProfile(termenv.TrueColor)
-
 	renderer := yamls.NewChromaRenderer(testTheme())
 
 	yaml := "key: value\nanother: test\nthird: line"
@@ -1040,8 +1018,6 @@ func TestChromaRenderer_MultipleErrors(t *testing.T) {
 
 func TestChromaRenderer_ErrorsWithOtherHighlights(t *testing.T) {
 	t.Parallel()
-
-	lipgloss.SetColorProfile(termenv.TrueColor)
 
 	renderer := yamls.NewChromaRenderer(testTheme())
 
@@ -1075,8 +1051,6 @@ func TestChromaRenderer_ErrorsWithOtherHighlights(t *testing.T) {
 func TestChromaRenderer_ErrorLineNumberPrefix(t *testing.T) {
 	t.Parallel()
 
-	lipgloss.SetColorProfile(termenv.TrueColor)
-
 	renderer := yamls.NewChromaRenderer(testTheme())
 
 	yaml := "key: value\nanother: test\nthird: line"
@@ -1105,8 +1079,6 @@ func TestChromaRenderer_ErrorLineNumberPrefix(t *testing.T) {
 func TestChromaRenderer_SetError_MultiLine(t *testing.T) {
 	t.Parallel()
 
-	lipgloss.SetColorProfile(termenv.TrueColor)
-
 	renderer := yamls.NewChromaRenderer(testTheme())
 
 	yaml := "key: value\nanother: test\nthird: line\nfourth: item"
@@ -1129,8 +1101,6 @@ func TestChromaRenderer_SetError_MultiLine(t *testing.T) {
 
 func TestChromaRenderer_SetError_SingleVsMultiLine(t *testing.T) {
 	t.Parallel()
-
-	lipgloss.SetColorProfile(termenv.TrueColor)
 
 	yaml := "key: value\nanother: test"
 

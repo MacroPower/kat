@@ -15,8 +15,9 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"golang.org/x/term"
 
+	tea "charm.land/bubbletea/v2"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.39.0"
 
 	"github.com/macropower/kat/api/v1beta1/configs"
 	"github.com/macropower/kat/api/v1beta1/policies"
@@ -598,7 +599,19 @@ func runUI(cfg *ui.Config, cr common.Commander) error {
 		}
 	}
 
-	p := ui.NewProgram(cfg, cr)
+	var opts []tea.ProgramOption
+
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		ttyIn, _, err := tea.OpenTTY()
+		if err != nil {
+			return fmt.Errorf("open tty for input: %w", err)
+		}
+		defer ttyIn.Close() //nolint:errcheck // Best-effort close.
+
+		opts = append(opts, tea.WithInput(ttyIn))
+	}
+
+	p := ui.NewProgram(cfg, cr, opts...)
 
 	ch := make(chan command.Event, 100)
 	cr.Subscribe(ch)

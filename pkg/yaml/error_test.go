@@ -4,8 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
 	"github.com/stretchr/testify/require"
 
 	"github.com/macropower/kat/pkg/ui/theme"
@@ -14,8 +12,6 @@ import (
 
 func TestYAMLError(t *testing.T) {
 	t.Parallel()
-
-	lipgloss.SetColorProfile(termenv.TrueColor)
 
 	err := yaml.NewError(
 		errors.New("test error"),

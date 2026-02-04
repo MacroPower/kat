@@ -3,8 +3,7 @@ package ansis_test
 import (
 	"testing"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
+	"charm.land/lipgloss/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -21,8 +20,6 @@ func TestNewStyleEditor(t *testing.T) {
 
 func TestStyleEditor_ApplyStyles(t *testing.T) {
 	t.Parallel()
-
-	lipgloss.SetColorProfile(termenv.TrueColor)
 
 	boldStyle := lipgloss.NewStyle().Bold(true)
 	italicStyle := lipgloss.NewStyle().Italic(true)
@@ -234,8 +231,6 @@ func TestStyleEditor_ApplyStyles_Panics(t *testing.T) {
 
 func TestStylesEqual(t *testing.T) {
 	t.Parallel()
-
-	lipgloss.SetColorProfile(termenv.TrueColor)
 
 	boldStyle := lipgloss.NewStyle().Bold(true)
 	anotherBoldStyle := lipgloss.NewStyle().Bold(true)

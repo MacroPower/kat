@@ -4,8 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
+	"charm.land/lipgloss/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/macropower/kat/pkg/ui/yamls"
@@ -13,8 +12,6 @@ import (
 
 func TestNewDiffHighlighter(t *testing.T) {
 	t.Parallel()
-
-	lipgloss.SetColorProfile(termenv.TrueColor)
 
 	addedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 	removedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
@@ -27,8 +24,6 @@ func TestNewDiffHighlighter(t *testing.T) {
 
 func TestDiffHighlighter_ApplyDiffHighlights(t *testing.T) {
 	t.Parallel()
-
-	lipgloss.SetColorProfile(termenv.TrueColor)
 
 	addedStyle := lipgloss.NewStyle().Background(lipgloss.Color("2"))
 	removedStyle := lipgloss.NewStyle().Background(lipgloss.Color("1"))

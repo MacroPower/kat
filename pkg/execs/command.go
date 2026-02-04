@@ -137,7 +137,7 @@ func (e *Command) GetEnv() []string {
 	e.applyEnv(envMap)
 
 	// Convert map back to slice format.
-	env := []string{}
+	env := make([]string, 0, len(envMap))
 	for key, value := range envMap {
 		env = append(env, fmt.Sprintf("%s=%s", key, value))
 	}
