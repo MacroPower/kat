@@ -29,7 +29,9 @@ const (
 	StageRender
 	// StagePostRender is the stage after the main rendering command.
 	StagePostRender
+)
 
+const (
 	// ResultOK indicates the rendering was successful.
 	ResultOK RenderResult = "OK"
 	// ResultError indicates there was an error during rendering.

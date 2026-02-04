@@ -3,7 +3,7 @@ name: validate
 on:
   push:
     branches:
-      - 'main'
+      - "main"
   pull_request:
 
 permissions:
@@ -59,4 +59,4 @@ jobs:
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.4
+          version: v2.8
