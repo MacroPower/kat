@@ -2,7 +2,7 @@ module github.com/macropower/kat
 
 go 1.25.0
 
-toolchain go1.25.6
+toolchain go1.25.7
 
 require (
 	charm.land/bubbles/v2 v2.0.0-rc.1
