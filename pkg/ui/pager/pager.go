@@ -6,14 +6,13 @@ import (
 	"strings"
 	"time"
 
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
+	"charm.land/lipgloss/v2"
 	"github.com/atotto/clipboard"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/ansi"
-	"github.com/muesli/termenv"
+	"github.com/charmbracelet/x/ansi"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/ui/common"
@@ -68,7 +67,7 @@ type Config struct {
 
 func NewModel(c Config) PagerModel {
 	// Init viewport.
-	vp := viewport.New(0, 0)
+	vp := viewport.New()
 	vp.YPosition = 0
 	vp.KeyMap = viewport.KeyMap{}
 
@@ -115,8 +114,11 @@ func NewModel(c Config) PagerModel {
 	// Initialize search input.
 	si := textinput.New()
 	si.Prompt = "Search:"
-	si.PromptStyle = c.CommonModel.Theme.FilterStyle.MarginRight(1)
-	si.Cursor.Style = c.CommonModel.Theme.CursorStyle.MarginRight(1)
+	styles := si.Styles()
+	styles.Focused.Prompt = c.CommonModel.Theme.FilterStyle.MarginRight(1)
+	styles.Blurred.Prompt = c.CommonModel.Theme.FilterStyle.MarginRight(1)
+	styles.Cursor.Color = c.CommonModel.Theme.CursorStyle.GetForeground()
+	si.SetStyles(styles)
 	si.Focus()
 
 	m := PagerModel{
@@ -146,7 +148,7 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		var cmd tea.Cmd
 
 		m, cmd = m.keyHandler.HandlePagerKeys(m, msg)
@@ -178,22 +180,22 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m PagerModel) View() string {
+func (m PagerModel) View() tea.View {
 	if m.ViewState == StateSearching {
-		return lipgloss.JoinVertical(
+		return tea.NewView(lipgloss.JoinVertical(
 			lipgloss.Top,
 			m.viewport.View(),
 			m.searchBarView(),
 			m.helpView(),
-		)
+		))
 	}
 
-	return lipgloss.JoinVertical(
+	return tea.NewView(lipgloss.JoinVertical(
 		lipgloss.Top,
 		m.viewport.View(),
 		m.statusBarView(),
 		m.helpView(),
-	)
+	))
 }
 
 func (m *PagerModel) SetSize(w, h int) {
@@ -206,12 +208,12 @@ func (m *PagerModel) SetSize(w, h int) {
 		viewportHeight -= (statusBarHeight + m.helpHeight)
 	}
 
-	m.searchInput.Width = w - len(m.searchInput.Prompt) - ansi.PrintableRuneWidth(
+	m.searchInput.SetWidth(w - len(m.searchInput.Prompt) - ansi.StringWidth(
 		m.searchInput.Prompt,
-	)
+	))
 
-	m.viewport.Width = w
-	m.viewport.Height = viewportHeight
+	m.viewport.SetWidth(w)
+	m.viewport.SetHeight(viewportHeight)
 }
 
 // This is where the magic happens.
@@ -221,7 +223,7 @@ func (m PagerModel) Render(yaml string) tea.Cmd {
 			return ContentRenderedMsg(yaml)
 		}
 
-		s, err := m.chromaRenderer.RenderContent(yaml, max(0, m.viewport.Width))
+		s, err := m.chromaRenderer.RenderContent(yaml, max(0, m.viewport.Width()))
 		if err != nil {
 			slog.Debug("error rendering with Chroma",
 				slog.Any("error", err),
@@ -278,7 +280,7 @@ func (m *PagerModel) Unload() {
 	m.ViewState = StateReady
 	m.viewport.SetContent("")
 
-	m.viewport.YOffset = 0
+	m.viewport.SetYOffset(0)
 }
 
 func (m *PagerModel) setContent(s string) {
@@ -328,7 +330,7 @@ func (m PagerModel) handleSearchMode(msg tea.Msg) (PagerModel, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		key := msg.String()
 
 		switch {
@@ -533,7 +535,7 @@ func (m *PagerModel) HalfPageDown() {
 // CopyContent copies the current document content to clipboard.
 func (m *PagerModel) CopyContent() tea.Cmd {
 	// Copy using OSC 52.
-	termenv.Copy(m.CurrentDocument.Body)
+	fmt.Print(ansi.SetSystemClipboard(m.CurrentDocument.Body))
 	// Copy using native system clipboard.
 	_ = clipboard.WriteAll(m.CurrentDocument.Body) //nolint:errcheck // Can be ignored.
 

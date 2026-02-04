@@ -1,9 +1,9 @@
 package menu
 
 import (
-	"github.com/charmbracelet/huh"
+	"charm.land/huh/v2"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/ui/common"

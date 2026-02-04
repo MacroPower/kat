@@ -4,9 +4,9 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/log"
@@ -90,7 +90,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.configeditor.Focused() {
 			break
 		}
@@ -122,13 +122,13 @@ func (m Model) submitResults(ctx context.Context) tea.Cmd {
 	}
 }
 
-func (m Model) View() string {
-	return lipgloss.JoinVertical(
+func (m Model) View() tea.View {
+	return tea.NewView(lipgloss.JoinVertical(
 		lipgloss.Left,
 		m.configeditor.View(),
 		m.statusBarView(),
 		m.helpView(),
-	)
+	))
 }
 
 func (m Model) statusBarView() string {

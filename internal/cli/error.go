@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/fang"
-	"github.com/charmbracelet/lipgloss"
 )
 
 func ErrorHandler(w io.Writer, styles fang.Styles, err error) {

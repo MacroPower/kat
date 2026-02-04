@@ -3,6 +3,7 @@ package statusbar_test
 import (
 	"testing"
 
+	"charm.land/lipgloss/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -23,11 +24,11 @@ func TestNewStatusBarRenderer(t *testing.T) {
 		},
 		"zero width": {
 			width:    0,
-			expected: 30,
+			expected: 27,
 		},
 		"negative width": {
 			width:    -10,
-			expected: 30,
+			expected: 27,
 		},
 	}
 
@@ -39,7 +40,7 @@ func TestNewStatusBarRenderer(t *testing.T) {
 			require.NotNil(t, renderer)
 
 			statusBar := renderer.RenderWithScroll("test", 0)
-			assert.Len(t, statusBar, tc.expected)
+			assert.Equal(t, tc.expected, lipgloss.Width(statusBar))
 		})
 	}
 }

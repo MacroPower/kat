@@ -1,8 +1,8 @@
 package list
 
 import (
-	"github.com/charmbracelet/bubbles/paginator"
-	"github.com/muesli/reflow/ansi"
+	"charm.land/bubbles/v2/paginator"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/macropower/kat/pkg/ui/theme"
 )
@@ -38,7 +38,7 @@ func (pr *PaginationRenderer) RenderPagination(paginatorModel *paginator.Model, 
 
 	// If the dot pagination is wider than available space, use arabic numerals.
 	availableWidth := pr.width - listViewHorizontalPadding
-	if ansi.PrintableRuneWidth(pagination) > availableWidth {
+	if ansi.StringWidth(pagination) > availableWidth {
 		// Create a copy to avoid mutating the original.
 		p := *paginatorModel
 		p.Type = paginator.Arabic

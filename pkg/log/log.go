@@ -10,10 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/muesli/termenv"
 	"go.opentelemetry.io/otel/trace"
 
-	charmlog "github.com/charmbracelet/log"
+	charmlog "charm.land/log/v2"
 )
 
 type (
@@ -125,7 +124,6 @@ func newCharmLogHandler(w io.Writer, level slog.Level) slog.Handler {
 		ReportCaller:    true,
 		TimeFormat:      time.StampMilli,
 	})
-	logger.SetColorProfile(termenv.ColorProfile())
 
 	return logger
 }

@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/paginator"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/reflow/ansi"
+	"charm.land/bubbles/v2/paginator"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/ui/common"
@@ -107,8 +107,11 @@ type Config struct {
 func NewModel(c Config) ListModel {
 	si := textinput.New()
 	si.Prompt = "Find:"
-	si.PromptStyle = c.CommonModel.Theme.FilterStyle.MarginRight(1)
-	si.Cursor.Style = c.CommonModel.Theme.CursorStyle.MarginRight(1)
+	styles := si.Styles()
+	styles.Focused.Prompt = c.CommonModel.Theme.FilterStyle.MarginRight(1)
+	styles.Blurred.Prompt = c.CommonModel.Theme.FilterStyle.MarginRight(1)
+	styles.Cursor.Color = c.CommonModel.Theme.CursorStyle.GetForeground()
+	si.SetStyles(styles)
 	si.Focus()
 
 	s := []Section{
@@ -185,7 +188,7 @@ func (m ListModel) Update(msg tea.Msg) (ListModel, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if isFiltering {
 			// Don't re-handle filter keys.
 			break
@@ -206,7 +209,7 @@ func (m ListModel) Update(msg tea.Msg) (ListModel, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m ListModel) View() string {
+func (m ListModel) View() tea.View {
 	top := lipgloss.JoinVertical(
 		lipgloss.Top,
 		m.headerView(),
@@ -232,7 +235,7 @@ func (m ListModel) View() string {
 		),
 	)
 
-	return lipgloss.JoinVertical(lipgloss.Top, top, bottom)
+	return tea.NewView(lipgloss.JoinVertical(lipgloss.Top, top, bottom))
 }
 
 // Adds yaml documents to the model.
@@ -267,9 +270,9 @@ func (m *ListModel) SetSize(width, height int) {
 		m.helpHeight = m.helpRenderer.CalculateHelpHeight()
 	}
 
-	m.filterInput.Width = width - listViewHorizontalPadding*2 - ansi.PrintableRuneWidth(
+	m.filterInput.SetWidth(width - listViewHorizontalPadding*2 - ansi.StringWidth(
 		m.filterInput.Prompt,
-	)
+	))
 
 	m.updatePagination()
 }

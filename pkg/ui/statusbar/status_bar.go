@@ -5,12 +5,14 @@ import (
 	"math"
 	"strings"
 
-	"github.com/muesli/reflow/ansi"
-	"github.com/muesli/reflow/truncate"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/macropower/kat/pkg/ui/theme"
 	"github.com/macropower/kat/pkg/version"
 )
+
+// Note: lipgloss is no longer directly imported here, as the styles are
+// obtained from the theme package which uses lipgloss/v2.
 
 const (
 	helpText  = " ? Help "
@@ -127,11 +129,11 @@ func (r *StatusBarRenderer) renderNote(msg, progress string) string {
 	helpNote := r.renderHelpNote()
 
 	availableWidth := max(0, r.width-
-		ansi.PrintableRuneWidth(logo)-
-		ansi.PrintableRuneWidth(progress)-
-		ansi.PrintableRuneWidth(helpNote))
+		ansi.StringWidth(logo)-
+		ansi.StringWidth(progress)-
+		ansi.StringWidth(helpNote))
 
-	note = truncate.StringWithTail(" "+note+" ", uint(availableWidth), r.theme.Ellipsis) //nolint:gosec // Uses max.
+	note = ansi.Truncate(" "+note+" ", availableWidth, r.theme.Ellipsis)
 
 	switch r.style {
 	case StyleError:
@@ -147,7 +149,7 @@ func (r *StatusBarRenderer) renderNote(msg, progress string) string {
 func (r *StatusBarRenderer) renderEmptySpace(components ...string) string {
 	padding := r.width
 	for _, comp := range components {
-		padding -= ansi.PrintableRuneWidth(comp)
+		padding -= ansi.StringWidth(comp)
 	}
 
 	padding = max(0, padding)

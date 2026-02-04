@@ -3,8 +3,7 @@ package yamls_test
 import (
 	"testing"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
+	"charm.land/lipgloss/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/macropower/kat/pkg/ui/yamls"
@@ -12,8 +11,6 @@ import (
 
 func TestNewErrorHighlighter(t *testing.T) {
 	t.Parallel()
-
-	lipgloss.SetColorProfile(termenv.TrueColor)
 
 	errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 	highlighter := yamls.NewErrorHighlighter(errorStyle)
@@ -23,8 +20,6 @@ func TestNewErrorHighlighter(t *testing.T) {
 
 func TestErrorHighlighter_ApplyErrorHighlights(t *testing.T) {
 	t.Parallel()
-
-	lipgloss.SetColorProfile(termenv.TrueColor)
 
 	errorStyle := lipgloss.NewStyle().Background(lipgloss.Color("1"))
 	highlighter := yamls.NewErrorHighlighter(errorStyle)
@@ -49,7 +44,7 @@ func TestErrorHighlighter_ApplyErrorHighlights(t *testing.T) {
 			errors: []yamls.ErrorPosition{
 				{Line: 0, Start: 6, End: 11},
 			},
-			want: "hello \x1b[41mworld\x1b[0m",
+			want: "hello \x1b[41mworld\x1b[m",
 		},
 		"multiple lines with error highlights": {
 			input: "line one\nline two\nline three",
@@ -57,7 +52,7 @@ func TestErrorHighlighter_ApplyErrorHighlights(t *testing.T) {
 				{Line: 0, Start: 0, End: 4},
 				{Line: 2, Start: 5, End: 10},
 			},
-			want: "\x1b[41mline\x1b[0m one\nline two\nline \x1b[41mthree\x1b[0m",
+			want: "\x1b[41mline\x1b[m one\nline two\nline \x1b[41mthree\x1b[m",
 		},
 		"overlapping error highlights on same line": {
 			input: "hello world test",
@@ -65,7 +60,7 @@ func TestErrorHighlighter_ApplyErrorHighlights(t *testing.T) {
 				{Line: 0, Start: 6, End: 11},
 				{Line: 0, Start: 9, End: 16},
 			},
-			want: "hello \x1b[41mworld test\x1b[0m",
+			want: "hello \x1b[41mworld test\x1b[m",
 		},
 	}
 

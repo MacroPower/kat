@@ -13,11 +13,11 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/lipgloss/v2"
 	"github.com/dustin/go-humanize"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 type FilteredFS interface {
@@ -121,24 +121,21 @@ type Styles struct {
 
 // DefaultStyles defines the default styling for the file picker.
 func DefaultStyles() Styles {
-	return DefaultStylesWithRenderer(lipgloss.DefaultRenderer())
-}
-
-// DefaultStylesWithRenderer defines the default styling for the file picker,
-// with a given Lip Gloss renderer.
-func DefaultStylesWithRenderer(r *lipgloss.Renderer) Styles {
 	return Styles{
-		DisabledCursor:   r.NewStyle().Foreground(lipgloss.Color("247")),
-		Cursor:           r.NewStyle().Foreground(lipgloss.Color("212")),
-		Symlink:          r.NewStyle().Foreground(lipgloss.Color("36")),
-		Directory:        r.NewStyle().Foreground(lipgloss.Color("99")),
-		File:             r.NewStyle(),
-		DisabledFile:     r.NewStyle().Foreground(lipgloss.Color("243")),
-		DisabledSelected: r.NewStyle().Foreground(lipgloss.Color("247")),
-		Permission:       r.NewStyle().Foreground(lipgloss.Color("244")),
-		Selected:         r.NewStyle().Foreground(lipgloss.Color("212")).Bold(true),
-		FileSize:         r.NewStyle().Foreground(lipgloss.Color("240")).Width(fileSizeWidth).Align(lipgloss.Right),
-		EmptyDirectory: r.NewStyle().
+		DisabledCursor:   lipgloss.NewStyle().Foreground(lipgloss.Color("247")),
+		Cursor:           lipgloss.NewStyle().Foreground(lipgloss.Color("212")),
+		Symlink:          lipgloss.NewStyle().Foreground(lipgloss.Color("36")),
+		Directory:        lipgloss.NewStyle().Foreground(lipgloss.Color("99")),
+		File:             lipgloss.NewStyle(),
+		DisabledFile:     lipgloss.NewStyle().Foreground(lipgloss.Color("243")),
+		DisabledSelected: lipgloss.NewStyle().Foreground(lipgloss.Color("247")),
+		Permission:       lipgloss.NewStyle().Foreground(lipgloss.Color("244")),
+		Selected:         lipgloss.NewStyle().Foreground(lipgloss.Color("212")).Bold(true),
+		FileSize: lipgloss.NewStyle().
+			Foreground(lipgloss.Color("240")).
+			Width(fileSizeWidth).
+			Align(lipgloss.Right),
+		EmptyDirectory: lipgloss.NewStyle().
 			Foreground(lipgloss.Color("240")).
 			PaddingLeft(paddingLeft).
 			SetString("Bummer. No Files Found."),
@@ -271,7 +268,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		m.max = m.Height - 1
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, m.KeyMap.GoToTop):
 			m.selected = 0
@@ -408,9 +405,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 // View returns the view of the file picker.
-func (m Model) View() string {
+func (m Model) View() tea.View {
 	if len(m.files) == 0 {
-		return m.Styles.EmptyDirectory.Height(m.Height).MaxHeight(m.Height).String()
+		return tea.NewView(m.Styles.EmptyDirectory.Height(m.Height).MaxHeight(m.Height).String())
 	}
 
 	var s strings.Builder
@@ -507,7 +504,7 @@ func (m Model) View() string {
 		s.WriteRune('\n')
 	}
 
-	return s.String()
+	return tea.NewView(s.String())
 }
 
 // DidSelectFile returns whether a user has selected a file (on this msg).
@@ -538,7 +535,7 @@ func (m Model) didSelectAnyFile(msg tea.Msg) (bool, string) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// If the msg does not match the Select keymap then this could not have been a selection.
 		if !key.Matches(msg, m.KeyMap.Select) {
 			return false, ""

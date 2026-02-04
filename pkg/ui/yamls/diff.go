@@ -3,8 +3,8 @@ package yamls
 import (
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/aymanbagabas/go-udiff"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/macropower/kat/pkg/ui/ansis"
 )
