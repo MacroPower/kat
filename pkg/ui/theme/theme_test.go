@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
-	"github.com/alecthomas/chroma/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.jacobcolvin.com/niceyaml/style"
 
 	"github.com/macropower/kat/pkg/ui/theme"
 )
@@ -15,44 +15,32 @@ func TestRegister(t *testing.T) {
 	t.Parallel()
 
 	tcs := map[string]struct {
-		err     error
-		entries chroma.StyleEntries
-		name    string
+		err    error
+		styles style.Styles
+		name   string
 	}{
-		"successful registration with valid entries": {
+		"successful registration with valid styles": {
 			name: "test-theme-1",
-			entries: chroma.StyleEntries{
-				chroma.Background:      "#ffffff #000000",
-				chroma.Comment:         "italic #008000",
-				chroma.Keyword:         "bold #0000ff",
-				chroma.String:          "#008000",
-				chroma.Number:          "#ff0000",
-				chroma.NameTag:         "bold #800080",
-				chroma.GenericInserted: "#000000 #00ff00",
-				chroma.GenericDeleted:  "#000000 #ff0000",
-			},
+			styles: style.NewStyles(
+				lipgloss.NewStyle().Foreground(lipgloss.Color("#ffffff")).Background(lipgloss.Color("#000000")),
+				style.Set(style.Comment, lipgloss.NewStyle().Foreground(lipgloss.Color("#008000"))),
+				style.Set(style.NameTag, lipgloss.NewStyle().Foreground(lipgloss.Color("#800080")).Bold(true)),
+			),
 			err: nil,
 		},
-		"successful registration with minimal entries": {
+		"successful registration with minimal styles": {
 			name: "minimal-theme-1",
-			entries: chroma.StyleEntries{
-				chroma.Background: "#ffffff #000000",
-			},
+			styles: style.NewStyles(
+				lipgloss.NewStyle().Foreground(lipgloss.Color("#ffffff")),
+			),
 			err: nil,
 		},
 		"registration with empty name": {
 			name: "",
-			entries: chroma.StyleEntries{
-				chroma.Background: "#ffffff #000000",
-			},
+			styles: style.NewStyles(
+				lipgloss.NewStyle().Foreground(lipgloss.Color("#ffffff")),
+			),
 			err: theme.ErrInvalidName,
-		},
-		"invalid color format": {
-			name: "invalid-color-theme-1",
-			entries: chroma.StyleEntries{
-				chroma.Background: "invalid-color-format",
-			},
-			err: theme.ErrRegisterStyles,
 		},
 	}
 
@@ -60,7 +48,7 @@ func TestRegister(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			err := theme.Register(tc.name, tc.entries)
+			err := theme.Register(tc.name, tc.styles)
 			if tc.err != nil {
 				require.Error(t, err)
 				require.ErrorIs(t, err, tc.err)
@@ -70,11 +58,11 @@ func TestRegister(t *testing.T) {
 
 			require.NoError(t, err)
 
-			// Verify the theme was registered by creating a new theme with it
+			// Verify the theme was registered by creating a new theme with it.
 			if tc.name != "" {
 				newTheme := theme.New(tc.name)
 				assert.NotNil(t, newTheme)
-				assert.NotNil(t, newTheme.ChromaStyle)
+				assert.NotNil(t, newTheme.NiceyamlStyles)
 			}
 		})
 	}
@@ -164,9 +152,9 @@ func TestTheme_StylesRenderContent(t *testing.T) {
 			rendered := tc.style.Render(testContent)
 
 			// Verify that the style can render content without panicking
-			// and produces some output
+			// and produces some output.
 			assert.NotEmpty(t, rendered)
-			// The rendered content should contain the original content
+			// The rendered content should contain the original content.
 			assert.Contains(t, rendered, testContent)
 		})
 	}
@@ -178,9 +166,9 @@ func TestTheme_DifferentThemesProduceDifferentStyles(t *testing.T) {
 	lightTheme := theme.New("light")
 	darkTheme := theme.New("dark")
 
-	// The themes should be different objects
+	// The themes should be different objects.
 	assert.NotEqual(t, lightTheme, darkTheme)
 
-	// They should have different chroma styles
+	// They should have different styles.
 	assert.NotEqual(t, lightTheme.GenericTextStyle.Render("x"), darkTheme.GenericTextStyle.Render("x"))
 }

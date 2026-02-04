@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/invopop/jsonschema"
+	"go.jacobcolvin.com/niceyaml/schema/validator"
 
 	_ "embed"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/macropower/kat/api/v1beta1"
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/ui"
-	"github.com/macropower/kat/pkg/yaml"
 )
 
 //go:generate go run ../../../internal/schemagen/main.go -o configs.v1beta1.json
@@ -28,7 +28,7 @@ var (
 	ValidKinds = []string{"Configuration"}
 
 	// DefaultValidator validates global configuration against the JSON schema.
-	DefaultValidator = yaml.MustNewValidator("/configs.v1beta1.json", schemaJSON)
+	DefaultValidator = validator.MustNew("/configs.v1beta1.json", schemaJSON)
 
 	// Compile-time interface checks.
 	_ v1beta1.Object = (*Config)(nil)

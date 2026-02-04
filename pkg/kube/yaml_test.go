@@ -63,6 +63,15 @@ func TestSplitYAML_InvalidYAML(t *testing.T) {
 
 	objs, err := kube.SplitYAML([]byte(invalidYAML))
 	require.Error(t, err)
-	require.ErrorIs(t, err, kube.ErrInvalidKubeResource)
+	require.ErrorIs(t, err, kube.ErrInvalidYAML)
 	assert.Empty(t, objs)
+}
+
+func TestSplitYAML_PartialResults(t *testing.T) {
+	t.Parallel()
+
+	objs, err := kube.SplitYAML([]byte(deploymentObject + "\n---\n" + invalidYAML))
+	require.Error(t, err)
+	require.ErrorIs(t, err, kube.ErrInvalidYAML)
+	assert.Len(t, objs, 1)
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.jacobcolvin.com/niceyaml"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -90,7 +91,7 @@ func TestServer_GetResourceSendsOpenEvent(t *testing.T) {
 				"name": "test",
 			},
 		},
-		YAML: "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test\n",
+		Source: niceyaml.NewSourceFromString("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test\n"),
 	}
 
 	// Set up mock runner with the test resource.
@@ -157,7 +158,9 @@ func TestServer_EventProcessing(t *testing.T) {
 					"namespace": "default",
 				},
 			},
-			YAML: "apiVersion: v1\nkind: Pod\nmetadata:\n  name: test-pod\n  namespace: default",
+			Source: niceyaml.NewSourceFromString(
+				"apiVersion: v1\nkind: Pod\nmetadata:\n  name: test-pod\n  namespace: default",
+			),
 		},
 		{
 			Object: &kube.Object{
@@ -168,7 +171,9 @@ func TestServer_EventProcessing(t *testing.T) {
 					"namespace": "kube-system",
 				},
 			},
-			YAML: "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: test-deployment\n  namespace: kube-system",
+			Source: niceyaml.NewSourceFromString(
+				"apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: test-deployment\n  namespace: kube-system",
+			),
 		},
 	}
 
@@ -290,7 +295,9 @@ func TestServer_Integration(t *testing.T) {
 					"namespace": "default",
 				},
 			},
-			YAML: "apiVersion: v1\nkind: Pod\nmetadata:\n  name: test-pod\n  namespace: default",
+			Source: niceyaml.NewSourceFromString(
+				"apiVersion: v1\nkind: Pod\nmetadata:\n  name: test-pod\n  namespace: default",
+			),
 		},
 		{
 			Object: &kube.Object{
@@ -301,7 +308,9 @@ func TestServer_Integration(t *testing.T) {
 					"namespace": "kube-system",
 				},
 			},
-			YAML: "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: test-deployment\n  namespace: kube-system",
+			Source: niceyaml.NewSourceFromString(
+				"apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: test-deployment\n  namespace: kube-system",
+			),
 		},
 	}
 
@@ -595,7 +604,7 @@ func TestServer_LatestResultsAfterReload(t *testing.T) {
 						"namespace": "default",
 					},
 				},
-				YAML: "apiVersion: v1\nkind: Pod\nmetadata:\n  name: first-pod",
+				Source: niceyaml.NewSourceFromString("apiVersion: v1\nkind: Pod\nmetadata:\n  name: first-pod"),
 			},
 		},
 	}
@@ -613,7 +622,7 @@ func TestServer_LatestResultsAfterReload(t *testing.T) {
 						"namespace": "default",
 					},
 				},
-				YAML: "apiVersion: v1\nkind: Pod\nmetadata:\n  name: second-pod",
+				Source: niceyaml.NewSourceFromString("apiVersion: v1\nkind: Pod\nmetadata:\n  name: second-pod"),
 			},
 		},
 	}

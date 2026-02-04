@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"maps"
 
+	"go.jacobcolvin.com/niceyaml"
+	"go.jacobcolvin.com/niceyaml/paths"
+
 	"github.com/macropower/kat/pkg/execs"
 	"github.com/macropower/kat/pkg/profile"
 	"github.com/macropower/kat/pkg/rule"
-	"github.com/macropower/kat/pkg/yaml"
 )
 
 const (
@@ -138,14 +140,12 @@ func (c *Config) Merge(project *Config) {
 }
 
 func (c *Config) Validate() error {
-	pb := yaml.NewPathBuilder()
-
 	for name, p := range c.Profiles {
 		err := p.CompileSource()
 		if err != nil {
-			return yaml.NewError(
+			return niceyaml.NewErrorFrom(
 				fmt.Errorf("invalid source for profile %q: %w", name, err),
-				yaml.WithPath(pb.Root().Child("profiles").Child(name).Child("source").Build()),
+				niceyaml.WithPath(paths.Root().Child("profiles", name, "source").Key()),
 			)
 		}
 
@@ -157,17 +157,13 @@ func (c *Config) Validate() error {
 			uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
 			err := env.ValueFrom.CallerRef.Compile()
 			if err != nil {
-				return yaml.NewError(
+				return niceyaml.NewErrorFrom(
 					fmt.Errorf("invalid env pattern: %w", err),
-					yaml.WithPath(pb.Root().
-						Child("profiles").
-						Child(name).
-						Child("env").
+					niceyaml.WithPath(paths.Root().
+						Child("profiles", name, "env").
 						Index(uIdx).
-						Child("valueFrom").
-						Child("callerRef").
-						Child("pattern").
-						Build()),
+						Child("valueFrom", "callerRef", "pattern").
+						Key()),
 				)
 			}
 		}
@@ -180,25 +176,22 @@ func (c *Config) Validate() error {
 			uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
 			err := envFrom.CallerRef.Compile()
 			if err != nil {
-				return yaml.NewError(
+				return niceyaml.NewErrorFrom(
 					fmt.Errorf("invalid envFrom pattern: %w", err),
-					yaml.WithPath(pb.Root().
-						Child("profiles").
-						Child(name).
-						Child("envFrom").
+					niceyaml.WithPath(paths.Root().
+						Child("profiles", name, "envFrom").
 						Index(uIdx).
-						Child("callerRef").
-						Child("pattern").
-						Build()),
+						Child("callerRef", "pattern").
+						Key()),
 				)
 			}
 		}
 		// TODO: Build should return *ConfigError to avoid the duplicate validation above.
 		err = p.Build()
 		if err != nil {
-			return yaml.NewError(
+			return niceyaml.NewErrorFrom(
 				fmt.Errorf("invalid profile: %w", err),
-				yaml.WithPath(pb.Root().Child("profiles").Child(name).Build()),
+				niceyaml.WithPath(paths.Root().Child("profiles", name).Key()),
 			)
 		}
 	}
@@ -207,17 +200,17 @@ func (c *Config) Validate() error {
 		uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
 		err := r.CompileMatch()
 		if err != nil {
-			return yaml.NewError(
+			return niceyaml.NewErrorFrom(
 				fmt.Errorf("invalid match: %w", err),
-				yaml.WithPath(pb.Root().Child("rules").Index(uIdx).Child("match").Build()),
+				niceyaml.WithPath(paths.Root().Child("rules").Index(uIdx).Child("match").Key()),
 			)
 		}
 
 		_, ok := c.Profiles[r.Profile]
 		if !ok {
-			return yaml.NewError(
+			return niceyaml.NewErrorFrom(
 				fmt.Errorf("profile %q not found", r.Profile),
-				yaml.WithPath(pb.Root().Child("rules").Index(uIdx).Child("profile").Build()),
+				niceyaml.WithPath(paths.Root().Child("rules").Index(uIdx).Child("profile").Key()),
 			)
 		}
 	}

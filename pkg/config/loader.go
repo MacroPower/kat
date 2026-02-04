@@ -2,19 +2,23 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"log/slog"
 	"regexp"
 	"strings"
 
+	"github.com/goccy/go-yaml"
+	"go.jacobcolvin.com/niceyaml"
+	"go.jacobcolvin.com/niceyaml/paths"
+
 	"github.com/macropower/kat/api"
 	"github.com/macropower/kat/api/v1beta1"
 	"github.com/macropower/kat/pkg/ui/theme"
-	"github.com/macropower/kat/pkg/yaml"
 )
 
 // Validator validates configuration data against a schema.
 type Validator interface {
-	Validate(data any) error
+	ValidateSchema(data any) error
 }
 
 // LoaderOpt configures a [Loader].
@@ -45,7 +49,7 @@ type Loader[T v1beta1.Object] struct {
 	validator Validator
 	newFunc   func() T
 	theme     *theme.Theme
-	yamlError *yaml.ErrorWrapper
+	source    *niceyaml.Source
 	data      []byte
 }
 
@@ -74,10 +78,14 @@ func NewLoaderFromBytes[T v1beta1.Object](
 		newFunc:   newFunc,
 		validator: options.validator,
 		theme:     t,
-		yamlError: yaml.NewErrorWrapper(
-			yaml.WithTheme(t),
-			yaml.WithSource(data),
-			yaml.WithSourceLines(4),
+		source: niceyaml.NewSourceFromString(string(data),
+			niceyaml.WithErrorOptions(
+				niceyaml.WithPrinter(niceyaml.NewPrinter(
+					niceyaml.WithStyles(t.NiceyamlStyles),
+					niceyaml.WithGutter(niceyaml.LineNumberGutter()),
+				)),
+				niceyaml.WithSourceLines(4),
+			),
 		),
 	}
 }
@@ -101,17 +109,15 @@ func NewLoaderFromFile[T v1beta1.Object](
 func (l *Loader[T]) Validate() error {
 	var anyConfig any
 
-	dec := yaml.NewDecoder(bytes.NewReader(l.data))
-
-	err := dec.Decode(&anyConfig)
+	err := l.decode(&anyConfig)
 	if err != nil {
-		return l.yamlError.Wrap(err)
+		return l.source.WrapError(err) //nolint:wrapcheck // WrapError adds context.
 	}
 
 	if l.validator != nil {
-		err = l.validator.Validate(anyConfig)
+		err = l.validator.ValidateSchema(anyConfig)
 		if err != nil {
-			return l.yamlError.Wrap(err)
+			return l.source.WrapError(err) //nolint:wrapcheck // WrapError adds context.
 		}
 	}
 
@@ -124,16 +130,35 @@ func (l *Loader[T]) Validate() error {
 func (l *Loader[T]) Load() (T, error) {
 	cfg := l.newFunc()
 
-	dec := yaml.NewDecoder(bytes.NewReader(l.data))
-	err := dec.Decode(cfg)
+	err := l.decode(cfg)
 	if err != nil {
 		var zero T
-		return zero, l.yamlError.Wrap(err)
+		return zero, l.source.WrapError(err) //nolint:wrapcheck // WrapError adds context.
 	}
 
 	cfg.EnsureDefaults()
 
 	return cfg, nil
+}
+
+func (l *Loader[T]) decode(v any) error {
+	dec := yaml.NewDecoder(bytes.NewReader(l.data), yaml.AllowDuplicateMapKey())
+
+	err := dec.Decode(v)
+	if err == nil {
+		return nil
+	}
+
+	var yamlErr yaml.Error
+	if errors.As(err, &yamlErr) {
+		return niceyaml.NewError(
+			yamlErr.GetMessage(),
+			niceyaml.WithErrorToken(yamlErr.GetToken()),
+		)
+	}
+
+	//nolint:wrapcheck // Return the original error if it's not a [yaml.Error].
+	return err
 }
 
 // GetTheme returns the theme for error formatting.
@@ -144,7 +169,7 @@ func (l *Loader[T]) GetTheme() *theme.Theme {
 func getTheme(data []byte) *theme.Theme {
 	var themeName string
 
-	path := yaml.NewPathBuilder().Root().Child("ui").Child("theme").Build()
+	path := paths.Root().Child("ui", "theme").Path()
 
 	err := path.Read(bytes.NewReader(data), &themeName)
 	if err == nil {

@@ -142,7 +142,7 @@ func (s *Server) handleGetResource(
 		result.Found = true
 		result.Resource = &ResourceDetails{
 			Metadata: resource.Object.GetMetadata(),
-			YAML:     resource.YAML,
+			YAML:     resource.Source.Content(),
 		}
 
 		// Send event to open the resource in the pager.

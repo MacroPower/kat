@@ -19,12 +19,11 @@
 package kube
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"strings"
 
-	"github.com/goccy/go-yaml"
+	"go.jacobcolvin.com/niceyaml"
+	"go.jacobcolvin.com/niceyaml/lexers"
 )
 
 var (
@@ -34,56 +33,46 @@ var (
 
 type Resource struct {
 	Object *Object
-	YAML   string
+	Source *niceyaml.Source
 }
 
 // SplitYAML splits a YAML file into unstructured objects. Returns list of all unstructured objects
 // found in the yaml. If an error occurs, returns objects that have been parsed so far too.
 func SplitYAML(yamlData []byte) ([]*Resource, error) {
-	objs := []*Resource{}
+	var objs []*Resource
 
-	ymls := splitYAMLToString(yamlData)
+	for _, tks := range lexers.TokenizeDocuments(string(yamlData)) {
+		source := niceyaml.NewSourceFromTokens(tks)
 
-	for _, yml := range ymls {
-		dec := yaml.NewDecoder(strings.NewReader(yml), yaml.AllowDuplicateMapKey())
-
-		obj := &Object{}
-		err := dec.Decode(obj)
+		dec, err := source.Decoder()
 		if err != nil {
-			return objs, fmt.Errorf("%w: %w", ErrInvalidKubeResource, err)
+			return objs, fmt.Errorf("%w: %w", ErrInvalidYAML, err)
 		}
 
-		objs = append(objs, &Resource{
-			YAML:   yml,
-			Object: obj,
-		})
+		for _, doc := range dec.Documents() {
+			// Skip empty/null documents.
+			if doc.Document().Body == nil {
+				continue
+			}
+
+			obj := &Object{}
+
+			err := doc.Decode(obj)
+			if err != nil {
+				return objs, fmt.Errorf("%w: %w", ErrInvalidKubeResource, err)
+			}
+
+			// Skip objects that decoded to empty (null documents).
+			if len(*obj) == 0 {
+				continue
+			}
+
+			objs = append(objs, &Resource{
+				Source: source,
+				Object: obj,
+			})
+		}
 	}
 
 	return objs, nil
-}
-
-// splitYAMLToString splits a YAML file into strings without validating or re-encoding.
-// It preserves the original document content exactly as provided.
-func splitYAMLToString(yamlData []byte) []string {
-	if len(yamlData) == 0 {
-		return nil
-	}
-
-	// Remove leading/trailing empty documents that wouldn't be captured by split.
-	yamlData, _ = bytes.CutPrefix(yamlData, []byte("---\n"))
-	yamlData, _ = bytes.CutSuffix(yamlData, []byte("\n---"))
-
-	// Use the yaml document separator to split.
-	docs := bytes.Split(yamlData, []byte("\n---\n"))
-
-	// Convert to strings and filter empty documents.
-	var result []string
-	for _, doc := range docs {
-		trimmed := bytes.TrimSpace(doc)
-		if len(trimmed) > 0 && !bytes.Equal(trimmed, []byte("null")) {
-			result = append(result, string(trimmed))
-		}
-	}
-
-	return result
 }

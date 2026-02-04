@@ -3,14 +3,13 @@ package pager
 import (
 	"fmt"
 	"log/slog"
-	"strings"
-	"time"
 
 	"charm.land/bubbles/v2/textinput"
-	"charm.land/bubbles/v2/viewport"
 	"charm.land/lipgloss/v2"
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/x/ansi"
+	"go.jacobcolvin.com/niceyaml"
+	"go.jacobcolvin.com/niceyaml/bubbles/yamlviewport"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -20,15 +19,7 @@ import (
 	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
-const (
-	statusBarHeight    = 1
-	diffTimeoutSeconds = 3
-)
-
-type (
-	ContentRenderedMsg string
-	ClearDiffTimerMsg  struct{}
-)
+const statusBarHeight = 1
 
 type ViewState int
 
@@ -38,38 +29,33 @@ const (
 )
 
 type PagerModel struct {
-	cm             *common.CommonModel
-	helpRenderer   *statusbar.HelpRenderer
-	chromaRenderer *yamls.ChromaRenderer
-	keyHandler     *KeyHandler
-	clearDiffTimer *time.Timer
-
-	// Current document being rendered, sans-chroma rendering. We cache
-	// it here so we can re-render it on resize.
+	cm              *common.CommonModel
+	helpRenderer    *statusbar.HelpRenderer
+	keyHandler      *KeyHandler
 	CurrentDocument yamls.Document
-
-	viewport        viewport.Model
 	searchInput     textinput.Model
+	viewport        yamlviewport.Model
 	helpHeight      int
 	ViewState       ViewState
 	ShowHelp        bool
-	chromaRendering bool
-	currentMatch    int // Current match index for navigation.
-	totalMatches    int // Total number of matches found.
 }
 
 type Config struct {
-	CommonModel     *common.CommonModel
-	KeyBinds        *KeyBinds
-	ChromaRendering bool
-	ShowLineNumbers bool
+	CommonModel *common.CommonModel
+	KeyBinds    *KeyBinds
+	Printer     *niceyaml.Printer
 }
 
 func NewModel(c Config) PagerModel {
-	// Init viewport.
-	vp := viewport.New()
-	vp.YPosition = 0
-	vp.KeyMap = viewport.KeyMap{}
+	// Init yamlviewport with printer.
+	var opts []yamlviewport.Option
+	if c.Printer != nil {
+		opts = append(opts, yamlviewport.WithPrinter(c.Printer))
+	}
+
+	vp := yamlviewport.New(opts...)
+	// Disable yamlviewport's built-in KeyMap — kat's key system routes events.
+	vp.KeyMap = yamlviewport.KeyMap{}
 
 	kbr := &keys.KeyBindRenderer{}
 	ckb := c.CommonModel.KeyBinds
@@ -91,12 +77,12 @@ func NewModel(c Config) PagerModel {
 		*kb.End,
 	)
 	kbr.AddColumn(
-		*ckb.Reload,
+		*kb.ToggleDiffMode,
+		*kb.ToggleViewMode,
+		*kb.ToggleWordWrap,
 		*ckb.Escape,
-		*ckb.Error,
 		*ckb.Help,
 		*ckb.Quit,
-		*ckb.Suspend,
 	)
 
 	// Add plugin keybinds column if plugins are available.
@@ -125,15 +111,9 @@ func NewModel(c Config) PagerModel {
 		cm:           c.CommonModel,
 		keyHandler:   NewKeyHandler(c.KeyBinds, c.CommonModel.KeyBinds),
 		helpRenderer: statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr),
-		chromaRenderer: yamls.NewChromaRenderer(
-			c.CommonModel.Theme,
-			yamls.WithLineNumbersDisabled(!c.ShowLineNumbers),
-		),
-		ViewState:       StateReady,
-		viewport:        vp,
-		searchInput:     si,
-		chromaRendering: c.ChromaRendering,
-		currentMatch:    -1,
+		ViewState:    StateReady,
+		viewport:     vp,
+		searchInput:  si,
 	}
 
 	return m
@@ -154,24 +134,13 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 		m, cmd = m.keyHandler.HandlePagerKeys(m, msg)
 		cmds = append(cmds, cmd)
 
-	case ContentRenderedMsg:
-		m.setContent(string(msg))
-
-		cmds = append(cmds, m.StartClearDiffTimer())
-
-	case ClearDiffTimerMsg:
-		if m.chromaRenderer != nil {
-			m.chromaRenderer.ClearDiffs()
-
-			cmds = append(cmds, m.Render(m.CurrentDocument.Body))
-		}
-
 	// We've received terminal dimensions, either for the first time or
 	// after a resize.
 	case tea.WindowSizeMsg:
-		return m, m.Render(m.CurrentDocument.Body)
+		// Size is handled by SetSize called from ui.go.
 	}
 
+	// Pass mouse events through to yamlviewport for wheel scrolling.
 	var cmd tea.Cmd
 
 	m.viewport, cmd = m.viewport.Update(msg)
@@ -216,43 +185,22 @@ func (m *PagerModel) SetSize(w, h int) {
 	m.viewport.SetHeight(viewportHeight)
 }
 
-// This is where the magic happens.
-func (m PagerModel) Render(yaml string) tea.Cmd {
-	return func() tea.Msg {
-		if m.chromaRenderer == nil || !m.chromaRendering {
-			return ContentRenderedMsg(yaml)
-		}
-
-		s, err := m.chromaRenderer.RenderContent(yaml, max(0, m.viewport.Width()))
-		if err != nil {
-			slog.Debug("error rendering with Chroma",
-				slog.Any("error", err),
-			)
-
-			return common.ErrMsg{Err: err}
-		}
-
-		return ContentRenderedMsg(s)
+// SetContent sets the YAML content to display.
+func (m *PagerModel) SetContent(source *niceyaml.Source) {
+	if source == nil || source.IsEmpty() {
+		return
 	}
+
+	m.viewport.SetTokens(source)
 }
 
-// WaitForClearDiffTimer returns a command that waits for the clear diff timer to expire.
-func (m *PagerModel) WaitForClearDiffTimer() tea.Cmd {
-	return func() tea.Msg {
-		<-m.clearDiffTimer.C
-		return ClearDiffTimerMsg{}
-	}
-}
-
-// StartClearDiffTimer starts a [diffTimeoutSeconds] timer to clear diff highlights.
-func (m *PagerModel) StartClearDiffTimer() tea.Cmd {
-	if m.clearDiffTimer != nil {
-		m.clearDiffTimer.Stop()
+// AddRevision adds a new revision for diff tracking.
+func (m *PagerModel) AddRevision(source *niceyaml.Source) {
+	if source == nil || source.IsEmpty() {
+		return
 	}
 
-	m.clearDiffTimer = time.NewTimer(diffTimeoutSeconds * time.Second)
-
-	return m.WaitForClearDiffTimer()
+	m.viewport.AddRevision(source)
 }
 
 func (m *PagerModel) Unload() {
@@ -264,27 +212,12 @@ func (m *PagerModel) Unload() {
 	if m.ViewState == StateSearching {
 		m.ExitSearch()
 	}
-	if m.chromaRenderer != nil {
-		m.chromaRenderer.Unload()
-	}
 
-	// Stop the clear diff timer if it's running.
-	if m.clearDiffTimer != nil {
-		m.clearDiffTimer.Stop()
+	m.viewport.ClearRevisions()
+	m.viewport.ClearSearch()
 
-		m.clearDiffTimer = nil
-	}
-
-	m.currentMatch = -1
-	m.totalMatches = 0
 	m.ViewState = StateReady
-	m.viewport.SetContent("")
-
-	m.viewport.SetYOffset(0)
-}
-
-func (m *PagerModel) setContent(s string) {
-	m.viewport.SetContent(s)
+	m.viewport.GotoTop()
 }
 
 func (m *PagerModel) ToggleHelp() {
@@ -342,17 +275,24 @@ func (m PagerModel) handleSearchMode(msg tea.Msg) (PagerModel, tea.Cmd) {
 
 		case key == "enter":
 			// Apply search and exit search mode.
-			var cmd tea.Cmd
-
 			searchTerm := m.searchInput.Value()
 			if searchTerm != "" {
-				m, cmd = m.applySearch(searchTerm)
-				cmds = append(cmds, cmd)
+				m.viewport.SetSearchTerm(searchTerm)
 			} else {
-				cmds = append(cmds, m.Render(m.CurrentDocument.Body))
+				m.viewport.ClearSearch()
 			}
 
 			m.ExitSearch()
+
+			// Send status message with match count.
+			count := m.viewport.SearchCount()
+			if searchTerm != "" && count > 0 {
+				idx := m.viewport.SearchIndex()
+				statusMsg := fmt.Sprintf("match %d/%d", idx+1, count)
+				cmds = append(cmds, m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess))
+			} else if searchTerm != "" {
+				cmds = append(cmds, m.cm.SendStatusMessage("no matches found", statusbar.StyleError))
+			}
 
 			return m, tea.Batch(cmds...)
 		}
@@ -372,101 +312,6 @@ func (m *PagerModel) ExitSearch() {
 	m.ViewState = StateReady
 	m.searchInput.Blur()
 	m.searchInput.Reset()
-}
-
-// applySearch applies the search term to the content.
-func (m PagerModel) applySearch(term string) (PagerModel, tea.Cmd) {
-	var cmd tea.Cmd
-
-	if m.chromaRenderer != nil {
-		m.chromaRenderer.SetSearchTerm(term)
-
-		// Trigger match finding immediately by calling findMatches on the current content.
-		m.chromaRenderer.FindMatchesInContent(m.CurrentDocument.Body)
-
-		// Store the total match count.
-		matches := m.chromaRenderer.GetMatches()
-		m.totalMatches = len(matches)
-
-		// Reset current match index.
-		m.currentMatch = -1
-
-		// Find the first match if available.
-		m, cmd = m.goToNextMatch()
-	}
-
-	return m, cmd
-}
-
-// goToNextMatch navigates to the next search match.
-func (m PagerModel) goToNextMatch() (PagerModel, tea.Cmd) {
-	if m.chromaRenderer == nil {
-		return m, nil
-	}
-
-	matches := m.chromaRenderer.GetMatches()
-	if len(matches) == 0 {
-		return m, m.cm.SendStatusMessage("no matches found", statusbar.StyleError)
-	}
-
-	// Move to next match.
-	m.currentMatch = (m.currentMatch + 1) % len(matches)
-	match := matches[m.currentMatch]
-
-	// Update the renderer with the current selected match.
-	m.chromaRenderer.SetCurrentSelectedMatch(m.currentMatch)
-
-	// Calculate line height and scroll to match.
-	totalLines := len(strings.Split(m.CurrentDocument.Body, "\n"))
-	if totalLines > 0 {
-		scrollPercent := float64(match.Line) / float64(totalLines)
-		m.viewport.SetYOffset(int(scrollPercent * float64(m.viewport.TotalLineCount())))
-	}
-
-	statusMsg := fmt.Sprintf("match %d/%d", m.currentMatch+1, m.totalMatches)
-
-	return m, tea.Batch(
-		m.Render(m.CurrentDocument.Body),
-		m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess),
-	)
-}
-
-// goToPrevMatch navigates to the previous search match.
-func (m PagerModel) goToPrevMatch() (PagerModel, tea.Cmd) {
-	if m.chromaRenderer == nil {
-		return m, nil
-	}
-
-	matches := m.chromaRenderer.GetMatches()
-	if len(matches) == 0 {
-		return m, m.cm.SendStatusMessage("no matches found", statusbar.StyleError)
-	}
-
-	// Move to previous match.
-	if m.currentMatch <= 0 {
-		m.currentMatch = len(matches) - 1
-	} else {
-		m.currentMatch--
-	}
-
-	match := matches[m.currentMatch]
-
-	// Update the renderer with the current selected match.
-	m.chromaRenderer.SetCurrentSelectedMatch(m.currentMatch)
-
-	// Calculate line height and scroll to match.
-	totalLines := len(strings.Split(m.CurrentDocument.Body, "\n"))
-	if totalLines > 0 {
-		scrollPercent := float64(match.Line) / float64(totalLines)
-		m.viewport.SetYOffset(int(scrollPercent * float64(m.viewport.TotalLineCount())))
-	}
-
-	statusMsg := fmt.Sprintf("match %d/%d", m.currentMatch+1, m.totalMatches)
-
-	return m, tea.Batch(
-		m.Render(m.CurrentDocument.Body),
-		m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess),
-	)
 }
 
 // MoveUp moves the viewport up.
@@ -499,29 +344,6 @@ func (m *PagerModel) GoToBottom() {
 	m.viewport.GotoBottom()
 }
 
-// NextMatch goes to the next search match.
-func (m *PagerModel) NextMatch() tea.Cmd {
-	newModel, cmd := m.goToNextMatch()
-	*m = newModel
-
-	return cmd
-}
-
-// PrevMatch goes to the previous search match.
-func (m *PagerModel) PrevMatch() tea.Cmd {
-	newModel, cmd := m.goToPrevMatch()
-	*m = newModel
-
-	return cmd
-}
-
-// SetHelpVisible sets help visibility.
-func (m *PagerModel) SetHelpVisible(visible bool) {
-	if visible != m.ShowHelp {
-		m.ToggleHelp()
-	}
-}
-
 // HalfPageUp moves the viewport up by half a page.
 func (m *PagerModel) HalfPageUp() {
 	m.viewport.HalfPageUp()
@@ -532,35 +354,100 @@ func (m *PagerModel) HalfPageDown() {
 	m.viewport.HalfPageDown()
 }
 
+// NextMatch goes to the next search match.
+func (m *PagerModel) NextMatch() tea.Cmd {
+	count := m.viewport.SearchCount()
+	if count == 0 {
+		return m.cm.SendStatusMessage("no matches found", statusbar.StyleError)
+	}
+
+	m.viewport.SearchNext()
+
+	idx := m.viewport.SearchIndex()
+	statusMsg := fmt.Sprintf("match %d/%d", idx+1, count)
+
+	return m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess)
+}
+
+// PrevMatch goes to the previous search match.
+func (m *PagerModel) PrevMatch() tea.Cmd {
+	count := m.viewport.SearchCount()
+	if count == 0 {
+		return m.cm.SendStatusMessage("no matches found", statusbar.StyleError)
+	}
+
+	m.viewport.SearchPrevious()
+
+	idx := m.viewport.SearchIndex()
+	statusMsg := fmt.Sprintf("match %d/%d", idx+1, count)
+
+	return m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess)
+}
+
+// SetHelpVisible sets help visibility.
+func (m *PagerModel) SetHelpVisible(visible bool) {
+	if visible != m.ShowHelp {
+		m.ToggleHelp()
+	}
+}
+
+// ScrollPercent returns the scroll percent.
+func (m *PagerModel) ScrollPercent() float64 {
+	return m.viewport.ScrollPercent()
+}
+
 // CopyContent copies the current document content to clipboard.
 func (m *PagerModel) CopyContent() tea.Cmd {
+	content := m.CurrentDocument.Body.Content()
 	// Copy using OSC 52.
-	fmt.Print(ansi.SetSystemClipboard(m.CurrentDocument.Body))
+	fmt.Print(ansi.SetSystemClipboard(content))
 	// Copy using native system clipboard.
-	_ = clipboard.WriteAll(m.CurrentDocument.Body) //nolint:errcheck // Can be ignored.
+	_ = clipboard.WriteAll(content) //nolint:errcheck // Can be ignored.
 
 	return m.cm.SendStatusMessage("copied contents", statusbar.StyleSuccess)
+}
+
+// ToggleDiffMode cycles between diff modes.
+func (m *PagerModel) ToggleDiffMode() {
+	m.viewport.ToggleDiffMode()
+}
+
+// ToggleViewMode cycles between view modes.
+func (m *PagerModel) ToggleViewMode() {
+	m.viewport.ToggleViewMode()
+}
+
+// ToggleWordWrap toggles word wrapping.
+func (m *PagerModel) ToggleWordWrap() {
+	m.viewport.ToggleWordWrap()
 }
 
 // SetSearchText sets the search text and applies the search.
 func (m *PagerModel) SetSearchText(text string) tea.Cmd {
 	m.searchInput.SetValue(text)
 
-	newPagerModel, cmd := m.applySearch(text)
-	*m = newPagerModel
+	if text != "" {
+		m.viewport.SetSearchTerm(text)
+	} else {
+		m.viewport.ClearSearch()
+	}
 
-	return cmd
+	count := m.viewport.SearchCount()
+	if text != "" && count > 0 {
+		idx := m.viewport.SearchIndex()
+		statusMsg := fmt.Sprintf("match %d/%d", idx+1, count)
+
+		return m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess)
+	}
+
+	return nil
 }
 
 // ClearText clears all text from the search input.
 func (m *PagerModel) ClearText() tea.Cmd {
 	if m.ViewState == StateSearching {
 		m.searchInput.SetValue("")
-
-		newPagerModel, cmd := m.applySearch("")
-		*m = newPagerModel
-
-		return cmd
+		m.viewport.ClearSearch()
 	}
 
 	return nil

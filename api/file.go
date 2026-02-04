@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/macropower/kat/pkg/yaml"
+	"go.jacobcolvin.com/niceyaml"
 )
 
 // GetConfigPath returns the path to a configuration file in the user's config directory.
@@ -60,7 +60,7 @@ func ReadFile(path string) ([]byte, error) {
 func MarshalYAML(obj any) ([]byte, error) {
 	b := &bytes.Buffer{}
 
-	enc := yaml.NewEncoder(b)
+	enc := niceyaml.NewEncoder(b, niceyaml.PrettyEncoderOptions...)
 	defer func() {
 		err := enc.Close()
 		if err != nil {
