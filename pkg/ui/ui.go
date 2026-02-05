@@ -19,10 +19,10 @@ import (
 	"github.com/macropower/kat/pkg/kube"
 	"github.com/macropower/kat/pkg/log"
 	"github.com/macropower/kat/pkg/ui/common"
-	"github.com/macropower/kat/pkg/ui/list"
 	"github.com/macropower/kat/pkg/ui/menu"
 	"github.com/macropower/kat/pkg/ui/overlay"
 	"github.com/macropower/kat/pkg/ui/pager"
+	"github.com/macropower/kat/pkg/ui/resourcelist"
 	"github.com/macropower/kat/pkg/ui/statusbar"
 	"github.com/macropower/kat/pkg/ui/theme"
 	"github.com/macropower/kat/pkg/ui/yamls"
@@ -78,7 +78,7 @@ type model struct {
 	menu         menu.Model
 	spinner      spinner.Model
 	fullResult   pager.PagerModel
-	list         list.ListModel
+	list         resourcelist.Model
 	pager        pager.PagerModel
 	state        State
 	overlayState OverlayState
@@ -104,7 +104,6 @@ func (m *model) unloadDocument() {
 	}
 
 	m.state = stateShowList
-	m.list.ViewState = list.StateReady
 }
 
 func newModel(cfg *Config, cmd common.Commander) tea.Model {
@@ -153,7 +152,7 @@ func newModel(cfg *Config, cmd common.Commander) tea.Model {
 	sp.Spinner = spinner.Line
 	sp.Style = cm.Theme.GenericTextStyle
 
-	listModel := list.NewModel(list.Config{
+	listModel := resourcelist.NewModel(resourcelist.Config{
 		CommonModel: cm,
 		KeyBinds:    cfg.KeyBinds.List,
 		Compact:     *cfg.UI.Compact,
@@ -267,7 +266,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.overlayState = overlayStateLoading
 		cmds = append(cmds, m.spinner.Tick)
 
-	case list.FetchedYAMLMsg:
+	case resourcelist.FetchedYAMLMsg:
 		// We've loaded a YAML file's contents for rendering.
 		m.pager.CurrentDocument = *msg
 		body := msg.Body
@@ -340,7 +339,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pager.SetContent(yamlDoc.Body)
 
 	case menu.ChangeConfigMsg:
-		m.list.YAMLs = nil
+		m.list.SetItems(nil)
 		m.unloadDocument()
 
 		err := m.cm.Cmd.ConfigureContext(msg.Context,
@@ -510,7 +509,7 @@ func (m *model) matchAction(kb *keys.KeyBind, key string) bool {
 }
 
 func (m *model) isTextInputFocused() bool {
-	if m.state == stateShowList && m.list.FilterState == list.Filtering {
+	if m.state == stateShowList && m.list.IsFiltering() {
 		// Pass through to list handler.
 		return true
 	}
@@ -544,15 +543,10 @@ func (m *model) handleResourceUpdate(msg command.EventEnd) []tea.Cmd {
 		return cmds
 	}
 
-	m.list.YAMLs = nil
-
+	docs := make([]*yamls.Document, 0, len(msg.Output.Resources))
 	for _, yml := range msg.Output.Resources {
 		newYaml := kubeResourceToYAML(yml)
-		m.list.AddYAMLs(newYaml)
-
-		if m.list.FilterApplied() {
-			newYaml.BuildFilterValue()
-		}
+		docs = append(docs, newYaml)
 
 		if m.state == stateShowDocument && kube.ObjectEqual(yml.Object, m.pager.CurrentDocument.Object) {
 			// Use AddRevision for diff tracking instead of re-rendering from scratch.
@@ -561,9 +555,8 @@ func (m *model) handleResourceUpdate(msg command.EventEnd) []tea.Cmd {
 		}
 	}
 
-	if m.list.FilterApplied() {
-		cmds = append(cmds, list.FilterYAMLs(m.list))
-	}
+	cmd := m.list.SetItems(docs)
+	cmds = append(cmds, cmd)
 
 	return cmds
 }
