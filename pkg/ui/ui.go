@@ -9,6 +9,8 @@ import (
 
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
+	"go.jacobcolvin.com/niceyaml"
+	"go.jacobcolvin.com/niceyaml/style"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -75,9 +77,9 @@ type model struct {
 	result       string
 	menu         menu.Model
 	spinner      spinner.Model
-	pager        pager.PagerModel
 	fullResult   pager.PagerModel
 	list         list.ListModel
+	pager        pager.PagerModel
 	state        State
 	overlayState OverlayState
 }
@@ -129,6 +131,24 @@ func newModel(cfg *Config, cmd common.Commander) tea.Model {
 		KeyBinds: cfg.KeyBinds.Common,
 	}
 
+	// Create niceyaml Printer with theme styles and gutter config.
+	printerOpts := []niceyaml.PrinterOption{
+		niceyaml.WithStyles(cm.Theme.NiceyamlStyles),
+	}
+
+	if !*cfg.UI.LineNumbers {
+		printerOpts = append(printerOpts, niceyaml.WithGutter(niceyaml.NoGutter()))
+	}
+
+	printer := niceyaml.NewPrinter(printerOpts...)
+	printer.SetWordWrap(*cfg.UI.WordWrap)
+
+	// Configure search/selected styles in the niceyaml styles.
+	ss := cm.Theme.NiceyamlStyles
+	searchBg := cm.Theme.SelectedStyle.GetForeground()
+	ss[style.Search] = ptr(lipgloss.NewStyle().Underline(true).Bold(true).Foreground(searchBg))
+	ss[style.SearchSelected] = ptr(cm.Theme.LogoStyle.Bold(true))
+
 	sp := spinner.New()
 	sp.Spinner = spinner.Line
 	sp.Style = cm.Theme.GenericTextStyle
@@ -140,17 +160,15 @@ func newModel(cfg *Config, cmd common.Commander) tea.Model {
 	})
 
 	pagerModel := pager.NewModel(pager.Config{
-		CommonModel:     cm,
-		KeyBinds:        cfg.KeyBinds.Pager,
-		ChromaRendering: *cfg.UI.ChromaRendering,
-		ShowLineNumbers: *cfg.UI.LineNumbers,
+		CommonModel: cm,
+		KeyBinds:    cfg.KeyBinds.Pager,
+		Printer:     printer,
 	})
 
 	fullResultModel := pager.NewModel(pager.Config{
-		CommonModel:     cm,
-		KeyBinds:        cfg.KeyBinds.Pager,
-		ChromaRendering: *cfg.UI.ChromaRendering,
-		ShowLineNumbers: false,
+		CommonModel: cm,
+		KeyBinds:    cfg.KeyBinds.Pager,
+		Printer:     printer,
 	})
 
 	menuModel := menu.NewModel(menu.Config{
@@ -171,6 +189,10 @@ func newModel(cfg *Config, cmd common.Commander) tea.Model {
 	}
 
 	return m
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }
 
 func (m *model) Init() tea.Cmd {
@@ -250,7 +272,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pager.CurrentDocument = *msg
 		body := msg.Body
 		m.state = stateShowDocument
-		cmds = append(cmds, m.pager.Render(body))
+		m.pager.SetContent(body)
 
 	case GotResultMsg:
 		m.err = msg.Error
@@ -276,13 +298,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		body += "# Stdout\n" + msg.Stdout + "\n---\n# Stderr\n" + msg.Stderr
 
 		m.fullResult.CurrentDocument = yamls.Document{
-			Body:  body,
+			Body:  niceyaml.NewSourceFromString(body),
 			Title: "output",
 		}
 
 	case ShowResultMsg:
 		m.state = stateShowResult
-		cmds = append(cmds, m.fullResult.Render(m.fullResult.CurrentDocument.Body))
+		m.fullResult.SetContent(m.fullResult.CurrentDocument.Body)
+		m.fullResult.SetSize(m.cm.Width, m.cm.Height)
 
 	case command.EventEnd:
 		cmds = append(cmds, m.handleResourceUpdate(msg)...)
@@ -314,7 +337,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		yamlDoc := kubeResourceToYAML(&resource)
 		m.pager.CurrentDocument = *yamlDoc
 
-		cmds = append(cmds, m.pager.Render(yamlDoc.Body))
+		m.pager.SetContent(yamlDoc.Body)
 
 	case menu.ChangeConfigMsg:
 		m.list.YAMLs = nil
@@ -496,7 +519,7 @@ func (m *model) isTextInputFocused() bool {
 		return true
 	}
 	if m.state == stateShowResult && m.fullResult.ViewState == pager.StateSearching {
-		// Pass through to pager search handler.
+		// Pass through to result pager search handler.
 		return true
 	}
 	if m.state == stateShowMenu {
@@ -532,7 +555,9 @@ func (m *model) handleResourceUpdate(msg command.EventEnd) []tea.Cmd {
 		}
 
 		if m.state == stateShowDocument && kube.ObjectEqual(yml.Object, m.pager.CurrentDocument.Object) {
-			cmds = append(cmds, list.LoadYAML(newYaml))
+			// Use AddRevision for diff tracking instead of re-rendering from scratch.
+			m.pager.CurrentDocument = *newYaml
+			m.pager.AddRevision(newYaml.Body)
 		}
 	}
 
@@ -611,7 +636,7 @@ func (m *model) runPlugin(ctx context.Context, name string) tea.Cmd {
 func kubeResourceToYAML(res *kube.Resource) *yamls.Document {
 	return &yamls.Document{
 		Object: res.Object,
-		Body:   res.YAML,
+		Body:   res.Source,
 		Title:  res.Object.GetNamespacedName(),
 		Desc:   res.Object.GetGroupKind(),
 	}

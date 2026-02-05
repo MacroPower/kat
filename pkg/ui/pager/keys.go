@@ -22,6 +22,11 @@ type KeyBinds struct {
 	Search    *keys.KeyBind `json:"search,omitempty"`
 	NextMatch *keys.KeyBind `json:"nextMatch,omitempty"`
 	PrevMatch *keys.KeyBind `json:"prevMatch,omitempty"`
+
+	// Diff/view modes.
+	ToggleDiffMode *keys.KeyBind `json:"toggleDiffMode,omitempty"`
+	ToggleViewMode *keys.KeyBind `json:"toggleViewMode,omitempty"`
+	ToggleWordWrap *keys.KeyBind `json:"toggleWordWrap,omitempty"`
 }
 
 func (kb *KeyBinds) EnsureDefaults() {
@@ -69,6 +74,18 @@ func (kb *KeyBinds) EnsureDefaults() {
 		keys.NewBind("previous match",
 			keys.New("N"),
 		))
+	keys.SetDefaultBind(&kb.ToggleDiffMode,
+		keys.NewBind("diff mode",
+			keys.New("m"),
+		))
+	keys.SetDefaultBind(&kb.ToggleViewMode,
+		keys.NewBind("view mode",
+			keys.New("v"),
+		))
+	keys.SetDefaultBind(&kb.ToggleWordWrap,
+		keys.NewBind("word wrap",
+			keys.New("w"),
+		))
 }
 
 func (kb *KeyBinds) GetKeyBinds() []keys.KeyBind {
@@ -83,6 +100,9 @@ func (kb *KeyBinds) GetKeyBinds() []keys.KeyBind {
 		*kb.Search,
 		*kb.NextMatch,
 		*kb.PrevMatch,
+		*kb.ToggleDiffMode,
+		*kb.ToggleViewMode,
+		*kb.ToggleWordWrap,
 	}
 }
 
@@ -145,6 +165,15 @@ func (h *KeyHandler) HandlePagerKeys(m PagerModel, msg tea.KeyMsg) (PagerModel, 
 
 	case h.kb.Copy.Match(key):
 		cmd = m.CopyContent()
+
+	case h.kb.ToggleDiffMode.Match(key):
+		m.ToggleDiffMode()
+
+	case h.kb.ToggleViewMode.Match(key):
+		m.ToggleViewMode()
+
+	case h.kb.ToggleWordWrap.Match(key):
+		m.ToggleWordWrap()
 	}
 
 	return m, cmd

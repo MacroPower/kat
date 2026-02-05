@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alecthomas/chroma/v2"
 	"github.com/invopop/jsonschema"
+	"go.jacobcolvin.com/niceyaml/style"
 
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/ui/common"
@@ -40,12 +40,10 @@ type UIConfig struct {
 	Compact *bool `json:"compact,omitempty" jsonschema:"title=Enable Compact Display,default=false"`
 	// WordWrap enables automatic word wrapping for long text.
 	WordWrap *bool `json:"wordWrap,omitempty" jsonschema:"title=Enable Word Wrap,default=true"`
-	// ChromaRendering enables syntax highlighting using Chroma.
-	ChromaRendering *bool `json:"chromaRendering,omitempty" jsonschema:"title=Enable Chroma Rendering,default=true"`
 	// LineNumbers enables line numbers in the display.
 	LineNumbers *bool `json:"lineNumbers,omitempty" jsonschema:"title=Enable Line Numbers,default=true"`
 	// Theme specifies the theme name to use. This can be a custom theme added under `themes`,
-	// or a theme from the Chroma Style Gallery: https://xyproto.github.io/splash/docs/
+	// or a built-in niceyaml theme (e.g., "github-dark", "github", "charm").
 	Theme string `json:"theme,omitempty" jsonschema:"title=Theme Name"`
 }
 
@@ -68,10 +66,8 @@ func (c UIConfig) JSONSchemaExtend(schema *jsonschema.Schema) {
 
 // ThemeConfig defines custom theme configuration.
 type ThemeConfig struct {
-	// Styles contains the style entries for Chroma rendering, which uses the same syntax as Pygments.
-	// Define a map of Pygments Tokens (https://pygments.org/docs/tokens/)
-	// to Pygments Styles (http://pygments.org/docs/styles/).
-	Styles chroma.StyleEntries `json:"styles,omitempty" jsonschema:"title=Styles"`
+	// Styles contains niceyaml style entries for syntax highlighting.
+	Styles style.Styles `json:"styles,omitempty" jsonschema:"title=Styles"`
 }
 
 func (c *Config) EnsureDefaults() {
@@ -94,7 +90,6 @@ func (c *Config) EnsureDefaults() {
 	// Set defaults for UIConfig in this Config context only.
 	setDefaultBool(&c.UI.Compact, false)
 	setDefaultBool(&c.UI.WordWrap, true)
-	setDefaultBool(&c.UI.ChromaRendering, true)
 	setDefaultBool(&c.UI.LineNumbers, true)
 }
 

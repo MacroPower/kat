@@ -1,12 +1,10 @@
-package yaml_test
+package policies //nolint:testpackage // Tests internal merge function.
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/macropower/kat/pkg/yaml"
 )
 
 func TestMergeRootFromValue(t *testing.T) {
@@ -82,7 +80,7 @@ nested:
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := yaml.MergeRootFromValue([]byte(tc.input), tc.value)
+			got, err := mergeRootFromValue([]byte(tc.input), tc.value)
 
 			if tc.wantErr {
 				require.Error(t, err)

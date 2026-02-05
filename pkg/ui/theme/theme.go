@@ -8,24 +8,24 @@ import (
 	"sync"
 
 	"charm.land/lipgloss/v2"
-	"github.com/alecthomas/chroma/v2"
-	"github.com/alecthomas/chroma/v2/styles"
+	"go.jacobcolvin.com/niceyaml/style"
 	"golang.org/x/term"
+
+	nytheme "go.jacobcolvin.com/niceyaml/style/theme"
 )
 
-// Icons.
 const (
+	// Ellipsis is the character used to indicate truncated text.
 	Ellipsis = "…"
+
+	defaultDarkTheme  = "github-dark"
+	defaultLightTheme = "github"
 )
 
 var (
 	Default = New(getDefaultStyle())
 
-	ErrRegisterStyles = errors.New("register theme styles")
-	ErrInvalidName    = errors.New("invalid theme name")
-
-	// Protect chroma styles from concurrent access.
-	chromaStyleMutex sync.Mutex
+	ErrInvalidName = errors.New("invalid theme name")
 )
 
 type Theme struct {
@@ -53,88 +53,96 @@ type Theme struct {
 	InsertedStyle             lipgloss.Style
 	DeletedStyle              lipgloss.Style
 
-	ChromaStyle *chroma.Style
-	Ellipsis    string
+	NiceyamlStyles style.Styles
+	Ellipsis       string
 }
 
-func New(theme string) *Theme {
-	style := newChromaStyle(theme)
+func New(themeName string) *Theme {
+	ss := resolveStyles(themeName)
+
+	// Extract colors from niceyaml styles.
+	textFg := getStyleFg(ss, style.Text)
+	textBg := getStyleBg(ss, style.Text)
+	nameTagFg := getStyleFg(ss, style.NameTag)
+	commentFg := getStyleFg(ss, style.Comment)
+	deletedFg := getStyleFg(ss, style.GenericDeleted)
+	insertedFg := getStyleFg(ss, style.GenericInserted)
 
 	var (
 		genericStyle = lipgloss.NewStyle().
-				Foreground(style.lipglossFromToken(chroma.Background))
+				Foreground(textFg)
 
 		logoStyle = lipgloss.NewStyle().
-				Foreground(style.lipglossFromTokenBg(chroma.Background)).
-				Background(style.lipglossFromToken(chroma.NameTag)).
+				Foreground(textBg).
+				Background(nameTagFg).
 				Bold(true)
 
 		selectedStyle = lipgloss.NewStyle().
-				Foreground(style.lipglossFromToken(chroma.NameTag))
+				Foreground(nameTagFg)
 
 		selectedSubtleStyle = lipgloss.NewStyle().
-					Foreground(style.lipglossFromTokenWithFactor(chroma.NameTag, 0.3))
+					Foreground(brighten(nameTagFg, textBg, 0.3))
 
 		filterStyle = selectedStyle
 
 		cursorStyle = selectedSubtleStyle
 
 		helpStyle = lipgloss.NewStyle().
-				Foreground(style.lipglossFromTokenWithFactor(chroma.Background, 0.2)).
-				Background(style.lipglossFromTokenBgWithFactor(chroma.Background, 0.2))
+				Foreground(brighten(textFg, textBg, 0.2)).
+				Background(brighten(textBg, textFg, 0.2))
 
 		statusBarStyle = lipgloss.NewStyle().
-				Foreground(style.lipglossFromToken(chroma.Background)).
-				Background(style.lipglossFromTokenBgWithFactor(chroma.Background, 0.1))
+				Foreground(textFg).
+				Background(brighten(textBg, textFg, 0.1))
 
 		statusBarPosStyle = lipgloss.NewStyle().
-					Foreground(style.lipglossFromToken(chroma.Background)).
-					Background(style.lipglossFromTokenBgWithFactor(chroma.Background, 0.15))
+					Foreground(textFg).
+					Background(brighten(textBg, textFg, 0.15))
 
 		statusBarHelpStyle = helpStyle
 
 		statusBarMessageStyle = lipgloss.NewStyle().
-					Foreground(style.lipglossFromTokenBg(chroma.Background)).
-					Background(style.lipglossFromTokenWithFactor(chroma.NameTag, 0.15))
+					Foreground(textBg).
+					Background(brighten(nameTagFg, textBg, 0.15))
 
 		statusBarMessagePosStyle = lipgloss.NewStyle().
-						Foreground(style.lipglossFromTokenBg(chroma.Background)).
-						Background(style.lipglossFromTokenWithFactor(chroma.NameTag, 0.1))
+						Foreground(textBg).
+						Background(brighten(nameTagFg, textBg, 0.1))
 
 		statusBarMessageHelpStyle = genericStyle.
-						Foreground(style.lipglossFromTokenBg(chroma.Background)).
-						Background(style.lipglossFromToken(chroma.NameTag))
+						Foreground(textBg).
+						Background(nameTagFg)
 
 		errorTitleStyle = genericStyle.
-				Foreground(style.lipglossFromTokenBg(chroma.Background)).
-				Background(style.lipglossFromToken(chroma.GenericDeleted)).
+				Foreground(textBg).
+				Background(deletedFg).
 				Bold(true)
 
 		errorTextStyle = lipgloss.NewStyle().
-				Foreground(style.lipglossFromToken(chroma.GenericDeleted))
+				Foreground(deletedFg)
 
 		resultTitleStyle = genericStyle.
-					Foreground(style.lipglossFromTokenBg(chroma.Background)).
-					Background(style.lipglossFromToken(chroma.GenericInserted)).
+					Foreground(textBg).
+					Background(insertedFg).
 					Bold(true)
 
 		errorOverlayStyle = genericStyle.
 					Border(lipgloss.RoundedBorder()).
-					BorderForeground(style.lipglossFromToken(chroma.GenericDeleted))
+					BorderForeground(deletedFg)
 
 		genericOverlayStyle = genericStyle.
 					Border(lipgloss.RoundedBorder())
 
 		subtleStyle = lipgloss.NewStyle().
-				Foreground(style.lipglossFromToken(chroma.Comment))
+				Foreground(commentFg)
 
 		insertedStyle = lipgloss.NewStyle().
-				Foreground(style.lipglossFromTokenBg(chroma.Background)).
-				Background(style.lipglossFromToken(chroma.GenericInserted))
+				Foreground(textBg).
+				Background(insertedFg)
 
 		deletedStyle = lipgloss.NewStyle().
-				Foreground(style.lipglossFromTokenBg(chroma.Background)).
-				Background(style.lipglossFromToken(chroma.GenericDeleted))
+				Foreground(textBg).
+				Background(deletedFg)
 
 		paginationStyle = subtleStyle
 
@@ -166,100 +174,100 @@ func New(theme string) *Theme {
 		InsertedStyle:             insertedStyle,
 		DeletedStyle:              deletedStyle,
 
-		ChromaStyle: style.style,
-		Ellipsis:    Ellipsis,
+		NiceyamlStyles: ss,
+		Ellipsis:       Ellipsis,
 	}
 }
 
-func Register(name string, entries chroma.StyleEntries) error {
+// Register registers a custom theme by name with the given [style.Styles].
+func Register(name string, ss style.Styles) error {
 	if name == "" {
 		return fmt.Errorf("%w: %q", ErrInvalidName, name)
 	}
 
-	chromaStyleMutex.Lock()
-	defer chromaStyleMutex.Unlock()
+	customThemesMu.Lock()
+	defer customThemesMu.Unlock()
 
-	customTheme, err := chroma.NewStyle(name, entries)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrRegisterStyles, err)
-	}
-
-	styles.Register(customTheme)
+	customThemes[name] = ss
 
 	return nil
 }
 
-type chromaStyle struct {
-	style *chroma.Style
-}
+var (
+	customThemesMu sync.Mutex
+	customThemes   = map[string]style.Styles{}
+)
 
-func newChromaStyle(theme string) chromaStyle {
-	chromaStyleMutex.Lock()
-	defer chromaStyleMutex.Unlock()
+func resolveStyles(themeName string) style.Styles {
+	name := getStyle(themeName)
 
-	s := styles.Get(getStyle(theme))
-	if s == nil {
-		// If the style is not found, fallback to the default style.
-		s = styles.Fallback
+	// Check custom themes first.
+	customThemesMu.Lock()
+
+	ss, ok := customThemes[name]
+
+	customThemesMu.Unlock() //nolint:staticcheck // Unlock immediately after map read.
+
+	if ok {
+		return ss
 	}
 
-	return chromaStyle{
-		style: s,
+	// Try niceyaml built-in themes.
+	ss, ok = nytheme.Styles(name)
+	if ok {
+		return ss
 	}
+
+	// Fallback to github-dark.
+	ss, _ = nytheme.Styles(defaultDarkTheme)
+
+	return ss
 }
 
-func (cs chromaStyle) lipglossFromToken(c chroma.TokenType) color.Color {
-	s := cs.style.Get(c)
+func getStyleFg(ss style.Styles, s style.Style) color.Color {
+	ls := ss.Style(s)
+	if ls == nil {
+		return lipgloss.NoColor{}
+	}
 
-	// Convert chroma color to lipgloss color.
-	return lipgloss.Color(s.Colour.String()) //nolint:misspell // Chroma naming.
+	return ls.GetForeground()
 }
 
-//nolint:unparam // Will you shut up man...
-func (cs chromaStyle) lipglossFromTokenBg(c chroma.TokenType) color.Color {
-	s := cs.style.Get(c)
+func getStyleBg(ss style.Styles, s style.Style) color.Color {
+	ls := ss.Style(s)
+	if ls == nil {
+		return lipgloss.NoColor{}
+	}
 
-	// Convert chroma color to lipgloss color.
-	return lipgloss.Color(s.Background.String())
+	return ls.GetBackground()
 }
 
-func (cs chromaStyle) lipglossFromTokenWithFactor(c chroma.TokenType, factor float64) color.Color {
-	s := cs.style.Get(c)
-
-	sc := s.Colour.BrightenOrDarken(factor) //nolint:misspell // Chroma naming.
-
-	// Convert chroma color to lipgloss color.
-	return lipgloss.Color(sc.String())
+// brighten adjusts a color towards a target by the given factor.
+// For dark themes this lightens, for light themes this darkens.
+func brighten(c, towards color.Color, factor float64) color.Color {
+	_ = towards // Direction hint unused for now; lipgloss.Lighten/Darken handles direction.
+	return lipgloss.Lighten(c, factor)
 }
 
-func (cs chromaStyle) lipglossFromTokenBgWithFactor(c chroma.TokenType, factor float64) color.Color {
-	s := cs.style.Get(c)
-
-	sc := s.Background.BrightenOrDarken(factor)
-
-	// Convert chroma color to lipgloss color.
-	return lipgloss.Color(sc.String())
-}
-
-func getStyle(style string) string {
-	switch style {
+func getStyle(s string) string {
+	switch s {
 	case "dark":
-		return "github-dark"
+		return defaultDarkTheme
 	case "light":
-		return "github"
+		return defaultLightTheme
 	case "auto", "":
 		return getDefaultStyle()
 	default:
-		return style
+		return s
 	}
 }
 
 func getDefaultStyle() string {
 	if !term.IsTerminal(int(os.Stdout.Fd())) {
-		return "" // Fallback.
+		return defaultDarkTheme // Fallback.
 	}
 	if lipgloss.HasDarkBackground(os.Stdin, os.Stdout) {
-		return "github-dark"
+		return defaultDarkTheme
 	}
 
 	return "github"

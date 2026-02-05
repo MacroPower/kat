@@ -1,7 +1,14 @@
 package yamls
 
 import (
+	"fmt"
 	"log/slog"
+	"unicode"
+
+	"go.jacobcolvin.com/niceyaml"
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 
 	"github.com/macropower/kat/pkg/kube"
 )
@@ -14,7 +21,7 @@ type Document struct {
 	// field is ephemeral, and should only be referenced during filtering.
 	FilterValue string
 
-	Body  string
+	Body  *niceyaml.Source
 	Title string
 	Desc  string
 }
@@ -46,4 +53,17 @@ func (m *Document) BuildFilterValue() {
 
 		m.FilterValue += m.Desc
 	}
+}
+
+// Normalize text to aid in the filtering process. In particular, we remove
+// diacritics, "ö" becomes "o". Title that Mn is the unicode key for nonspacing
+// marks.
+func Normalize(in string) (string, error) {
+	t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+	out, _, err := transform.String(t, in)
+	if err != nil {
+		return "", fmt.Errorf("error normalizing: %w", err)
+	}
+
+	return out, nil
 }

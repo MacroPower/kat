@@ -5,13 +5,13 @@ import (
 	"fmt"
 
 	"github.com/invopop/jsonschema"
+	"go.jacobcolvin.com/niceyaml/schema/validator"
 
 	_ "embed"
 
 	"github.com/macropower/kat/api"
 	"github.com/macropower/kat/api/v1beta1"
 	"github.com/macropower/kat/pkg/command"
-	"github.com/macropower/kat/pkg/yaml"
 )
 
 //go:generate go run ../../../internal/schemagen/project/main.go -o runtimeconfigs.v1beta1.json
@@ -30,7 +30,7 @@ var (
 	runtimeSchemaJSON []byte
 
 	// DefaultValidator validates runtime configuration against the JSON schema.
-	DefaultValidator = yaml.MustNewValidator("/runtimeconfigs.v1beta1.json", runtimeSchemaJSON)
+	DefaultValidator = validator.MustNew("/runtimeconfigs.v1beta1.json", runtimeSchemaJSON)
 
 	// ValidKinds contains the valid kind values for runtime configurations.
 	ValidKinds = []string{"RuntimeConfig"}

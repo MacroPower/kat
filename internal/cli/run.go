@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.jacobcolvin.com/niceyaml"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
@@ -31,7 +32,6 @@ import (
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/setup"
 	"github.com/macropower/kat/pkg/ui/theme"
-	"github.com/macropower/kat/pkg/ui/yamls"
 	"github.com/macropower/kat/pkg/version"
 )
 
@@ -303,13 +303,12 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 
 		yamlConfig := string(yamlBytes)
 
-		cr := yamls.NewChromaRenderer(thm, yamls.WithLineNumbersDisabled(true))
-		prettyConfig, err := cr.RenderContent(yamlConfig, 0)
-		if err != nil {
-			mustN(fmt.Fprintln(cmd.OutOrStdout(), yamlConfig))
-
-			return err
-		}
+		printer := niceyaml.NewPrinter(
+			niceyaml.WithStyles(thm.NiceyamlStyles),
+			niceyaml.WithGutter(niceyaml.NoGutter()),
+		)
+		source := niceyaml.NewSourceFromString(yamlConfig)
+		prettyConfig := printer.Print(source)
 
 		mustN(fmt.Fprintln(cmd.OutOrStdout(), prettyConfig))
 

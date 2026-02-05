@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 
 	"github.com/invopop/jsonschema"
+	"go.jacobcolvin.com/niceyaml/schema/validator"
 
 	_ "embed"
 
 	"github.com/macropower/kat/api"
 	"github.com/macropower/kat/api/v1beta1"
-	"github.com/macropower/kat/pkg/yaml"
 )
 
 //go:generate go run ../../../internal/schemagen/policy/main.go -o policies.v1beta1.json
@@ -28,7 +28,7 @@ var (
 	ValidKinds = []string{"Policy"}
 
 	// DefaultValidator validates policy configuration against the JSON schema.
-	DefaultValidator = yaml.MustNewValidator("/policies.v1beta1.json", policySchemaJSON)
+	DefaultValidator = validator.MustNew("/policies.v1beta1.json", policySchemaJSON)
 
 	// Compile-time interface checks.
 	_ v1beta1.Object = (*Policy)(nil)
@@ -146,7 +146,7 @@ func (p *Policy) TrustProject(projectPath, policyPath string) error {
 		Projects: p.Projects,
 	}
 
-	merged, err := yaml.MergeRootFromValue(data, projectsUpdate)
+	merged, err := mergeRootFromValue(data, projectsUpdate)
 	if err != nil {
 		return fmt.Errorf("merge projects section: %w", err)
 	}
