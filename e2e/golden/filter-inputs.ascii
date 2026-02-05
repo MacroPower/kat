@@ -159,165 +159,165 @@
 
  kat unknown  static                                                               1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
-   1  apiVersion: apps/v1
-   2  kind: Deployment
-   3  metadata:
-   4    name: nginx-deployment
-   5    labels:
-   6      app: nginx
-   7  spec:
-   8    replicas: 3
-   9    selector:
-  10      matchLabels:
-  11        app: nginx
-  12    template:
-  13      metadata:
-  14        labels:
-  15          app: nginx
-  16      spec:
-  17        containers:
-  18          - name: nginx
-  19            image: nginx:1.14.2
-  20            ports:
-  21              - containerPort: 80
+   1  ---
+   2  apiVersion: apps/v1
+   3  kind: Deployment
+   4  metadata:
+   5    name: nginx-deployment
+   6    labels:
+   7      app: nginx
+   8  spec:
+   9    replicas: 3
+  10    selector:
+  11      matchLabels:
+  12        app: nginx
+  13    template:
+  14      metadata:
+  15        labels:
+  16          app: nginx
+  17      spec:
+  18        containers:
+  19          - name: nginx
+  20            image: nginx:1.14.2
+  21            ports:
  kat unknown  nginx-deployment                                                      0%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
-   1  apiVersion: apps/v1
-   2  kind: Deployment
-   3  metadata:
-   4    name: nginx-deployment
-   5    labels:
-   6      app: nginx
-   7  spec:
-   8    replicas: 3
-   9    selector:
-  10      matchLabels:
-  11        app: nginx
-  12    template:
-  13      metadata:
-  14        labels:
-  15          app: nginx
-  16      spec:
-  17        containers:
-  18          - name: nginx
-  19            image: nginx:1.14.2
-  20            ports:
-  21              - containerPort: 80
+   1  ---
+   2  apiVersion: apps/v1
+   3  kind: Deployment
+   4  metadata:
+   5    name: nginx-deployment
+   6    labels:
+   7      app: nginx
+   8  spec:
+   9    replicas: 3
+  10    selector:
+  11      matchLabels:
+  12        app: nginx
+  13    template:
+  14      metadata:
+  15        labels:
+  16          app: nginx
+  17      spec:
+  18        containers:
+  19          - name: nginx
+  20            image: nginx:1.14.2
+  21            ports:
 Search:
 ────────────────────────────────────────────────────────────────────────────────
-   1  apiVersion: apps/v1
-   2  kind: Deployment
-   3  metadata:
-   4    name: nginx-deployment
-   5    labels:
-   6      app: nginx
-   7  spec:
-   8    replicas: 3
-   9    selector:
-  10      matchLabels:
-  11        app: nginx
-  12    template:
-  13      metadata:
-  14        labels:
-  15          app: nginx
-  16      spec:
-  17        containers:
-  18          - name: nginx
-  19            image: nginx:1.14.2
-  20            ports:
-  21              - containerPort: 80
+   1  ---
+   2  apiVersion: apps/v1
+   3  kind: Deployment
+   4  metadata:
+   5    name: nginx-deployment
+   6    labels:
+   7      app: nginx
+   8  spec:
+   9    replicas: 3
+  10    selector:
+  11      matchLabels:
+  12        app: nginx
+  13    template:
+  14      metadata:
+  15        labels:
+  16          app: nginx
+  17      spec:
+  18        containers:
+  19          - name: nginx
+  20            image: nginx:1.14.2
+  21            ports:
 Search: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
 ────────────────────────────────────────────────────────────────────────────────
-   1  apiVersion: apps/v1
-   2  kind: Deployment
-   3  metadata:
-   4    name: nginx-deployment
-   5    labels:
-   6      app: nginx
-   7  spec:
-   8    replicas: 3
-   9    selector:
-  10      matchLabels:
-  11        app: nginx
-  12    template:
-  13      metadata:
-  14        labels:
-  15          app: nginx
-  16      spec:
-  17        containers:
-  18          - name: nginx
-  19            image: nginx:1.14.2
-  20            ports:
-  21              - containerPort: 80
+   1  ---
+   2  apiVersion: apps/v1
+   3  kind: Deployment
+   4  metadata:
+   5    name: nginx-deployment
+   6    labels:
+   7      app: nginx
+   8  spec:
+   9    replicas: 3
+  10    selector:
+  11      matchLabels:
+  12        app: nginx
+  13    template:
+  14      metadata:
+  15        labels:
+  16          app: nginx
+  17      spec:
+  18        containers:
+  19          - name: nginx
+  20            image: nginx:1.14.2
+  21            ports:
 Search: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
 ────────────────────────────────────────────────────────────────────────────────
-   1  apiVersion: apps/v1
-   2  kind: Deployment
-   3  metadata:
-   4    name: nginx-deployment
-   5    labels:
-   6      app: nginx
-   7  spec:
-   8    replicas: 3
-   9    selector:
-  10      matchLabels:
-  11        app: nginx
-  12    template:
-  13      metadata:
-  14        labels:
-  15          app: nginx
-  16      spec:
-  17        containers:
-  18          - name: nginx
-  19            image: nginx:1.14.2
-  20            ports:
-  21              - containerPort: 80
+   1  ---
+   2  apiVersion: apps/v1
+   3  kind: Deployment
+   4  metadata:
+   5    name: nginx-deployment
+   6    labels:
+   7      app: nginx
+   8  spec:
+   9    replicas: 3
+  10    selector:
+  11      matchLabels:
+  12        app: nginx
+  13    template:
+  14      metadata:
+  15        labels:
+  16          app: nginx
+  17      spec:
+  18        containers:
+  19          - name: nginx
+  20            image: nginx:1.14.2
+  21            ports:
 Search: abcdefghijklmnopqrstuvwxyz !@#$%^&*()-_=+{}[]\|;':"<>?/~ ABCDEFGHIJKLMNOPQRSTUVWX
 ────────────────────────────────────────────────────────────────────────────────
-   1  apiVersion: apps/v1
-   2  kind: Deployment
-   3  metadata:
-   4    name: nginx-deployment
-   5    labels:
-   6      app: nginx
-   7  spec:
-   8    replicas: 3
-   9    selector:
-  10      matchLabels:
-  11        app: nginx
-  12    template:
-  13      metadata:
-  14        labels:
-  15          app: nginx
-  16      spec:
-  17        containers:
-  18          - name: nginx
-  19            image: nginx:1.14.2
-  20            ports:
-  21              - containerPort: 80
+   1  ---
+   2  apiVersion: apps/v1
+   3  kind: Deployment
+   4  metadata:
+   5    name: nginx-deployment
+   6    labels:
+   7      app: nginx
+   8  spec:
+   9    replicas: 3
+  10    selector:
+  11      matchLabels:
+  12        app: nginx
+  13    template:
+  14      metadata:
+  15        labels:
+  16          app: nginx
+  17      spec:
+  18        containers:
+  19          - name: nginx
+  20            image: nginx:1.14.2
+  21            ports:
 Search: cdefghijklmnopqrstuvwxyz !@#$%^&*()-_=+{}[]\|;':"<>?/~ ABCDEFGHIJKLMNOPQRSTUVWXYZ
 ────────────────────────────────────────────────────────────────────────────────
-   1  apiVersion: apps/v1
-   2  kind: Deployment
-   3  metadata:
-   4    name: nginx-deployment
-   5    labels:
-   6      app: nginx
-   7  spec:
-   8    replicas: 3
-   9    selector:
-  10      matchLabels:
-  11        app: nginx
-  12    template:
-  13      metadata:
-  14        labels:
-  15          app: nginx
-  16      spec:
-  17        containers:
-  18          - name: nginx
-  19            image: nginx:1.14.2
-  20            ports:
-  21              - containerPort: 80
+   1  ---
+   2  apiVersion: apps/v1
+   3  kind: Deployment
+   4  metadata:
+   5    name: nginx-deployment
+   6    labels:
+   7      app: nginx
+   8  spec:
+   9    replicas: 3
+  10    selector:
+  11      matchLabels:
+  12        app: nginx
+  13    template:
+  14      metadata:
+  15        labels:
+  16          app: nginx
+  17      spec:
+  18        containers:
+  19          - name: nginx
+  20            image: nginx:1.14.2
+  21            ports:
  kat unknown  nginx-deployment                                                      0%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 > cat example/kustomize/resources.yaml | ./kat - --config=api/v1beta1/configs/config.yaml --tru
