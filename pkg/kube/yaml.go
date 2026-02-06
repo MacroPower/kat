@@ -41,7 +41,7 @@ type Resource struct {
 func SplitYAML(yamlData []byte) ([]*Resource, error) {
 	var objs []*Resource
 
-	for _, tks := range lexers.TokenizeDocuments(string(yamlData)) {
+	for _, tks := range lexers.TokenizeDocuments(string(yamlData), lexers.WithResetPositions()) {
 		source := niceyaml.NewSourceFromTokens(tks)
 
 		dec, err := source.Decoder()

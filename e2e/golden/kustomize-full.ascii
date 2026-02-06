@@ -15,11 +15,7 @@
 
 
 
-
-
-
-
- kat unknown  ks: kustomize build .                                                1/1  ? Help
+ kat unknown  ks: kustomize build .                            1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
    2 resources
@@ -38,11 +34,7 @@
 
 
 
-
-
-
-
- kat unknown  ks: kustomize build .                                                1/1  ? Help
+ kat unknown  ks: kustomize build .                            1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
    2 resources
@@ -61,11 +53,7 @@
 
 
 
-
-
-
-
- kat unknown  ks: kustomize build .                                                1/1  ? Help
+ kat unknown  ks: kustomize build .                            1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
    1  apiVersion: apps/v1
    2  kind: Deployment
@@ -84,11 +72,7 @@
   15          app: nginx
   16      spec:
   17        containers:
-  18        - image: nginx:1.14.2
-  19          name: nginx
-  20          ports:
-  21          - containerPort: 80
- kat unknown  nginx-deployment                                                      0%  ? Help
+ kat unknown  nginx-deployment                                  0%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
    2 resources
@@ -107,11 +91,7 @@
 
 
 
-
-
-
-
- kat unknown  ks: kustomize build .                                                1/1  ? Help
+ kat unknown  ks: kustomize build .                            1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
    Find:
@@ -130,11 +110,7 @@
 
 
 
-
-
-
-
- kat unknown  ks: kustomize build .                                                1/1  ? Help
+ kat unknown  ks: kustomize build .                            1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
    Find: deployment
@@ -153,11 +129,7 @@
 
 
 
-
-
-
-
- kat unknown  ks: kustomize build .                                                1/1  ? Help
+ kat unknown  ks: kustomize build .                            1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
    1  apiVersion: apps/v1
    2  kind: Deployment
@@ -176,11 +148,7 @@
   15          app: nginx
   16      spec:
   17        containers:
-  18        - image: nginx:1.14.2
-  19          name: nginx
-  20          ports:
-  21          - containerPort: 80
- kat unknown  nginx-deployment                                                      0%  ? Help
+ kat unknown  nginx-deployment                                  0%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
    1  apiVersion: apps/v1
    2  kind: Deployment
@@ -199,10 +167,6 @@
   15          app: nginx
   16      spec:
   17        containers:
-  18        - image: nginx:1.14.2
-  19          name: nginx
-  20          ports:
-  21          - containerPort: 80
 Search:
 ────────────────────────────────────────────────────────────────────────────────
    1  apiVersion: apps/v1
@@ -222,13 +186,8 @@ Search:
   15          app: nginx
   16      spec:
   17        containers:
-  18        - image: nginx:1.14.2
-  19          name: nginx
-  20          ports:
-  21          - containerPort: 80
 Search: container
 ────────────────────────────────────────────────────────────────────────────────
-   8    replicas: 3
    9    selector:
   10      matchLabels:
   11        app: nginx
@@ -246,15 +205,8 @@ Search: container
   23            limits:
   24              cpu: 100m
   25              memory: 100Mi
-  26            requests:
-  27              cpu: 5m
-  28              memory: 100Mi
- kat unknown  match 1/2                                                           100%  ? Help
+ kat unknown  match 1/2                                        73%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
-   8    replicas: 3
-   9    selector:
-  10      matchLabels:
-  11        app: nginx
   12    template:
   13      metadata:
   14        labels:
@@ -272,9 +224,8 @@ Search: container
   26            requests:
   27              cpu: 5m
   28              memory: 100Mi
- kat unknown  match 2/2                                                           100%  ? Help
+ kat unknown  match 2/2                                       100%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
-   8    replicas: 3
    9    selector:
   10      matchLabels:
   11        app: nginx
@@ -292,17 +243,10 @@ Search: container
   23            limits:
   24              cpu: 100m
   25              memory: 100Mi
-  26            requests:
-  27              cpu: 5m
-  28              memory: 100Mi
- kat unknown  match 1/2                                                           100%  ? Help
+ kat unknown  match 1/2                                        73%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 > ./kat example/kustomize --config=api/v1beta1/configs/config.yaml --trust
 >
-
-
-
-
 
 
 

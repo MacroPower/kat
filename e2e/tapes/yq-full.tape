@@ -1,5 +1,6 @@
 Hide
   Source e2e/config.tape
+  Set FontSize 16
   Output e2e/golden/yq-full.ascii
 
   Type "./kat example/kustomize yaml --config=api/v1beta1/configs/config.yaml --trust" Enter

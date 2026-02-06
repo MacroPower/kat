@@ -19,7 +19,9 @@
 
 
 
- kat unknown  yaml: sh -c yq eval-all '.' *.yaml                                   1/1  ? Help
+
+
+ kat unknown  yaml: sh -c yq eval-all '.' *.yaml                                             1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
    3 resources
@@ -42,7 +44,9 @@
 
 
 
- kat unknown  yaml: sh -c yq eval-all '.' *.yaml                                   1/1  ? Help
+
+
+ kat unknown  yaml: sh -c yq eval-all '.' *.yaml                                             1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
    3 resources
@@ -65,30 +69,34 @@
 
 
 
- kat unknown  yaml: sh -c yq eval-all '.' *.yaml                                   1/1  ? Help
+
+
+ kat unknown  yaml: sh -c yq eval-all '.' *.yaml                                             1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
-   1  apiVersion: apps/v1
-   2  kind: Deployment
-   3  metadata:
-   4    name: nginx-deployment
-   5    labels:
-   6      app: nginx
-   7  spec:
-   8    replicas: 3
-   9    selector:
-  10      matchLabels:
-  11        app: nginx
-  12    template:
-  13      metadata:
-  14        labels:
-  15          app: nginx
-  16      spec:
-  17        containers:
-  18          - name: nginx
-  19            image: nginx:1.14.2
-  20            ports:
-  21              - containerPort: 80
- kat unknown  nginx-deployment                                                      0%  ? Help
+   1  ---
+   2  apiVersion: apps/v1
+   3  kind: Deployment
+   4  metadata:
+   5    name: nginx-deployment
+   6    labels:
+   7      app: nginx
+   8  spec:
+   9    replicas: 3
+  10    selector:
+  11      matchLabels:
+  12        app: nginx
+  13    template:
+  14      metadata:
+  15        labels:
+  16          app: nginx
+  17      spec:
+  18        containers:
+  19          - name: nginx
+  20            image: nginx:1.14.2
+  21            ports:
+  22              - containerPort: 80
+  23            resources:
+ kat unknown  nginx-deployment                                                                0%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
    3 resources
@@ -111,7 +119,9 @@
 
 
 
- kat unknown  yaml: sh -c yq eval-all '.' *.yaml                                   1/1  ? Help
+
+
+ kat unknown  yaml: sh -c yq eval-all '.' *.yaml                                             1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
    Find:
@@ -134,7 +144,9 @@
 
 
 
- kat unknown  yaml: sh -c yq eval-all '.' *.yaml                                   1/1  ? Help
+
+
+ kat unknown  yaml: sh -c yq eval-all '.' *.yaml                                             1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
    Find: deployment
@@ -157,148 +169,164 @@
 
 
 
- kat unknown  yaml: sh -c yq eval-all '.' *.yaml                                   1/1  ? Help
+
+
+ kat unknown  yaml: sh -c yq eval-all '.' *.yaml                                             1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
-   1  apiVersion: apps/v1
-   2  kind: Deployment
-   3  metadata:
-   4    name: nginx-deployment
-   5    labels:
-   6      app: nginx
-   7  spec:
-   8    replicas: 3
-   9    selector:
-  10      matchLabels:
-  11        app: nginx
-  12    template:
-  13      metadata:
-  14        labels:
-  15          app: nginx
-  16      spec:
-  17        containers:
-  18          - name: nginx
-  19            image: nginx:1.14.2
-  20            ports:
-  21              - containerPort: 80
- kat unknown  nginx-deployment                                                      0%  ? Help
+   1  ---
+   2  apiVersion: apps/v1
+   3  kind: Deployment
+   4  metadata:
+   5    name: nginx-deployment
+   6    labels:
+   7      app: nginx
+   8  spec:
+   9    replicas: 3
+  10    selector:
+  11      matchLabels:
+  12        app: nginx
+  13    template:
+  14      metadata:
+  15        labels:
+  16          app: nginx
+  17      spec:
+  18        containers:
+  19          - name: nginx
+  20            image: nginx:1.14.2
+  21            ports:
+  22              - containerPort: 80
+  23            resources:
+ kat unknown  nginx-deployment                                                                0%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
-   1  apiVersion: apps/v1
-   2  kind: Deployment
-   3  metadata:
-   4    name: nginx-deployment
-   5    labels:
-   6      app: nginx
-   7  spec:
-   8    replicas: 3
-   9    selector:
-  10      matchLabels:
-  11        app: nginx
-  12    template:
-  13      metadata:
-  14        labels:
-  15          app: nginx
-  16      spec:
-  17        containers:
-  18          - name: nginx
-  19            image: nginx:1.14.2
-  20            ports:
-  21              - containerPort: 80
+   1  ---
+   2  apiVersion: apps/v1
+   3  kind: Deployment
+   4  metadata:
+   5    name: nginx-deployment
+   6    labels:
+   7      app: nginx
+   8  spec:
+   9    replicas: 3
+  10    selector:
+  11      matchLabels:
+  12        app: nginx
+  13    template:
+  14      metadata:
+  15        labels:
+  16          app: nginx
+  17      spec:
+  18        containers:
+  19          - name: nginx
+  20            image: nginx:1.14.2
+  21            ports:
+  22              - containerPort: 80
+  23            resources:
 Search:
 ────────────────────────────────────────────────────────────────────────────────
-   1  apiVersion: apps/v1
-   2  kind: Deployment
-   3  metadata:
-   4    name: nginx-deployment
-   5    labels:
-   6      app: nginx
-   7  spec:
-   8    replicas: 3
-   9    selector:
-  10      matchLabels:
-  11        app: nginx
-  12    template:
-  13      metadata:
-  14        labels:
-  15          app: nginx
-  16      spec:
-  17        containers:
-  18          - name: nginx
-  19            image: nginx:1.14.2
-  20            ports:
-  21              - containerPort: 80
+   1  ---
+   2  apiVersion: apps/v1
+   3  kind: Deployment
+   4  metadata:
+   5    name: nginx-deployment
+   6    labels:
+   7      app: nginx
+   8  spec:
+   9    replicas: 3
+  10    selector:
+  11      matchLabels:
+  12        app: nginx
+  13    template:
+  14      metadata:
+  15        labels:
+  16          app: nginx
+  17      spec:
+  18        containers:
+  19          - name: nginx
+  20            image: nginx:1.14.2
+  21            ports:
+  22              - containerPort: 80
+  23            resources:
 Search: container
 ────────────────────────────────────────────────────────────────────────────────
-   8    replicas: 3
-   9    selector:
-  10      matchLabels:
-  11        app: nginx
-  12    template:
-  13      metadata:
-  14        labels:
-  15          app: nginx
-  16      spec:
-  17        containers:
-  18          - name: nginx
-  19            image: nginx:1.14.2
-  20            ports:
-  21              - containerPort: 80
-  22            resources:
-  23              requests:
-  24                cpu: 5m
-  25                memory: 100Mi
-  26              limits:
-  27                cpu: 100m
-  28                memory: 100Mi
- kat unknown  match 1/2                                                           100%  ? Help
+   7      app: nginx
+   8  spec:
+   9    replicas: 3
+  10    selector:
+  11      matchLabels:
+  12        app: nginx
+  13    template:
+  14      metadata:
+  15        labels:
+  16          app: nginx
+  17      spec:
+  18        containers:
+  19          - name: nginx
+  20            image: nginx:1.14.2
+  21            ports:
+  22              - containerPort: 80
+  23            resources:
+  24              requests:
+  25                cpu: 5m
+  26                memory: 100Mi
+  27              limits:
+  28                cpu: 100m
+  29                memory: 100Mi
+ kat unknown  match 1/2                                                                     100%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
-   8    replicas: 3
-   9    selector:
-  10      matchLabels:
-  11        app: nginx
-  12    template:
-  13      metadata:
-  14        labels:
-  15          app: nginx
-  16      spec:
-  17        containers:
-  18          - name: nginx
-  19            image: nginx:1.14.2
-  20            ports:
-  21              - containerPort: 80
-  22            resources:
-  23              requests:
-  24                cpu: 5m
-  25                memory: 100Mi
-  26              limits:
-  27                cpu: 100m
-  28                memory: 100Mi
- kat unknown  match 2/2                                                           100%  ? Help
+   7      app: nginx
+   8  spec:
+   9    replicas: 3
+  10    selector:
+  11      matchLabels:
+  12        app: nginx
+  13    template:
+  14      metadata:
+  15        labels:
+  16          app: nginx
+  17      spec:
+  18        containers:
+  19          - name: nginx
+  20            image: nginx:1.14.2
+  21            ports:
+  22              - containerPort: 80
+  23            resources:
+  24              requests:
+  25                cpu: 5m
+  26                memory: 100Mi
+  27              limits:
+  28                cpu: 100m
+  29                memory: 100Mi
+ kat unknown  match 2/2                                                                     100%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
-   8    replicas: 3
-   9    selector:
-  10      matchLabels:
-  11        app: nginx
-  12    template:
-  13      metadata:
-  14        labels:
-  15          app: nginx
-  16      spec:
-  17        containers:
-  18          - name: nginx
-  19            image: nginx:1.14.2
-  20            ports:
-  21              - containerPort: 80
-  22            resources:
-  23              requests:
-  24                cpu: 5m
-  25                memory: 100Mi
-  26              limits:
-  27                cpu: 100m
-  28                memory: 100Mi
- kat unknown  match 1/2                                                           100%  ? Help
+   7      app: nginx
+   8  spec:
+   9    replicas: 3
+  10    selector:
+  11      matchLabels:
+  12        app: nginx
+  13    template:
+  14      metadata:
+  15        labels:
+  16          app: nginx
+  17      spec:
+  18        containers:
+  19          - name: nginx
+  20            image: nginx:1.14.2
+  21            ports:
+  22              - containerPort: 80
+  23            resources:
+  24              requests:
+  25                cpu: 5m
+  26                memory: 100Mi
+  27              limits:
+  28                cpu: 100m
+  29                memory: 100Mi
+ kat unknown  match 1/2                                                                     100%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 > ./kat example/kustomize yaml --config=api/v1beta1/configs/config.yaml --trust
 >
+
+
 
 
 

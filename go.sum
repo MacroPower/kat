@@ -153,8 +153,10 @@ github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e h1:JVG44RsyaB9T2KIHavM
 github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e/go.mod h1:RbqR21r5mrJuqunuUZ/Dhy/avygyECGrLceyNeo4LiM=
 github.com/yosida95/uritemplate/v3 v3.0.2 h1:Ed3Oyj9yrmi9087+NczuL5BwkIc4wvTb5zIM+UJPGz4=
 github.com/yosida95/uritemplate/v3 v3.0.2/go.mod h1:ILOh0sOhIJR3+L/8afwt/kE++YT040gmv5BQTMR2HP4=
-go.jacobcolvin.com/niceyaml v0.0.0-20260204021931-2444f0d8ad1b h1:OqXoONRNEsuKRQLq7WMQg77J5O98fV1yytWKzqNe5+E=
-go.jacobcolvin.com/niceyaml v0.0.0-20260204021931-2444f0d8ad1b/go.mod h1:uSFsjdSqueaUV6X8odD1k4/XIMiaV1Nf+SH5Pi0Yrl4=
+go.jacobcolvin.com/niceyaml v0.0.0-20260205012823-af557e11eabb h1:mRmYJkNRVV/VGN77EK6YWCXNPnQTO/0ctB6CbWlVFDw=
+go.jacobcolvin.com/niceyaml v0.0.0-20260205012823-af557e11eabb/go.mod h1:uSFsjdSqueaUV6X8odD1k4/XIMiaV1Nf+SH5Pi0Yrl4=
+go.jacobcolvin.com/niceyaml v0.0.0-20260206015709-b2b0891bf88f h1:BZ5wA7YWCDXmUFRtxxo6P+z/6eWfyOjYIOk7rbK7kRE=
+go.jacobcolvin.com/niceyaml v0.0.0-20260206015709-b2b0891bf88f/go.mod h1:3nUciFHecGQqO/HxEKBaZjAy5EYFHZFFWBWZYfmwPJE=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=
 go.opentelemetry.io/otel v1.40.0 h1:oA5YeOcpRTXq6NN7frwmwFR0Cn3RhTVZvXsP4duvCms=
