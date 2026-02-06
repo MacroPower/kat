@@ -298,7 +298,7 @@ Search: container
  kat unknown  match 1/2                                                            59%  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
-   6 resources
+   6 resources │ 1 "deployment"
 
  │ release-name-example
  │ apps/Deployment

@@ -10,9 +10,9 @@ import (
 
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/ui/common"
-	"github.com/macropower/kat/pkg/ui/list"
 	"github.com/macropower/kat/pkg/ui/menu"
 	"github.com/macropower/kat/pkg/ui/pager"
+	"github.com/macropower/kat/pkg/ui/resourcelist"
 )
 
 // Config contains TUI-specific configuration.
@@ -104,7 +104,7 @@ type KeyBinds struct {
 	// Common contains key bindings that apply across all UI components.
 	Common *common.KeyBinds `json:"common,omitempty" jsonschema:"title=Common Key Binds"`
 	// List contains key bindings specific to list views.
-	List *list.KeyBinds `json:"list,omitempty" jsonschema:"title=List Key Binds"`
+	List *resourcelist.KeyBinds `json:"list,omitempty" jsonschema:"title=List Key Binds"`
 	// Menu contains key bindings specific to menu views.
 	Menu *menu.KeyBinds `json:"menu,omitempty" jsonschema:"title=Menu Key Binds"`
 	// Pager contains key bindings specific to the pager view.
@@ -114,7 +114,7 @@ type KeyBinds struct {
 func NewKeyBinds() *KeyBinds {
 	kb := &KeyBinds{
 		Common: &common.KeyBinds{},
-		List:   &list.KeyBinds{},
+		List:   &resourcelist.KeyBinds{},
 		Menu:   &menu.KeyBinds{},
 		Pager:  &pager.KeyBinds{},
 	}
@@ -128,7 +128,7 @@ func (kb *KeyBinds) EnsureDefaults() {
 		kb.Common = &common.KeyBinds{}
 	}
 	if kb.List == nil {
-		kb.List = &list.KeyBinds{}
+		kb.List = &resourcelist.KeyBinds{}
 	}
 	if kb.Menu == nil {
 		kb.Menu = &menu.KeyBinds{}
