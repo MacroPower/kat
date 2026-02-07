@@ -84,18 +84,16 @@ func (d *ItemDelegate) Render(w io.Writer, m list.Model, index int, item list.It
 
 	isSelected := index == m.Index()
 	isFiltering := m.FilterState() == list.Filtering
-	isFilterApplied := m.FilterState() == list.FilterApplied
 	filterValue := m.FilterValue()
 	hasEmptyFilter := isFiltering && filterValue == ""
 	singleFilteredItem := isFiltering && len(m.VisibleItems()) == 1
 
 	shouldHighlight := (isSelected && !isFiltering) || singleFilteredItem
-	shouldShowFilter := isFilterApplied || singleFilteredItem
 
 	if d.compact {
-		d.renderCompact(w, doc, filterValue, shouldHighlight, shouldShowFilter, hasEmptyFilter, m.Width())
+		d.renderCompact(w, doc, filterValue, shouldHighlight, hasEmptyFilter, m.Width())
 	} else {
-		d.renderNormal(w, doc, filterValue, shouldHighlight, shouldShowFilter, hasEmptyFilter, m.Width())
+		d.renderNormal(w, doc, filterValue, shouldHighlight, hasEmptyFilter, m.Width())
 	}
 }
 
@@ -133,17 +131,13 @@ func (d *ItemDelegate) itemChrome(highlighted bool, unselectedSep string) (strin
 }
 
 // styleItemText applies filter-aware styling to a single text segment.
-// When shouldShowFilter is true, matched characters are underlined.
+// When a filter is active, matched characters are underlined.
 // When hasEmptyFilter is true, all text is rendered with the dim style.
 func styleItemText(
 	text, filterValue string,
-	shouldShowFilter, hasEmptyFilter bool,
+	hasEmptyFilter bool,
 	baseStyle lipgloss.Style,
 ) string {
-	if shouldShowFilter {
-		return styleFilteredText(text, filterValue, baseStyle, baseStyle.Underline(true))
-	}
-
 	if hasEmptyFilter {
 		return baseStyle.Render(text)
 	}
@@ -155,7 +149,7 @@ func (d *ItemDelegate) renderCompact(
 	w io.Writer,
 	doc *yamls.Document,
 	filterValue string,
-	shouldHighlight, shouldShowFilter, hasEmptyFilter bool,
+	shouldHighlight, hasEmptyFilter bool,
 	width int,
 ) {
 	var (
@@ -183,9 +177,9 @@ func (d *ItemDelegate) renderCompact(
 		primaryStyle = d.theme.SelectedStyle
 	}
 
-	styledGroup := styleItemText(group, filterValue, shouldShowFilter, hasEmptyFilter, primaryStyle)
-	styledKind := styleItemText(kind, filterValue, shouldShowFilter, hasEmptyFilter, primaryStyle)
-	styledName := styleItemText(name, filterValue, shouldShowFilter, hasEmptyFilter, primaryStyle)
+	styledGroup := styleItemText(group, filterValue, hasEmptyFilter, primaryStyle)
+	styledKind := styleItemText(kind, filterValue, hasEmptyFilter, primaryStyle)
+	styledName := styleItemText(name, filterValue, hasEmptyFilter, primaryStyle)
 
 	styledGroup += strings.Repeat(" ", max(0, min(groupWidth, d.maxGroupWidth)-len(group)))
 	styledKind += strings.Repeat(" ", max(0, min(kindWidth, d.maxKindWidth)-len(kind)))
@@ -199,7 +193,7 @@ func (d *ItemDelegate) renderNormal(
 	w io.Writer,
 	doc *yamls.Document,
 	filterValue string,
-	shouldHighlight, shouldShowFilter, hasEmptyFilter bool,
+	shouldHighlight, hasEmptyFilter bool,
 	width int,
 ) {
 	truncateTo := max(0, width-listViewHorizontalPadding*2)
@@ -226,8 +220,8 @@ func (d *ItemDelegate) renderNormal(
 		descStyle = d.theme.SubtleStyle
 	}
 
-	styledTitle := styleItemText(title, filterValue, shouldShowFilter, hasEmptyFilter, titleStyle)
-	styledDesc := styleItemText(desc, filterValue, shouldShowFilter, hasEmptyFilter, descStyle)
+	styledTitle := styleItemText(title, filterValue, hasEmptyFilter, titleStyle)
+	styledDesc := styleItemText(desc, filterValue, hasEmptyFilter, descStyle)
 
 	//nolint:errcheck // Writer is an in-memory buffer.
 	fmt.Fprintf(w, "%s %s%s%s\n%s %s", gutter, separator, separator, styledTitle, gutter, styledDesc)
