@@ -318,7 +318,7 @@ Search: container
 
 
 
- kat unknown  match 1/2                                                            1/1  ? Help
+ kat unknown  helm: helm template . -g                                             1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
    6 resources
@@ -341,7 +341,7 @@ Search: container
 
   •◦
 
- kat unknown  match 1/2                                                            1/2  ? Help
+ kat unknown  helm: helm template . -g                                             1/2  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 > ./kat example/helm --config=api/v1beta1/configs/config.yaml --trust
 >
