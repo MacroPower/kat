@@ -85,12 +85,14 @@ type model struct {
 	statusMessageSeq int
 }
 
-// unloadDocument unloads a document from the pager. Title that while this
+// unloadDocument unloads a document from the pager. Note that while this
 // method alters the model we also need to send along any commands returned.
-func (m *model) unloadDocument() {
+func (m *model) unloadDocument() tea.Cmd {
+	var cmds []tea.Cmd
+
 	switch m.state {
 	case stateShowMenu:
-		m.menu.Unload()
+		cmds = append(cmds, m.menu.Unload())
 
 		m.menu.Help.SetVisible(false)
 
@@ -105,6 +107,8 @@ func (m *model) unloadDocument() {
 	}
 
 	m.state = stateShowList
+
+	return tea.Batch(cmds...)
 }
 
 func newModel(cfg *Config, cmd common.Commander) tea.Model {
@@ -175,12 +179,15 @@ func newModel(cfg *Config, cmd common.Commander) tea.Model {
 		Printer:   printer,
 	})
 
-	menuModel := menu.NewModel(menu.Config{
+	menuModel, err := menu.NewModel(menu.Config{
 		Theme:     t,
 		KeyBinds:  cfg.KeyBinds.Menu,
 		CKeyBinds: ckb,
 		Cmd:       cmd,
 	})
+	if err != nil {
+		slog.Error("creating menu model", slog.Any("error", err))
+	}
 
 	m := &model{
 		theme:      t,
@@ -245,7 +252,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.matchAction(m.kb.Common.Left, key) {
 			if m.state == stateShowDocument || m.state == stateShowResult {
-				m.unloadDocument()
+				cmds = append(cmds, m.unloadDocument())
 			}
 		}
 
@@ -335,11 +342,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, initCmds)
 
 	case command.EventListResources:
-		m.unloadDocument()
+		cmds = append(cmds, m.unloadDocument())
 
 	case command.EventOpenResource:
 		m.pager.Unload()
-		m.menu.Unload()
+		cmds = append(cmds, m.menu.Unload())
 
 		m.state = stateShowDocument
 
@@ -351,7 +358,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case menu.ChangeConfigMsg:
 		m.list.SetItems(nil)
-		m.unloadDocument()
+		cmds = append(cmds, m.unloadDocument())
 
 		err := m.cmd.ConfigureContext(msg.Context,
 			command.WithProfile(msg.To.Profile),
@@ -525,8 +532,10 @@ func (m *model) handleGlobalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool)
 		isShowingResult := m.state == stateShowResult && m.fullResult.ViewState != pager.StateSearching
 		isShowingMenu := m.state == stateShowMenu
 		isShowingList := m.state == stateShowList
+
+		var cmd tea.Cmd
 		if isShowingDocument || isShowingResult || isShowingMenu || !m.loaded {
-			m.unloadDocument()
+			cmd = m.unloadDocument()
 		}
 		if isShowingList {
 			m.list.ResetFiltering()
@@ -538,7 +547,7 @@ func (m *model) handleGlobalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool)
 			m.fullResult.ExitSearch()
 		}
 
-		return m, nil, true
+		return m, cmd, true
 
 	case m.matchAction(m.kb.Common.Menu, key):
 		m.state = stateShowMenu

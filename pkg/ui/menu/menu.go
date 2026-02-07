@@ -2,6 +2,7 @@ package menu
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"charm.land/lipgloss/v2"
@@ -39,7 +40,7 @@ type Config struct {
 }
 
 // NewModel creates a new menu model with rule-based directory filtering.
-func NewModel(c Config) Model {
+func NewModel(c Config) (Model, error) {
 	kbr := &keys.KeyBindRenderer{}
 	ckb := c.CKeyBinds
 	kb := c.KeyBinds
@@ -69,23 +70,37 @@ func NewModel(c Config) Model {
 		keyHandler: NewKeyHandler(kb, ckb),
 		Help:       statusbar.NewHelpModel(statusbar.NewHelpRenderer(c.Theme, kbr)),
 	}
-	m.addConfigEditor()
 
-	return m
+	if err := m.addConfigEditor(); err != nil {
+		return Model{}, fmt.Errorf("initializing menu: %w", err)
+	}
+
+	return m, nil
 }
 
 func (m *Model) Init() tea.Cmd {
-	m.addConfigEditor()
+	if err := m.addConfigEditor(); err != nil {
+		return func() tea.Msg {
+			return common.ErrMsg{Err: err}
+		}
+	}
 
 	return m.configeditor.Init()
 }
 
-func (m *Model) addConfigEditor() {
-	m.configeditor = configeditor.NewModel(
+func (m *Model) addConfigEditor() error {
+	var err error
+
+	m.configeditor, err = configeditor.NewModel(
 		m.cmd,
 		theme.HuhTheme(m.theme),
 		m.keyHandler.HuhKeyMap(),
 	)
+	if err != nil {
+		return fmt.Errorf("creating config editor: %w", err)
+	}
+
+	return nil
 }
 
 func (m *Model) Update(msg tea.Msg) tea.Cmd {
@@ -150,9 +165,15 @@ func (m *Model) SetSize(w, h int) {
 	}
 }
 
-func (m *Model) Unload() {
+func (m *Model) Unload() tea.Cmd {
 	// Replace the editor with a new instance.
-	m.addConfigEditor()
+	if err := m.addConfigEditor(); err != nil {
+		return func() tea.Msg {
+			return common.ErrMsg{Err: err}
+		}
+	}
+
+	return nil
 }
 
 // helpView renders the help content.

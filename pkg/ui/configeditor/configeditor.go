@@ -14,6 +14,7 @@ import (
 
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/profile"
+	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/filepicker"
 )
 
@@ -46,7 +47,7 @@ type Commander interface {
 	FS() (*command.FilteredFS, error)
 }
 
-func NewModel(cmd Commander, t huh.Theme, km *huh.KeyMap) Model {
+func NewModel(cmd Commander, t huh.Theme, km *huh.KeyMap) (Model, error) {
 	var (
 		m            Model
 		selectedPath string
@@ -63,7 +64,7 @@ func NewModel(cmd Commander, t huh.Theme, km *huh.KeyMap) Model {
 
 	fsys, err := cmd.FS()
 	if err != nil {
-		panic(err)
+		return Model{}, fmt.Errorf("getting filesystem: %w", err)
 	}
 
 	// Start the file picker in the parent of the current path.
@@ -107,7 +108,7 @@ func NewModel(cmd Commander, t huh.Theme, km *huh.KeyMap) Model {
 		WithTheme(t).
 		WithKeyMap(km)
 
-	return m
+	return m, nil
 }
 
 func (m Model) Init() tea.Cmd {
@@ -130,7 +131,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case FieldFile:
 			filePath, ok := field.GetValue().(string)
 			if !ok {
-				panic("file field value is not a string")
+				return m, func() tea.Msg {
+					return common.ErrMsg{Err: fmt.Errorf("unexpected file field type: %T", field.GetValue())}
+				}
 			}
 			if filePath == "" {
 				break
