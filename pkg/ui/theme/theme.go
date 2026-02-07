@@ -28,30 +28,25 @@ var (
 	ErrInvalidName = errors.New("invalid theme name")
 )
 
+// Theme holds all visual styles for the application.
 type Theme struct {
-	CursorStyle               lipgloss.Style
-	ErrorOverlayStyle         lipgloss.Style
-	ErrorTitleStyle           lipgloss.Style
-	ErrorTextStyle            lipgloss.Style
-	ResultTitleStyle          lipgloss.Style
-	FilterStyle               lipgloss.Style
-	GenericOverlayStyle       lipgloss.Style
-	GenericTextStyle          lipgloss.Style
-	HelpStyle                 lipgloss.Style
-	LineNumberStyle           lipgloss.Style
-	LogoStyle                 lipgloss.Style
-	PaginationStyle           lipgloss.Style
-	SelectedStyle             lipgloss.Style
-	SelectedSubtleStyle       lipgloss.Style
-	StatusBarHelpStyle        lipgloss.Style
-	StatusBarMessageHelpStyle lipgloss.Style
-	StatusBarMessagePosStyle  lipgloss.Style
-	StatusBarMessageStyle     lipgloss.Style
-	StatusBarPosStyle         lipgloss.Style
-	StatusBarStyle            lipgloss.Style
-	SubtleStyle               lipgloss.Style
-	InsertedStyle             lipgloss.Style
-	DeletedStyle              lipgloss.Style
+	StatusBar StatusBarStyles
+	Error     ErrorStyles
+
+	CursorStyle         lipgloss.Style
+	ResultTitleStyle    lipgloss.Style
+	FilterStyle         lipgloss.Style
+	GenericOverlayStyle lipgloss.Style
+	GenericTextStyle    lipgloss.Style
+	HelpStyle           lipgloss.Style
+	LineNumberStyle     lipgloss.Style
+	LogoStyle           lipgloss.Style
+	PaginationStyle     lipgloss.Style
+	SelectedStyle       lipgloss.Style
+	SelectedSubtleStyle lipgloss.Style
+	SubtleStyle         lipgloss.Style
+	InsertedStyle       lipgloss.Style
+	DeletedStyle        lipgloss.Style
 
 	// BackgroundColor is the theme's base background color, derived from the
 	// text background of the active syntax theme.
@@ -59,6 +54,23 @@ type Theme struct {
 
 	NiceyamlStyles style.Styles
 	Ellipsis       string
+}
+
+// StatusBarStyles groups styles used by the status bar.
+type StatusBarStyles struct {
+	Style            lipgloss.Style
+	PosStyle         lipgloss.Style
+	HelpStyle        lipgloss.Style
+	MessageStyle     lipgloss.Style
+	MessagePosStyle  lipgloss.Style
+	MessageHelpStyle lipgloss.Style
+}
+
+// ErrorStyles groups styles used by error and overlay displays.
+type ErrorStyles struct {
+	OverlayStyle lipgloss.Style
+	TitleStyle   lipgloss.Style
+	TextStyle    lipgloss.Style
 }
 
 func New(themeName string) *Theme {
@@ -154,29 +166,34 @@ func New(themeName string) *Theme {
 	)
 
 	return &Theme{
-		CursorStyle:               cursorStyle,
-		ErrorOverlayStyle:         errorOverlayStyle,
-		ErrorTitleStyle:           errorTitleStyle,
-		ErrorTextStyle:            errorTextStyle,
-		ResultTitleStyle:          resultTitleStyle,
-		FilterStyle:               filterStyle,
-		GenericOverlayStyle:       genericOverlayStyle,
-		GenericTextStyle:          genericStyle,
-		HelpStyle:                 helpStyle,
-		LineNumberStyle:           lineNumberStyle,
-		LogoStyle:                 logoStyle,
-		PaginationStyle:           paginationStyle,
-		SelectedStyle:             selectedStyle,
-		SelectedSubtleStyle:       selectedSubtleStyle,
-		StatusBarHelpStyle:        statusBarHelpStyle,
-		StatusBarMessageHelpStyle: statusBarMessageHelpStyle,
-		StatusBarMessagePosStyle:  statusBarMessagePosStyle,
-		StatusBarMessageStyle:     statusBarMessageStyle,
-		StatusBarPosStyle:         statusBarPosStyle,
-		StatusBarStyle:            statusBarStyle,
-		SubtleStyle:               subtleStyle,
-		InsertedStyle:             insertedStyle,
-		DeletedStyle:              deletedStyle,
+		StatusBar: StatusBarStyles{
+			Style:            statusBarStyle,
+			PosStyle:         statusBarPosStyle,
+			HelpStyle:        statusBarHelpStyle,
+			MessageStyle:     statusBarMessageStyle,
+			MessagePosStyle:  statusBarMessagePosStyle,
+			MessageHelpStyle: statusBarMessageHelpStyle,
+		},
+		Error: ErrorStyles{
+			OverlayStyle: errorOverlayStyle,
+			TitleStyle:   errorTitleStyle,
+			TextStyle:    errorTextStyle,
+		},
+
+		CursorStyle:         cursorStyle,
+		ResultTitleStyle:    resultTitleStyle,
+		FilterStyle:         filterStyle,
+		GenericOverlayStyle: genericOverlayStyle,
+		GenericTextStyle:    genericStyle,
+		HelpStyle:           helpStyle,
+		LineNumberStyle:     lineNumberStyle,
+		LogoStyle:           logoStyle,
+		PaginationStyle:     paginationStyle,
+		SelectedStyle:       selectedStyle,
+		SelectedSubtleStyle: selectedSubtleStyle,
+		SubtleStyle:         subtleStyle,
+		InsertedStyle:       insertedStyle,
+		DeletedStyle:        deletedStyle,
 
 		BackgroundColor: textBg,
 

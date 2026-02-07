@@ -411,7 +411,7 @@ func (m *model) View() tea.View {
 	switch m.overlayState {
 	case overlayStateError:
 		overlayContent = m.errorView()
-		overlayStyle = m.theme.ErrorOverlayStyle.Align(lipgloss.Left).Padding(1)
+		overlayStyle = m.theme.Error.OverlayStyle.Align(lipgloss.Left).Padding(1)
 		widthFraction = 2.0 / 3.0
 
 	case overlayStateLoading:
@@ -456,7 +456,7 @@ func (m *model) errorView() string {
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Top,
-		m.theme.ErrorTitleStyle.Padding(0, 1).Render("ERROR"),
+		m.theme.Error.TitleStyle.Padding(0, 1).Render("ERROR"),
 		lipgloss.NewStyle().Padding(1, 0).Render(errMsg),
 	)
 }

@@ -98,11 +98,11 @@ func (r *StatusBarRenderer) renderProgressNote(note string) string {
 
 	switch r.style {
 	case StyleError:
-		return r.theme.ErrorTitleStyle.Render(note)
+		return r.theme.Error.TitleStyle.Render(note)
 	case StyleSuccess:
-		return r.theme.StatusBarMessagePosStyle.Render(note)
+		return r.theme.StatusBar.MessagePosStyle.Render(note)
 	default:
-		return r.theme.StatusBarPosStyle.Render(note)
+		return r.theme.StatusBar.PosStyle.Render(note)
 	}
 }
 
@@ -110,11 +110,11 @@ func (r *StatusBarRenderer) renderProgressNote(note string) string {
 func (r *StatusBarRenderer) renderHelpNote() string {
 	switch r.style {
 	case StyleError:
-		return r.theme.ErrorTitleStyle.Render(errorText)
+		return r.theme.Error.TitleStyle.Render(errorText)
 	case StyleSuccess:
-		return r.theme.StatusBarMessageHelpStyle.Render(helpText)
+		return r.theme.StatusBar.MessageHelpStyle.Render(helpText)
 	default:
-		return r.theme.StatusBarHelpStyle.Render(helpText)
+		return r.theme.StatusBar.HelpStyle.Render(helpText)
 	}
 }
 
@@ -137,11 +137,11 @@ func (r *StatusBarRenderer) renderNote(msg, progress string) string {
 
 	switch r.style {
 	case StyleError:
-		return r.theme.ErrorTitleStyle.Render(note)
+		return r.theme.Error.TitleStyle.Render(note)
 	case StyleSuccess:
-		return r.theme.StatusBarMessageStyle.Render(note)
+		return r.theme.StatusBar.MessageStyle.Render(note)
 	default:
-		return r.theme.StatusBarStyle.Render(note)
+		return r.theme.StatusBar.Style.Render(note)
 	}
 }
 
@@ -158,11 +158,11 @@ func (r *StatusBarRenderer) renderEmptySpace(components ...string) string {
 
 	switch r.style {
 	case StyleError:
-		return r.theme.ErrorTitleStyle.Render(emptySpace)
+		return r.theme.Error.TitleStyle.Render(emptySpace)
 	case StyleSuccess:
-		return r.theme.StatusBarMessageStyle.Render(emptySpace)
+		return r.theme.StatusBar.MessageStyle.Render(emptySpace)
 	default:
-		return r.theme.StatusBarStyle.Render(emptySpace)
+		return r.theme.StatusBar.Style.Render(emptySpace)
 	}
 }
 

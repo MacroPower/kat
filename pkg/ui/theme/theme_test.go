@@ -80,11 +80,11 @@ func TestTheme_StylesRenderContent(t *testing.T) {
 		"CursorStyle": {
 			style: themeInstance.CursorStyle,
 		},
-		"ErrorOverlayStyle": {
-			style: themeInstance.ErrorOverlayStyle,
+		"Error.OverlayStyle": {
+			style: themeInstance.Error.OverlayStyle,
 		},
-		"ErrorTitleStyle": {
-			style: themeInstance.ErrorTitleStyle,
+		"Error.TitleStyle": {
+			style: themeInstance.Error.TitleStyle,
 		},
 		"ResultTitleStyle": {
 			style: themeInstance.ResultTitleStyle,
@@ -116,23 +116,23 @@ func TestTheme_StylesRenderContent(t *testing.T) {
 		"SelectedSubtleStyle": {
 			style: themeInstance.SelectedSubtleStyle,
 		},
-		"StatusBarHelpStyle": {
-			style: themeInstance.StatusBarHelpStyle,
+		"StatusBar.HelpStyle": {
+			style: themeInstance.StatusBar.HelpStyle,
 		},
-		"StatusBarMessageHelpStyle": {
-			style: themeInstance.StatusBarMessageHelpStyle,
+		"StatusBar.MessageHelpStyle": {
+			style: themeInstance.StatusBar.MessageHelpStyle,
 		},
-		"StatusBarMessagePosStyle": {
-			style: themeInstance.StatusBarMessagePosStyle,
+		"StatusBar.MessagePosStyle": {
+			style: themeInstance.StatusBar.MessagePosStyle,
 		},
-		"StatusBarMessageStyle": {
-			style: themeInstance.StatusBarMessageStyle,
+		"StatusBar.MessageStyle": {
+			style: themeInstance.StatusBar.MessageStyle,
 		},
-		"StatusBarPosStyle": {
-			style: themeInstance.StatusBarPosStyle,
+		"StatusBar.PosStyle": {
+			style: themeInstance.StatusBar.PosStyle,
 		},
-		"StatusBarStyle": {
-			style: themeInstance.StatusBarStyle,
+		"StatusBar.Style": {
+			style: themeInstance.StatusBar.Style,
 		},
 		"SubtleStyle": {
 			style: themeInstance.SubtleStyle,

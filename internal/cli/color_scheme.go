@@ -44,8 +44,8 @@ func ThemeColorScheme(t *theme.Theme, c lipgloss.LightDarkFunc) fang.ColorScheme
 		FlagDefault:    t.SelectedSubtleStyle.GetForeground(),
 		QuotedString:   t.GenericTextStyle.GetForeground(),
 		ErrorHeader: [2]color.Color{
-			t.ErrorTitleStyle.GetForeground(),
-			t.ErrorTitleStyle.GetBackground(),
+			t.Error.TitleStyle.GetForeground(),
+			t.Error.TitleStyle.GetBackground(),
 		},
 	}
 }
