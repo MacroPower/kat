@@ -21,6 +21,8 @@ import (
 	"github.com/macropower/kat/pkg/keys"
 )
 
+// FilteredFS is a filesystem interface that supports filtered directory
+// reading.
 type FilteredFS interface {
 	Close() error
 	Name() string
@@ -54,16 +56,13 @@ func New(fsys FilteredFS) Model {
 		height:           0,
 		maxIdx:           0,
 		minIdx:           0,
-		selectedStack:    newStack(),
-		minStack:         newStack(),
-		maxStack:         newStack(),
 		KeyMap:           DefaultKeyMap(),
 		Styles:           DefaultStyles(),
 	}
 }
 
 type errorMsg struct {
-	err error //nolint:unused // TODO: Use it.
+	err error
 }
 
 type readDirMsg struct {
@@ -150,9 +149,9 @@ func DefaultStyles() Styles {
 // Model represents a file picker.
 type Model struct {
 	Styles        Styles
-	minStack      stack
-	maxStack      stack
-	selectedStack stack
+	minStack      viewStack
+	maxStack      viewStack
+	selectedStack viewStack
 	fsys          FilteredFS
 	FileSelected  string
 
@@ -183,39 +182,72 @@ type Model struct {
 	FileAllowed     bool
 }
 
-type stack struct {
-	Push   func(int)
-	Pop    func() int
-	Length func() int
+// viewStack is a simple integer stack used for tracking view state when
+// navigating into directories.
+type viewStack []int
+
+func (s *viewStack) push(v int) {
+	*s = append(*s, v)
 }
 
-func newStack() stack {
-	slice := make([]int, 0)
+func (s *viewStack) pop() int {
+	old := *s
+	v := old[len(old)-1]
+	*s = old[:len(old)-1]
 
-	return stack{
-		Push: func(i int) {
-			slice = append(slice, i)
-		},
-		Pop: func() int {
-			res := slice[len(slice)-1]
-			slice = slice[:len(slice)-1]
+	return v
+}
 
-			return res
-		},
-		Length: func() int {
-			return len(slice)
-		},
-	}
+func (s viewStack) len() int {
+	return len(s)
 }
 
 func (m *Model) pushView(selected, minimum, maximum int) {
-	m.selectedStack.Push(selected)
-	m.minStack.Push(minimum)
-	m.maxStack.Push(maximum)
+	m.selectedStack.push(selected)
+	m.minStack.push(minimum)
+	m.maxStack.push(maximum)
 }
 
 func (m *Model) popView() (int, int, int) {
-	return m.selectedStack.Pop(), m.minStack.Pop(), m.maxStack.Pop()
+	return m.selectedStack.pop(), m.minStack.pop(), m.maxStack.pop()
+}
+
+// symlinkInfo holds the resolved symlink path and whether the target is a
+// directory.
+type symlinkInfo struct {
+	path  string
+	isDir bool
+}
+
+// resolveSymlink evaluates the symlink at the given path and returns the
+// resolved target path and whether it is a directory. Returns nil if the entry
+// is not a symlink or if resolution fails.
+func resolveSymlink(dir, name string, info fs.FileInfo) *symlinkInfo {
+	if info.Mode()&os.ModeSymlink == 0 {
+		return nil
+	}
+
+	resolved, err := filepath.EvalSymlinks(filepath.Join(dir, name))
+	if err != nil {
+		slog.Error("resolve symlink: eval",
+			slog.String("file", name),
+			slog.Any("error", err),
+		)
+
+		return nil
+	}
+
+	target, err := os.Stat(resolved)
+	if err != nil {
+		slog.Error("resolve symlink: stat",
+			slog.String("file", name),
+			slog.Any("error", err),
+		)
+
+		return nil
+	}
+
+	return &symlinkInfo{path: resolved, isDir: target.IsDir()}
 }
 
 func (m Model) readDir(path string, _ bool) tea.Cmd {
@@ -258,6 +290,9 @@ func (m Model) Height() int {
 // Update handles user interactions within the file picker model.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case errorMsg:
+		slog.Error("read directory", slog.Any("error", msg.err))
+
 	case readDirMsg:
 		if msg.id != m.id {
 			break
@@ -337,7 +372,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		case m.KeyMap.Back.Match(k):
 			m.CurrentDirectory = filepath.Dir(m.CurrentDirectory)
-			if m.selectedStack.Length() > 0 {
+			if m.selectedStack.len() > 0 {
 				m.selected, m.minIdx, m.maxIdx = m.popView()
 			} else {
 				m.selected = 0
@@ -358,30 +393,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				break
 			}
 
-			isSymlink := info.Mode()&os.ModeSymlink != 0
 			isDir := f.IsDir()
 
-			if isSymlink {
-				symlinkPath, err := filepath.EvalSymlinks(filepath.Join(m.CurrentDirectory, f.Name()))
-				if err != nil {
-					slog.Error("failed to resolve symlink",
-						slog.String("file", f.Name()),
-						slog.Any("error", err),
-					)
-
-					break
-				}
-
-				info, err := os.Stat(symlinkPath)
-				if err != nil {
-					slog.Error("failed to stat symlink",
-						slog.String("file", f.Name()),
-						slog.Any("error", err),
-					)
-
-					break
-				}
-				if info.IsDir() {
+			if sl := resolveSymlink(m.CurrentDirectory, f.Name(), info); sl != nil {
+				if sl.isDir {
 					isDir = true
 				}
 			}
@@ -430,7 +445,7 @@ func (m Model) View() tea.View {
 
 		info, err := f.Info()
 		if err != nil {
-			slog.Error("failed to get file info",
+			slog.Error("get file info",
 				slog.String("file", name),
 				slog.Any("error", err),
 			)
@@ -443,16 +458,8 @@ func (m Model) View() tea.View {
 		//nolint:gosec // Checked with max.
 		size := strings.Replace(humanize.Bytes(uint64(max(0, info.Size()))), " ", "", 1)
 
-		if isSymlink {
-			symlinkPath, err = filepath.EvalSymlinks(filepath.Join(m.CurrentDirectory, name))
-			if err != nil {
-				slog.Error("failed to resolve symlink",
-					slog.String("file", name),
-					slog.Any("error", err),
-				)
-
-				continue
-			}
+		if sl := resolveSymlink(m.CurrentDirectory, name, info); sl != nil {
+			symlinkPath = sl.path
 		}
 
 		disabled := !m.canSelect(name) && !f.IsDir()
@@ -565,30 +572,10 @@ func (m Model) didSelectAnyFile(msg tea.Msg) (bool, string) {
 			return false, ""
 		}
 
-		isSymlink := info.Mode()&os.ModeSymlink != 0
 		isDir := f.IsDir()
 
-		if isSymlink {
-			symlinkPath, err := filepath.EvalSymlinks(filepath.Join(m.CurrentDirectory, f.Name()))
-			if err != nil {
-				slog.Error("failed to resolve symlink",
-					slog.String("file", f.Name()),
-					slog.Any("error", err),
-				)
-
-				break
-			}
-
-			info, err := os.Stat(symlinkPath)
-			if err != nil {
-				slog.Error("failed to stat symlink",
-					slog.String("file", f.Name()),
-					slog.Any("error", err),
-				)
-
-				break
-			}
-			if info.IsDir() {
+		if sl := resolveSymlink(m.CurrentDirectory, f.Name(), info); sl != nil {
+			if sl.isDir {
 				isDir = true
 			}
 		}
