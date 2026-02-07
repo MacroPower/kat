@@ -332,12 +332,6 @@ func (f *FilePicker) RunAccessible(_ io.Writer, _ io.Reader) error {
 	return errors.ErrUnsupported
 }
 
-// copied from bubbles' filepicker.
-const (
-	fileSizeWidth = 7
-	paddingLeft   = 2
-)
-
 // WithTheme sets the theme of the file field.
 func (f *FilePicker) WithTheme(theme huh.Theme) huh.Field {
 	if f.theme != nil || theme == nil {
@@ -360,8 +354,8 @@ func (f *FilePicker) WithTheme(theme huh.Theme) huh.Field {
 		Permission:       styles.Focused.TextInput.Placeholder,
 		Selected:         styles.Focused.SelectedOption,
 		DisabledSelected: styles.Focused.TextInput.Placeholder,
-		FileSize:         styles.Focused.TextInput.Placeholder.Width(fileSizeWidth).Align(lipgloss.Right),
-		EmptyDirectory:   styles.Focused.TextInput.Placeholder.PaddingLeft(paddingLeft).SetString("No files found."),
+		FileSize:         styles.Focused.TextInput.Placeholder.Width(filepicker.FileSizeWidth).Align(lipgloss.Right),
+		EmptyDirectory:   styles.Focused.TextInput.Placeholder.PaddingLeft(filepicker.PaddingLeft).SetString("No files found."),
 	}
 
 	return f

@@ -50,9 +50,9 @@ func New(fsys FilteredFS) Model {
 		DirAllowed:       false,
 		FileAllowed:      true,
 		AutoHeight:       true,
-		Height:           0,
-		max:              0,
-		min:              0,
+		height:           0,
+		maxIdx:           0,
+		minIdx:           0,
 		selectedStack:    newStack(),
 		minStack:         newStack(),
 		maxStack:         newStack(),
@@ -71,9 +71,13 @@ type readDirMsg struct {
 }
 
 const (
-	marginBottom  = 5
-	fileSizeWidth = 7
-	paddingLeft   = 2
+	marginBottom = 5
+
+	// FileSizeWidth is the column width for file sizes.
+	FileSizeWidth = 7
+
+	// PaddingLeft is the left padding for empty directory messages.
+	PaddingLeft = 2
 )
 
 // KeyMap defines key bindings for each user action.
@@ -133,11 +137,11 @@ func DefaultStyles() Styles {
 		Selected:         lipgloss.NewStyle().Foreground(lipgloss.Color("212")).Bold(true),
 		FileSize: lipgloss.NewStyle().
 			Foreground(lipgloss.Color("240")).
-			Width(fileSizeWidth).
+			Width(FileSizeWidth).
 			Align(lipgloss.Right),
 		EmptyDirectory: lipgloss.NewStyle().
 			Foreground(lipgloss.Color("240")).
-			PaddingLeft(paddingLeft).
+			PaddingLeft(PaddingLeft).
 			SetString("Bummer. No Files Found."),
 	}
 }
@@ -165,14 +169,11 @@ type Model struct {
 	// If empty the user may select any file.
 	AllowedTypes []string
 
-	max      int
+	maxIdx   int
 	selected int
-	min      int
+	minIdx   int
 
-	// Height of the picker.
-	//
-	// Deprecated: use [Model.SetHeight] instead.
-	Height int
+	height int
 
 	id              int
 	ShowSize        bool
@@ -243,11 +244,16 @@ func (m Model) Init() tea.Cmd {
 }
 
 // SetHeight sets the height of the filepicker.
-func (m *Model) SetHeight(height int) {
-	m.Height = height
-	if m.max > m.Height-1 {
-		m.max = m.min + m.Height - 1
+func (m *Model) SetHeight(h int) {
+	m.height = h
+	if m.maxIdx > m.height-1 {
+		m.maxIdx = m.minIdx + m.height - 1
 	}
+}
+
+// Height returns the height of the filepicker.
+func (m Model) Height() int {
+	return m.height
 }
 
 // Update handles user interactions within the file picker model.
@@ -259,35 +265,35 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 
 		m.files = msg.entries
-		m.max = max(m.max, m.Height-1)
+		m.maxIdx = max(m.maxIdx, m.height-1)
 
 	case tea.WindowSizeMsg:
 		if m.AutoHeight {
-			m.Height = msg.Height - marginBottom
+			m.SetHeight(msg.Height - marginBottom)
 		}
 
-		m.max = m.Height - 1
+		m.maxIdx = m.height - 1
 
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, m.KeyMap.GoToTop):
 			m.selected = 0
-			m.min = 0
-			m.max = m.Height - 1
+			m.minIdx = 0
+			m.maxIdx = m.height - 1
 
 		case key.Matches(msg, m.KeyMap.GoToLast):
 			m.selected = len(m.files) - 1
-			m.min = len(m.files) - m.Height
-			m.max = len(m.files) - 1
+			m.minIdx = len(m.files) - m.height
+			m.maxIdx = len(m.files) - 1
 
 		case key.Matches(msg, m.KeyMap.Down):
 			m.selected++
 			if m.selected >= len(m.files) {
 				m.selected = len(m.files) - 1
 			}
-			if m.selected > m.max {
-				m.min++
-				m.max++
+			if m.selected > m.maxIdx {
+				m.minIdx++
+				m.maxIdx++
 			}
 
 		case key.Matches(msg, m.KeyMap.Up):
@@ -295,47 +301,47 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if m.selected < 0 {
 				m.selected = 0
 			}
-			if m.selected < m.min {
-				m.min--
-				m.max--
+			if m.selected < m.minIdx {
+				m.minIdx--
+				m.maxIdx--
 			}
 
 		case key.Matches(msg, m.KeyMap.PageDown):
-			m.selected += m.Height
+			m.selected += m.height
 			if m.selected >= len(m.files) {
 				m.selected = len(m.files) - 1
 			}
 
-			m.min += m.Height
-			m.max += m.Height
+			m.minIdx += m.height
+			m.maxIdx += m.height
 
-			if m.max >= len(m.files) {
-				m.max = len(m.files) - 1
-				m.min = m.max - m.Height
+			if m.maxIdx >= len(m.files) {
+				m.maxIdx = len(m.files) - 1
+				m.minIdx = m.maxIdx - m.height
 			}
 
 		case key.Matches(msg, m.KeyMap.PageUp):
-			m.selected -= m.Height
+			m.selected -= m.height
 			if m.selected < 0 {
 				m.selected = 0
 			}
 
-			m.min -= m.Height
-			m.max -= m.Height
+			m.minIdx -= m.height
+			m.maxIdx -= m.height
 
-			if m.min < 0 {
-				m.min = 0
-				m.max = m.min + m.Height
+			if m.minIdx < 0 {
+				m.minIdx = 0
+				m.maxIdx = m.minIdx + m.height
 			}
 
 		case key.Matches(msg, m.KeyMap.Back):
 			m.CurrentDirectory = filepath.Dir(m.CurrentDirectory)
 			if m.selectedStack.Length() > 0 {
-				m.selected, m.min, m.max = m.popView()
+				m.selected, m.minIdx, m.maxIdx = m.popView()
 			} else {
 				m.selected = 0
-				m.min = 0
-				m.max = m.Height - 1
+				m.minIdx = 0
+				m.maxIdx = m.height - 1
 			}
 
 			return m, m.readDir(m.CurrentDirectory, m.ShowHidden)
@@ -391,11 +397,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 			m.CurrentDirectory = filepath.Join(m.CurrentDirectory, f.Name())
-			m.pushView(m.selected, m.min, m.max)
+			m.pushView(m.selected, m.minIdx, m.maxIdx)
 
 			m.selected = 0
-			m.min = 0
-			m.max = m.Height - 1
+			m.minIdx = 0
+			m.maxIdx = m.height - 1
 
 			return m, m.readDir(m.CurrentDirectory, m.ShowHidden)
 		}
@@ -407,13 +413,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 // View returns the view of the file picker.
 func (m Model) View() tea.View {
 	if len(m.files) == 0 {
-		return tea.NewView(m.Styles.EmptyDirectory.Height(m.Height).MaxHeight(m.Height).String())
+		return tea.NewView(m.Styles.EmptyDirectory.Height(m.height).MaxHeight(m.height).String())
 	}
 
 	var s strings.Builder
 
 	for i, f := range m.files {
-		if i < m.min || i > m.max {
+		if i < m.minIdx || i > m.maxIdx {
 			continue
 		}
 
@@ -500,11 +506,20 @@ func (m Model) View() tea.View {
 		s.WriteRune('\n')
 	}
 
-	for i := lipgloss.Height(s.String()); i <= m.Height; i++ {
+	for i := lipgloss.Height(s.String()); i <= m.height; i++ {
 		s.WriteRune('\n')
 	}
 
 	return tea.NewView(s.String())
+}
+
+// HighlightedPath returns the path of the currently highlighted file or directory.
+func (m Model) HighlightedPath() string {
+	if len(m.files) == 0 || m.selected < 0 || m.selected >= len(m.files) {
+		return ""
+	}
+
+	return filepath.Join(m.CurrentDirectory, m.files[m.selected].Name())
 }
 
 // DidSelectFile returns whether a user has selected a file (on this msg).
