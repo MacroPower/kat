@@ -248,10 +248,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case command.EventStart:
 		m.cm.Loaded = false
-		m.cm.ShowStatusMessage = false
-		if m.cm.StatusMessageTimer != nil {
-			m.cm.StatusMessageTimer.Stop()
-		}
+		m.cm.ClearStatusMessage()
 
 		m.overlayState = overlayStateLoading
 		cmds = append(cmds, m.spinner.Tick)
@@ -343,7 +340,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case common.StatusMessageTimeoutMsg:
-		m.cm.ShowStatusMessage = false
+		if m.cm.IsCurrentStatusMessage(msg.Seq) {
+			m.cm.ShowStatusMessage = false
+		}
 
 	case common.ErrMsg:
 		m.err = msg.Err
