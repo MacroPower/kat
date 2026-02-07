@@ -55,6 +55,7 @@ type Model struct {
 	height          int
 	width           int
 	ViewState       ViewState
+	showingResult   bool
 }
 
 type Config struct {
@@ -257,6 +258,7 @@ func (m *Model) Unload() {
 		m.ExitSearch()
 	}
 
+	m.showingResult = false
 	m.viewport.ClearRevisions()
 	m.viewport.ClearSearch()
 
@@ -268,6 +270,17 @@ func (m *Model) Unload() {
 // document, or nil if no document is loaded.
 func (m *Model) CurrentDocumentObject() *kube.Object {
 	return m.CurrentDocument.Object
+}
+
+// IsShowingResult reports whether the pager is displaying command output
+// rather than a regular document.
+func (m *Model) IsShowingResult() bool {
+	return m.showingResult
+}
+
+// SetShowingResult marks the pager as displaying command output.
+func (m *Model) SetShowingResult(v bool) {
+	m.showingResult = v
 }
 
 func (m *Model) ToggleHelp() {

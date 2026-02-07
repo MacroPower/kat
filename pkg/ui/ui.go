@@ -74,7 +74,6 @@ type State int
 const (
 	stateShowList State = iota
 	stateShowDocument
-	stateShowResult
 	stateShowMenu
 )
 
@@ -84,7 +83,7 @@ const (
 	overlayStateNone OverlayState = iota
 	overlayStateError
 	overlayStateLoading
-	overlayStateResult
+	overlayStateOutput
 )
 
 type model struct {
@@ -116,7 +115,7 @@ func (m *model) unloadDocument() tea.Cmd {
 
 		fallthrough
 
-	case stateShowDocument, stateShowResult:
+	case stateShowDocument:
 		m.pager.Unload()
 	}
 
@@ -223,7 +222,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		if m.matchAction(m.kb.Common.Error, msg) {
-			if m.state != stateShowResult {
+			if !m.pager.IsShowingResult() {
 				m.overlayState = overlayStateNone
 
 				cmds = append(cmds, common.CmdHandler(ShowResultMsg{}))
@@ -231,14 +230,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				break
 			}
 			// If we're showing a result, <!> exits the result view.
-			m.state = stateShowList
+			cmds = append(cmds, m.unloadDocument())
 			m.overlayState = overlayStateNone
-			m.pager.Unload()
 
 			break
 		}
 
-		if m.overlayState == overlayStateError || m.overlayState == overlayStateResult {
+		if m.overlayState == overlayStateError || m.overlayState == overlayStateOutput {
 			// If we're showing an error, any key exits the error view.
 			m.overlayState = overlayStateNone
 
@@ -251,7 +249,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if m.matchAction(m.kb.Common.Left, msg) {
-			if m.state == stateShowDocument || m.state == stateShowResult {
+			if m.state == stateShowDocument {
 				cmds = append(cmds, m.unloadDocument())
 			}
 		}
@@ -301,7 +299,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			body += "# Error\n" + msg.Error.Error() + "\n---\n"
 			m.overlayState = overlayStateError
 		} else {
-			m.overlayState = overlayStateResult
+			m.overlayState = overlayStateOutput
 		}
 
 		body += "# Stdout\n" + msg.Stdout + "\n---\n# Stderr\n" + msg.Stderr
@@ -389,7 +387,7 @@ func (m *model) View() tea.View {
 	var s string
 
 	switch m.state {
-	case stateShowDocument, stateShowResult:
+	case stateShowDocument:
 		s = m.pager.View()
 	case stateShowMenu:
 		s = m.menu.View()
@@ -414,7 +412,7 @@ func (m *model) View() tea.View {
 		overlayStyle = m.theme.GenericOverlayStyle.Align(lipgloss.Center).Padding(1)
 		widthFraction = 1.0 / 4.0
 
-	case overlayStateResult:
+	case overlayStateOutput:
 		overlayContent = m.resultView()
 		overlayStyle = m.theme.GenericOverlayStyle.Align(lipgloss.Left).Padding(1)
 		widthFraction = 2.0 / 3.0
@@ -520,18 +518,17 @@ func (m *model) handleGlobalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool)
 
 	case m.matchAction(m.kb.Common.Escape, msg):
 		isShowingDocument := m.state == stateShowDocument && !m.pager.IsSearching()
-		isShowingResult := m.state == stateShowResult && !m.pager.IsSearching()
 		isShowingMenu := m.state == stateShowMenu
 		isShowingList := m.state == stateShowList
 
 		var cmds []tea.Cmd
-		if isShowingDocument || isShowingResult || isShowingMenu || !m.loaded {
+		if isShowingDocument || isShowingMenu || !m.loaded {
 			cmds = append(cmds, m.unloadDocument())
 		}
 		if isShowingList {
 			m.list.ResetFiltering()
 		}
-		if m.state == stateShowDocument || m.state == stateShowResult {
+		if m.state == stateShowDocument {
 			cmds = append(cmds, common.CmdHandler(pager.ExitSearchMsg{}))
 		}
 
@@ -565,7 +562,7 @@ func (m *model) isTextInputFocused() bool {
 		// Pass through to list handler.
 		return true
 	}
-	if (m.state == stateShowDocument || m.state == stateShowResult) && m.pager.IsSearching() {
+	if m.state == stateShowDocument && m.pager.IsSearching() {
 		// Pass through to pager search handler.
 		return true
 	}
@@ -617,7 +614,7 @@ func resourcesToDocuments(resources []*kube.Resource) []*yamls.Document {
 // notifyPagerRevisions sends revision messages to the pager for any document
 // that matches the currently displayed document.
 func (m *model) notifyPagerRevisions(docs []*yamls.Document) []tea.Cmd {
-	if m.state != stateShowDocument {
+	if m.state != stateShowDocument || m.pager.IsShowingResult() {
 		return nil
 	}
 
@@ -640,7 +637,7 @@ func (m *model) updateChildModels(msg tea.Msg) []tea.Cmd {
 	case stateShowList:
 		cmds = append(cmds, m.list.Update(msg))
 
-	case stateShowDocument, stateShowResult:
+	case stateShowDocument:
 		cmds = append(cmds, m.pager.Update(msg))
 
 	case stateShowMenu:
@@ -669,10 +666,10 @@ func (m *model) handleWindowResize(msg tea.WindowSizeMsg) tea.Cmd {
 }
 
 // showResultInPager swaps the pager content to show the result document.
-// The current document is saved so it can be restored when leaving result view.
 func (m *model) showResultInPager() tea.Cmd {
-	m.state = stateShowResult
+	m.state = stateShowDocument
 	m.pager.Unload()
+	m.pager.SetShowingResult(true)
 
 	return tea.Batch(
 		common.CmdHandler(pager.LoadDocumentMsg{Document: m.resultDocument}),
