@@ -397,9 +397,9 @@ func indent(s string, n int) string {
 }
 
 // styleFilteredText applies fuzzy match highlighting to text.
+// It batches consecutive characters with the same style into runs to minimize
+// render calls from O(n) to O(matches+1).
 func styleFilteredText(haystack, needles string, defaultStyle, matchedStyle lipgloss.Style) string {
-	b := strings.Builder{}
-
 	normalizedHay, err := yamls.Normalize(haystack)
 	if err != nil {
 		return defaultStyle.Render(haystack)
@@ -410,18 +410,36 @@ func styleFilteredText(haystack, needles string, defaultStyle, matchedStyle lipg
 		return defaultStyle.Render(haystack)
 	}
 
-	for i, rune := range []rune(haystack) {
-		styled := false
-		for _, mi := range matches {
-			if i == mi {
-				b.WriteString(matchedStyle.Render(string(rune)))
+	matchSet := make(map[int]struct{}, len(matches))
+	for _, mi := range matches {
+		matchSet[mi] = struct{}{}
+	}
 
-				styled = true
+	runes := []rune(haystack)
+	b := strings.Builder{}
+	b.Grow(len(haystack) * 2) // Pre-allocate for styled output.
+
+	runStart := 0
+	for runStart < len(runes) {
+		_, isMatch := matchSet[runStart]
+		runEnd := runStart + 1
+
+		for runEnd < len(runes) {
+			_, nextMatch := matchSet[runEnd]
+			if nextMatch != isMatch {
+				break
 			}
+			runEnd++
 		}
-		if !styled {
-			b.WriteString(defaultStyle.Render(string(rune)))
+
+		run := string(runes[runStart:runEnd])
+		if isMatch {
+			b.WriteString(matchedStyle.Render(run))
+		} else {
+			b.WriteString(defaultStyle.Render(run))
 		}
+
+		runStart = runEnd
 	}
 
 	return b.String()
