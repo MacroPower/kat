@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -329,51 +330,65 @@ func TestCommandRunner_CancellationBehavior(t *testing.T) {
 	assert.True(t, hasSuccess, "expected 1 successful completion")
 }
 
+// fakeWatcher is a test [command.Watcher] backed by buffered channels that the
+// test writes events into directly, eliminating OS-level filesystem notification
+// dependencies.
+type fakeWatcher struct {
+	events chan fsnotify.Event
+	errors chan error
+}
+
+func newFakeWatcher() *fakeWatcher {
+	return &fakeWatcher{
+		events: make(chan fsnotify.Event, 100),
+		errors: make(chan error, 10),
+	}
+}
+
+func (f *fakeWatcher) Add(string) error              { return nil }
+func (f *fakeWatcher) Remove(string) error           { return nil }
+func (f *fakeWatcher) Close() error                  { close(f.events); close(f.errors); return nil }
+func (f *fakeWatcher) Events() <-chan fsnotify.Event { return f.events }
+func (f *fakeWatcher) Errors() <-chan error          { return f.errors }
+
 func TestCommandRunner_FileWatcher(t *testing.T) {
 	t.Parallel()
 
-	notifyDelay := 100 * time.Millisecond
+	batchDuration := 50 * time.Millisecond
 
+	// The watched file path must match what the runner records in watchedFiles.
+	// Since we use a fakeWatcher that accepts any Add() call, we need to know the
+	// absolute path that watchSource registers. We build that from tempDir.
 	tcs := map[string]struct {
-		fileOperation func(*testing.T, string)
-		wantEvents    int
+		// batches is a series of event batches to send. Between batches we wait
+		// for the batch timer to fire and the resulting run to complete.
+		batches [][]fsnotify.Event
+		// wantRuns is the total number of command executions expected (each
+		// produces an EventStart + EventEnd pair).
+		wantRuns int
 	}{
 		"simple file modification": {
-			fileOperation: func(t *testing.T, testFile string) {
-				t.Helper()
-
-				require.NoError(t, os.WriteFile(testFile, []byte("test: modified"), 0o644))
-				time.Sleep(notifyDelay)
+			batches: [][]fsnotify.Event{
+				{{Op: fsnotify.Write}}, // Name filled in per-test
 			},
-			wantEvents: 2,
+			wantRuns: 1,
 		},
 		"file removal and recreation": {
-			fileOperation: func(t *testing.T, testFile string) {
-				t.Helper()
-
-				require.NoError(t, os.Remove(testFile))
-				time.Sleep(notifyDelay)
-				require.NoError(t, os.WriteFile(testFile, []byte("test: \"1\""), 0o644))
-				time.Sleep(notifyDelay)
-				require.NoError(t, os.WriteFile(testFile, []byte("test: \"2\""), 0o644))
-				time.Sleep(notifyDelay)
+			batches: [][]fsnotify.Event{
+				{{Op: fsnotify.Remove}},
+				{{Op: fsnotify.Create}},
+				{{Op: fsnotify.Write}},
 			},
-			wantEvents: 6,
+			wantRuns: 3,
 		},
 		"file rename and recreation": {
-			fileOperation: func(t *testing.T, testFile string) {
-				t.Helper()
-
-				require.NoError(t, os.Rename(testFile, testFile+".bak"))
-				time.Sleep(notifyDelay)
-				require.NoError(t, os.Rename(testFile+".bak", testFile))
-				time.Sleep(notifyDelay)
-				require.NoError(t, os.WriteFile(testFile, []byte("test: \"1\""), 0o644))
-				time.Sleep(notifyDelay)
-				require.NoError(t, os.WriteFile(testFile, []byte("test: \"2\""), 0o644))
-				time.Sleep(notifyDelay)
+			batches: [][]fsnotify.Event{
+				{{Op: fsnotify.Rename}},
+				{{Op: fsnotify.Create}},
+				{{Op: fsnotify.Write}},
+				{{Op: fsnotify.Write}},
 			},
-			wantEvents: 6,
+			wantRuns: 4,
 		},
 	}
 
@@ -381,13 +396,14 @@ func TestCommandRunner_FileWatcher(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			// Create a temporary directory for testing
 			root, tempDir := testRoot(t)
 
-			// Create a test file to watch (use relative path within root)
+			// Create a test file so watchSource finds something to register.
 			testFile := "test.yaml"
 			testFileFullPath := filepath.Join(tempDir, testFile)
 			require.NoError(t, os.WriteFile(testFileFullPath, []byte("test: initial"), 0o644))
+
+			fw := newFakeWatcher()
 
 			p, err := profile.New("echo",
 				profile.WithSource(`files.filter(f, pathExt(f) == ".yaml")`),
@@ -396,36 +412,40 @@ func TestCommandRunner_FileWatcher(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			// Create a runner with a fast command
 			runner, err := command.NewRunnerWithRoot(
 				root,
 				".",
 				command.WithCustomProfile("echo", p),
 				command.WithWatch(true),
-				command.WithWatcherBatchDuration(50*time.Millisecond),
+				command.WithWatcherBatchDuration(batchDuration),
+				command.WithWatcher(fw),
 			)
 			require.NoError(t, err)
 
 			t.Cleanup(runner.Close)
 
-			// Channel to collect command events
 			results := make(chan command.Event, 100)
 			runner.Subscribe(results)
 
-			// Start RunOnEvent in a goroutine
 			go runner.RunOnEvent()
 
-			// Give it a moment to start watching
-			time.Sleep(100 * time.Millisecond)
+			// Send each batch of events, waiting for the batch timer + execution
+			// between them.
+			wantEvents := tc.wantRuns * 2 // Each run produces Start + End
+			for _, batch := range tc.batches {
+				for i := range batch {
+					// Fill in the absolute path that the runner registered.
+					batch[i].Name = testFileFullPath
+					fw.events <- batch[i]
+				}
+				// Wait long enough for the batch timer to fire and the run to
+				// complete before sending the next batch.
+				time.Sleep(3 * batchDuration)
+			}
 
-			// Perform the file operation (pass the full path)
-			tc.fileOperation(t, testFileFullPath)
+			events := collectRunnerEventsWithTimeout(results, wantEvents, 5*time.Second)
+			require.Len(t, events, wantEvents)
 
-			// Collect events for a reasonable duration
-			events := collectRunnerEventsWithTimeout(results, tc.wantEvents, 10*time.Second)
-			require.Len(t, events, tc.wantEvents, testFileFullPath)
-
-			// Verify we got alternating start/end events
 			var startCount, endCount int
 			for _, event := range events {
 				t.Logf("event: %T: %+v", event, event)
@@ -438,8 +458,8 @@ func TestCommandRunner_FileWatcher(t *testing.T) {
 				}
 			}
 
-			assert.Equal(t, tc.wantEvents/2, startCount, "expected half of events to be start")
-			assert.Equal(t, tc.wantEvents/2, endCount, "expected half of events to be end")
+			assert.Equal(t, tc.wantRuns, startCount, "expected start events to match run count")
+			assert.Equal(t, tc.wantRuns, endCount, "expected end events to match run count")
 		})
 	}
 }

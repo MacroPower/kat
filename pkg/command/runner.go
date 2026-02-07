@@ -32,7 +32,7 @@ var ErrNoCommandForPath = errors.New("no command for path")
 type Runner struct {
 	tracer   trace.Tracer
 	profiles map[string]*profile.Profile
-	watcher  *fsnotify.Watcher
+	watcher  Watcher
 
 	// The root filesystem to operate on. This prevents later re-configuration
 	// from escaping the originally configured root path.
@@ -83,7 +83,7 @@ func NewRunner(path string, opts ...RunnerOpt) (*Runner, error) {
 // This is not a normal opt since it cannot be re-configured after the runner
 // has been created.
 func NewRunnerWithRoot(root RootFS, path string, opts ...RunnerOpt) (*Runner, error) {
-	watcher, err := fsnotify.NewWatcher()
+	watcher, err := newFSNotifyWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("create fsnotify watcher: %w", err)
 	}
@@ -239,6 +239,23 @@ func WithWatch(watch bool) RunnerOpt {
 func WithWatcherBatchDuration(dur time.Duration) RunnerOpt {
 	return func(cr *Runner) error {
 		cr.watcherBatchDuration = dur
+
+		return nil
+	}
+}
+
+// WithWatcher replaces the runner's filesystem [Watcher]. The existing watcher
+// is closed before the replacement is installed.
+func WithWatcher(w Watcher) RunnerOpt {
+	return func(cr *Runner) error {
+		if cr.watcher != nil {
+			err := cr.watcher.Close()
+			if err != nil {
+				return fmt.Errorf("close existing watcher: %w", err)
+			}
+		}
+
+		cr.watcher = w
 
 		return nil
 	}
@@ -646,7 +663,7 @@ func (cr *Runner) RunOnEvent() {
 
 	for {
 		select {
-		case evt, ok := <-cr.watcher.Events:
+		case evt, ok := <-cr.watcher.Events():
 			if !ok {
 				return
 			}
@@ -689,7 +706,7 @@ func (cr *Runner) RunOnEvent() {
 
 			clear(pendingEvents)
 
-		case err, ok := <-cr.watcher.Errors:
+		case err, ok := <-cr.watcher.Errors():
 			if !ok {
 				return
 			}
