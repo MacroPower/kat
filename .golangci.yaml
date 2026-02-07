@@ -223,6 +223,8 @@ linters:
         # Requires default cases.
         - name: enforce-switch-style
           disabled: true
+        - name: unhandled-error
+          disabled: true
 
     depguard:
       rules:
