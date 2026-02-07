@@ -310,7 +310,7 @@ func TestDefaultConfigYAMLIsValid(t *testing.T) {
 	require.NoError(t, err)
 
 	// Load the written config using the Loader API.
-	cl, err := config.NewLoaderFromFile(configPath, configs.New, configs.DefaultValidator)
+	cl, err := config.NewLoaderFromFile(configPath, configs.New)
 	require.NoError(t, err)
 
 	cfg, err := cl.Load()
@@ -377,7 +377,7 @@ func TestUnmarshalAndValidateDefaultConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	// Load and validate the config using the same process as the main application.
-	cl, err := config.NewLoaderFromFile(configPath, configs.New, configs.DefaultValidator)
+	cl, err := config.NewLoaderFromFile(configPath, configs.New)
 	require.NoError(t, err)
 
 	cfg, err := cl.Load()
@@ -434,7 +434,7 @@ func TestDefaultConfigFullPipeline(t *testing.T) {
 	require.NoError(t, err)
 
 	// Load the config using the Loader API.
-	cl, err := config.NewLoaderFromFile(configPath, configs.New, configs.DefaultValidator)
+	cl, err := config.NewLoaderFromFile(configPath, configs.New)
 	require.NoError(t, err)
 
 	cfg, err := cl.Load()
@@ -450,7 +450,7 @@ func TestDefaultConfigFullPipeline(t *testing.T) {
 	assert.NotEmpty(t, yamlConfig)
 
 	// Verify the marshaled config can be loaded again (round-trip test).
-	cl2 := config.NewLoaderFromBytes(yamlConfig, configs.New, configs.DefaultValidator)
+	cl2 := config.NewLoaderFromBytes(yamlConfig, configs.New)
 	cfg2, err := cl2.Load()
 	require.NoError(t, err)
 	assert.Equal(t, cfg.GetAPIVersion(), cfg2.GetAPIVersion())

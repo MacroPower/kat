@@ -96,7 +96,6 @@ func (m *TrustManager) LoadTrustedRuntimeConfig(
 	loader, err := config.NewLoaderFromFile(
 		cfgPath,
 		runtimeconfigs.New,
-		runtimeconfigs.DefaultValidator,
 		config.WithThemeFromData(),
 	)
 	if err != nil {

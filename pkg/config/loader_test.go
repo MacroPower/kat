@@ -56,7 +56,7 @@ kind: Configuration
 
 			path := tc.setupFile(t)
 
-			got, err := config.NewLoaderFromFile(path, configs.New, configs.DefaultValidator)
+			got, err := config.NewLoaderFromFile(path, configs.New)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -83,7 +83,7 @@ profiles:
     args: ["test"]
 `
 
-	cl := config.NewLoaderFromBytes([]byte(input), configs.New, configs.DefaultValidator)
+	cl := config.NewLoaderFromBytes([]byte(input), configs.New)
 	require.NotNil(t, cl)
 
 	err := cl.Validate()
@@ -138,7 +138,7 @@ invalid: [unclosed
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			cl := config.NewLoaderFromBytes([]byte(tc.input), configs.New, configs.DefaultValidator)
+			cl := config.NewLoaderFromBytes([]byte(tc.input), configs.New)
 
 			err := cl.Validate()
 			if tc.wantErr {
@@ -195,7 +195,7 @@ invalid: [unclosed
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			cl := config.NewLoaderFromBytes([]byte(tc.input), configs.New, configs.DefaultValidator)
+			cl := config.NewLoaderFromBytes([]byte(tc.input), configs.New)
 
 			cfg, err := cl.Load()
 			if tc.wantErr {
@@ -217,7 +217,7 @@ func TestLoader_GetTheme(t *testing.T) {
 kind: Configuration
 `
 
-	cl := config.NewLoaderFromBytes([]byte(input), configs.New, configs.DefaultValidator)
+	cl := config.NewLoaderFromBytes([]byte(input), configs.New)
 	require.NotNil(t, cl)
 
 	got := cl.GetTheme()
@@ -320,7 +320,7 @@ profiles:
 			require.NotNil(t, tc.want.NiceyamlStyles)
 
 			cl := config.NewLoaderFromBytes(
-				[]byte(tc.input), configs.New, configs.DefaultValidator, config.WithThemeFromData(),
+				[]byte(tc.input), configs.New, config.WithThemeFromData(),
 			)
 			require.NotNil(t, cl)
 
@@ -333,20 +333,6 @@ profiles:
 	}
 }
 
-func TestLoader_WithValidator(t *testing.T) {
-	t.Parallel()
-
-	input := `apiVersion: kat.jacobcolvin.com/v1beta1
-kind: Configuration
-`
-
-	// Test with nil validator (no validation).
-	cl := config.NewLoaderFromBytes([]byte(input), configs.New, nil, config.WithValidator(nil))
-	require.NotNil(t, cl)
-
-	err := cl.Validate()
-	require.NoError(t, err)
-}
 
 // createTempFile creates a temporary file with the given content.
 func createTempFile(t *testing.T, content string) string {
@@ -372,7 +358,7 @@ func TestLoader_LoadCallsEnsureDefaults(t *testing.T) {
 kind: Configuration
 `
 
-	cl := config.NewLoaderFromBytes([]byte(input), configs.New, configs.DefaultValidator)
+	cl := config.NewLoaderFromBytes([]byte(input), configs.New)
 
 	cfg, err := cl.Load()
 	require.NoError(t, err)
@@ -393,7 +379,7 @@ func TestLoader_RoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	// Load the config.
-	cl, err := config.NewLoaderFromFile(configPath, configs.New, configs.DefaultValidator)
+	cl, err := config.NewLoaderFromFile(configPath, configs.New)
 	require.NoError(t, err)
 
 	cfg, err := cl.Load()
@@ -405,7 +391,7 @@ func TestLoader_RoundTrip(t *testing.T) {
 	assert.NotEmpty(t, yamlConfig)
 
 	// Verify the marshaled config can be loaded again (round-trip test).
-	cl2 := config.NewLoaderFromBytes(yamlConfig, configs.New, configs.DefaultValidator)
+	cl2 := config.NewLoaderFromBytes(yamlConfig, configs.New)
 	cfg2, err := cl2.Load()
 	require.NoError(t, err)
 	assert.Equal(t, cfg.GetAPIVersion(), cfg2.GetAPIVersion())

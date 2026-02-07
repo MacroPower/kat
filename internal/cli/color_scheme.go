@@ -19,7 +19,6 @@ func ColorSchemeFunc(c lipgloss.LightDarkFunc) fang.ColorScheme {
 	cl, err := config.NewLoaderFromFile(
 		configPath,
 		configs.New,
-		configs.DefaultValidator,
 		config.WithThemeFromData(),
 	)
 	if err != nil {

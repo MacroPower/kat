@@ -161,7 +161,7 @@ func tryGetProfileNames(configPath string) []cobra.Completion {
 		configPath = configs.GetPath()
 	}
 
-	cl, err := config.NewLoaderFromFile(configPath, configs.New, configs.DefaultValidator)
+	cl, err := config.NewLoaderFromFile(configPath, configs.New)
 	if err != nil {
 		return nil
 	}
@@ -459,7 +459,6 @@ func loadAnyRuntimeConfigs(grcPath, prcPath string, tm policy.TrustMode) (*confi
 	cl, err := config.NewLoaderFromFile(
 		grcPath,
 		configs.New,
-		configs.DefaultValidator,
 		config.WithThemeFromData(),
 	)
 	if err != nil {
@@ -503,7 +502,7 @@ func loadAnyRuntimeConfigs(grcPath, prcPath string, tm policy.TrustMode) (*confi
 }
 
 func loadPolicy(policyPath string) (*policies.Policy, error) {
-	pl, err := config.NewLoaderFromFile(policyPath, policies.New, policies.DefaultValidator)
+	pl, err := config.NewLoaderFromFile(policyPath, policies.New)
 	if err != nil {
 		return nil, err
 	}

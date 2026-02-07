@@ -15,24 +15,11 @@ import (
 	"github.com/macropower/kat/pkg/ui/theme"
 )
 
-// Validator validates configuration data against a schema.
-type Validator interface {
-	ValidateSchema(data any) error
-}
-
 // LoaderOpt configures a [Loader].
 type LoaderOpt func(*loaderOptions)
 
 type loaderOptions struct {
-	validator    Validator
 	extractTheme bool
-}
-
-// WithValidator sets a custom validator.
-func WithValidator(v Validator) LoaderOpt {
-	return func(o *loaderOptions) {
-		o.validator = v
-	}
 }
 
 // WithThemeFromData extracts the theme from the config data for error formatting.
@@ -45,10 +32,9 @@ func WithThemeFromData() LoaderOpt {
 // Loader is a generic configuration loader that handles validation,
 // YAML parsing, and error formatting for any config type T.
 type Loader[T v1beta1.Object] struct {
-	validator Validator
-	newFunc   func() T
-	theme     *theme.Theme
-	source    *niceyaml.Source
+	newFunc func() T
+	theme   *theme.Theme
+	source  *niceyaml.Source
 }
 
 // NewLoaderFromBytes creates a [Loader] from byte data.
@@ -56,12 +42,9 @@ type Loader[T v1beta1.Object] struct {
 func NewLoaderFromBytes[T v1beta1.Object](
 	data []byte,
 	newFunc func() T,
-	defaultValidator Validator,
 	opts ...LoaderOpt,
 ) *Loader[T] {
-	options := &loaderOptions{
-		validator: defaultValidator,
-	}
+	options := &loaderOptions{}
 	for _, opt := range opts {
 		opt(options)
 	}
@@ -72,9 +55,8 @@ func NewLoaderFromBytes[T v1beta1.Object](
 	}
 
 	return &Loader[T]{
-		newFunc:   newFunc,
-		validator: options.validator,
-		theme:     t,
+		newFunc: newFunc,
+		theme:   t,
 		source: niceyaml.NewSourceFromString(string(data),
 			niceyaml.WithDecodeOptions(yaml.AllowDuplicateMapKey()),
 			niceyaml.WithErrorOptions(
@@ -92,7 +74,6 @@ func NewLoaderFromBytes[T v1beta1.Object](
 func NewLoaderFromFile[T v1beta1.Object](
 	path string,
 	newFunc func() T,
-	defaultValidator Validator,
 	opts ...LoaderOpt,
 ) (*Loader[T], error) {
 	data, err := api.ReadFile(path)
@@ -100,23 +81,18 @@ func NewLoaderFromFile[T v1beta1.Object](
 		return nil, err //nolint:wrapcheck // Return the original error.
 	}
 
-	return NewLoaderFromBytes(data, newFunc, defaultValidator, opts...), nil
+	return NewLoaderFromBytes(data, newFunc, opts...), nil
 }
 
 // Validate validates the configuration data against the schema.
+// Schema validation is performed via the [niceyaml.SchemaValidator] interface
+// implemented by the config type T.
 func (l *Loader[T]) Validate() error {
-	var anyConfig any
+	cfg := l.newFunc()
 
-	err := l.decode(&anyConfig)
+	err := l.unmarshal(cfg)
 	if err != nil {
 		return l.source.WrapError(err) //nolint:wrapcheck // WrapError adds context.
-	}
-
-	if l.validator != nil {
-		err = l.validator.ValidateSchema(anyConfig)
-		if err != nil {
-			return l.source.WrapError(err) //nolint:wrapcheck // WrapError adds context.
-		}
 	}
 
 	return nil
@@ -139,17 +115,35 @@ func (l *Loader[T]) Load() (T, error) {
 	return cfg, nil
 }
 
-func (l *Loader[T]) decode(v any) error {
+func (l *Loader[T]) firstDocument() (*niceyaml.DocumentDecoder, error) {
 	dec, err := l.source.Decoder()
 	if err != nil {
-		return err //nolint:wrapcheck // Decoder returns niceyaml errors with context.
+		return nil, err //nolint:wrapcheck // Decoder returns niceyaml errors with context.
 	}
 
 	for _, dd := range dec.Documents() {
-		return dd.Decode(v) //nolint:wrapcheck // Decode returns niceyaml errors with context.
+		return dd, nil
 	}
 
-	return nil
+	return nil, nil
+}
+
+func (l *Loader[T]) decode(v any) error {
+	dd, err := l.firstDocument()
+	if err != nil || dd == nil {
+		return err
+	}
+
+	return dd.Decode(v) //nolint:wrapcheck // Decode returns niceyaml errors with context.
+}
+
+func (l *Loader[T]) unmarshal(v any) error {
+	dd, err := l.firstDocument()
+	if err != nil || dd == nil {
+		return err
+	}
+
+	return dd.Unmarshal(v) //nolint:wrapcheck // Unmarshal returns niceyaml errors with context.
 }
 
 // GetTheme returns the theme for error formatting.

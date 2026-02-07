@@ -77,6 +77,11 @@ func (c *RuntimeConfig) Validate() error {
 	return nil
 }
 
+// ValidateSchema validates arbitrary data against the runtime configuration JSON schema.
+func (c *RuntimeConfig) ValidateSchema(data any) error {
+	return DefaultValidator.ValidateSchema(data) //nolint:wrapcheck // Validator returns structured errors.
+}
+
 func (c RuntimeConfig) JSONSchemaExtend(jss *jsonschema.Schema) {
 	v1beta1.ExtendSchemaWithEnums(jss, v1beta1.ValidAPIVersions, ValidKinds)
 }

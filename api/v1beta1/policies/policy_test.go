@@ -165,7 +165,7 @@ func TestPolicy_TrustProject(t *testing.T) {
 			assert.True(t, found, "expected path %q to be in trust list", tc.wantContains)
 
 			// Verify persisted state by reloading.
-			pl, err := config.NewLoaderFromFile(policyPath, policies.New, policies.DefaultValidator)
+			pl, err := config.NewLoaderFromFile(policyPath, policies.New)
 			require.NoError(t, err)
 
 			reloaded, err := pl.Load()
@@ -221,7 +221,7 @@ projects:
 	require.NoError(t, err)
 
 	// Load and trust a project.
-	pl, err := config.NewLoaderFromFile(policyPath, policies.New, policies.DefaultValidator)
+	pl, err := config.NewLoaderFromFile(policyPath, policies.New)
 	require.NoError(t, err)
 
 	policy, err := pl.Load()
@@ -316,7 +316,7 @@ kind: Policy
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			pl := config.NewLoaderFromBytes([]byte(tc.input), policies.New, policies.DefaultValidator)
+			pl := config.NewLoaderFromBytes([]byte(tc.input), policies.New)
 
 			got, err := pl.Load()
 			if tc.wantErr {
@@ -344,7 +344,7 @@ func TestDefaultPolicyYAMLIsValid(t *testing.T) {
 	require.NoError(t, err)
 
 	// Load and validate.
-	pl, err := config.NewLoaderFromFile(policyPath, policies.New, policies.DefaultValidator)
+	pl, err := config.NewLoaderFromFile(policyPath, policies.New)
 	require.NoError(t, err)
 
 	err = pl.Validate()

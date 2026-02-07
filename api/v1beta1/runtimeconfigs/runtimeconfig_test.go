@@ -279,7 +279,7 @@ kind: RuntimeConfig
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			pcl := config.NewLoaderFromBytes([]byte(tc.input), runtimeconfigs.New, runtimeconfigs.DefaultValidator)
+			pcl := config.NewLoaderFromBytes([]byte(tc.input), runtimeconfigs.New)
 
 			cfg, err := pcl.Load()
 
@@ -331,7 +331,7 @@ kind: Configuration
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			pcl := config.NewLoaderFromBytes([]byte(tc.input), runtimeconfigs.New, runtimeconfigs.DefaultValidator)
+			pcl := config.NewLoaderFromBytes([]byte(tc.input), runtimeconfigs.New)
 
 			err := pcl.Validate()
 
@@ -383,7 +383,7 @@ kind: RuntimeConfig
 
 			path := tc.setupFile(t)
 
-			got, err := config.NewLoaderFromFile(path, runtimeconfigs.New, runtimeconfigs.DefaultValidator)
+			got, err := config.NewLoaderFromFile(path, runtimeconfigs.New)
 
 			if tc.wantErr {
 				require.Error(t, err)
