@@ -104,18 +104,17 @@ type model struct {
 	loaded         bool
 }
 
-// unloadDocument unloads a document from the pager. Note that while this
-// method alters the model we also need to send along any commands returned.
+// unloadDocument tears down the current view and returns to the list. It
+// handles all child cleanup (menu, pager) and the state transition; callers
+// only need to forward the returned [tea.Cmd].
 func (m *model) unloadDocument() tea.Cmd {
 	var cmds []tea.Cmd
 
-	switch m.state {
-	case stateShowMenu:
+	if m.state == stateShowMenu {
 		cmds = append(cmds, m.menu.Unload())
+	}
 
-		fallthrough
-
-	case stateShowDocument:
+	if m.state == stateShowDocument || m.state == stateShowMenu {
 		m.pager.Unload()
 	}
 
