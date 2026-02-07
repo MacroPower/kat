@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"charm.land/bubbles/v2/list"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	tea "charm.land/bubbletea/v2"
@@ -121,6 +122,35 @@ func (d *ItemDelegate) UpdateColumnWidths(docs []*yamls.Document) {
 	}
 }
 
+// itemChrome computes the gutter marker and separator string for a list row.
+// Highlighted items get a visible bar; others get a blank space.
+func (d *ItemDelegate) itemChrome(highlighted bool, unselectedSep string) (string, string) {
+	if highlighted {
+		return d.theme.SelectedStyle.Render("│"), d.theme.SelectedStyle.Render("")
+	}
+
+	return " ", unselectedSep
+}
+
+// styleItemText applies filter-aware styling to a single text segment.
+// When shouldShowFilter is true, matched characters are underlined.
+// When hasEmptyFilter is true, all text is rendered with the dim style.
+func styleItemText(
+	text, filterValue string,
+	shouldShowFilter, hasEmptyFilter bool,
+	baseStyle lipgloss.Style,
+) string {
+	if shouldShowFilter {
+		return styleFilteredText(text, filterValue, baseStyle, baseStyle.Underline(true))
+	}
+
+	if hasEmptyFilter {
+		return baseStyle.Render(text)
+	}
+
+	return styleFilteredText(text, filterValue, baseStyle, baseStyle.Underline(true))
+}
+
 func (d *ItemDelegate) renderCompact(
 	w io.Writer,
 	doc *yamls.Document,
@@ -129,8 +159,6 @@ func (d *ItemDelegate) renderCompact(
 	width int,
 ) {
 	var (
-		gutter, styledGroup, styledKind, styledName, separator string
-
 		group = doc.Object.GetGroup()
 		kind  = doc.Object.GetKind()
 		name  = doc.Title
@@ -141,42 +169,23 @@ func (d *ItemDelegate) renderCompact(
 		groupWidth = int(max(0, float64(width)*float64(float64(d.maxGroupWidth)/maxWidth)))
 		kindWidth  = int(max(0, float64(width)*float64(float64(d.maxKindWidth)/maxWidth)))
 		nameWidth  = max(0, width-groupWidth-kindWidth-horizontalPadding)
-
-		selectedStyle = d.theme.SelectedStyle
-		subtleStyle   = d.theme.SubtleStyle
 	)
 
 	group = ansi.Truncate(group, groupWidth, d.theme.Ellipsis)
 	kind = ansi.Truncate(kind, kindWidth, d.theme.Ellipsis)
 	name = ansi.Truncate(name, nameWidth, d.theme.Ellipsis)
 
+	gutter, separator := d.itemChrome(shouldHighlight, "")
+
+	// Compact mode uses a single style for all columns.
+	primaryStyle := d.theme.SubtleStyle
 	if shouldHighlight {
-		gutter = selectedStyle.Render("│")
-		separator = selectedStyle.Render("")
-
-		if shouldShowFilter {
-			styledGroup = styleFilteredText(group, filterValue, selectedStyle, selectedStyle.Underline(true))
-			styledKind = styleFilteredText(kind, filterValue, selectedStyle, selectedStyle.Underline(true))
-			styledName = styleFilteredText(name, filterValue, selectedStyle, selectedStyle.Underline(true))
-		} else {
-			styledGroup = selectedStyle.Render(group)
-			styledKind = selectedStyle.Render(kind)
-			styledName = selectedStyle.Render(name)
-		}
-	} else {
-		gutter = " "
-		separator = ""
-
-		if hasEmptyFilter {
-			styledGroup = subtleStyle.Render(group)
-			styledKind = subtleStyle.Render(kind)
-			styledName = subtleStyle.Render(name)
-		} else {
-			styledGroup = styleFilteredText(group, filterValue, subtleStyle, subtleStyle.Underline(true))
-			styledKind = styleFilteredText(kind, filterValue, subtleStyle, subtleStyle.Underline(true))
-			styledName = styleFilteredText(name, filterValue, subtleStyle, subtleStyle.Underline(true))
-		}
+		primaryStyle = d.theme.SelectedStyle
 	}
+
+	styledGroup := styleItemText(group, filterValue, shouldShowFilter, hasEmptyFilter, primaryStyle)
+	styledKind := styleItemText(kind, filterValue, shouldShowFilter, hasEmptyFilter, primaryStyle)
+	styledName := styleItemText(name, filterValue, shouldShowFilter, hasEmptyFilter, primaryStyle)
 
 	styledGroup += strings.Repeat(" ", max(0, min(groupWidth, d.maxGroupWidth)-len(group)))
 	styledKind += strings.Repeat(" ", max(0, min(kindWidth, d.maxKindWidth)-len(kind)))
@@ -193,42 +202,32 @@ func (d *ItemDelegate) renderNormal(
 	shouldHighlight, shouldShowFilter, hasEmptyFilter bool,
 	width int,
 ) {
-	var gutter, styledTitle, styledDesc, separator string
-
 	truncateTo := max(0, width-listViewHorizontalPadding*2)
 
 	title := ansi.Truncate(doc.Title, truncateTo, d.theme.Ellipsis)
 	desc := ansi.Truncate(doc.Desc, truncateTo, d.theme.Ellipsis)
 
-	if shouldHighlight {
-		gutter = d.theme.SelectedStyle.Render("│")
-		separator = d.theme.SelectedStyle.Render("")
+	gutter, separator := d.itemChrome(shouldHighlight, d.theme.GenericTextStyle.Render(""))
 
-		if shouldShowFilter {
-			selStyle := d.theme.SelectedStyle
-			selSubStyle := d.theme.SelectedSubtleStyle
+	var titleStyle, descStyle lipgloss.Style
 
-			styledTitle = styleFilteredText(title, filterValue, selStyle, selStyle.Underline(true))
-			styledDesc = styleFilteredText(desc, filterValue, selSubStyle, selSubStyle.Underline(true))
-		} else {
-			styledTitle = d.theme.SelectedStyle.Render(title)
-			styledDesc = d.theme.SelectedSubtleStyle.Render(desc)
-		}
-	} else {
-		gutter = " "
-		separator = d.theme.GenericTextStyle.Render("")
+	switch {
+	case shouldHighlight:
+		titleStyle = d.theme.SelectedStyle
+		descStyle = d.theme.SelectedSubtleStyle
 
-		if hasEmptyFilter {
-			styledTitle = d.theme.SubtleStyle.Render(title)
-			styledDesc = d.theme.SubtleStyle.Render(desc)
-		} else {
-			genStyle := d.theme.GenericTextStyle
-			subStyle := d.theme.SubtleStyle
+	case hasEmptyFilter:
+		// Dim both rows when the filter prompt is open but empty.
+		titleStyle = d.theme.SubtleStyle
+		descStyle = d.theme.SubtleStyle
 
-			styledTitle = styleFilteredText(title, filterValue, genStyle, genStyle.Underline(true))
-			styledDesc = styleFilteredText(desc, filterValue, subStyle, subStyle.Underline(true))
-		}
+	default:
+		titleStyle = d.theme.GenericTextStyle
+		descStyle = d.theme.SubtleStyle
 	}
+
+	styledTitle := styleItemText(title, filterValue, shouldShowFilter, hasEmptyFilter, titleStyle)
+	styledDesc := styleItemText(desc, filterValue, shouldShowFilter, hasEmptyFilter, descStyle)
 
 	//nolint:errcheck // Writer is an in-memory buffer.
 	fmt.Fprintf(w, "%s %s%s%s\n%s %s", gutter, separator, separator, styledTitle, gutter, styledDesc)
