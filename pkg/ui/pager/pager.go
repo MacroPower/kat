@@ -119,7 +119,7 @@ func NewModel(c Config) PagerModel {
 	return m
 }
 
-func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
+func (m *PagerModel) Update(msg tea.Msg) tea.Cmd {
 	var cmds []tea.Cmd
 
 	// Handle search mode.
@@ -129,9 +129,7 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		var cmd tea.Cmd
-
-		m, cmd = m.keyHandler.HandlePagerKeys(m, msg)
+		cmd := m.keyHandler.HandlePagerKeys(m, msg)
 		cmds = append(cmds, cmd)
 
 	// We've received terminal dimensions, either for the first time or
@@ -146,25 +144,25 @@ func (m PagerModel) Update(msg tea.Msg) (PagerModel, tea.Cmd) {
 	m.viewport, cmd = m.viewport.Update(msg)
 	cmds = append(cmds, cmd)
 
-	return m, tea.Batch(cmds...)
+	return tea.Batch(cmds...)
 }
 
-func (m PagerModel) View() tea.View {
+func (m PagerModel) View() string {
 	if m.ViewState == StateSearching {
-		return tea.NewView(lipgloss.JoinVertical(
+		return lipgloss.JoinVertical(
 			lipgloss.Top,
 			m.viewport.View(),
 			m.searchBarView(),
 			m.helpView(),
-		))
+		)
 	}
 
-	return tea.NewView(lipgloss.JoinVertical(
+	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		m.viewport.View(),
 		m.statusBarView(),
 		m.helpView(),
-	))
+	)
 }
 
 func (m *PagerModel) SetSize(w, h int) {
@@ -259,7 +257,7 @@ func (m *PagerModel) StartSearch() tea.Cmd {
 }
 
 // handleSearchMode handles key events when in search mode.
-func (m PagerModel) handleSearchMode(msg tea.Msg) (PagerModel, tea.Cmd) {
+func (m *PagerModel) handleSearchMode(msg tea.Msg) tea.Cmd {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
@@ -271,7 +269,7 @@ func (m PagerModel) handleSearchMode(msg tea.Msg) (PagerModel, tea.Cmd) {
 			// Exit search mode.
 			m.ExitSearch()
 
-			return m, nil
+			return nil
 
 		case key == "enter":
 			// Apply search and exit search mode.
@@ -294,7 +292,7 @@ func (m PagerModel) handleSearchMode(msg tea.Msg) (PagerModel, tea.Cmd) {
 				cmds = append(cmds, m.cm.SendStatusMessage("no matches found", statusbar.StyleError))
 			}
 
-			return m, tea.Batch(cmds...)
+			return tea.Batch(cmds...)
 		}
 	}
 
@@ -304,7 +302,7 @@ func (m PagerModel) handleSearchMode(msg tea.Msg) (PagerModel, tea.Cmd) {
 	m.searchInput, cmd = m.searchInput.Update(msg)
 	cmds = append(cmds, cmd)
 
-	return m, tea.Batch(cmds...)
+	return tea.Batch(cmds...)
 }
 
 // ExitSearch exits search mode.

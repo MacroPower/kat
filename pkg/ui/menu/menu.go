@@ -83,11 +83,8 @@ func (m *Model) addConfigEditor() {
 	)
 }
 
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
+func (m *Model) Update(msg tea.Msg) tea.Cmd {
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
@@ -95,9 +92,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			break
 		}
 
-		m, cmd = m.keyHandler.HandleKeys(m, msg)
+		cmd := m.keyHandler.HandleKeys(m, msg)
 		cmds = append(cmds, cmd)
 	}
+
+	var cmd tea.Cmd
 
 	m.configeditor, cmd = m.configeditor.Update(msg)
 	cmds = append(cmds, cmd)
@@ -106,7 +105,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		cmds = append(cmds, m.submitResults(context.Background()))
 	}
 
-	return m, tea.Batch(cmds...)
+	return tea.Batch(cmds...)
 }
 
 func (m Model) submitResults(ctx context.Context) tea.Cmd {
@@ -122,13 +121,13 @@ func (m Model) submitResults(ctx context.Context) tea.Cmd {
 	}
 }
 
-func (m Model) View() tea.View {
-	return tea.NewView(lipgloss.JoinVertical(
+func (m Model) View() string {
+	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		m.configeditor.View(),
 		m.statusBarView(),
 		m.helpView(),
-	))
+	)
 }
 
 func (m Model) statusBarView() string {

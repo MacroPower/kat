@@ -72,9 +72,7 @@ func NewKeyHandler(kb *KeyBinds, ckb *common.KeyBinds) *KeyHandler {
 	}
 }
 
-func (h *KeyHandler) HandleKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
-	var cmd tea.Cmd
-
+func (h *KeyHandler) HandleKeys(m *Model, msg tea.KeyMsg) tea.Cmd {
 	key := msg.String()
 
 	switch {
@@ -82,7 +80,7 @@ func (h *KeyHandler) HandleKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.ToggleHelp()
 	}
 
-	return m, cmd
+	return nil
 }
 
 func (h *KeyHandler) HuhKeyMap() *huh.KeyMap {

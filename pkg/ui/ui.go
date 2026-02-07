@@ -9,6 +9,8 @@ import (
 
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
+	"github.com/charmbracelet/x/cellbuf"
 	"go.jacobcolvin.com/niceyaml"
 	"go.jacobcolvin.com/niceyaml/style"
 
@@ -20,7 +22,6 @@ import (
 	"github.com/macropower/kat/pkg/log"
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/menu"
-	"github.com/macropower/kat/pkg/ui/overlay"
 	"github.com/macropower/kat/pkg/ui/pager"
 	"github.com/macropower/kat/pkg/ui/resourcelist"
 	"github.com/macropower/kat/pkg/ui/statusbar"
@@ -72,7 +73,6 @@ func (s State) String() string {
 type model struct {
 	err          error
 	cm           *common.CommonModel
-	overlay      *overlay.Overlay
 	kb           *KeyBinds
 	result       string
 	menu         menu.Model
@@ -183,7 +183,6 @@ func newModel(cfg *Config, cmd common.Commander) tea.Model {
 		list:       listModel,
 		menu:       menuModel,
 		fullResult: fullResultModel,
-		overlay:    overlay.New(cm.Theme),
 		kb:         cfg.KeyBinds,
 	}
 
@@ -376,46 +375,44 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) View() tea.View {
-	var (
-		s                   string
-		overlaySizeFraction float64
-
-		errorOverlayStyle = m.cm.Theme.ErrorOverlayStyle.
-					Align(lipgloss.Left).
-					Padding(1)
-
-		loadingOverlayStyle = m.cm.Theme.GenericOverlayStyle.
-					Align(lipgloss.Center).
-					Padding(1)
-
-		resultOverlayStyle = m.cm.Theme.GenericOverlayStyle.
-					Align(lipgloss.Left).
-					Padding(1)
-	)
+	var s string
 
 	switch m.state {
 	case stateShowDocument:
-		s = m.pager.View().Content
+		s = m.pager.View()
 	case stateShowResult:
-		s = m.fullResult.View().Content
+		s = m.fullResult.View()
 	case stateShowMenu:
-		s = m.menu.View().Content
+		s = m.menu.View()
 	default:
-		s = m.list.View().Content
+		s = m.list.View()
 	}
+
+	var (
+		overlayContent string
+		overlayStyle   lipgloss.Style
+		widthFraction  float64
+	)
 
 	switch m.overlayState {
 	case overlayStateError:
-		overlaySizeFraction = 2.0 / 3.0
-		s = m.overlay.Place(s, m.errorView(), overlaySizeFraction, errorOverlayStyle)
+		overlayContent = m.errorView()
+		overlayStyle = m.cm.Theme.ErrorOverlayStyle.Align(lipgloss.Left).Padding(1)
+		widthFraction = 2.0 / 3.0
 
 	case overlayStateLoading:
-		overlaySizeFraction = 1.0 / 4.0
-		s = m.overlay.Place(s, m.loadingView(), overlaySizeFraction, loadingOverlayStyle)
+		overlayContent = m.loadingView()
+		overlayStyle = m.cm.Theme.GenericOverlayStyle.Align(lipgloss.Center).Padding(1)
+		widthFraction = 1.0 / 4.0
 
 	case overlayStateResult:
-		overlaySizeFraction = 2.0 / 3.0
-		s = m.overlay.Place(s, m.resultView(), overlaySizeFraction, resultOverlayStyle)
+		overlayContent = m.resultView()
+		overlayStyle = m.cm.Theme.GenericOverlayStyle.Align(lipgloss.Left).Padding(1)
+		widthFraction = 2.0 / 3.0
+	}
+
+	if m.overlayState != overlayStateNone {
+		s = m.placeOverlay(s, overlayContent, widthFraction, overlayStyle)
 	}
 
 	v := tea.NewView(strings.TrimRight(s, " \n"))
@@ -450,6 +447,53 @@ func (m *model) errorView() string {
 
 func (m *model) loadingView() string {
 	return m.spinner.View() + " Rendering..."
+}
+
+const (
+	overlayMinWidth         = 16
+	overlayMinHeightPadding = 8
+	overlayWrapChars        = " /-"
+)
+
+// placeOverlay composites styled foreground content centered over the
+// background using [lipgloss.Compositor] layers. Content that exceeds
+// the available height is truncated with a helper message.
+func (m *model) placeOverlay(bg, fg string, widthFraction float64, overlayStyle lipgloss.Style) string {
+	overlayWidth := clamp(int(float64(m.cm.Width)*widthFraction), overlayMinWidth, m.cm.Width)
+
+	// Wrap and truncate content to fit.
+	wrapped := cellbuf.Wrap(fg, overlayWidth, overlayWrapChars)
+	lines := strings.Split(wrapped, "\n")
+
+	maxHeight := m.cm.Height - overlayMinHeightPadding
+	if maxHeight <= 0 {
+		return bg
+	}
+
+	if len(lines) > maxHeight {
+		lines = lines[:maxHeight]
+		maxTextWidth := max(0, overlayWidth-4)
+		truncMsg := "output truncated; press <!> to view full output"
+		helperText := ansi.Truncate(truncMsg, maxTextWidth, m.cm.Theme.Ellipsis)
+		lines = append(lines, "", m.cm.Theme.SubtleStyle.Render(helperText))
+	}
+
+	styledFg := overlayStyle.Width(overlayWidth).Render(strings.Join(lines, "\n"))
+
+	fgW, fgH := lipgloss.Width(styledFg), lipgloss.Height(styledFg)
+	bgW, bgH := lipgloss.Width(bg), lipgloss.Height(bg)
+
+	x := clamp(bgW-fgW, 0, bgW) / 2
+	y := clamp(bgH-fgH, 0, bgH) / 2
+
+	bgLayer := lipgloss.NewLayer(bg)
+	fgLayer := lipgloss.NewLayer(styledFg).X(x).Y(y)
+
+	return lipgloss.NewCompositor(bgLayer, fgLayer).Render()
+}
+
+func clamp(v, lower, upper int) int {
+	return min(max(v, lower), upper)
 }
 
 // handleGlobalKeys handles keys that work across all contexts.
@@ -567,28 +611,16 @@ func (m *model) updateChildModels(msg tea.Msg) []tea.Cmd {
 
 	switch m.state {
 	case stateShowList:
-		newListModel, cmd := m.list.Update(msg)
-		m.list = newListModel
-
-		cmds = append(cmds, cmd)
+		cmds = append(cmds, m.list.Update(msg))
 
 	case stateShowDocument:
-		newPagerModel, cmd := m.pager.Update(msg)
-		m.pager = newPagerModel
-
-		cmds = append(cmds, cmd)
+		cmds = append(cmds, m.pager.Update(msg))
 
 	case stateShowResult:
-		newResultModel, cmd := m.fullResult.Update(msg)
-		m.fullResult = newResultModel
-
-		cmds = append(cmds, cmd)
+		cmds = append(cmds, m.fullResult.Update(msg))
 
 	case stateShowMenu:
-		newMenuModel, cmd := m.menu.Update(msg)
-		m.menu = newMenuModel
-
-		cmds = append(cmds, cmd)
+		cmds = append(cmds, m.menu.Update(msg))
 	}
 
 	return cmds
@@ -602,7 +634,6 @@ func (m *model) handleWindowResize(msg tea.WindowSizeMsg) {
 	m.pager.SetSize(msg.Width, msg.Height)
 	m.fullResult.SetSize(msg.Width, msg.Height)
 	m.menu.SetSize(msg.Width, msg.Height)
-	m.overlay.SetSize(msg.Width, msg.Height)
 }
 
 func (m *model) runCommand(ctx context.Context) tea.Cmd {

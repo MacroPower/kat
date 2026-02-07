@@ -121,9 +121,7 @@ func NewKeyHandler(kb *KeyBinds, ckb *common.KeyBinds) *KeyHandler {
 }
 
 // HandlePagerKeys handles key events for pager view.
-func (h *KeyHandler) HandlePagerKeys(m PagerModel, msg tea.KeyMsg) (PagerModel, tea.Cmd) {
-	var cmd tea.Cmd
-
+func (h *KeyHandler) HandlePagerKeys(m *PagerModel, msg tea.KeyMsg) tea.Cmd {
 	key := msg.String()
 
 	switch {
@@ -155,16 +153,16 @@ func (h *KeyHandler) HandlePagerKeys(m PagerModel, msg tea.KeyMsg) (PagerModel, 
 		m.ToggleHelp()
 
 	case h.kb.Search.Match(key):
-		cmd = m.StartSearch()
+		return m.StartSearch()
 
 	case h.kb.NextMatch.Match(key):
-		cmd = m.NextMatch()
+		return m.NextMatch()
 
 	case h.kb.PrevMatch.Match(key):
-		cmd = m.PrevMatch()
+		return m.PrevMatch()
 
 	case h.kb.Copy.Match(key):
-		cmd = m.CopyContent()
+		return m.CopyContent()
 
 	case h.kb.ToggleDiffMode.Match(key):
 		m.ToggleDiffMode()
@@ -176,5 +174,5 @@ func (h *KeyHandler) HandlePagerKeys(m PagerModel, msg tea.KeyMsg) (PagerModel, 
 		m.ToggleWordWrap()
 	}
 
-	return m, cmd
+	return nil
 }

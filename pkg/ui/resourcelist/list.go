@@ -151,13 +151,13 @@ func NewModel(c Config) Model {
 }
 
 // Update handles messages for the list model.
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		if !m.IsFiltering() && m.cm.KeyBinds.Help.Match(msg.String()) {
 			m.ToggleHelp()
 
-			return m, nil
+			return nil
 		}
 
 		if m.IsFiltering() {
@@ -167,11 +167,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				// If there's only one item, open it directly.
 				if len(m.inner.VisibleItems()) == 1 {
 					if doc, ok := m.inner.SelectedItem().(*yamls.Document); ok {
-						return m, LoadYAML(doc)
+						return LoadYAML(doc)
 					}
 				}
 
-				return m, nil
+				return nil
 			}
 
 			// Pass printable characters directly to the FilterInput
@@ -187,7 +187,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				m.inner.SetFilterText(m.inner.FilterInput.Value())
 				m.inner.SetFilterState(list.Filtering)
 
-				return m, cmd
+				return cmd
 			}
 		}
 	}
@@ -196,11 +196,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	m.inner, cmd = m.inner.Update(msg)
 
-	return m, cmd
+	return cmd
 }
 
 // View renders the list model.
-func (m Model) View() tea.View {
+func (m Model) View() string {
 	header := m.headerView()
 	listContent := m.documentListView()
 	statusBar := m.statusBarView()
@@ -216,7 +216,7 @@ func (m Model) View() tea.View {
 	availableHeight := max(0, m.cm.Height-lipgloss.Height(top))
 	bottom := lipgloss.PlaceVertical(availableHeight, lipgloss.Bottom, bottomContent)
 
-	return tea.NewView(lipgloss.JoinVertical(lipgloss.Top, top, bottom))
+	return lipgloss.JoinVertical(lipgloss.Top, top, bottom)
 }
 
 // SetItems sets the documents displayed in the list.
