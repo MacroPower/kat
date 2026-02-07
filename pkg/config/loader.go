@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"errors"
 	"log/slog"
 	"regexp"
 	"strings"
@@ -50,7 +49,6 @@ type Loader[T v1beta1.Object] struct {
 	newFunc   func() T
 	theme     *theme.Theme
 	source    *niceyaml.Source
-	data      []byte
 }
 
 // NewLoaderFromBytes creates a [Loader] from byte data.
@@ -74,11 +72,11 @@ func NewLoaderFromBytes[T v1beta1.Object](
 	}
 
 	return &Loader[T]{
-		data:      data,
 		newFunc:   newFunc,
 		validator: options.validator,
 		theme:     t,
 		source: niceyaml.NewSourceFromString(string(data),
+			niceyaml.WithDecodeOptions(yaml.AllowDuplicateMapKey()),
 			niceyaml.WithErrorOptions(
 				niceyaml.WithPrinter(niceyaml.NewPrinter(
 					niceyaml.WithStyles(t.NiceyamlStyles),
@@ -142,23 +140,16 @@ func (l *Loader[T]) Load() (T, error) {
 }
 
 func (l *Loader[T]) decode(v any) error {
-	dec := yaml.NewDecoder(bytes.NewReader(l.data), yaml.AllowDuplicateMapKey())
-
-	err := dec.Decode(v)
-	if err == nil {
-		return nil
+	dec, err := l.source.Decoder()
+	if err != nil {
+		return err //nolint:wrapcheck // Decoder returns niceyaml errors with context.
 	}
 
-	var yamlErr yaml.Error
-	if errors.As(err, &yamlErr) {
-		return niceyaml.NewError(
-			yamlErr.GetMessage(),
-			niceyaml.WithErrorToken(yamlErr.GetToken()),
-		)
+	for _, dd := range dec.Documents() {
+		return dd.Decode(v) //nolint:wrapcheck // Decode returns niceyaml errors with context.
 	}
 
-	//nolint:wrapcheck // Return the original error if it's not a [yaml.Error].
-	return err
+	return nil
 }
 
 // GetTheme returns the theme for error formatting.
