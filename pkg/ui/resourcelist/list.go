@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"charm.land/bubbles/v2/list"
-	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 	"github.com/sahilm/fuzzy"
 
@@ -36,12 +35,10 @@ func LoadYAML(md *yamls.Document) tea.Cmd {
 
 // Model wraps the bubbles [list.Model] with custom chrome.
 type Model struct {
-	inner        list.Model
-	delegate     *ItemDelegate
-	cm           *common.CommonModel
-	helpRenderer *statusbar.HelpRenderer
-	helpHeight   int
-	showHelp     bool
+	inner    list.Model
+	delegate *ItemDelegate
+	cm       *common.CommonModel
+	Help     statusbar.HelpModel
 }
 
 // Config holds configuration for creating a new [Model].
@@ -143,10 +140,10 @@ func NewModel(c Config) Model {
 	}
 
 	return Model{
-		inner:        inner,
-		delegate:     delegate,
-		cm:           c.CommonModel,
-		helpRenderer: statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr),
+		inner:    inner,
+		delegate: delegate,
+		cm:       c.CommonModel,
+		Help:     statusbar.NewHelpModel(statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr)),
 	}
 }
 
@@ -209,7 +206,7 @@ func (m Model) View() string {
 	top := lipgloss.JoinVertical(lipgloss.Top, header, listContent)
 
 	bottomContent := statusBar
-	if m.showHelp {
+	if m.Help.Visible() {
 		bottomContent = lipgloss.JoinVertical(lipgloss.Top, statusBar, help)
 	}
 
@@ -244,16 +241,6 @@ func (m *Model) SetItems(docs []*yamls.Document) tea.Cmd {
 	return m.inner.SetItems(items)
 }
 
-// FilterApplied returns whether a filter is currently active.
-func (m Model) FilterApplied() bool {
-	return m.inner.FilterState() != list.Unfiltered
-}
-
-// FilterState returns the current filter state.
-func (m Model) FilterState() list.FilterState {
-	return m.inner.FilterState()
-}
-
 // IsFiltering returns whether the user is actively typing a filter.
 func (m Model) IsFiltering() bool {
 	return m.inner.SettingFilter()
@@ -269,10 +256,6 @@ func (m *Model) SetSize(width, height int) {
 	m.cm.Width = width
 	m.cm.Height = height
 
-	if m.showHelp && m.helpHeight == 0 {
-		m.helpHeight = m.helpRenderer.CalculateHelpHeight()
-	}
-
 	// Compute the height available for the inner list (minus our custom chrome).
 	chromeHeight := m.chromeHeight()
 	contentH := max(1, height-chromeHeight)
@@ -280,49 +263,17 @@ func (m *Model) SetSize(width, height int) {
 	m.inner.SetSize(width, contentH)
 }
 
-// GetSelectedYAML returns the currently selected document.
-func (m Model) GetSelectedYAML() *yamls.Document {
-	item := m.inner.SelectedItem()
-	if item == nil {
-		return nil
-	}
-
-	doc, ok := item.(*yamls.Document)
-	if !ok {
-		return nil
-	}
-
-	return doc
-}
-
-// SetHelpVisible sets whether help is displayed.
-func (m *Model) SetHelpVisible(visible bool) {
-	if visible != m.showHelp {
-		m.ToggleHelp()
-	}
-}
-
 // ToggleHelp toggles the help display.
 func (m *Model) ToggleHelp() {
-	m.showHelp = !m.showHelp
+	m.Help.Toggle()
 	m.SetSize(m.cm.Width, m.cm.Height)
-}
-
-// IsLoading returns whether the list is still loading.
-func (m Model) IsLoading() bool {
-	return !m.cm.Loaded
 }
 
 // chromeHeight returns the total height consumed by custom chrome elements.
 func (m Model) chromeHeight() int {
-	helpHeight := 0
-	if m.showHelp {
-		h := m.helpHeight
-		if h == 0 {
-			h = m.helpRenderer.CalculateHelpHeight()
-		}
-
-		helpHeight = h + 1
+	helpHeight := m.Help.Height()
+	if helpHeight > 0 {
+		helpHeight++ // Account for separator line between status bar and help.
 	}
 
 	// Header (top padding + content + bottom padding) + status bar + help.
@@ -342,11 +293,7 @@ func (m Model) documentListView() string {
 }
 
 func (m Model) helpView() string {
-	if m.showHelp {
-		return m.helpRenderer.Render(m.cm.Width)
-	}
-
-	return ""
+	return m.Help.View(m.cm.Width)
 }
 
 func (m Model) headerView() string {
@@ -399,23 +346,6 @@ func (m Model) statusBarView() string {
 	progress := fmt.Sprintf("%d/%d", p.Page+1, p.TotalPages)
 
 	return m.cm.GetStatusBar().RenderWithNote(title, progress)
-}
-
-// StartFiltering starts the filter mode. This is used for programmatic
-// triggering from outside the list.
-func (m *Model) StartFiltering() tea.Cmd {
-	// Build filter values for all items.
-	for _, item := range m.inner.Items() {
-		if doc, ok := item.(*yamls.Document); ok {
-			doc.BuildFilterValue()
-		}
-	}
-
-	m.inner.SetFilterState(list.Filtering)
-	m.inner.FilterInput.Focus()
-	m.inner.FilterInput.CursorEnd()
-
-	return textinput.Blink
 }
 
 // indent prepends n spaces to each line of s.

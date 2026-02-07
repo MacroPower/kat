@@ -30,14 +30,12 @@ const (
 
 type PagerModel struct {
 	cm              *common.CommonModel
-	helpRenderer    *statusbar.HelpRenderer
+	Help            statusbar.HelpModel
 	keyHandler      *KeyHandler
 	CurrentDocument yamls.Document
 	searchInput     textinput.Model
 	viewport        yamlviewport.Model
-	helpHeight      int
 	ViewState       ViewState
-	ShowHelp        bool
 }
 
 type Config struct {
@@ -108,12 +106,12 @@ func NewModel(c Config) PagerModel {
 	si.Focus()
 
 	m := PagerModel{
-		cm:           c.CommonModel,
-		keyHandler:   NewKeyHandler(c.KeyBinds, c.CommonModel.KeyBinds),
-		helpRenderer: statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr),
-		ViewState:    StateReady,
-		viewport:     vp,
-		searchInput:  si,
+		cm:          c.CommonModel,
+		keyHandler:  NewKeyHandler(c.KeyBinds, c.CommonModel.KeyBinds),
+		Help:        statusbar.NewHelpModel(statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr)),
+		ViewState:   StateReady,
+		viewport:    vp,
+		searchInput: si,
 	}
 
 	return m
@@ -169,10 +167,9 @@ func (m *PagerModel) SetSize(w, h int) {
 	// Calculate viewport dimensions.
 	viewportHeight := h - statusBarHeight
 
-	// Calculate help height if needed.
-	if m.ShowHelp {
-		m.helpHeight = m.helpRenderer.CalculateHelpHeight()
-		viewportHeight -= (statusBarHeight + m.helpHeight)
+	// Subtract help height if visible.
+	if helpH := m.Help.Height(); helpH > 0 {
+		viewportHeight -= (statusBarHeight + helpH)
 	}
 
 	m.searchInput.SetWidth(w - len(m.searchInput.Prompt) - ansi.StringWidth(
@@ -203,7 +200,7 @@ func (m *PagerModel) AddRevision(source *niceyaml.Source) {
 
 func (m *PagerModel) Unload() {
 	slog.Debug("unload pager document")
-	if m.ShowHelp {
+	if m.Help.Visible() {
 		m.ToggleHelp()
 	}
 	// Clear search state.
@@ -219,7 +216,7 @@ func (m *PagerModel) Unload() {
 }
 
 func (m *PagerModel) ToggleHelp() {
-	m.ShowHelp = !m.ShowHelp
+	m.Help.Toggle()
 	m.SetSize(m.cm.Width, m.cm.Height)
 
 	if m.viewport.PastBottom() {
@@ -232,12 +229,7 @@ func (m PagerModel) statusBarView() string {
 }
 
 func (m PagerModel) helpView() string {
-	var help string
-	if m.ShowHelp {
-		help = m.helpRenderer.Render(m.cm.Width)
-	}
-
-	return help
+	return m.Help.View(m.cm.Width)
 }
 
 // searchBarView renders the search input bar.
@@ -382,18 +374,6 @@ func (m *PagerModel) PrevMatch() tea.Cmd {
 	return m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess)
 }
 
-// SetHelpVisible sets help visibility.
-func (m *PagerModel) SetHelpVisible(visible bool) {
-	if visible != m.ShowHelp {
-		m.ToggleHelp()
-	}
-}
-
-// ScrollPercent returns the scroll percent.
-func (m *PagerModel) ScrollPercent() float64 {
-	return m.viewport.ScrollPercent()
-}
-
 // CopyContent copies the current document content to clipboard.
 func (m *PagerModel) CopyContent() tea.Cmd {
 	content := m.CurrentDocument.Body.Content()
@@ -418,35 +398,4 @@ func (m *PagerModel) ToggleViewMode() {
 // ToggleWordWrap toggles word wrapping.
 func (m *PagerModel) ToggleWordWrap() {
 	m.viewport.ToggleWordWrap()
-}
-
-// SetSearchText sets the search text and applies the search.
-func (m *PagerModel) SetSearchText(text string) tea.Cmd {
-	m.searchInput.SetValue(text)
-
-	if text != "" {
-		m.viewport.SetSearchTerm(text)
-	} else {
-		m.viewport.ClearSearch()
-	}
-
-	count := m.viewport.SearchCount()
-	if text != "" && count > 0 {
-		idx := m.viewport.SearchIndex()
-		statusMsg := fmt.Sprintf("match %d/%d", idx+1, count)
-
-		return m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess)
-	}
-
-	return nil
-}
-
-// ClearText clears all text from the search input.
-func (m *PagerModel) ClearText() tea.Cmd {
-	if m.ViewState == StateSearching {
-		m.searchInput.SetValue("")
-		m.viewport.ClearSearch()
-	}
-
-	return nil
 }

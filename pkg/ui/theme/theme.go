@@ -53,6 +53,10 @@ type Theme struct {
 	InsertedStyle             lipgloss.Style
 	DeletedStyle              lipgloss.Style
 
+	// BackgroundColor is the theme's base background color, derived from the
+	// text background of the active syntax theme.
+	BackgroundColor color.Color
+
 	NiceyamlStyles style.Styles
 	Ellipsis       string
 }
@@ -173,6 +177,8 @@ func New(themeName string) *Theme {
 		SubtleStyle:               subtleStyle,
 		InsertedStyle:             insertedStyle,
 		DeletedStyle:              deletedStyle,
+
+		BackgroundColor: textBg,
 
 		NiceyamlStyles: ss,
 		Ellipsis:       Ellipsis,

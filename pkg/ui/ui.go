@@ -61,15 +61,6 @@ const (
 	overlayStateResult
 )
 
-func (s State) String() string {
-	return map[State]string{
-		stateShowList:     "showing file listing",
-		stateShowDocument: "showing document",
-		stateShowResult:   "showing result",
-		stateShowMenu:     "showing menu",
-	}[s]
-}
-
 type model struct {
 	err          error
 	cm           *common.CommonModel
@@ -91,7 +82,7 @@ func (m *model) unloadDocument() {
 	case stateShowMenu:
 		m.menu.Unload()
 
-		m.menu.ShowHelp = false
+		m.menu.Help.SetVisible(false)
 
 		fallthrough
 
@@ -99,8 +90,8 @@ func (m *model) unloadDocument() {
 		m.pager.Unload()
 		m.fullResult.Unload()
 
-		m.pager.ShowHelp = false
-		m.fullResult.ShowHelp = false
+		m.pager.Help.SetVisible(false)
+		m.fullResult.Help.SetVisible(false)
 	}
 
 	m.state = stateShowList
@@ -218,7 +209,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.overlayState = overlayStateNone
 			m.fullResult.Unload()
 
-			m.fullResult.ShowHelp = false
+			m.fullResult.Help.SetVisible(false)
 
 			break
 		}
@@ -417,6 +408,8 @@ func (m *model) View() tea.View {
 
 	v := tea.NewView(strings.TrimRight(s, " \n"))
 	v.AltScreen = true
+	v.BackgroundColor = m.cm.Theme.BackgroundColor
+	v.WindowTitle = "kat — " + m.cm.Cmd.String()
 
 	return v
 }

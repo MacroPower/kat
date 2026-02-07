@@ -23,10 +23,9 @@ type ChangeConfigMsg struct {
 
 type Model struct {
 	cm           *common.CommonModel
-	helpRenderer *statusbar.HelpRenderer
 	keyHandler   *KeyHandler
 	configeditor configeditor.Model
-	ShowHelp     bool
+	Help         statusbar.HelpModel
 }
 
 type Config struct {
@@ -60,9 +59,9 @@ func NewModel(c Config) Model {
 	)
 
 	m := Model{
-		cm:           c.CommonModel,
-		keyHandler:   NewKeyHandler(kb, ckb),
-		helpRenderer: statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr),
+		cm:         c.CommonModel,
+		keyHandler: NewKeyHandler(kb, ckb),
+		Help:       statusbar.NewHelpModel(statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr)),
 	}
 	m.addConfigEditor()
 
@@ -135,10 +134,8 @@ func (m Model) statusBarView() string {
 }
 
 func (m *Model) SetSize(_, h int) {
-	// Calculate help height if needed.
-	if m.ShowHelp {
-		helpHeight := m.helpRenderer.CalculateHelpHeight()
-		m.configeditor.SetHeight(h - helpHeight - 2)
+	if helpH := m.Help.Height(); helpH > 0 {
+		m.configeditor.SetHeight(h - helpH - 2)
 	} else {
 		m.configeditor.SetHeight(h - 1)
 	}
@@ -151,15 +148,11 @@ func (m *Model) Unload() {
 
 // helpView renders the help content.
 func (m Model) helpView() string {
-	if !m.ShowHelp {
-		return ""
-	}
-
-	return m.helpRenderer.Render(m.cm.Width)
+	return m.Help.View(m.cm.Width)
 }
 
 // ToggleHelp toggles the help display.
 func (m *Model) ToggleHelp() {
-	m.ShowHelp = !m.ShowHelp
+	m.Help.Toggle()
 	m.SetSize(m.cm.Width, m.cm.Height)
 }
