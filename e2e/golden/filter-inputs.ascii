@@ -91,7 +91,7 @@
  kat unknown  static                                                               1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
-   Find: abcdefghijklmnopqrstuvwxyz !@#$%^&*()-_=+{}[]\|;':"<>?/~ ABCDEFGHIJKLMNOPQRSTU
+   Find: abcdefghijklmnopqrstuvwxyz !@#$%^&*()-ABCDEFGHIJKLMNOPQRSTUVWXYZ
 
    No results.
 
@@ -114,7 +114,7 @@
  kat unknown  static                                                               1/1  ? Help
 ────────────────────────────────────────────────────────────────────────────────
 
-   Find: fghijklmnopqrstuvwxyz !@#$%^&*()-_=+{}[]\|;':"<>?/~ ABCDEFGHIJKLMNOPQRSTUVWXYZ
+   Find: abcdefghijklmnopqrstuvwxyz !@#$%^&*()-ABCDEFGHIJKLMNOPQRSTUVWXYZ
 
    No results.
 
@@ -272,7 +272,7 @@ Search: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
   19          - name: nginx
   20            image: nginx:1.14.2
   21            ports:
-Search: abcdefghijklmnopqrstuvwxyz !@#$%^&*()-_=+{}[]\|;':"<>?/~ ABCDEFGHIJKLMNOPQRSTUVWX
+Search: abcdefghijklmnopqrstuvwxyz !@#$%^&*()-_=+{}[]\|;':"<>?/~ ABCDEFGHIJKLMNOPQRSTUVWXYZ
 ────────────────────────────────────────────────────────────────────────────────
    1  ---
    2  apiVersion: apps/v1
@@ -295,7 +295,7 @@ Search: abcdefghijklmnopqrstuvwxyz !@#$%^&*()-_=+{}[]\|;':"<>?/~ ABCDEFGHIJKLMNO
   19          - name: nginx
   20            image: nginx:1.14.2
   21            ports:
-Search: cdefghijklmnopqrstuvwxyz !@#$%^&*()-_=+{}[]\|;':"<>?/~ ABCDEFGHIJKLMNOPQRSTUVWXYZ
+Search: abcdefghijklmnopqrstuvwxyz !@#$%^&*()-_=+{}[]\|;':"<>?/~ ABCDEFGHIJKLMNOPQRSTUVWXYZ
 ────────────────────────────────────────────────────────────────────────────────
    1  ---
    2  apiVersion: apps/v1

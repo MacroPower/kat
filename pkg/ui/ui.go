@@ -543,7 +543,7 @@ func (m *model) handleGlobalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool)
 			m.list.ResetFiltering()
 		}
 		if m.state == stateShowDocument {
-			cmds = append(cmds, common.CmdHandler(pager.ExitSearchMsg{}))
+			m.pager.ExitSearch()
 		}
 
 		return m, tea.Batch(cmds...), true
@@ -564,11 +564,23 @@ func (m *model) handleGlobalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool)
 }
 
 func (m *model) matchAction(kb *keys.KeyBind, msg tea.KeyPressMsg) bool {
-	if m.isTextInputFocused() && msg.Text != "" {
+	if m.isTextInputFocused() && !isNonTextInputKey(msg) {
 		return false
 	}
 
 	return kb.Match(msg.String())
+}
+
+// isNonTextInputKey reports whether the key is a control/navigation key that
+// should trigger keybind actions even when a text input is focused.
+func isNonTextInputKey(msg tea.KeyPressMsg) bool {
+	switch msg.Code {
+	case tea.KeyEscape, tea.KeyEnter, tea.KeyUp, tea.KeyDown,
+		tea.KeyPgUp, tea.KeyPgDown:
+		return true
+	}
+
+	return false
 }
 
 func (m *model) isTextInputFocused() bool {

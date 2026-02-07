@@ -181,18 +181,24 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 				return nil
 			}
 
-			// Pass printable characters directly to the FilterInput
-			// to avoid the list's keymap intercepting special characters.
-			// Per bubbletea docs, Text is non-empty only for printable characters.
-			if msg.Text != "" {
+			// Forward printable characters and text-editing keys directly
+			// to the FilterInput to avoid the inner list's keymap
+			// intercepting them (e.g. Left/Right bound to PrevPage/NextPage).
+			if msg.Text != "" || isTextEditingKey(msg.Code) {
 				var cmd tea.Cmd
 
 				m.inner.FilterInput, cmd = m.inner.FilterInput.Update(msg)
+
+				// Save cursor position before syncing, because SetFilterText
+				// calls CursorEnd() which would reset it.
+				pos := m.inner.FilterInput.Position()
 
 				// Sync the filter text to trigger re-filtering, then restore
 				// the Filtering state (SetFilterText sets it to FilterApplied).
 				m.inner.SetFilterText(m.inner.FilterInput.Value())
 				m.inner.SetFilterState(list.Filtering)
+
+				m.inner.FilterInput.SetCursor(pos)
 
 				return cmd
 			}
@@ -456,6 +462,18 @@ func styleFilteredText(haystack, needles string, defaultStyle, matchedStyle lipg
 	}
 
 	return b.String()
+}
+
+// isTextEditingKey reports whether the key code is a non-printable key
+// handled by textinput for cursor movement and text editing.
+func isTextEditingKey(code rune) bool {
+	switch code {
+	case tea.KeyLeft, tea.KeyRight, tea.KeyHome, tea.KeyEnd,
+		tea.KeyBackspace, tea.KeyDelete:
+		return true
+	}
+
+	return false
 }
 
 // fuzzyFind returns the matched indexes of needles in haystack.
