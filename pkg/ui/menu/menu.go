@@ -26,9 +26,9 @@ type Model struct {
 	cmd          common.Commander
 	theme        *theme.Theme
 	keyHandler   *KeyHandler
+	statusBar    *statusbar.StatusBarRenderer
 	configeditor configeditor.Model
 	Help         statusbar.HelpModel
-	statusBar    *statusbar.StatusBarRenderer
 	width        int
 	height       int
 }
@@ -73,7 +73,8 @@ func NewModel(c Config) (Model, error) {
 		statusBar:  statusbar.NewStatusBarRenderer(c.Theme, 0),
 	}
 
-	if err := m.addConfigEditor(); err != nil {
+	err := m.addConfigEditor()
+	if err != nil {
 		return Model{}, fmt.Errorf("initializing menu: %w", err)
 	}
 
@@ -81,7 +82,8 @@ func NewModel(c Config) (Model, error) {
 }
 
 func (m *Model) Init() tea.Cmd {
-	if err := m.addConfigEditor(); err != nil {
+	err := m.addConfigEditor()
+	if err != nil {
 		return func() tea.Msg {
 			return common.ErrMsg{Err: err}
 		}
@@ -156,7 +158,7 @@ func (m Model) statusBarView() string {
 	return m.statusBar.RenderWithNote("menu", m.theme.Ellipsis)
 }
 
-func (m *Model) SetSize(w, h int) {
+func (m *Model) SetSize(w, h int) tea.Cmd {
 	m.width = w
 	m.height = h
 	m.Help.SetWidth(w)
@@ -167,11 +169,14 @@ func (m *Model) SetSize(w, h int) {
 	} else {
 		m.configeditor.SetHeight(h - 1)
 	}
+
+	return nil
 }
 
 func (m *Model) Unload() tea.Cmd {
 	// Replace the editor with a new instance.
-	if err := m.addConfigEditor(); err != nil {
+	err := m.addConfigEditor()
+	if err != nil {
 		return func() tea.Msg {
 			return common.ErrMsg{Err: err}
 		}

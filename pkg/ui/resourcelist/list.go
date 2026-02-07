@@ -39,9 +39,9 @@ type Model struct {
 	delegate      *ItemDelegate
 	theme         *theme.Theme
 	keyBinds      *common.KeyBinds
-	StatusMessage statusbar.StatusMessageModel
-	Help          statusbar.HelpModel
 	statusBar     *statusbar.StatusBarRenderer
+	Help          statusbar.HelpModel
+	StatusMessage statusbar.StatusMessageModel
 	width         int
 	height        int
 }
@@ -262,7 +262,7 @@ func (m *Model) ResetFiltering() {
 }
 
 // SetSize sets the overall dimensions available to the list.
-func (m *Model) SetSize(width, height int) {
+func (m *Model) SetSize(width, height int) tea.Cmd {
 	m.width = width
 	m.height = height
 	m.Help.SetWidth(width)
@@ -273,6 +273,8 @@ func (m *Model) SetSize(width, height int) {
 	contentH := max(1, height-chromeHeight)
 
 	m.inner.SetSize(width, contentH)
+
+	return nil
 }
 
 // ToggleHelp toggles the help display.
@@ -422,6 +424,7 @@ func styleFilteredText(haystack, needles string, defaultStyle, matchedStyle lipg
 			if nextMatch != isMatch {
 				break
 			}
+
 			runEnd++
 		}
 
