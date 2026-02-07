@@ -111,11 +111,11 @@ func NewModel(cmd Commander, t huh.Theme, km *huh.KeyMap) (Model, error) {
 	return m, nil
 }
 
-func (m Model) Init() tea.Cmd {
+func (m *Model) Init() tea.Cmd {
 	return m.form.Init()
 }
 
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	cmds := []tea.Cmd{}
 
 	form, cmd := m.form.Update(msg)
@@ -131,7 +131,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case FieldFile:
 			filePath, ok := field.GetValue().(string)
 			if !ok {
-				return m, func() tea.Msg {
+				return func() tea.Msg {
 					return common.ErrMsg{Err: fmt.Errorf("unexpected file field type: %T", field.GetValue())}
 				}
 			}
@@ -170,18 +170,18 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	return m, tea.Batch(cmds...)
+	return tea.Batch(cmds...)
 }
 
-func (m Model) IsCompleted() bool {
+func (m *Model) IsCompleted() bool {
 	return m.form.State == huh.StateCompleted
 }
 
-func (m Model) Focused() bool {
+func (m *Model) Focused() bool {
 	return m.form.GetFocusedField().GetKey() == FieldExtraArgs
 }
 
-func (m Model) Result() Result {
+func (m *Model) Result() Result {
 	argStr := m.form.GetString(FieldExtraArgs)
 	extraArgs, err := shellwords.Parse(argStr)
 	if err != nil {
@@ -197,7 +197,7 @@ func (m Model) Result() Result {
 	}
 }
 
-func (m Model) View() string {
+func (m *Model) View() string {
 	if m.form.State == huh.StateCompleted {
 		return lipgloss.NewStyle().
 			Height(m.height).

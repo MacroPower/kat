@@ -120,9 +120,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		cmds = append(cmds, cmd)
 	}
 
-	var cmd tea.Cmd
-
-	m.configeditor, cmd = m.configeditor.Update(msg)
+	cmd := m.configeditor.Update(msg)
 	cmds = append(cmds, cmd)
 
 	if m.configeditor.IsCompleted() {
