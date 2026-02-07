@@ -46,7 +46,7 @@ IMPORTANT: You MUST first use 'list_resources' to get available resources, then 
 					Description: "The directory path to operate on, relative to the project root.",
 				},
 			},
-			Required: []string{"apiVersion", "kind", "namespace", "name", "path"},
+			Required: []string{"apiVersion", "kind", "name"},
 		},
 		OutputSchema: &jsonschema.Schema{
 			Type: "object",

@@ -70,12 +70,8 @@ func NewServer(address string, runner CommandRunner, initialPath string) (*Serve
 	runner.Subscribe(s.eventCh)
 
 	// Register tools with the MCP server.
-	s.server.AddTool(
-		mcp.ToolFor(newToolListResources(), withTracing(s.tracer, s.handleListResources)),
-	)
-	s.server.AddTool(
-		mcp.ToolFor(newToolGetResource(), withTracing(s.tracer, s.handleGetResource)),
-	)
+	mcp.AddTool(s.server, newToolListResources(), withTracing(s.tracer, s.handleListResources))
+	mcp.AddTool(s.server, newToolGetResource(), withTracing(s.tracer, s.handleGetResource))
 
 	// Start event processing.
 	go s.processEvents()

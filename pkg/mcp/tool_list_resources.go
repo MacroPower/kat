@@ -23,7 +23,7 @@ IMPORTANT: Use this tool first before attempting to inspect any specific Kuberne
 					Description: "The directory path to operate on, relative to the project root.",
 				},
 			},
-			Required: []string{"path"},
+			Required: []string{},
 		},
 		OutputSchema: &jsonschema.Schema{
 			Type: "object",
