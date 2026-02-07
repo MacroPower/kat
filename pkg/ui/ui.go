@@ -62,21 +62,22 @@ const (
 )
 
 type model struct {
-	err          error
-	theme        *theme.Theme
-	cmd          common.Commander
-	kb           *KeyBinds
-	result       string
-	menu         menu.Model
-	spinner      spinner.Model
-	fullResult   pager.Model
-	list         resourcelist.Model
-	pager        pager.Model
-	state        State
-	overlayState OverlayState
-	width        int
-	height       int
-	loaded       bool
+	err            error
+	theme          *theme.Theme
+	cmd            common.Commander
+	kb             *KeyBinds
+	result         string
+	menu           menu.Model
+	spinner        spinner.Model
+	list           resourcelist.Model
+	pager          pager.Model
+	resultDocument yamls.Document  // stored result content for the result view
+	savedDocument  *yamls.Document // saved document content when showing result view
+	state          State
+	overlayState   OverlayState
+	width          int
+	height         int
+	loaded         bool
 }
 
 // unloadDocument unloads a document from the pager. Note that while this
@@ -94,10 +95,8 @@ func (m *model) unloadDocument() tea.Cmd {
 
 	case stateShowDocument, stateShowResult:
 		m.pager.Unload()
-		m.fullResult.Unload()
-
 		m.pager.Help.SetVisible(false)
-		m.fullResult.Help.SetVisible(false)
+		m.savedDocument = nil
 	}
 
 	m.state = stateShowList
@@ -165,14 +164,6 @@ func newModel(cfg *Config, cmd common.Commander) tea.Model {
 		Printer:   printer,
 	})
 
-	fullResultModel := pager.NewModel(pager.Config{
-		Theme:     t,
-		KeyBinds:  cfg.KeyBinds.Pager,
-		CKeyBinds: ckb,
-		Cmd:       cmd,
-		Printer:   printer,
-	})
-
 	menuModel, err := menu.NewModel(menu.Config{
 		Theme:     t,
 		KeyBinds:  cfg.KeyBinds.Menu,
@@ -184,15 +175,14 @@ func newModel(cfg *Config, cmd common.Commander) tea.Model {
 	}
 
 	m := &model{
-		theme:      t,
-		cmd:        cmd,
-		spinner:    sp,
-		state:      stateShowList,
-		pager:      pagerModel,
-		list:       listModel,
-		menu:       menuModel,
-		fullResult: fullResultModel,
-		kb:         cfg.KeyBinds,
+		theme:   t,
+		cmd:     cmd,
+		spinner: sp,
+		state:   stateShowList,
+		pager:   pagerModel,
+		list:    listModel,
+		menu:    menuModel,
+		kb:      cfg.KeyBinds,
 	}
 
 	return m
@@ -223,9 +213,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// If we're showing a result, <!> exits the result view.
 			m.state = stateShowList
 			m.overlayState = overlayStateNone
-			m.fullResult.Unload()
-
-			m.fullResult.Help.SetVisible(false)
+			m.pager.Unload()
+			m.pager.Help.SetVisible(false)
+			m.savedDocument = nil
 
 			break
 		}
@@ -299,15 +289,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		body += "# Stdout\n" + msg.Stdout + "\n---\n# Stderr\n" + msg.Stderr
 
-		m.fullResult.CurrentDocument = yamls.Document{
+		m.resultDocument = yamls.Document{
 			Body:  niceyaml.NewSourceFromString(body),
 			Title: "output",
 		}
 
 	case ShowResultMsg:
-		m.state = stateShowResult
-		m.fullResult.SetContent(m.fullResult.CurrentDocument.Body)
-		m.fullResult.SetSize(m.width, m.height)
+		m.showResultInPager()
 
 	case command.EventEnd:
 		cmds = append(cmds, m.handleResourceUpdate(msg)...)
@@ -335,6 +323,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pager.Unload()
 		cmds = append(cmds, m.menu.Unload())
 
+		m.savedDocument = nil
 		m.state = stateShowDocument
 
 		resource := msg.Resource
@@ -384,10 +373,8 @@ func (m *model) View() tea.View {
 	var s string
 
 	switch m.state {
-	case stateShowDocument:
+	case stateShowDocument, stateShowResult:
 		s = m.pager.View()
-	case stateShowResult:
-		s = m.fullResult.View()
 	case stateShowMenu:
 		s = m.menu.View()
 	default:
@@ -519,7 +506,7 @@ func (m *model) handleGlobalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool)
 
 	case m.matchAction(m.kb.Common.Escape, key):
 		isShowingDocument := m.state == stateShowDocument && m.pager.ViewState != pager.StateSearching
-		isShowingResult := m.state == stateShowResult && m.fullResult.ViewState != pager.StateSearching
+		isShowingResult := m.state == stateShowResult && m.pager.ViewState != pager.StateSearching
 		isShowingMenu := m.state == stateShowMenu
 		isShowingList := m.state == stateShowList
 
@@ -530,11 +517,8 @@ func (m *model) handleGlobalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool)
 		if isShowingList {
 			m.list.ResetFiltering()
 		}
-		if m.state == stateShowDocument {
+		if m.state == stateShowDocument || m.state == stateShowResult {
 			m.pager.ExitSearch()
-		}
-		if m.state == stateShowResult {
-			m.fullResult.ExitSearch()
 		}
 
 		return m, cmd, true
@@ -567,12 +551,8 @@ func (m *model) isTextInputFocused() bool {
 		// Pass through to list handler.
 		return true
 	}
-	if m.state == stateShowDocument && m.pager.ViewState == pager.StateSearching {
+	if (m.state == stateShowDocument || m.state == stateShowResult) && m.pager.ViewState == pager.StateSearching {
 		// Pass through to pager search handler.
-		return true
-	}
-	if m.state == stateShowResult && m.fullResult.ViewState == pager.StateSearching {
-		// Pass through to result pager search handler.
 		return true
 	}
 	if m.state == stateShowMenu {
@@ -621,11 +601,8 @@ func (m *model) updateChildModels(msg tea.Msg) []tea.Cmd {
 	case stateShowList:
 		cmds = append(cmds, m.list.Update(msg))
 
-	case stateShowDocument:
+	case stateShowDocument, stateShowResult:
 		cmds = append(cmds, m.pager.Update(msg))
-
-	case stateShowResult:
-		cmds = append(cmds, m.fullResult.Update(msg))
 
 	case stateShowMenu:
 		cmds = append(cmds, m.menu.Update(msg))
@@ -645,8 +622,22 @@ func (m *model) handleWindowResize(msg tea.WindowSizeMsg) {
 	m.height = msg.Height
 	m.list.SetSize(msg.Width, msg.Height)
 	m.pager.SetSize(msg.Width, msg.Height)
-	m.fullResult.SetSize(msg.Width, msg.Height)
 	m.menu.SetSize(msg.Width, msg.Height)
+}
+
+// showResultInPager swaps the pager content to show the result document.
+// The current document is saved so it can be restored when leaving result view.
+func (m *model) showResultInPager() {
+	if m.state == stateShowDocument {
+		saved := m.pager.CurrentDocument
+		m.savedDocument = &saved
+	}
+
+	m.state = stateShowResult
+	m.pager.Unload()
+	m.pager.CurrentDocument = m.resultDocument
+	m.pager.SetContent(m.resultDocument.Body)
+	m.pager.SetSize(m.width, m.height)
 }
 
 func (m *model) runCommand(ctx context.Context) tea.Cmd {
