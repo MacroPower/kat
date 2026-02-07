@@ -29,9 +29,21 @@ const (
 	StateSearching
 )
 
+// LoadDocumentMsg instructs the pager to display a new document.
+type LoadDocumentMsg struct {
+	Document yamls.Document
+}
+
+// RevisionMsg instructs the pager to add a revision for diff tracking.
+type RevisionMsg struct {
+	Document yamls.Document
+}
+
+// ExitSearchMsg instructs the pager to exit search mode.
+type ExitSearchMsg struct{}
+
 type Model struct {
 	keyBinds        *common.KeyBinds
-	theme           *theme.Theme
 	keyHandler      *KeyHandler
 	CurrentDocument yamls.Document
 	StatusMessage   statusbar.StatusMessageModel
@@ -114,7 +126,6 @@ func NewModel(c Config) Model {
 	si.Focus()
 
 	m := Model{
-		theme:       c.Theme,
 		keyBinds:    c.CKeyBinds,
 		keyHandler:  NewKeyHandler(c.KeyBinds, c.CKeyBinds),
 		Help:        statusbar.NewHelpModel(statusbar.NewHelpRenderer(c.Theme, kbr)),
@@ -136,6 +147,23 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	}
 
 	switch msg := msg.(type) {
+	case LoadDocumentMsg:
+		m.CurrentDocument = msg.Document
+		m.SetContent(msg.Document.Body)
+
+		return nil
+
+	case RevisionMsg:
+		m.CurrentDocument = msg.Document
+		m.AddRevision(msg.Document.Body)
+
+		return nil
+
+	case ExitSearchMsg:
+		m.ExitSearch()
+
+		return nil
+
 	case tea.KeyPressMsg:
 		cmd := m.keyHandler.HandlePagerKeys(m, msg)
 		cmds = append(cmds, cmd)
@@ -178,7 +206,7 @@ func (m Model) View() string {
 	)
 }
 
-func (m *Model) SetSize(w, h int) {
+func (m *Model) SetSize(w, h int) tea.Cmd {
 	m.width = w
 	m.height = h
 	m.Help.SetWidth(w)
@@ -196,6 +224,8 @@ func (m *Model) SetSize(w, h int) {
 
 	m.viewport.SetWidth(w)
 	m.viewport.SetHeight(viewportHeight)
+
+	return nil
 }
 
 // SetContent sets the YAML content to display.
@@ -320,6 +350,11 @@ func (m *Model) handleSearchMode(msg tea.Msg) tea.Cmd {
 	cmds = append(cmds, cmd)
 
 	return tea.Batch(cmds...)
+}
+
+// IsSearching returns whether the pager is in search mode.
+func (m *Model) IsSearching() bool {
+	return m.ViewState == StateSearching
 }
 
 // ExitSearch exits search mode.

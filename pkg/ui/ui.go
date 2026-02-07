@@ -250,7 +250,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Window size is received when starting up and on every resize.
 	case tea.WindowSizeMsg:
-		m.handleWindowResize(msg)
+		cmds = append(cmds, m.handleWindowResize(msg))
 
 	case command.EventStart:
 		m.loaded = false
@@ -261,10 +261,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case resourcelist.FetchedYAMLMsg:
 		// We've loaded a YAML file's contents for rendering.
-		m.pager.CurrentDocument = *msg
-		body := msg.Body
 		m.state = stateShowDocument
-		m.pager.SetContent(body)
+		cmds = append(cmds, common.CmdHandler(pager.LoadDocumentMsg{Document: yamls.Document(*msg)}))
 
 	case GotResultMsg:
 		m.err = msg.Error
@@ -295,7 +293,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case ShowResultMsg:
-		m.showResultInPager()
+		cmds = append(cmds, m.showResultInPager())
 
 	case command.EventEnd:
 		cmds = append(cmds, m.handleResourceUpdate(msg)...)
@@ -328,9 +326,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		resource := msg.Resource
 		yamlDoc := kubeResourceToYAML(&resource)
-		m.pager.CurrentDocument = *yamlDoc
-
-		m.pager.SetContent(yamlDoc.Body)
+		cmds = append(cmds, common.CmdHandler(pager.LoadDocumentMsg{Document: *yamlDoc}))
 
 	case menu.ChangeConfigMsg:
 		m.list.SetItems(nil)
@@ -505,23 +501,23 @@ func (m *model) handleGlobalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool)
 		return m, tea.Quit, true
 
 	case m.matchAction(m.kb.Common.Escape, key):
-		isShowingDocument := m.state == stateShowDocument && m.pager.ViewState != pager.StateSearching
-		isShowingResult := m.state == stateShowResult && m.pager.ViewState != pager.StateSearching
+		isShowingDocument := m.state == stateShowDocument && !m.pager.IsSearching()
+		isShowingResult := m.state == stateShowResult && !m.pager.IsSearching()
 		isShowingMenu := m.state == stateShowMenu
 		isShowingList := m.state == stateShowList
 
-		var cmd tea.Cmd
+		var cmds []tea.Cmd
 		if isShowingDocument || isShowingResult || isShowingMenu || !m.loaded {
-			cmd = m.unloadDocument()
+			cmds = append(cmds, m.unloadDocument())
 		}
 		if isShowingList {
 			m.list.ResetFiltering()
 		}
 		if m.state == stateShowDocument || m.state == stateShowResult {
-			m.pager.ExitSearch()
+			cmds = append(cmds, common.CmdHandler(pager.ExitSearchMsg{}))
 		}
 
-		return m, cmd, true
+		return m, tea.Batch(cmds...), true
 
 	case m.matchAction(m.kb.Common.Menu, key):
 		m.state = stateShowMenu
@@ -551,7 +547,7 @@ func (m *model) isTextInputFocused() bool {
 		// Pass through to list handler.
 		return true
 	}
-	if (m.state == stateShowDocument || m.state == stateShowResult) && m.pager.ViewState == pager.StateSearching {
+	if (m.state == stateShowDocument || m.state == stateShowResult) && m.pager.IsSearching() {
 		// Pass through to pager search handler.
 		return true
 	}
@@ -581,9 +577,7 @@ func (m *model) handleResourceUpdate(msg command.EventEnd) []tea.Cmd {
 		docs = append(docs, newYaml)
 
 		if m.state == stateShowDocument && kube.ObjectEqual(yml.Object, m.pager.CurrentDocument.Object) {
-			// Use AddRevision for diff tracking instead of re-rendering from scratch.
-			m.pager.CurrentDocument = *newYaml
-			m.pager.AddRevision(newYaml.Body)
+			cmds = append(cmds, common.CmdHandler(pager.RevisionMsg{Document: *newYaml}))
 		}
 	}
 
@@ -617,17 +611,21 @@ func (m *model) sendStatusMessage(msg string, sty statusbar.Style) tea.Cmd {
 }
 
 // handleWindowResize handles terminal window resize events.
-func (m *model) handleWindowResize(msg tea.WindowSizeMsg) {
+func (m *model) handleWindowResize(msg tea.WindowSizeMsg) tea.Cmd {
 	m.width = msg.Width
 	m.height = msg.Height
-	m.list.SetSize(msg.Width, msg.Height)
-	m.pager.SetSize(msg.Width, msg.Height)
-	m.menu.SetSize(msg.Width, msg.Height)
+
+	cmds := make([]tea.Cmd, 0, 3)
+	for _, s := range []common.Sizeable{&m.list, &m.pager, &m.menu} {
+		cmds = append(cmds, s.SetSize(msg.Width, msg.Height))
+	}
+
+	return tea.Batch(cmds...)
 }
 
 // showResultInPager swaps the pager content to show the result document.
 // The current document is saved so it can be restored when leaving result view.
-func (m *model) showResultInPager() {
+func (m *model) showResultInPager() tea.Cmd {
 	if m.state == stateShowDocument {
 		saved := m.pager.CurrentDocument
 		m.savedDocument = &saved
@@ -635,9 +633,11 @@ func (m *model) showResultInPager() {
 
 	m.state = stateShowResult
 	m.pager.Unload()
-	m.pager.CurrentDocument = m.resultDocument
-	m.pager.SetContent(m.resultDocument.Body)
-	m.pager.SetSize(m.width, m.height)
+
+	return tea.Batch(
+		common.CmdHandler(pager.LoadDocumentMsg{Document: m.resultDocument}),
+		m.pager.SetSize(m.width, m.height),
+	)
 }
 
 func (m *model) runCommand(ctx context.Context) tea.Cmd {
