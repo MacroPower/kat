@@ -333,7 +333,6 @@ profiles:
 	}
 }
 
-
 // createTempFile creates a temporary file with the given content.
 func createTempFile(t *testing.T, content string) string {
 	t.Helper()

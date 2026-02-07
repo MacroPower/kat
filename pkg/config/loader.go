@@ -125,7 +125,7 @@ func (l *Loader[T]) firstDocument() (*niceyaml.DocumentDecoder, error) {
 		return dd, nil
 	}
 
-	return nil, nil
+	return nil, nil //nolint:nilnil // Signal no documents, no errors.
 }
 
 func (l *Loader[T]) decode(v any) error {
