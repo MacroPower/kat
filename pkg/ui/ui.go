@@ -221,48 +221,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		if m.matchAction(m.kb.Common.Error, msg) {
-			if !m.pager.IsShowingResult() {
-				m.overlayState = overlayStateNone
-
-				cmds = append(cmds, common.CmdHandler(ShowResultMsg{}))
-
-				break
-			}
-			// If we're showing a result, <!> exits the result view.
-			cmds = append(cmds, m.unloadDocument())
-			m.overlayState = overlayStateNone
-
-			break
+		ret, cmd := m.handleKeyPress(msg)
+		if ret != nil {
+			return ret, cmd
 		}
 
-		if m.overlayState == overlayStateError || m.overlayState == overlayStateOutput {
-			// If we're showing an error, any key exits the error view.
-			m.overlayState = overlayStateNone
-
-			// Don't break, continue to handle the key event.
-		}
-
-		// Handle global key events that should work anywhere in the app.
-		if newModel, cmd, handled := m.handleGlobalKeys(msg); handled {
-			return newModel, cmd
-		}
-
-		if m.matchAction(m.kb.Common.Left, msg) {
-			if m.state == stateShowDocument {
-				cmds = append(cmds, m.unloadDocument())
-			}
-		}
-
-		// Handle plugin keybinds.
-		_, profile := m.cmd.GetCurrentProfile()
-		if profile != nil && !m.isTextInputFocused() {
-			if pluginName := profile.GetPluginNameByKey(msg.String()); pluginName != "" {
-				cmd := m.runPlugin(context.Background(), pluginName)
-
-				return m, cmd
-			}
-		}
+		cmds = append(cmds, cmd)
 
 	// Window size is received when starting up and on every resize.
 	case tea.WindowSizeMsg:
@@ -503,6 +467,57 @@ func (m *model) placeOverlay(bg, fg string, widthFraction float64, overlayStyle 
 
 func clamp(v, lower, upper int) int {
 	return min(max(v, lower), upper)
+}
+
+// handleKeyPress handles keyboard input. It returns a non-nil model when the
+// caller should return immediately from [model.Update].
+func (m *model) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
+	if m.matchAction(m.kb.Common.Error, msg) {
+		if !m.pager.IsShowingResult() {
+			m.overlayState = overlayStateNone
+
+			cmds = append(cmds, common.CmdHandler(ShowResultMsg{}))
+
+			return nil, tea.Batch(cmds...)
+		}
+		// If we're showing a result, <!> exits the result view.
+		cmds = append(cmds, m.unloadDocument())
+		m.overlayState = overlayStateNone
+
+		return nil, tea.Batch(cmds...)
+	}
+
+	if m.overlayState == overlayStateError || m.overlayState == overlayStateOutput {
+		// If we're showing an error, any key exits the error view.
+		m.overlayState = overlayStateNone
+
+		// Don't return, continue to handle the key event.
+	}
+
+	// Handle global key events that should work anywhere in the app.
+	if newModel, cmd, handled := m.handleGlobalKeys(msg); handled {
+		return newModel, cmd
+	}
+
+	if m.matchAction(m.kb.Common.Left, msg) {
+		if m.state == stateShowDocument {
+			cmds = append(cmds, m.unloadDocument())
+		}
+	}
+
+	// Handle plugin keybinds.
+	_, profile := m.cmd.GetCurrentProfile()
+	if profile != nil && !m.isTextInputFocused() {
+		if pluginName := profile.GetPluginNameByKey(msg.String()); pluginName != "" {
+			cmd := m.runPlugin(context.Background(), pluginName)
+
+			return m, cmd
+		}
+	}
+
+	return nil, tea.Batch(cmds...)
 }
 
 // handleGlobalKeys handles keys that work across all contexts.
