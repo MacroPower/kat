@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/exp/golden"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -49,7 +50,6 @@ func TestRenderStatusBar(t *testing.T) {
 	t.Parallel()
 
 	tcs := map[string]struct {
-		checkFunc     func(*testing.T, string)
 		statusMessage string
 		title         string
 		width         int
@@ -59,43 +59,17 @@ func TestRenderStatusBar(t *testing.T) {
 			width:         100,
 			title:         "test-document",
 			scrollPercent: 0.5,
-			checkFunc: func(t *testing.T, result string) {
-				t.Helper()
-				// Should contain logo, document title, scroll percent, and help
-				assert.Contains(t, result, "kat")           // Logo
-				assert.Contains(t, result, "test-document") // Document title
-				assert.Contains(t, result, "50%")           // Scroll percent
-				assert.Contains(t, result, "? Help")        // Help note
-			},
 		},
 		"status message state": {
 			width:         100,
 			statusMessage: "File saved successfully",
 			title:         "test-document",
 			scrollPercent: 0.75,
-			checkFunc: func(t *testing.T, result string) {
-				t.Helper()
-				// Should contain logo, status message, scroll percent, and help
-				assert.Contains(t, result, "kat")                     // Logo
-				assert.Contains(t, result, "File saved successfully") // Status message
-				assert.Contains(t, result, "75%")                     // Scroll percent
-				assert.Contains(t, result, "? Help")                  // Help note
-				assert.NotContains(t, result, "test-document")        // Should not contain doc title
-			},
 		},
 		"narrow width": {
 			width:         50,
 			title:         "very-long-document-name-that-should-be-truncated",
 			scrollPercent: 0.0,
-			checkFunc: func(t *testing.T, result string) {
-				t.Helper()
-				// Should contain basic components but truncated
-				assert.Contains(t, result, "kat")
-				assert.Contains(t, result, "0%")
-				assert.Contains(t, result, "? Help")
-				// Should be truncated
-				assert.Contains(t, result, "very-long-document-na…")
-			},
 		},
 	}
 
@@ -103,17 +77,62 @@ func TestRenderStatusBar(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
+			opts := []statusbar.StatusBarOpt{}
+			if tc.statusMessage != "" {
+				opts = append(opts, statusbar.WithMessage(tc.statusMessage, statusbar.StyleSuccess))
+			}
+
 			renderer := statusbar.NewStatusBarRenderer(
 				theme.Default,
 				tc.width,
-				statusbar.WithMessage(tc.statusMessage, statusbar.StyleSuccess),
+				opts...,
 			)
 
 			result := renderer.RenderWithScroll(tc.title, tc.scrollPercent)
-			tc.checkFunc(t, result)
+			golden.RequireEqual(t, result)
+		})
+	}
+}
 
-			// Verify the result is properly structured
-			assert.NotEmpty(t, result)
+func TestRenderStatusBarWithNote(t *testing.T) {
+	t.Parallel()
+
+	tcs := map[string]struct {
+		statusMessage string
+		title         string
+		progress      string
+		width         int
+	}{
+		"normal state with progress": {
+			width:    100,
+			title:    "test-document",
+			progress: "3/10",
+		},
+		"status message with progress": {
+			width:         100,
+			statusMessage: "File saved successfully",
+			title:         "test-document",
+			progress:      "7/10",
+		},
+	}
+
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			opts := []statusbar.StatusBarOpt{}
+			if tc.statusMessage != "" {
+				opts = append(opts, statusbar.WithMessage(tc.statusMessage, statusbar.StyleSuccess))
+			}
+
+			renderer := statusbar.NewStatusBarRenderer(
+				theme.Default,
+				tc.width,
+				opts...,
+			)
+
+			result := renderer.RenderWithNote(tc.title, tc.progress)
+			golden.RequireEqual(t, result)
 		})
 	}
 }

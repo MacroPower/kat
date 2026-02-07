@@ -1,0 +1,15 @@
+[38;2;184;189;194;48;2;64;68;74m                                                                                  [m
+[38;2;184;189;194;48;2;64;68;74m  q        quit             c       copy contents     ↵         open              [m
+[38;2;184;189;194;48;2;64;68;74m  r        reload           home/g  go to top         /         find              [m
+[38;2;184;189;194;48;2;64;68;74m  esc      go back          end/G   go to bottom      home/g    go to start       [m
+[38;2;184;189;194;48;2;64;68;74m  ?        toggle help      pgup/b  page up           end/G     go to end         [m
+[38;2;184;189;194;48;2;64;68;74m  !        toggle error     pgdn/f  page down         pgup/b/u  page up           [m
+[38;2;184;189;194;48;2;64;68;74m  :        open menu        u       ½ page up         pgdn/f/d  page down         [m
+[38;2;184;189;194;48;2;64;68;74m  ↑/k      move up          d       ½ page down                                   [m
+[38;2;184;189;194;48;2;64;68;74m  ↓/j      move down        /       search content                                [m
+[38;2;184;189;194;48;2;64;68;74m  ←/h      move left        n       next match                                    [m
+[38;2;184;189;194;48;2;64;68;74m  →/l      move right       N       previous match                                [m
+[38;2;184;189;194;48;2;64;68;74m  ⇧+tab/H  previous page    m       diff mode                                     [m
+[38;2;184;189;194;48;2;64;68;74m  tab/L    next page        v       view mode                                     [m
+[38;2;184;189;194;48;2;64;68;74m                            w       word wrap                                     [m
+[38;2;184;189;194;48;2;64;68;74m                                                                                  [m

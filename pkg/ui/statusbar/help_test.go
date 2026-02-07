@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/exp/golden"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -44,6 +45,34 @@ func TestNewHelpRenderer(t *testing.T) {
 			assert.NotEmpty(t, view, "Help view should not be empty")
 
 			assert.Equal(t, 2, renderer.CalculateHelpHeight(tc.width))
+		})
+	}
+}
+
+func TestHelpRenderer_Render(t *testing.T) {
+	t.Parallel()
+
+	cfg := ui.NewConfig()
+
+	kbr := &keys.KeyBindRenderer{}
+	kbr.AddColumn(cfg.KeyBinds.Common.GetKeyBinds()...)
+	kbr.AddColumn(cfg.KeyBinds.Pager.GetKeyBinds()...)
+	kbr.AddColumn(cfg.KeyBinds.List.GetKeyBinds()...)
+
+	tcs := map[string]struct {
+		width int
+	}{
+		"width 80": {width: 80},
+		"width 40": {width: 40},
+	}
+
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			renderer := statusbar.NewHelpRenderer(theme.Default, kbr)
+			result := renderer.Render(tc.width)
+			golden.RequireEqual(t, result)
 		})
 	}
 }
@@ -126,4 +155,35 @@ func TestHelpRenderer_FillEmptySpaces(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHelpModel_View(t *testing.T) {
+	t.Parallel()
+
+	kbr := &keys.KeyBindRenderer{}
+	kbr.AddColumn(keys.NewBind("foo", keys.New("f")))
+	kbr.AddColumn(keys.NewBind("bar", keys.New("b")))
+
+	renderer := statusbar.NewHelpRenderer(theme.Default, kbr)
+
+	t.Run("visible", func(t *testing.T) {
+		t.Parallel()
+
+		model := statusbar.NewHelpModel(renderer)
+		model.SetWidth(80)
+		model.SetVisible(true)
+
+		result := model.View(80)
+		golden.RequireEqual(t, result)
+	})
+
+	t.Run("not visible", func(t *testing.T) {
+		t.Parallel()
+
+		model := statusbar.NewHelpModel(renderer)
+		model.SetWidth(80)
+
+		result := model.View(80)
+		assert.Empty(t, result)
+	})
 }
