@@ -563,26 +563,53 @@ func (m *model) isTextInputFocused() bool {
 func (m *model) handleResourceUpdate(msg command.EventEnd) []tea.Cmd {
 	var cmds []tea.Cmd
 
-	if msg.Output.Error != nil || msg.Output.Type == command.TypePlugin {
-		cmds = append(cmds, common.CmdHandler(GotResultMsg(msg.Output)))
-	}
+	cmds = append(cmds, m.routeCommandResult(msg.Output)...)
 
 	if len(msg.Output.Resources) == 0 {
 		return cmds
 	}
 
-	docs := make([]*yamls.Document, 0, len(msg.Output.Resources))
-	for _, yml := range msg.Output.Resources {
-		newYaml := kubeResourceToYAML(yml)
-		docs = append(docs, newYaml)
+	docs := resourcesToDocuments(msg.Output.Resources)
 
-		if m.state == stateShowDocument && kube.ObjectEqual(yml.Object, m.pager.CurrentDocument.Object) {
-			cmds = append(cmds, common.CmdHandler(pager.RevisionMsg{Document: *newYaml}))
-		}
+	cmds = append(cmds, m.list.SetItems(docs))
+	cmds = append(cmds, m.notifyPagerRevisions(docs)...)
+
+	return cmds
+}
+
+// routeCommandResult sends error or plugin output to the result overlay.
+func (m *model) routeCommandResult(output command.Output) []tea.Cmd {
+	if output.Error != nil || output.Type == command.TypePlugin {
+		return []tea.Cmd{common.CmdHandler(GotResultMsg(output))}
 	}
 
-	cmd := m.list.SetItems(docs)
-	cmds = append(cmds, cmd)
+	return nil
+}
+
+// resourcesToDocuments converts kubernetes resources to YAML documents.
+func resourcesToDocuments(resources []*kube.Resource) []*yamls.Document {
+	docs := make([]*yamls.Document, 0, len(resources))
+	for _, res := range resources {
+		docs = append(docs, kubeResourceToYAML(res))
+	}
+
+	return docs
+}
+
+// notifyPagerRevisions sends revision messages to the pager for any document
+// that matches the currently displayed document.
+func (m *model) notifyPagerRevisions(docs []*yamls.Document) []tea.Cmd {
+	if m.state != stateShowDocument {
+		return nil
+	}
+
+	var cmds []tea.Cmd
+
+	for _, doc := range docs {
+		if kube.ObjectEqual(doc.Object, m.pager.CurrentDocument.Object) {
+			cmds = append(cmds, common.CmdHandler(pager.RevisionMsg{Document: *doc}))
+		}
+	}
 
 	return cmds
 }
