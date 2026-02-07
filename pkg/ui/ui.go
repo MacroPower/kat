@@ -41,28 +41,10 @@ func NewProgram(cfg *Config, cmd common.Commander, opts ...tea.ProgramOption) *t
 
 	m := newModel(cfg, cmd)
 
-	opts = append(opts, tea.WithFilter(mouseEventFilter))
+	opts = append(opts, tea.WithFilter(m.mouseEventFilter))
 
 	return tea.NewProgram(m, opts...)
 }
-
-// mouseEventFilter throttles high-frequency mouse wheel and motion events to
-// prevent excessive redraws from trackpad scrolling.
-func mouseEventFilter(_ tea.Model, msg tea.Msg) tea.Msg {
-	switch msg.(type) {
-	case tea.MouseWheelMsg, tea.MouseMotionMsg:
-		now := time.Now()
-		if now.Sub(lastMouseEvent) < mouseThrottleInterval {
-			return nil
-		}
-
-		lastMouseEvent = now
-	}
-
-	return msg
-}
-
-var lastMouseEvent time.Time
 
 type GotResultMsg command.Output
 
@@ -92,6 +74,7 @@ type model struct {
 	theme          *theme.Theme
 	kb             *KeyBinds
 	resultDocument yamls.Document
+	lastMouseEvent time.Time
 	result         string
 	list           resourcelist.Model
 	menu           menu.Model
@@ -102,6 +85,22 @@ type model struct {
 	width          int
 	height         int
 	loaded         bool
+}
+
+// mouseEventFilter throttles high-frequency mouse wheel and motion events to
+// prevent excessive redraws from trackpad scrolling.
+func (m *model) mouseEventFilter(_ tea.Model, msg tea.Msg) tea.Msg {
+	switch msg.(type) {
+	case tea.MouseWheelMsg, tea.MouseMotionMsg:
+		now := time.Now()
+		if now.Sub(m.lastMouseEvent) < mouseThrottleInterval {
+			return nil
+		}
+
+		m.lastMouseEvent = now
+	}
+
+	return msg
 }
 
 // setState transitions the model to a new [State], cleaning up the previous
@@ -148,7 +147,7 @@ func (m *model) unloadDocument() tea.Cmd {
 	return m.setState(stateShowList)
 }
 
-func newModel(cfg *Config, cmd common.Commander) tea.Model {
+func newModel(cfg *Config, cmd common.Commander) *model {
 	uiTheme := cfg.UI.Theme
 	_, profile := cmd.GetCurrentProfile()
 	if profile != nil && profile.UI != nil {
