@@ -251,8 +251,18 @@ func getStyleBg(ss style.Styles, s style.Style) color.Color {
 // brighten adjusts a color towards a target by the given factor.
 // For dark themes this lightens, for light themes this darkens.
 func brighten(c, towards color.Color, factor float64) color.Color {
-	_ = towards // Direction hint unused for now; lipgloss.Lighten/Darken handles direction.
-	return lipgloss.Lighten(c, factor)
+	if luminance(towards) > luminance(c) {
+		return lipgloss.Lighten(c, factor)
+	}
+
+	return lipgloss.Darken(c, factor)
+}
+
+// luminance returns the relative luminance of a color per WCAG 2.0.
+func luminance(c color.Color) float64 {
+	r, g, b, _ := c.RGBA()
+
+	return 0.2126*float64(r) + 0.7152*float64(g) + 0.0722*float64(b)
 }
 
 func getStyle(s string) string {
