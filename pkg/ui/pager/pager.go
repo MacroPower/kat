@@ -198,9 +198,7 @@ func (m *PagerModel) SetSize(w, h int) {
 		viewportHeight -= (statusBarHeight + helpH)
 	}
 
-	m.searchInput.SetWidth(w - len(m.searchInput.Prompt) - ansi.StringWidth(
-		m.searchInput.Prompt,
-	))
+	m.searchInput.SetWidth(w - ansi.StringWidth(m.searchInput.Prompt))
 
 	m.viewport.SetWidth(w)
 	m.viewport.SetHeight(viewportHeight)
