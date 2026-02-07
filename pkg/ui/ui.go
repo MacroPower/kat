@@ -90,7 +90,6 @@ const (
 type model struct {
 	cmd            common.Commander
 	err            error
-	savedDocument  *yamls.Document
 	theme          *theme.Theme
 	kb             *KeyBinds
 	resultDocument yamls.Document
@@ -122,8 +121,6 @@ func (m *model) unloadDocument() tea.Cmd {
 	case stateShowDocument, stateShowResult:
 		m.pager.Unload()
 		m.pager.Help.SetVisible(false)
-
-		m.savedDocument = nil
 	}
 
 	m.state = stateShowList
@@ -228,8 +225,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		key := msg.String()
-		if m.matchAction(m.kb.Common.Error, key) {
+		if m.matchAction(m.kb.Common.Error, msg) {
 			if m.state != stateShowResult {
 				m.overlayState = overlayStateNone
 
@@ -242,8 +238,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.overlayState = overlayStateNone
 			m.pager.Unload()
 			m.pager.Help.SetVisible(false)
-
-			m.savedDocument = nil
 
 			break
 		}
@@ -260,7 +254,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return newModel, cmd
 		}
 
-		if m.matchAction(m.kb.Common.Left, key) {
+		if m.matchAction(m.kb.Common.Left, msg) {
 			if m.state == stateShowDocument || m.state == stateShowResult {
 				cmds = append(cmds, m.unloadDocument())
 			}
@@ -269,7 +263,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle plugin keybinds.
 		_, profile := m.cmd.GetCurrentProfile()
 		if profile != nil && !m.isTextInputFocused() {
-			if pluginName := profile.GetPluginNameByKey(key); pluginName != "" {
+			if pluginName := profile.GetPluginNameByKey(msg.String()); pluginName != "" {
 				cmd := m.runPlugin(context.Background(), pluginName)
 
 				return m, cmd
@@ -291,7 +285,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// We've loaded a YAML file's contents for rendering.
 		m.state = stateShowDocument
 
-		cmds = append(cmds, common.CmdHandler(pager.LoadDocumentMsg{Document: yamls.Document(*msg)}))
+		cmds = append(cmds, common.CmdHandler(pager.LoadDocumentMsg{Document: *msg}))
 
 	case GotResultMsg:
 		m.err = msg.Error
@@ -351,7 +345,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		cmds = append(cmds, m.menu.Unload())
 
-		m.savedDocument = nil
 		m.state = stateShowDocument
 
 		resource := msg.Resource
@@ -520,18 +513,16 @@ func clamp(v, lower, upper int) int {
 
 // handleGlobalKeys handles keys that work across all contexts.
 func (m *model) handleGlobalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
-	key := msg.String()
-
 	// Always allow suspend to work regardless of current focus.
-	if m.kb.Common.Suspend.Match(key) {
+	if m.kb.Common.Suspend.Match(msg.String()) {
 		return m, tea.Suspend, true
 	}
 
 	switch {
-	case m.matchAction(m.kb.Common.Quit, key):
+	case m.matchAction(m.kb.Common.Quit, msg):
 		return m, tea.Quit, true
 
-	case m.matchAction(m.kb.Common.Escape, key):
+	case m.matchAction(m.kb.Common.Escape, msg):
 		isShowingDocument := m.state == stateShowDocument && !m.pager.IsSearching()
 		isShowingResult := m.state == stateShowResult && !m.pager.IsSearching()
 		isShowingMenu := m.state == stateShowMenu
@@ -550,13 +541,13 @@ func (m *model) handleGlobalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool)
 
 		return m, tea.Batch(cmds...), true
 
-	case m.matchAction(m.kb.Common.Menu, key):
+	case m.matchAction(m.kb.Common.Menu, msg):
 		m.state = stateShowMenu
 		initCmds := m.menu.Init()
 
 		return m, initCmds, true
 
-	case m.matchAction(m.kb.Common.Reload, key):
+	case m.matchAction(m.kb.Common.Reload, msg):
 		initCmds := m.Init()
 
 		return m, initCmds, true
@@ -684,11 +675,6 @@ func (m *model) handleWindowResize(msg tea.WindowSizeMsg) tea.Cmd {
 // showResultInPager swaps the pager content to show the result document.
 // The current document is saved so it can be restored when leaving result view.
 func (m *model) showResultInPager() tea.Cmd {
-	if m.state == stateShowDocument {
-		saved := m.pager.CurrentDocument
-		m.savedDocument = &saved
-	}
-
 	m.state = stateShowResult
 	m.pager.Unload()
 

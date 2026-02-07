@@ -3,7 +3,6 @@ package keys
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/charmbracelet/x/ansi"
@@ -139,6 +138,7 @@ func (kb *KeyBind) BubbleKey(opts ...bubblekey.BindingOpt) bubblekey.Binding {
 // FromBubbleKey converts a bubbles [bubblekey.Binding] into a [KeyBind].
 func FromBubbleKey(b bubblekey.Binding) KeyBind {
 	bkeys := b.Keys()
+
 	result := KeyBind{
 		Description: b.Help().Desc,
 		Keys:        make([]Key, len(bkeys)),
@@ -149,15 +149,6 @@ func FromBubbleKey(b bubblekey.Binding) KeyBind {
 	}
 
 	return result
-}
-
-// IsTextInputAction checks if the key should be applied as text input.
-func IsTextInputAction(key string) bool {
-	alwaysNonInput := []string{
-		"esc", "enter", "up", "down", "pgup", "pgdown",
-	}
-
-	return !slices.Contains(alwaysNonInput, key)
 }
 
 func (kb *KeyBind) AddKey(key Key) {
