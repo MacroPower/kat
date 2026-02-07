@@ -62,6 +62,8 @@ type KeyBind struct {
 	Description string `json:"description" jsonschema:"title=Description"`
 	// Keys contains the list of keys that trigger this binding.
 	Keys []Key `json:"keys" jsonschema:"title=Keys"`
+
+	disabled bool
 }
 
 func NewBind(description string, keys ...Key) KeyBind {
@@ -100,8 +102,19 @@ func (kb *KeyBind) StringRow(keyWidth, descWidth int) string {
 	return fmt.Sprintf("%s%s  %s%s", keys, keySpaces, truncDesc, descSpaces)
 }
 
+// SetEnabled sets whether the key binding is active. Disabled bindings
+// never match.
+func (kb *KeyBind) SetEnabled(v bool) {
+	kb.disabled = !v
+}
+
 // Match checks if the key matches any of the keys in the binding.
+// Disabled bindings never match.
 func (kb *KeyBind) Match(key string) bool {
+	if kb.disabled {
+		return false
+	}
+
 	for _, k := range kb.Keys {
 		if k.Code == key {
 			return true
@@ -117,7 +130,25 @@ func (kb *KeyBind) BubbleKey(opts ...bubblekey.BindingOpt) bubblekey.Binding {
 		codes = append(codes, k.Code)
 	}
 
-	return bubblekey.NewBinding(append(opts, bubblekey.WithKeys(codes...))...)
+	b := bubblekey.NewBinding(append(opts, bubblekey.WithKeys(codes...))...)
+	b.SetEnabled(!kb.disabled)
+
+	return b
+}
+
+// FromBubbleKey converts a bubbles [bubblekey.Binding] into a [KeyBind].
+func FromBubbleKey(b bubblekey.Binding) KeyBind {
+	bkeys := b.Keys()
+	result := KeyBind{
+		Description: b.Help().Desc,
+		Keys:        make([]Key, len(bkeys)),
+		disabled:    !b.Enabled(),
+	}
+	for i, k := range bkeys {
+		result.Keys[i] = Key{Code: k}
+	}
+
+	return result
 }
 
 // IsTextInputAction checks if the key should be applied as text input.

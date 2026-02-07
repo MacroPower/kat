@@ -13,11 +13,12 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"charm.land/bubbles/v2/key"
 	"charm.land/lipgloss/v2"
 	"github.com/dustin/go-humanize"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/macropower/kat/pkg/keys"
 )
 
 type FilteredFS interface {
@@ -82,29 +83,29 @@ const (
 
 // KeyMap defines key bindings for each user action.
 type KeyMap struct {
-	GoToTop  key.Binding
-	GoToLast key.Binding
-	Down     key.Binding
-	Up       key.Binding
-	PageUp   key.Binding
-	PageDown key.Binding
-	Back     key.Binding
-	Open     key.Binding
-	Select   key.Binding
+	GoToTop  keys.KeyBind
+	GoToLast keys.KeyBind
+	Down     keys.KeyBind
+	Up       keys.KeyBind
+	PageUp   keys.KeyBind
+	PageDown keys.KeyBind
+	Back     keys.KeyBind
+	Open     keys.KeyBind
+	Select   keys.KeyBind
 }
 
 // DefaultKeyMap defines the default keybindings.
 func DefaultKeyMap() KeyMap {
 	return KeyMap{
-		GoToTop:  key.NewBinding(key.WithKeys("g"), key.WithHelp("g", "first")),
-		GoToLast: key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "last")),
-		Down:     key.NewBinding(key.WithKeys("j", "down", "ctrl+n"), key.WithHelp("j", "down")),
-		Up:       key.NewBinding(key.WithKeys("k", "up", "ctrl+p"), key.WithHelp("k", "up")),
-		PageUp:   key.NewBinding(key.WithKeys("K", "pgup"), key.WithHelp("pgup", "page up")),
-		PageDown: key.NewBinding(key.WithKeys("J", "pgdown"), key.WithHelp("pgdown", "page down")),
-		Back:     key.NewBinding(key.WithKeys("h", "backspace", "left", "esc"), key.WithHelp("h", "back")),
-		Open:     key.NewBinding(key.WithKeys("l", "right", "enter"), key.WithHelp("l", "open")),
-		Select:   key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
+		GoToTop:  keys.NewBind("first", keys.New("g")),
+		GoToLast: keys.NewBind("last", keys.New("G")),
+		Down:     keys.NewBind("down", keys.New("j"), keys.New("down"), keys.New("ctrl+n")),
+		Up:       keys.NewBind("up", keys.New("k"), keys.New("up"), keys.New("ctrl+p")),
+		PageUp:   keys.NewBind("page up", keys.New("K"), keys.New("pgup")),
+		PageDown: keys.NewBind("page down", keys.New("J"), keys.New("pgdown")),
+		Back:     keys.NewBind("back", keys.New("h"), keys.New("backspace"), keys.New("left"), keys.New("esc")),
+		Open:     keys.NewBind("open", keys.New("l"), keys.New("right"), keys.New("enter")),
+		Select:   keys.NewBind("select", keys.New("enter")),
 	}
 }
 
@@ -162,20 +163,18 @@ type Model struct {
 	CurrentDirectory string
 
 	Cursor string
-	KeyMap KeyMap
 	files  []os.DirEntry
 
 	// AllowedTypes specifies which file types the user may select.
 	// If empty the user may select any file.
 	AllowedTypes []string
 
-	maxIdx   int
-	selected int
-	minIdx   int
-
-	height int
-
+	KeyMap          KeyMap
 	id              int
+	selected        int
+	minIdx          int
+	height          int
+	maxIdx          int
 	ShowSize        bool
 	DirAllowed      bool
 	ShowPermissions bool
@@ -275,18 +274,20 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.maxIdx = m.height - 1
 
 	case tea.KeyPressMsg:
+		k := msg.String()
+
 		switch {
-		case key.Matches(msg, m.KeyMap.GoToTop):
+		case m.KeyMap.GoToTop.Match(k):
 			m.selected = 0
 			m.minIdx = 0
 			m.maxIdx = m.height - 1
 
-		case key.Matches(msg, m.KeyMap.GoToLast):
+		case m.KeyMap.GoToLast.Match(k):
 			m.selected = len(m.files) - 1
 			m.minIdx = len(m.files) - m.height
 			m.maxIdx = len(m.files) - 1
 
-		case key.Matches(msg, m.KeyMap.Down):
+		case m.KeyMap.Down.Match(k):
 			m.selected++
 			if m.selected >= len(m.files) {
 				m.selected = len(m.files) - 1
@@ -296,7 +297,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				m.maxIdx++
 			}
 
-		case key.Matches(msg, m.KeyMap.Up):
+		case m.KeyMap.Up.Match(k):
 			m.selected--
 			if m.selected < 0 {
 				m.selected = 0
@@ -306,7 +307,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				m.maxIdx--
 			}
 
-		case key.Matches(msg, m.KeyMap.PageDown):
+		case m.KeyMap.PageDown.Match(k):
 			m.selected += m.height
 			if m.selected >= len(m.files) {
 				m.selected = len(m.files) - 1
@@ -320,7 +321,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				m.minIdx = m.maxIdx - m.height
 			}
 
-		case key.Matches(msg, m.KeyMap.PageUp):
+		case m.KeyMap.PageUp.Match(k):
 			m.selected -= m.height
 			if m.selected < 0 {
 				m.selected = 0
@@ -334,7 +335,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				m.maxIdx = m.minIdx + m.height
 			}
 
-		case key.Matches(msg, m.KeyMap.Back):
+		case m.KeyMap.Back.Match(k):
 			m.CurrentDirectory = filepath.Dir(m.CurrentDirectory)
 			if m.selectedStack.Length() > 0 {
 				m.selected, m.minIdx, m.maxIdx = m.popView()
@@ -346,7 +347,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 			return m, m.readDir(m.CurrentDirectory, m.ShowHidden)
 
-		case key.Matches(msg, m.KeyMap.Open):
+		case m.KeyMap.Open.Match(k):
 			if len(m.files) == 0 {
 				break
 			}
@@ -386,7 +387,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 			if (!isDir && m.FileAllowed) || (isDir && m.DirAllowed) {
-				if key.Matches(msg, m.KeyMap.Select) {
+				if m.KeyMap.Select.Match(k) {
 					// Select the current path as the selection.
 					m.Path = filepath.Join(m.CurrentDirectory, f.Name())
 				}
@@ -552,7 +553,7 @@ func (m Model) didSelectAnyFile(msg tea.Msg) (bool, string) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		// If the msg does not match the Select keymap then this could not have been a selection.
-		if !key.Matches(msg, m.KeyMap.Select) {
+		if !m.KeyMap.Select.Match(msg.String()) {
 			return false, ""
 		}
 

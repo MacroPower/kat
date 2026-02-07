@@ -13,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	xstrings "github.com/charmbracelet/x/exp/strings"
 
+	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/ui/filepicker"
 )
 
@@ -312,14 +313,6 @@ func (f *FilePicker) setPicking(v bool) {
 	f.keymap.Down.SetEnabled(v)
 	f.keymap.Select.SetEnabled(v)
 	f.keymap.Back.SetEnabled(v)
-
-	f.picker.KeyMap.Up.SetEnabled(v)
-	f.picker.KeyMap.Down.SetEnabled(v)
-	f.picker.KeyMap.GoToTop.SetEnabled(v)
-	f.picker.KeyMap.GoToLast.SetEnabled(v)
-	f.picker.KeyMap.Select.SetEnabled(v)
-	f.picker.KeyMap.Open.SetEnabled(v)
-	f.picker.KeyMap.Back.SetEnabled(v)
 }
 
 // Run runs the file field.
@@ -355,7 +348,8 @@ func (f *FilePicker) WithTheme(theme huh.Theme) huh.Field {
 		Selected:         styles.Focused.SelectedOption,
 		DisabledSelected: styles.Focused.TextInput.Placeholder,
 		FileSize:         styles.Focused.TextInput.Placeholder.Width(filepicker.FileSizeWidth).Align(lipgloss.Right),
-		EmptyDirectory:   styles.Focused.TextInput.Placeholder.PaddingLeft(filepicker.PaddingLeft).SetString("No files found."),
+		EmptyDirectory: styles.Focused.TextInput.Placeholder.PaddingLeft(filepicker.PaddingLeft).
+			SetString("No files found."),
 	}
 
 	return f
@@ -365,15 +359,15 @@ func (f *FilePicker) WithTheme(theme huh.Theme) huh.Field {
 func (f *FilePicker) WithKeyMap(k *huh.KeyMap) huh.Field {
 	f.keymap = k.FilePicker
 	f.picker.KeyMap = filepicker.KeyMap{
-		GoToTop:  k.FilePicker.GotoTop,
-		GoToLast: k.FilePicker.GotoBottom,
-		Down:     k.FilePicker.Down,
-		Up:       k.FilePicker.Up,
-		PageUp:   k.FilePicker.PageUp,
-		PageDown: k.FilePicker.PageDown,
-		Back:     k.FilePicker.Back,
-		Open:     k.FilePicker.Open,
-		Select:   k.FilePicker.Select,
+		GoToTop:  keys.FromBubbleKey(k.FilePicker.GotoTop),
+		GoToLast: keys.FromBubbleKey(k.FilePicker.GotoBottom),
+		Down:     keys.FromBubbleKey(k.FilePicker.Down),
+		Up:       keys.FromBubbleKey(k.FilePicker.Up),
+		PageUp:   keys.FromBubbleKey(k.FilePicker.PageUp),
+		PageDown: keys.FromBubbleKey(k.FilePicker.PageDown),
+		Back:     keys.FromBubbleKey(k.FilePicker.Back),
+		Open:     keys.FromBubbleKey(k.FilePicker.Open),
+		Select:   keys.FromBubbleKey(k.FilePicker.Select),
 	}
 	f.setPicking(f.picking)
 
