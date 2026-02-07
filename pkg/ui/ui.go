@@ -104,23 +104,48 @@ type model struct {
 	loaded         bool
 }
 
-// unloadDocument tears down the current view and returns to the list. It
-// handles all child cleanup (menu, pager) and the state transition; callers
-// only need to forward the returned [tea.Cmd].
-func (m *model) unloadDocument() tea.Cmd {
+// setState transitions the model to a new [State], cleaning up the previous
+// state's view and triggering a resize on the newly active view. Callers are
+// responsible for managing overlay state separately.
+func (m *model) setState(s State) tea.Cmd {
 	var cmds []tea.Cmd
 
+	// Clean up the previous state's view.
 	if m.state == stateShowMenu {
 		cmds = append(cmds, m.menu.Unload())
 	}
 
-	if m.state == stateShowDocument || m.state == stateShowMenu {
+	if m.state == stateShowMenu || m.state == stateShowDocument {
 		m.pager.Unload()
 	}
 
-	m.state = stateShowList
+	m.state = s
+
+	// Trigger a resize on the newly active view so it lays out correctly.
+	if m.width > 0 || m.height > 0 {
+		cmds = append(cmds, m.activeView().SetSize(m.width, m.height))
+	}
 
 	return tea.Batch(cmds...)
+}
+
+// activeView returns the [common.Sizeable] for the currently active state.
+func (m *model) activeView() common.Sizeable {
+	switch m.state {
+	case stateShowDocument:
+		return &m.pager
+	case stateShowMenu:
+		return &m.menu
+	default:
+		return &m.list
+	}
+}
+
+// unloadDocument tears down the current view and returns to the list. It
+// handles all child cleanup (menu, pager) and the state transition; callers
+// only need to forward the returned [tea.Cmd].
+func (m *model) unloadDocument() tea.Cmd {
+	return m.setState(stateShowList)
 }
 
 func newModel(cfg *Config, cmd common.Commander) tea.Model {
@@ -240,9 +265,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case resourcelist.FetchedYAMLMsg:
 		// We've loaded a YAML file's contents for rendering.
-		m.state = stateShowDocument
-
-		cmds = append(cmds, common.CmdHandler(pager.LoadDocumentMsg{Document: *msg}))
+		cmds = append(cmds, m.setState(stateShowDocument), common.CmdHandler(pager.LoadDocumentMsg{Document: *msg}))
 
 	case GotResultMsg:
 		m.err = msg.Error
@@ -298,11 +321,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, m.unloadDocument())
 
 	case command.EventOpenResource:
-		m.pager.Unload()
-
-		cmds = append(cmds, m.menu.Unload())
-
-		m.state = stateShowDocument
+		cmds = append(cmds, m.setState(stateShowDocument))
 
 		resource := msg.Resource
 		yamlDoc := kubeResourceToYAML(&resource)
@@ -549,10 +568,9 @@ func (m *model) handleGlobalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool)
 		return m, tea.Batch(cmds...), true
 
 	case m.matchAction(m.kb.Common.Menu, msg):
-		m.state = stateShowMenu
-		initCmds := m.menu.Init()
+		cmds := []tea.Cmd{m.setState(stateShowMenu), m.menu.Init()}
 
-		return m, initCmds, true
+		return m, tea.Batch(cmds...), true
 
 	case m.matchAction(m.kb.Common.Reload, msg):
 		initCmds := m.Init()
@@ -693,13 +711,12 @@ func (m *model) handleWindowResize(msg tea.WindowSizeMsg) tea.Cmd {
 
 // showResultInPager swaps the pager content to show the result document.
 func (m *model) showResultInPager() tea.Cmd {
-	m.state = stateShowDocument
-	m.pager.Unload()
+	stateCmd := m.setState(stateShowDocument)
 	m.pager.SetShowingResult(true)
 
 	return tea.Batch(
+		stateCmd,
 		common.CmdHandler(pager.LoadDocumentMsg{Document: m.resultDocument}),
-		m.pager.SetSize(m.width, m.height),
 	)
 }
 
