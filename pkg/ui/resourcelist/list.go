@@ -41,6 +41,7 @@ type Model struct {
 	keyBinds      *common.KeyBinds
 	StatusMessage statusbar.StatusMessageModel
 	Help          statusbar.HelpModel
+	statusBar     *statusbar.StatusBarRenderer
 	width         int
 	height        int
 }
@@ -146,12 +147,13 @@ func NewModel(c Config) Model {
 	}
 
 	return Model{
-		inner:    inner,
-		delegate: delegate,
-		theme:    c.Theme,
-		keyBinds: c.CKeyBinds,
-		cmd:      c.Cmd,
-		Help:     statusbar.NewHelpModel(statusbar.NewHelpRenderer(c.Theme, kbr)),
+		inner:     inner,
+		delegate:  delegate,
+		theme:     c.Theme,
+		keyBinds:  c.CKeyBinds,
+		cmd:       c.Cmd,
+		Help:      statusbar.NewHelpModel(statusbar.NewHelpRenderer(c.Theme, kbr)),
+		statusBar: statusbar.NewStatusBarRenderer(c.Theme, 0),
 	}
 }
 
@@ -264,6 +266,7 @@ func (m *Model) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 	m.Help.SetWidth(width)
+	m.statusBar.SetWidth(width)
 
 	// Compute the height available for the inner list (minus our custom chrome).
 	chromeHeight := m.chromeHeight()
@@ -359,7 +362,9 @@ func (m Model) statusBarView() string {
 		opts = append(opts, opt)
 	}
 
-	return statusbar.NewStatusBarRenderer(m.theme, m.width, opts...).RenderWithNote(title, progress)
+	m.statusBar.Apply(opts...)
+
+	return m.statusBar.RenderWithNote(title, progress)
 }
 
 // indent prepends n spaces to each line of s.

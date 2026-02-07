@@ -36,6 +36,7 @@ type Model struct {
 	CurrentDocument yamls.Document
 	StatusMessage   statusbar.StatusMessageModel
 	Help            statusbar.HelpModel
+	statusBar       *statusbar.StatusBarRenderer
 	searchInput     textinput.Model
 	viewport        yamlviewport.Model
 	height          int
@@ -117,6 +118,7 @@ func NewModel(c Config) Model {
 		keyBinds:    c.CKeyBinds,
 		keyHandler:  NewKeyHandler(c.KeyBinds, c.CKeyBinds),
 		Help:        statusbar.NewHelpModel(statusbar.NewHelpRenderer(c.Theme, kbr)),
+		statusBar:   statusbar.NewStatusBarRenderer(c.Theme, 0),
 		ViewState:   StateReady,
 		viewport:    vp,
 		searchInput: si,
@@ -180,6 +182,7 @@ func (m *Model) SetSize(w, h int) {
 	m.width = w
 	m.height = h
 	m.Help.SetWidth(w)
+	m.statusBar.SetWidth(w)
 
 	// Calculate viewport dimensions.
 	viewportHeight := h - statusBarHeight
@@ -245,8 +248,9 @@ func (m Model) statusBarView() string {
 		opts = append(opts, opt)
 	}
 
-	return statusbar.NewStatusBarRenderer(m.theme, m.width, opts...).
-		RenderWithScroll(m.CurrentDocument.Title, m.viewport.ScrollPercent())
+	m.statusBar.Apply(opts...)
+
+	return m.statusBar.RenderWithScroll(m.CurrentDocument.Title, m.viewport.ScrollPercent())
 }
 
 func (m Model) helpView() string {

@@ -27,17 +27,26 @@ const (
 	StyleError
 )
 
-// StatusBarRenderer handles status bar rendering for the pager.
+// StatusBarRenderer handles status bar rendering. Create once with
+// [NewStatusBarRenderer] and reuse; call [StatusBarRenderer.SetWidth] on
+// resize and apply options before each render.
 type StatusBarRenderer struct {
 	theme   *theme.Theme
+	logo    string
 	message string
 	width   int
 	style   Style
 }
 
-// NewStatusBarRenderer creates a new StatusBarRenderer.
+// NewStatusBarRenderer creates a new [StatusBarRenderer]. The logo string is
+// pre-rendered once and reused across frames.
 func NewStatusBarRenderer(t *theme.Theme, width int, opts ...StatusBarOpt) *StatusBarRenderer {
-	sb := &StatusBarRenderer{theme: t, width: width, style: StyleNormal}
+	sb := &StatusBarRenderer{
+		theme: t,
+		width: width,
+		style: StyleNormal,
+		logo:  t.LogoStyle.Render(fmt.Sprintf(" kat %s ", version.GetVersion())),
+	}
 	for _, opt := range opts {
 		opt(sb)
 	}
@@ -45,12 +54,30 @@ func NewStatusBarRenderer(t *theme.Theme, width int, opts ...StatusBarOpt) *Stat
 	return sb
 }
 
+// StatusBarOpt configures a [StatusBarRenderer] before rendering.
 type StatusBarOpt func(*StatusBarRenderer)
 
+// WithMessage sets a status message and style on the renderer.
 func WithMessage(message string, style Style) StatusBarOpt {
 	return func(r *StatusBarRenderer) {
 		r.style = style
 		r.message = message
+	}
+}
+
+// SetWidth updates the renderer width (typically called on resize).
+func (r *StatusBarRenderer) SetWidth(w int) {
+	r.width = w
+}
+
+// Apply applies options to the renderer, resetting message state first.
+// Use this to update the renderer before each render call.
+func (r *StatusBarRenderer) Apply(opts ...StatusBarOpt) {
+	r.message = ""
+	r.style = StyleNormal
+
+	for _, opt := range opts {
+		opt(r)
 	}
 }
 
@@ -167,5 +194,5 @@ func (r *StatusBarRenderer) renderEmptySpace(components ...string) string {
 }
 
 func (r *StatusBarRenderer) katLogoView() string {
-	return r.theme.LogoStyle.Render(fmt.Sprintf(" kat %s ", version.GetVersion()))
+	return r.logo
 }

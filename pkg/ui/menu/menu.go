@@ -28,6 +28,7 @@ type Model struct {
 	keyHandler   *KeyHandler
 	configeditor configeditor.Model
 	Help         statusbar.HelpModel
+	statusBar    *statusbar.StatusBarRenderer
 	width        int
 	height       int
 }
@@ -69,6 +70,7 @@ func NewModel(c Config) (Model, error) {
 		cmd:        c.Cmd,
 		keyHandler: NewKeyHandler(kb, ckb),
 		Help:       statusbar.NewHelpModel(statusbar.NewHelpRenderer(c.Theme, kbr)),
+		statusBar:  statusbar.NewStatusBarRenderer(c.Theme, 0),
 	}
 
 	if err := m.addConfigEditor(); err != nil {
@@ -149,13 +151,16 @@ func (m Model) View() string {
 }
 
 func (m Model) statusBarView() string {
-	return statusbar.NewStatusBarRenderer(m.theme, m.width).RenderWithNote("menu", m.theme.Ellipsis)
+	m.statusBar.Apply()
+
+	return m.statusBar.RenderWithNote("menu", m.theme.Ellipsis)
 }
 
 func (m *Model) SetSize(w, h int) {
 	m.width = w
 	m.height = h
 	m.Help.SetWidth(w)
+	m.statusBar.SetWidth(w)
 
 	if helpH := m.Help.Height(); helpH > 0 {
 		m.configeditor.SetHeight(h - helpH - 2)
