@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
@@ -42,6 +43,10 @@ type GotResultMsg command.Output
 
 type ShowResultMsg struct{}
 
+const statusMessageTimeout = 3 * time.Second
+
+type statusMessageTimeoutMsg struct{ seq int }
+
 // State is the top-level application State.
 type State int
 
@@ -62,17 +67,22 @@ const (
 )
 
 type model struct {
-	err          error
-	cm           *common.CommonModel
-	kb           *KeyBinds
-	result       string
-	menu         menu.Model
-	spinner      spinner.Model
-	fullResult   pager.PagerModel
-	list         resourcelist.Model
-	pager        pager.PagerModel
-	state        State
-	overlayState OverlayState
+	err              error
+	theme            *theme.Theme
+	cmd              common.Commander
+	kb               *KeyBinds
+	result           string
+	menu             menu.Model
+	spinner          spinner.Model
+	fullResult       pager.PagerModel
+	list             resourcelist.Model
+	pager            pager.PagerModel
+	state            State
+	overlayState     OverlayState
+	width            int
+	height           int
+	loaded           bool
+	statusMessageSeq int
 }
 
 // unloadDocument unloads a document from the pager. Title that while this
@@ -115,15 +125,11 @@ func newModel(cfg *Config, cmd common.Commander) tea.Model {
 		}
 	}
 
-	cm := &common.CommonModel{
-		Cmd:      cmd,
-		Theme:    theme.New(uiTheme),
-		KeyBinds: cfg.KeyBinds.Common,
-	}
+	t := theme.New(uiTheme)
 
 	// Create niceyaml Printer with theme styles and gutter config.
 	printerOpts := []niceyaml.PrinterOption{
-		niceyaml.WithStyles(cm.Theme.NiceyamlStyles),
+		niceyaml.WithStyles(t.NiceyamlStyles),
 	}
 
 	if !*cfg.UI.LineNumbers {
@@ -134,40 +140,51 @@ func newModel(cfg *Config, cmd common.Commander) tea.Model {
 	printer.SetWordWrap(*cfg.UI.WordWrap)
 
 	// Configure search/selected styles in the niceyaml styles.
-	ss := cm.Theme.NiceyamlStyles
-	searchBg := cm.Theme.SelectedStyle.GetForeground()
+	ss := t.NiceyamlStyles
+	searchBg := t.SelectedStyle.GetForeground()
 	ss[style.Search] = ptr(lipgloss.NewStyle().Underline(true).Bold(true).Foreground(searchBg))
-	ss[style.SearchSelected] = ptr(cm.Theme.LogoStyle.Bold(true))
+	ss[style.SearchSelected] = ptr(t.LogoStyle.Bold(true))
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Line
-	sp.Style = cm.Theme.GenericTextStyle
+	sp.Style = t.GenericTextStyle
+
+	ckb := cfg.KeyBinds.Common
 
 	listModel := resourcelist.NewModel(resourcelist.Config{
-		CommonModel: cm,
-		KeyBinds:    cfg.KeyBinds.List,
-		Compact:     *cfg.UI.Compact,
+		Theme:     t,
+		KeyBinds:  cfg.KeyBinds.List,
+		CKeyBinds: ckb,
+		Cmd:       cmd,
+		Compact:   *cfg.UI.Compact,
 	})
 
 	pagerModel := pager.NewModel(pager.Config{
-		CommonModel: cm,
-		KeyBinds:    cfg.KeyBinds.Pager,
-		Printer:     printer,
+		Theme:     t,
+		KeyBinds:  cfg.KeyBinds.Pager,
+		CKeyBinds: ckb,
+		Cmd:       cmd,
+		Printer:   printer,
 	})
 
 	fullResultModel := pager.NewModel(pager.Config{
-		CommonModel: cm,
-		KeyBinds:    cfg.KeyBinds.Pager,
-		Printer:     printer,
+		Theme:     t,
+		KeyBinds:  cfg.KeyBinds.Pager,
+		CKeyBinds: ckb,
+		Cmd:       cmd,
+		Printer:   printer,
 	})
 
 	menuModel := menu.NewModel(menu.Config{
-		CommonModel: cm,
-		KeyBinds:    cfg.KeyBinds.Menu,
+		Theme:     t,
+		KeyBinds:  cfg.KeyBinds.Menu,
+		CKeyBinds: ckb,
+		Cmd:       cmd,
 	})
 
 	m := &model{
-		cm:         cm,
+		theme:      t,
+		cmd:        cmd,
 		spinner:    sp,
 		state:      stateShowList,
 		pager:      pagerModel,
@@ -233,7 +250,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Handle plugin keybinds.
-		_, profile := m.cm.Cmd.GetCurrentProfile()
+		_, profile := m.cmd.GetCurrentProfile()
 		if profile != nil && !m.isTextInputFocused() {
 			if pluginName := profile.GetPluginNameByKey(key); pluginName != "" {
 				cmd := m.runPlugin(context.Background(), pluginName)
@@ -247,8 +264,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.handleWindowResize(msg)
 
 	case command.EventStart:
-		m.cm.Loaded = false
-		m.cm.ClearStatusMessage()
+		m.loaded = false
+		m.list.ClearStatusMessage()
 
 		m.overlayState = overlayStateLoading
 		cmds = append(cmds, m.spinner.Tick)
@@ -291,19 +308,26 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ShowResultMsg:
 		m.state = stateShowResult
 		m.fullResult.SetContent(m.fullResult.CurrentDocument.Body)
-		m.fullResult.SetSize(m.cm.Width, m.cm.Height)
+		m.fullResult.SetSize(m.width, m.height)
 
 	case command.EventEnd:
 		cmds = append(cmds, m.handleResourceUpdate(msg)...)
 
-		m.cm.Loaded = true
+		m.loaded = true
 		if msg.Output.Type == command.TypeRun {
 			m.overlayState = overlayStateNone
 		}
 
 		if msg.Output.Error == nil && len(msg.Output.Resources) > 0 {
-			statusMsg := fmt.Sprintf("rendered %d resources", len(msg.Output.Resources))
-			cmds = append(cmds, m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess))
+			cmds = append(cmds, m.sendStatusMessage(
+				fmt.Sprintf("rendered %d resources", len(msg.Output.Resources)),
+				statusbar.StyleSuccess,
+			))
+		}
+
+	case statusMessageTimeoutMsg:
+		if msg.seq == m.statusMessageSeq {
+			m.list.ClearStatusMessage()
 		}
 
 	case command.EventConfigure:
@@ -329,7 +353,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list.SetItems(nil)
 		m.unloadDocument()
 
-		err := m.cm.Cmd.ConfigureContext(msg.Context,
+		err := m.cmd.ConfigureContext(msg.Context,
 			command.WithProfile(msg.To.Profile),
 			command.WithPath(msg.To.File),
 			command.WithExtraArgs(msg.To.ExtraArgs...),
@@ -339,17 +363,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.overlayState = overlayStateError
 		}
 
-	case common.StatusMessageTimeoutMsg:
-		if m.cm.IsCurrentStatusMessage(msg.Seq) {
-			m.cm.ShowStatusMessage = false
-		}
-
 	case common.ErrMsg:
 		m.err = msg.Err
 		m.overlayState = overlayStateError
 
 	case spinner.TickMsg:
-		if !m.cm.Loaded {
+		if !m.loaded {
 			var cmd tea.Cmd
 
 			m.spinner, cmd = m.spinner.Update(msg)
@@ -387,17 +406,17 @@ func (m *model) View() tea.View {
 	switch m.overlayState {
 	case overlayStateError:
 		overlayContent = m.errorView()
-		overlayStyle = m.cm.Theme.ErrorOverlayStyle.Align(lipgloss.Left).Padding(1)
+		overlayStyle = m.theme.ErrorOverlayStyle.Align(lipgloss.Left).Padding(1)
 		widthFraction = 2.0 / 3.0
 
 	case overlayStateLoading:
 		overlayContent = m.loadingView()
-		overlayStyle = m.cm.Theme.GenericOverlayStyle.Align(lipgloss.Center).Padding(1)
+		overlayStyle = m.theme.GenericOverlayStyle.Align(lipgloss.Center).Padding(1)
 		widthFraction = 1.0 / 4.0
 
 	case overlayStateResult:
 		overlayContent = m.resultView()
-		overlayStyle = m.cm.Theme.GenericOverlayStyle.Align(lipgloss.Left).Padding(1)
+		overlayStyle = m.theme.GenericOverlayStyle.Align(lipgloss.Left).Padding(1)
 		widthFraction = 2.0 / 3.0
 	}
 
@@ -407,8 +426,8 @@ func (m *model) View() tea.View {
 
 	v := tea.NewView(strings.TrimRight(s, " \n"))
 	v.AltScreen = true
-	v.BackgroundColor = m.cm.Theme.BackgroundColor
-	v.WindowTitle = "kat — " + m.cm.Cmd.String()
+	v.BackgroundColor = m.theme.BackgroundColor
+	v.WindowTitle = "kat — " + m.cmd.String()
 
 	return v
 }
@@ -420,7 +439,7 @@ func (m *model) resultView() string {
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Top,
-		m.cm.Theme.ResultTitleStyle.Padding(0, 1).Render("OUTPUT"),
+		m.theme.ResultTitleStyle.Padding(0, 1).Render("OUTPUT"),
 		lipgloss.NewStyle().Padding(1, 0).Render(resultMsg),
 	)
 }
@@ -432,7 +451,7 @@ func (m *model) errorView() string {
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Top,
-		m.cm.Theme.ErrorTitleStyle.Padding(0, 1).Render("ERROR"),
+		m.theme.ErrorTitleStyle.Padding(0, 1).Render("ERROR"),
 		lipgloss.NewStyle().Padding(1, 0).Render(errMsg),
 	)
 }
@@ -451,13 +470,13 @@ const (
 // background using [lipgloss.Compositor] layers. Content that exceeds
 // the available height is truncated with a helper message.
 func (m *model) placeOverlay(bg, fg string, widthFraction float64, overlayStyle lipgloss.Style) string {
-	overlayWidth := clamp(int(float64(m.cm.Width)*widthFraction), overlayMinWidth, m.cm.Width)
+	overlayWidth := clamp(int(float64(m.width)*widthFraction), overlayMinWidth, m.width)
 
 	// Wrap and truncate content to fit.
 	wrapped := cellbuf.Wrap(fg, overlayWidth, overlayWrapChars)
 	lines := strings.Split(wrapped, "\n")
 
-	maxHeight := m.cm.Height - overlayMinHeightPadding
+	maxHeight := m.height - overlayMinHeightPadding
 	if maxHeight <= 0 {
 		return bg
 	}
@@ -466,8 +485,8 @@ func (m *model) placeOverlay(bg, fg string, widthFraction float64, overlayStyle 
 		lines = lines[:maxHeight]
 		maxTextWidth := max(0, overlayWidth-4)
 		truncMsg := "output truncated; press <!> to view full output"
-		helperText := ansi.Truncate(truncMsg, maxTextWidth, m.cm.Theme.Ellipsis)
-		lines = append(lines, "", m.cm.Theme.SubtleStyle.Render(helperText))
+		helperText := ansi.Truncate(truncMsg, maxTextWidth, m.theme.Ellipsis)
+		lines = append(lines, "", m.theme.SubtleStyle.Render(helperText))
 	}
 
 	styledFg := overlayStyle.Width(overlayWidth).Render(strings.Join(lines, "\n"))
@@ -506,7 +525,7 @@ func (m *model) handleGlobalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool)
 		isShowingResult := m.state == stateShowResult && m.fullResult.ViewState != pager.StateSearching
 		isShowingMenu := m.state == stateShowMenu
 		isShowingList := m.state == stateShowList
-		if isShowingDocument || isShowingResult || isShowingMenu || !m.cm.Loaded {
+		if isShowingDocument || isShowingResult || isShowingMenu || !m.loaded {
 			m.unloadDocument()
 		}
 		if isShowingList {
@@ -618,10 +637,22 @@ func (m *model) updateChildModels(msg tea.Msg) []tea.Cmd {
 	return cmds
 }
 
+// sendStatusMessage sets a status bar message and schedules its auto-clear.
+func (m *model) sendStatusMessage(msg string, sty statusbar.Style) tea.Cmd {
+	m.statusMessageSeq++
+	seq := m.statusMessageSeq
+
+	m.list.SetStatusMessage(msg, sty)
+
+	return tea.Tick(statusMessageTimeout, func(time.Time) tea.Msg {
+		return statusMessageTimeoutMsg{seq: seq}
+	})
+}
+
 // handleWindowResize handles terminal window resize events.
 func (m *model) handleWindowResize(msg tea.WindowSizeMsg) {
-	m.cm.Width = msg.Width
-	m.cm.Height = msg.Height
+	m.width = msg.Width
+	m.height = msg.Height
 	m.list.SetSize(msg.Width, msg.Height)
 	m.pager.SetSize(msg.Width, msg.Height)
 	m.fullResult.SetSize(msg.Width, msg.Height)
@@ -630,7 +661,7 @@ func (m *model) handleWindowResize(msg tea.WindowSizeMsg) {
 
 func (m *model) runCommand(ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
-		go m.cm.Cmd.RunContext(ctx)
+		go m.cmd.RunContext(ctx)
 
 		return nil
 	}
@@ -642,7 +673,7 @@ func (m *model) runPlugin(ctx context.Context, name string) tea.Cmd {
 			slog.String("name", name),
 		)
 
-		go m.cm.Cmd.RunPluginContext(ctx, name)
+		go m.cmd.RunPluginContext(ctx, name)
 
 		return nil
 	}

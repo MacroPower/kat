@@ -2,15 +2,10 @@ package common
 
 import (
 	"context"
-	"time"
-
-	tea "charm.land/bubbletea/v2"
 
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/profile"
-	"github.com/macropower/kat/pkg/ui/statusbar"
-	"github.com/macropower/kat/pkg/ui/theme"
 )
 
 type Commander interface {
@@ -25,66 +20,6 @@ type Commander interface {
 	ConfigureContext(ctx context.Context, opts ...command.RunnerOpt) error
 	RunPluginContext(ctx context.Context, name string) command.Output
 	FS() (*command.FilteredFS, error)
-}
-
-type CommonModel struct {
-	Cmd               Commander
-	Theme             *theme.Theme
-	KeyBinds          *KeyBinds
-	StatusMessage     StatusMessage
-	statusMessageSeq  int
-	Width             int
-	Height            int
-	Loaded            bool
-	ShowStatusMessage bool // Whether to show the status message in the status bar.
-}
-
-const StatusMessageTimeout = time.Second * 3 // How long to show status messages.
-
-type (
-	StatusMessage struct {
-		Message string
-		Style   statusbar.Style
-	}
-	// StatusMessageTimeoutMsg is sent when a status message expires.
-	// The Seq field is checked against the current sequence to ignore stale timeouts.
-	StatusMessageTimeoutMsg struct{ Seq int }
-)
-
-func (m *CommonModel) GetStatusBar() *statusbar.StatusBarRenderer {
-	if m.ShowStatusMessage && m.StatusMessage.Message != "" {
-		return statusbar.NewStatusBarRenderer(m.Theme, m.Width,
-			statusbar.WithMessage(m.StatusMessage.Message, m.StatusMessage.Style))
-	}
-
-	return statusbar.NewStatusBarRenderer(m.Theme, m.Width)
-}
-
-// SendStatusMessage shows a status message that auto-clears after [StatusMessageTimeout].
-func (m *CommonModel) SendStatusMessage(msg string, style statusbar.Style) tea.Cmd {
-	m.ShowStatusMessage = true
-	m.StatusMessage = StatusMessage{
-		Message: msg,
-		Style:   style,
-	}
-
-	m.statusMessageSeq++
-	seq := m.statusMessageSeq
-
-	return tea.Tick(StatusMessageTimeout, func(time.Time) tea.Msg {
-		return StatusMessageTimeoutMsg{Seq: seq}
-	})
-}
-
-// ClearStatusMessage hides the status message immediately.
-func (m *CommonModel) ClearStatusMessage() {
-	m.ShowStatusMessage = false
-	m.statusMessageSeq++
-}
-
-// IsCurrentStatusMessage reports whether the given timeout is still current.
-func (m *CommonModel) IsCurrentStatusMessage(seq int) bool {
-	return seq == m.statusMessageSeq
 }
 
 type ErrMsg struct{ Err error } //nolint:errname // Tea message.

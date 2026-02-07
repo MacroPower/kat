@@ -14,7 +14,6 @@ import (
 
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/profile"
-	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/filepicker"
 )
 
@@ -37,10 +36,6 @@ type Result struct {
 	File      string
 	Profile   string
 	ExtraArgs []string
-}
-
-type Config struct {
-	CommonModel *common.CommonModel
 }
 
 type Commander interface {

@@ -3,6 +3,7 @@ package pager
 import (
 	"fmt"
 	"log/slog"
+	"time"
 
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
@@ -16,6 +17,7 @@ import (
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/statusbar"
+	"github.com/macropower/kat/pkg/ui/theme"
 	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
@@ -28,20 +30,35 @@ const (
 	StateSearching
 )
 
+// statusMessageTimeout is how long to show status messages.
+const statusMessageTimeout = time.Second * 3
+
+// statusMessageTimeoutMsg is sent when a pager status message expires.
+type statusMessageTimeoutMsg struct{ seq int }
+
 type PagerModel struct {
-	cm              *common.CommonModel
-	Help            statusbar.HelpModel
-	keyHandler      *KeyHandler
-	CurrentDocument yamls.Document
-	searchInput     textinput.Model
-	viewport        yamlviewport.Model
-	ViewState       ViewState
+	keyBinds         *common.KeyBinds
+	theme            *theme.Theme
+	keyHandler       *KeyHandler
+	CurrentDocument  yamls.Document
+	statusMessage    string
+	Help             statusbar.HelpModel
+	searchInput      textinput.Model
+	viewport         yamlviewport.Model
+	height           int
+	statusMessageSeq int
+	statusStyle      statusbar.Style
+	width            int
+	ViewState        ViewState
+	showStatusMsg    bool
 }
 
 type Config struct {
-	CommonModel *common.CommonModel
-	KeyBinds    *KeyBinds
-	Printer     *niceyaml.Printer
+	Theme     *theme.Theme
+	KeyBinds  *KeyBinds
+	CKeyBinds *common.KeyBinds
+	Cmd       common.Commander
+	Printer   *niceyaml.Printer
 }
 
 func NewModel(c Config) PagerModel {
@@ -56,7 +73,7 @@ func NewModel(c Config) PagerModel {
 	vp.KeyMap = yamlviewport.KeyMap{}
 
 	kbr := &keys.KeyBindRenderer{}
-	ckb := c.CommonModel.KeyBinds
+	ckb := c.CKeyBinds
 	kb := c.KeyBinds
 	kbr.AddColumn(
 		*ckb.Up,
@@ -84,9 +101,9 @@ func NewModel(c Config) PagerModel {
 	)
 
 	// Add plugin keybinds column if plugins are available.
-	_, profile := c.CommonModel.Cmd.GetCurrentProfile()
-	if profile != nil {
-		pluginBinds := profile.GetPluginKeyBinds()
+	_, prof := c.Cmd.GetCurrentProfile()
+	if prof != nil {
+		pluginBinds := prof.GetPluginKeyBinds()
 		// Truncate to maximum of 6 plugin keybinds (shown in help).
 		if len(pluginBinds) > 6 {
 			pluginBinds = pluginBinds[:6]
@@ -99,16 +116,17 @@ func NewModel(c Config) PagerModel {
 	si := textinput.New()
 	si.Prompt = "Search:"
 	styles := si.Styles()
-	styles.Focused.Prompt = c.CommonModel.Theme.FilterStyle.MarginRight(1)
-	styles.Blurred.Prompt = c.CommonModel.Theme.FilterStyle.MarginRight(1)
-	styles.Cursor.Color = c.CommonModel.Theme.CursorStyle.GetForeground()
+	styles.Focused.Prompt = c.Theme.FilterStyle.MarginRight(1)
+	styles.Blurred.Prompt = c.Theme.FilterStyle.MarginRight(1)
+	styles.Cursor.Color = c.Theme.CursorStyle.GetForeground()
 	si.SetStyles(styles)
 	si.Focus()
 
 	m := PagerModel{
-		cm:          c.CommonModel,
-		keyHandler:  NewKeyHandler(c.KeyBinds, c.CommonModel.KeyBinds),
-		Help:        statusbar.NewHelpModel(statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr)),
+		theme:       c.Theme,
+		keyBinds:    c.CKeyBinds,
+		keyHandler:  NewKeyHandler(c.KeyBinds, c.CKeyBinds),
+		Help:        statusbar.NewHelpModel(statusbar.NewHelpRenderer(c.Theme, kbr)),
 		ViewState:   StateReady,
 		viewport:    vp,
 		searchInput: si,
@@ -134,6 +152,11 @@ func (m *PagerModel) Update(msg tea.Msg) tea.Cmd {
 	// after a resize.
 	case tea.WindowSizeMsg:
 		// Size is handled by SetSize called from ui.go.
+
+	case statusMessageTimeoutMsg:
+		if msg.seq == m.statusMessageSeq {
+			m.showStatusMsg = false
+		}
 	}
 
 	// Pass mouse events through to yamlviewport for wheel scrolling.
@@ -164,6 +187,9 @@ func (m PagerModel) View() string {
 }
 
 func (m *PagerModel) SetSize(w, h int) {
+	m.width = w
+	m.height = h
+
 	// Calculate viewport dimensions.
 	viewportHeight := h - statusBarHeight
 
@@ -217,7 +243,7 @@ func (m *PagerModel) Unload() {
 
 func (m *PagerModel) ToggleHelp() {
 	m.Help.Toggle()
-	m.SetSize(m.cm.Width, m.cm.Height)
+	m.SetSize(m.width, m.height)
 
 	if m.viewport.PastBottom() {
 		m.viewport.GotoBottom()
@@ -225,11 +251,17 @@ func (m *PagerModel) ToggleHelp() {
 }
 
 func (m PagerModel) statusBarView() string {
-	return m.cm.GetStatusBar().RenderWithScroll(m.CurrentDocument.Title, m.viewport.ScrollPercent())
+	var opts []statusbar.StatusBarOpt
+	if m.showStatusMsg && m.statusMessage != "" {
+		opts = append(opts, statusbar.WithMessage(m.statusMessage, m.statusStyle))
+	}
+
+	return statusbar.NewStatusBarRenderer(m.theme, m.width, opts...).
+		RenderWithScroll(m.CurrentDocument.Title, m.viewport.ScrollPercent())
 }
 
 func (m PagerModel) helpView() string {
-	return m.Help.View(m.cm.Width)
+	return m.Help.View(m.width)
 }
 
 // searchBarView renders the search input bar.
@@ -257,7 +289,7 @@ func (m *PagerModel) handleSearchMode(msg tea.Msg) tea.Cmd {
 		key := msg.String()
 
 		switch {
-		case m.cm.KeyBinds.Escape.Match(key):
+		case m.keyBinds.Escape.Match(key):
 			// Exit search mode.
 			m.ExitSearch()
 
@@ -279,9 +311,9 @@ func (m *PagerModel) handleSearchMode(msg tea.Msg) tea.Cmd {
 			if searchTerm != "" && count > 0 {
 				idx := m.viewport.SearchIndex()
 				statusMsg := fmt.Sprintf("match %d/%d", idx+1, count)
-				cmds = append(cmds, m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess))
+				cmds = append(cmds, m.sendStatusMessage(statusMsg, statusbar.StyleSuccess))
 			} else if searchTerm != "" {
-				cmds = append(cmds, m.cm.SendStatusMessage("no matches found", statusbar.StyleError))
+				cmds = append(cmds, m.sendStatusMessage("no matches found", statusbar.StyleError))
 			}
 
 			return tea.Batch(cmds...)
@@ -348,7 +380,7 @@ func (m *PagerModel) HalfPageDown() {
 func (m *PagerModel) NextMatch() tea.Cmd {
 	count := m.viewport.SearchCount()
 	if count == 0 {
-		return m.cm.SendStatusMessage("no matches found", statusbar.StyleError)
+		return m.sendStatusMessage("no matches found", statusbar.StyleError)
 	}
 
 	m.viewport.SearchNext()
@@ -356,14 +388,14 @@ func (m *PagerModel) NextMatch() tea.Cmd {
 	idx := m.viewport.SearchIndex()
 	statusMsg := fmt.Sprintf("match %d/%d", idx+1, count)
 
-	return m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess)
+	return m.sendStatusMessage(statusMsg, statusbar.StyleSuccess)
 }
 
 // PrevMatch goes to the previous search match.
 func (m *PagerModel) PrevMatch() tea.Cmd {
 	count := m.viewport.SearchCount()
 	if count == 0 {
-		return m.cm.SendStatusMessage("no matches found", statusbar.StyleError)
+		return m.sendStatusMessage("no matches found", statusbar.StyleError)
 	}
 
 	m.viewport.SearchPrevious()
@@ -371,7 +403,7 @@ func (m *PagerModel) PrevMatch() tea.Cmd {
 	idx := m.viewport.SearchIndex()
 	statusMsg := fmt.Sprintf("match %d/%d", idx+1, count)
 
-	return m.cm.SendStatusMessage(statusMsg, statusbar.StyleSuccess)
+	return m.sendStatusMessage(statusMsg, statusbar.StyleSuccess)
 }
 
 // CopyContent copies the current document content to clipboard.
@@ -382,7 +414,21 @@ func (m *PagerModel) CopyContent() tea.Cmd {
 	// Copy using native system clipboard.
 	_ = clipboard.WriteAll(content) //nolint:errcheck // Can be ignored.
 
-	return m.cm.SendStatusMessage("copied contents", statusbar.StyleSuccess)
+	return m.sendStatusMessage("copied contents", statusbar.StyleSuccess)
+}
+
+// sendStatusMessage sets a local status message that auto-clears after [statusMessageTimeout].
+func (m *PagerModel) sendStatusMessage(msg string, style statusbar.Style) tea.Cmd {
+	m.showStatusMsg = true
+	m.statusMessage = msg
+	m.statusStyle = style
+
+	m.statusMessageSeq++
+	seq := m.statusMessageSeq
+
+	return tea.Tick(statusMessageTimeout, func(time.Time) tea.Msg {
+		return statusMessageTimeoutMsg{seq: seq}
+	})
 }
 
 // ToggleDiffMode cycles between diff modes.

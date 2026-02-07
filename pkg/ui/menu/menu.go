@@ -22,21 +22,26 @@ type ChangeConfigMsg struct {
 }
 
 type Model struct {
-	cm           *common.CommonModel
+	cmd          common.Commander
+	theme        *theme.Theme
 	keyHandler   *KeyHandler
 	configeditor configeditor.Model
 	Help         statusbar.HelpModel
+	width        int
+	height       int
 }
 
 type Config struct {
-	CommonModel *common.CommonModel
-	KeyBinds    *KeyBinds
+	Theme     *theme.Theme
+	KeyBinds  *KeyBinds
+	CKeyBinds *common.KeyBinds
+	Cmd       common.Commander
 }
 
 // NewModel creates a new menu model with rule-based directory filtering.
 func NewModel(c Config) Model {
 	kbr := &keys.KeyBindRenderer{}
-	ckb := c.CommonModel.KeyBinds
+	ckb := c.CKeyBinds
 	kb := c.KeyBinds
 
 	kbr.AddColumn(
@@ -59,9 +64,10 @@ func NewModel(c Config) Model {
 	)
 
 	m := Model{
-		cm:         c.CommonModel,
+		theme:      c.Theme,
+		cmd:        c.Cmd,
 		keyHandler: NewKeyHandler(kb, ckb),
-		Help:       statusbar.NewHelpModel(statusbar.NewHelpRenderer(c.CommonModel.Theme, kbr)),
+		Help:       statusbar.NewHelpModel(statusbar.NewHelpRenderer(c.Theme, kbr)),
 	}
 	m.addConfigEditor()
 
@@ -76,8 +82,8 @@ func (m *Model) Init() tea.Cmd {
 
 func (m *Model) addConfigEditor() {
 	m.configeditor = configeditor.NewModel(
-		m.cm.Cmd,
-		theme.HuhTheme(m.cm.Theme),
+		m.cmd,
+		theme.HuhTheme(m.theme),
 		m.keyHandler.HuhKeyMap(),
 	)
 }
@@ -130,10 +136,13 @@ func (m Model) View() string {
 }
 
 func (m Model) statusBarView() string {
-	return m.cm.GetStatusBar().RenderWithNote("menu", m.cm.Theme.Ellipsis)
+	return statusbar.NewStatusBarRenderer(m.theme, m.width).RenderWithNote("menu", m.theme.Ellipsis)
 }
 
-func (m *Model) SetSize(_, h int) {
+func (m *Model) SetSize(w, h int) {
+	m.width = w
+	m.height = h
+
 	if helpH := m.Help.Height(); helpH > 0 {
 		m.configeditor.SetHeight(h - helpH - 2)
 	} else {
@@ -148,11 +157,11 @@ func (m *Model) Unload() {
 
 // helpView renders the help content.
 func (m Model) helpView() string {
-	return m.Help.View(m.cm.Width)
+	return m.Help.View(m.width)
 }
 
 // ToggleHelp toggles the help display.
 func (m *Model) ToggleHelp() {
 	m.Help.Toggle()
-	m.SetSize(m.cm.Width, m.cm.Height)
+	m.SetSize(m.width, m.height)
 }
