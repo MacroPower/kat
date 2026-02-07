@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
@@ -29,14 +30,39 @@ import (
 	"github.com/macropower/kat/pkg/ui/yamls"
 )
 
+// mouseThrottleInterval is the minimum time between mouse wheel/motion events.
+// Trackpads on macOS fire scroll events at very high rates, causing excessive
+// redraws and input lag.
+const mouseThrottleInterval = 15 * time.Millisecond
+
 // NewProgram returns a new Tea program.
 func NewProgram(cfg *Config, cmd common.Commander, opts ...tea.ProgramOption) *tea.Program {
 	slog.Debug("starting kat ui")
 
 	m := newModel(cfg, cmd)
 
+	opts = append(opts, tea.WithFilter(mouseEventFilter))
+
 	return tea.NewProgram(m, opts...)
 }
+
+// mouseEventFilter throttles high-frequency mouse wheel and motion events to
+// prevent excessive redraws from trackpad scrolling.
+func mouseEventFilter(_ tea.Model, msg tea.Msg) tea.Msg {
+	switch msg.(type) {
+	case tea.MouseWheelMsg, tea.MouseMotionMsg:
+		now := time.Now()
+		if now.Sub(lastMouseEvent) < mouseThrottleInterval {
+			return nil
+		}
+
+		lastMouseEvent = now
+	}
+
+	return msg
+}
+
+var lastMouseEvent time.Time
 
 type GotResultMsg command.Output
 
@@ -62,17 +88,17 @@ const (
 )
 
 type model struct {
-	err            error
-	theme          *theme.Theme
 	cmd            common.Commander
+	err            error
+	savedDocument  *yamls.Document
+	theme          *theme.Theme
 	kb             *KeyBinds
+	resultDocument yamls.Document
 	result         string
+	list           resourcelist.Model
 	menu           menu.Model
 	spinner        spinner.Model
-	list           resourcelist.Model
 	pager          pager.Model
-	resultDocument yamls.Document  // stored result content for the result view
-	savedDocument  *yamls.Document // saved document content when showing result view
 	state          State
 	overlayState   OverlayState
 	width          int
@@ -96,6 +122,7 @@ func (m *model) unloadDocument() tea.Cmd {
 	case stateShowDocument, stateShowResult:
 		m.pager.Unload()
 		m.pager.Help.SetVisible(false)
+
 		m.savedDocument = nil
 	}
 
@@ -215,6 +242,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.overlayState = overlayStateNone
 			m.pager.Unload()
 			m.pager.Help.SetVisible(false)
+
 			m.savedDocument = nil
 
 			break
@@ -262,6 +290,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case resourcelist.FetchedYAMLMsg:
 		// We've loaded a YAML file's contents for rendering.
 		m.state = stateShowDocument
+
 		cmds = append(cmds, common.CmdHandler(pager.LoadDocumentMsg{Document: yamls.Document(*msg)}))
 
 	case GotResultMsg:
@@ -319,6 +348,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case command.EventOpenResource:
 		m.pager.Unload()
+
 		cmds = append(cmds, m.menu.Unload())
 
 		m.savedDocument = nil
@@ -330,6 +360,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case menu.ChangeConfigMsg:
 		m.list.SetItems(nil)
+
 		cmds = append(cmds, m.unloadDocument())
 
 		err := m.cmd.ConfigureContext(msg.Context,
@@ -534,12 +565,12 @@ func (m *model) handleGlobalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool)
 	return m, nil, false
 }
 
-func (m *model) matchAction(kb *keys.KeyBind, key string) bool {
-	if m.isTextInputFocused() && keys.IsTextInputAction(key) {
+func (m *model) matchAction(kb *keys.KeyBind, msg tea.KeyPressMsg) bool {
+	if m.isTextInputFocused() && msg.Text != "" {
 		return false
 	}
 
-	return kb.Match(key)
+	return kb.Match(msg.String())
 }
 
 func (m *model) isTextInputFocused() bool {
