@@ -80,12 +80,17 @@ go test ./pkg/config -run TestConfigLoader
 
 ### Testing
 
-- Use `github.com/stretchr/testify/assert` and `require`
-- Table-driven tests with `map[string]struct{}` format
-- Field names: `input`, `want`, `got`, `err`
-- Always use `t.Parallel()` in all tests
-- Create test packages (`package foo_test`) testing public API
-- Use `require.ErrorIs` for error type checking
+- Use `github.com/stretchr/testify/assert` and `require`.
+- Table-driven tests with `map[string]struct{}` format.
+- Field names: prefer `want` for expected output, `err` for expected errors.
+- For inputs, use clear contextual names (e.g., `before`/`after` for diffs, `line`/`col` for positions).
+- Always use `t.Parallel()` in all tests.
+- Create test packages (`package foo_test`) testing public API.
+- Use `require.ErrorIs` for sentinel error checking.
+- Use `require.ErrorAs` for error type extraction.
+- Use `github.com/charmbracelet/x/exp/golden` for visual regression testing.
+
+NOTE: You can update the golden files by running `go test ./... -update`. However, you should never do this unless the output is being intentionally changed.
 
 ## Key Dependencies
 
