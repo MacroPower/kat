@@ -407,12 +407,15 @@ func (m *PagerModel) PrevMatch() tea.Cmd {
 // CopyContent copies the current document content to clipboard.
 func (m *PagerModel) CopyContent() tea.Cmd {
 	content := m.CurrentDocument.Body.Content()
-	// Copy using OSC 52.
-	fmt.Print(ansi.SetSystemClipboard(content))
-	// Copy using native system clipboard.
-	_ = clipboard.WriteAll(content) //nolint:errcheck // Can be ignored.
 
-	return m.sendStatusMessage("copied contents", statusbar.StyleSuccess)
+	return tea.Sequence(
+		tea.SetClipboard(content),
+		func() tea.Msg {
+			_ = clipboard.WriteAll(content) //nolint:errcheck // Can be ignored.
+			return nil
+		},
+		m.sendStatusMessage("copied contents", statusbar.StyleSuccess),
+	)
 }
 
 // sendStatusMessage sets a local status message that auto-clears after [statusMessageTimeout].
