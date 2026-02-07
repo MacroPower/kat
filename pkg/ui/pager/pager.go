@@ -189,6 +189,7 @@ func (m Model) View() string {
 func (m *Model) SetSize(w, h int) {
 	m.width = w
 	m.height = h
+	m.Help.SetWidth(w)
 
 	// Calculate viewport dimensions.
 	viewportHeight := h - statusBarHeight

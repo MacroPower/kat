@@ -43,7 +43,7 @@ func TestNewHelpRenderer(t *testing.T) {
 			view := renderer.Render(tc.width)
 			assert.NotEmpty(t, view, "Help view should not be empty")
 
-			assert.Equal(t, 2, renderer.CalculateHelpHeight())
+			assert.Equal(t, 2, renderer.CalculateHelpHeight(tc.width))
 		})
 	}
 }

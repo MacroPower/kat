@@ -34,8 +34,8 @@ func (r *HelpRenderer) Render(width int) string {
 }
 
 // CalculateHelpHeight calculates the height needed for the help view.
-func (r *HelpRenderer) CalculateHelpHeight() int {
-	helpContent := r.Render(0)
+func (r *HelpRenderer) CalculateHelpHeight(width int) int {
+	helpContent := r.Render(width)
 
 	return strings.Count(helpContent, "\n")
 }

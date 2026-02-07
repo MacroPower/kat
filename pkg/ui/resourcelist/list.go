@@ -264,6 +264,7 @@ func (m *Model) ResetFiltering() {
 func (m *Model) SetSize(width, height int) {
 	m.width = width
 	m.height = height
+	m.Help.SetWidth(width)
 
 	// Compute the height available for the inner list (minus our custom chrome).
 	chromeHeight := m.chromeHeight()

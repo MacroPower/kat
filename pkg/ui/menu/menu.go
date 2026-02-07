@@ -155,6 +155,7 @@ func (m Model) statusBarView() string {
 func (m *Model) SetSize(w, h int) {
 	m.width = w
 	m.height = h
+	m.Help.SetWidth(w)
 
 	if helpH := m.Help.Height(); helpH > 0 {
 		m.configeditor.SetHeight(h - helpH - 2)

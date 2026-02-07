@@ -5,6 +5,7 @@ package statusbar
 type HelpModel struct {
 	renderer *HelpRenderer
 	visible  bool
+	width    int // Last known width for height calculation.
 	height   int // Cached height.
 }
 
@@ -12,8 +13,19 @@ type HelpModel struct {
 func NewHelpModel(renderer *HelpRenderer) HelpModel {
 	return HelpModel{
 		renderer: renderer,
-		height:   renderer.CalculateHelpHeight(),
+		height:   renderer.CalculateHelpHeight(0),
 	}
+}
+
+// SetWidth updates the width used for height calculation and recalculates
+// the cached height when the width changes.
+func (m *HelpModel) SetWidth(w int) {
+	if m.width == w {
+		return
+	}
+
+	m.width = w
+	m.height = m.renderer.CalculateHelpHeight(w)
 }
 
 // Toggle toggles help visibility.
