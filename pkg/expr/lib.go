@@ -8,13 +8,13 @@ import (
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/goccy/go-yaml"
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/ast"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
 	"github.com/google/cel-go/ext"
+	"go.jacobcolvin.com/niceyaml/paths"
 )
 
 type lib struct{}
@@ -185,7 +185,7 @@ func (lib) CompileOptions() []cel.EnvOption {
 					}
 
 					// Parse YAML path.
-					path, err := yaml.PathString(yamlPathStr)
+					builder, err := paths.FromString(yamlPathStr)
 					if err != nil {
 						// Return null if path is invalid.
 						logger.Debug("invalid YAML path, returning null",
@@ -198,7 +198,7 @@ func (lib) CompileOptions() []cel.EnvOption {
 					// Extract value using YAML path.
 					var value any
 
-					err = path.Read(strings.NewReader(string(content)), &value)
+					err = builder.Path().Read(strings.NewReader(string(content)), &value)
 					if err != nil {
 						// Return null if path doesn't exist or extraction fails.
 						logger.Debug("failed to extract value from YAML, returning null",
