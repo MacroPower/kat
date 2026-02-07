@@ -3,7 +3,6 @@ package pager
 import (
 	"fmt"
 	"log/slog"
-	"time"
 
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
@@ -30,27 +29,18 @@ const (
 	StateSearching
 )
 
-// statusMessageTimeout is how long to show status messages.
-const statusMessageTimeout = time.Second * 3
-
-// statusMessageTimeoutMsg is sent when a pager status message expires.
-type statusMessageTimeoutMsg struct{ seq int }
-
 type Model struct {
-	keyBinds         *common.KeyBinds
-	theme            *theme.Theme
-	keyHandler       *KeyHandler
-	CurrentDocument  yamls.Document
-	statusMessage    string
-	Help             statusbar.HelpModel
-	searchInput      textinput.Model
-	viewport         yamlviewport.Model
-	height           int
-	statusMessageSeq int
-	statusStyle      statusbar.Style
-	width            int
-	ViewState        ViewState
-	showStatusMsg    bool
+	keyBinds        *common.KeyBinds
+	theme           *theme.Theme
+	keyHandler      *KeyHandler
+	CurrentDocument yamls.Document
+	StatusMessage   statusbar.StatusMessageModel
+	Help            statusbar.HelpModel
+	searchInput     textinput.Model
+	viewport        yamlviewport.Model
+	height          int
+	width           int
+	ViewState       ViewState
 }
 
 type Config struct {
@@ -153,9 +143,9 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	case tea.WindowSizeMsg:
 		// Size is handled by SetSize called from ui.go.
 
-	case statusMessageTimeoutMsg:
-		if msg.seq == m.statusMessageSeq {
-			m.showStatusMsg = false
+	default:
+		if m.StatusMessage.Update(msg) {
+			return nil
 		}
 	}
 
@@ -251,8 +241,8 @@ func (m *Model) ToggleHelp() {
 
 func (m Model) statusBarView() string {
 	var opts []statusbar.StatusBarOpt
-	if m.showStatusMsg && m.statusMessage != "" {
-		opts = append(opts, statusbar.WithMessage(m.statusMessage, m.statusStyle))
+	if opt := m.StatusMessage.Opt(); opt != nil {
+		opts = append(opts, opt)
 	}
 
 	return statusbar.NewStatusBarRenderer(m.theme, m.width, opts...).
@@ -419,18 +409,10 @@ func (m *Model) CopyContent() tea.Cmd {
 	)
 }
 
-// sendStatusMessage sets a local status message that auto-clears after [statusMessageTimeout].
+// sendStatusMessage sets a local status message that auto-clears after
+// [statusbar.StatusMessageTimeout].
 func (m *Model) sendStatusMessage(msg string, style statusbar.Style) tea.Cmd {
-	m.showStatusMsg = true
-	m.statusMessage = msg
-	m.statusStyle = style
-
-	m.statusMessageSeq++
-	seq := m.statusMessageSeq
-
-	return tea.Tick(statusMessageTimeout, func(time.Time) tea.Msg {
-		return statusMessageTimeoutMsg{seq: seq}
-	})
+	return m.StatusMessage.Set(msg, style)
 }
 
 // ToggleDiffMode cycles between diff modes.

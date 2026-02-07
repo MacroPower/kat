@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"time"
 
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
@@ -43,10 +42,6 @@ type GotResultMsg command.Output
 
 type ShowResultMsg struct{}
 
-const statusMessageTimeout = 3 * time.Second
-
-type statusMessageTimeoutMsg struct{ seq int }
-
 // State is the top-level application State.
 type State int
 
@@ -67,22 +62,21 @@ const (
 )
 
 type model struct {
-	err              error
-	theme            *theme.Theme
-	cmd              common.Commander
-	kb               *KeyBinds
-	result           string
-	menu             menu.Model
-	spinner          spinner.Model
-	fullResult       pager.Model
-	list             resourcelist.Model
-	pager            pager.Model
-	state            State
-	overlayState     OverlayState
-	width            int
-	height           int
-	loaded           bool
-	statusMessageSeq int
+	err          error
+	theme        *theme.Theme
+	cmd          common.Commander
+	kb           *KeyBinds
+	result       string
+	menu         menu.Model
+	spinner      spinner.Model
+	fullResult   pager.Model
+	list         resourcelist.Model
+	pager        pager.Model
+	state        State
+	overlayState OverlayState
+	width        int
+	height       int
+	loaded       bool
 }
 
 // unloadDocument unloads a document from the pager. Note that while this
@@ -270,7 +264,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case command.EventStart:
 		m.loaded = false
-		m.list.ClearStatusMessage()
+		m.list.StatusMessage.Clear()
 
 		m.overlayState = overlayStateLoading
 		cmds = append(cmds, m.spinner.Tick)
@@ -330,11 +324,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			))
 		}
 
-	case statusMessageTimeoutMsg:
-		if msg.seq == m.statusMessageSeq {
-			m.list.ClearStatusMessage()
-		}
-
 	case command.EventConfigure:
 		initCmds := m.Init()
 		cmds = append(cmds, initCmds)
@@ -380,6 +369,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 	}
+
+	// Handle status message timeouts.
+	m.list.StatusMessage.Update(msg)
 
 	// Always pass messages to the other models so we can keep them
 	// updated, even if the user isn't currently viewing them.
@@ -644,14 +636,7 @@ func (m *model) updateChildModels(msg tea.Msg) []tea.Cmd {
 
 // sendStatusMessage sets a status bar message and schedules its auto-clear.
 func (m *model) sendStatusMessage(msg string, sty statusbar.Style) tea.Cmd {
-	m.statusMessageSeq++
-	seq := m.statusMessageSeq
-
-	m.list.SetStatusMessage(msg, sty)
-
-	return tea.Tick(statusMessageTimeout, func(time.Time) tea.Msg {
-		return statusMessageTimeoutMsg{seq: seq}
-	})
+	return m.list.StatusMessage.Set(msg, sty)
 }
 
 // handleWindowResize handles terminal window resize events.

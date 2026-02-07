@@ -39,11 +39,10 @@ type Model struct {
 	delegate      *ItemDelegate
 	theme         *theme.Theme
 	keyBinds      *common.KeyBinds
-	statusMessage string
+	StatusMessage statusbar.StatusMessageModel
 	Help          statusbar.HelpModel
 	width         int
 	height        int
-	statusStyle   statusbar.Style
 }
 
 // Config holds configuration for creating a new [Model].
@@ -349,18 +348,6 @@ func (m Model) getHeaderSections() ([]string, lipgloss.Style) {
 	return sections, dividerBar
 }
 
-// SetStatusMessage sets a temporary status bar message with the given style.
-func (m *Model) SetStatusMessage(msg string, style statusbar.Style) {
-	m.statusMessage = msg
-	m.statusStyle = style
-}
-
-// ClearStatusMessage removes the current status bar message.
-func (m *Model) ClearStatusMessage() {
-	m.statusMessage = ""
-	m.statusStyle = statusbar.StyleNormal
-}
-
 func (m Model) statusBarView() string {
 	title := m.cmd.String()
 
@@ -368,8 +355,8 @@ func (m Model) statusBarView() string {
 	progress := fmt.Sprintf("%d/%d", p.Page+1, p.TotalPages)
 
 	var opts []statusbar.StatusBarOpt
-	if m.statusMessage != "" {
-		opts = append(opts, statusbar.WithMessage(m.statusMessage, m.statusStyle))
+	if opt := m.StatusMessage.Opt(); opt != nil {
+		opts = append(opts, opt)
 	}
 
 	return statusbar.NewStatusBarRenderer(m.theme, m.width, opts...).RenderWithNote(title, progress)
