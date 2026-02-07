@@ -3,6 +3,8 @@ package common
 import (
 	"context"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/keys"
 	"github.com/macropower/kat/pkg/profile"
@@ -20,6 +22,13 @@ type Commander interface {
 	ConfigureContext(ctx context.Context, opts ...command.RunnerOpt) error
 	RunPluginContext(ctx context.Context, name string) command.Output
 	FS() (*command.FilteredFS, error)
+}
+
+// CmdHandler wraps a [tea.Msg] as a [tea.Cmd].
+func CmdHandler(msg tea.Msg) tea.Cmd {
+	return func() tea.Msg {
+		return msg
+	}
 }
 
 type ErrMsg struct{ Err error } //nolint:errname // Tea message.

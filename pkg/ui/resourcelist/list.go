@@ -29,9 +29,7 @@ type FetchedYAMLMsg *yamls.Document
 
 // LoadYAML returns a command that signals a YAML document has been selected.
 func LoadYAML(md *yamls.Document) tea.Cmd {
-	return func() tea.Msg {
-		return FetchedYAMLMsg(md)
-	}
+	return common.CmdHandler(FetchedYAMLMsg(md))
 }
 
 // Model wraps the bubbles [list.Model] with custom chrome.

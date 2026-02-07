@@ -133,12 +133,10 @@ func (m Model) submitResults(ctx context.Context) tea.Cmd {
 		slog.Any("data", m.configeditor.Result()),
 	)
 
-	return func() tea.Msg {
-		return ChangeConfigMsg{
-			To:      m.configeditor.Result(),
-			Context: ctx,
-		}
-	}
+	return common.CmdHandler(ChangeConfigMsg{
+		To:      m.configeditor.Result(),
+		Context: ctx,
+	})
 }
 
 func (m Model) View() string {

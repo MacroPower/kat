@@ -222,9 +222,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.state != stateShowResult {
 				m.overlayState = overlayStateNone
 
-				cmds = append(cmds, func() tea.Msg {
-					return ShowResultMsg{}
-				})
+				cmds = append(cmds, common.CmdHandler(ShowResultMsg{}))
 
 				break
 			}
@@ -598,9 +596,7 @@ func (m *model) handleResourceUpdate(msg command.EventEnd) []tea.Cmd {
 	var cmds []tea.Cmd
 
 	if msg.Output.Error != nil || msg.Output.Type == command.TypePlugin {
-		cmds = append(cmds, func() tea.Msg {
-			return GotResultMsg(msg.Output)
-		})
+		cmds = append(cmds, common.CmdHandler(GotResultMsg(msg.Output)))
 	}
 
 	if len(msg.Output.Resources) == 0 {
