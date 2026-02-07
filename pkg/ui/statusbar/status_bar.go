@@ -5,14 +5,12 @@ import (
 	"math"
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/macropower/kat/pkg/ui/theme"
 	"github.com/macropower/kat/pkg/version"
 )
-
-// Note: lipgloss is no longer directly imported here, as the styles are
-// obtained from the theme package which uses lipgloss/v2.
 
 const (
 	helpText  = " ? Help "
@@ -27,6 +25,11 @@ const (
 	StyleError
 )
 
+// styleSet holds pre-computed styles for the current status bar state.
+type styleSet struct {
+	note, pos, help lipgloss.Style
+}
+
 // StatusBarRenderer handles status bar rendering. Create once with
 // [NewStatusBarRenderer] and reuse; call [StatusBarRenderer.SetWidth] on
 // resize and apply options before each render.
@@ -36,6 +39,32 @@ type StatusBarRenderer struct {
 	message string
 	width   int
 	style   Style
+}
+
+// currentStyles returns the style set for the current [Style].
+func (r *StatusBarRenderer) currentStyles() styleSet {
+	switch r.style {
+	case StyleError:
+		return styleSet{
+			note: r.theme.Error.TitleStyle,
+			pos:  r.theme.Error.TitleStyle,
+			help: r.theme.Error.TitleStyle,
+		}
+
+	case StyleSuccess:
+		return styleSet{
+			note: r.theme.StatusBar.MessageStyle,
+			pos:  r.theme.StatusBar.MessagePosStyle,
+			help: r.theme.StatusBar.MessageHelpStyle,
+		}
+
+	default:
+		return styleSet{
+			note: r.theme.StatusBar.Style,
+			pos:  r.theme.StatusBar.PosStyle,
+			help: r.theme.StatusBar.HelpStyle,
+		}
+	}
 }
 
 // NewStatusBarRenderer creates a new [StatusBarRenderer]. The logo string is
@@ -123,26 +152,19 @@ func (r *StatusBarRenderer) renderScrollPercent(scrollPercent float64) string {
 func (r *StatusBarRenderer) renderProgressNote(note string) string {
 	note = " " + note + " "
 
-	switch r.style {
-	case StyleError:
-		return r.theme.Error.TitleStyle.Render(note)
-	case StyleSuccess:
-		return r.theme.StatusBar.MessagePosStyle.Render(note)
-	default:
-		return r.theme.StatusBar.PosStyle.Render(note)
-	}
+	return r.currentStyles().pos.Render(note)
 }
 
 // renderHelpNote renders the help note component.
 func (r *StatusBarRenderer) renderHelpNote() string {
-	switch r.style {
-	case StyleError:
-		return r.theme.Error.TitleStyle.Render(errorText)
-	case StyleSuccess:
-		return r.theme.StatusBar.MessageHelpStyle.Render(helpText)
-	default:
-		return r.theme.StatusBar.HelpStyle.Render(helpText)
+	ss := r.currentStyles()
+
+	text := helpText
+	if r.style == StyleError {
+		text = errorText
 	}
+
+	return ss.help.Render(text)
 }
 
 // renderNote renders the main note/message component.
@@ -162,14 +184,7 @@ func (r *StatusBarRenderer) renderNote(msg, progress string) string {
 
 	note = ansi.Truncate(" "+note+" ", availableWidth, r.theme.Ellipsis)
 
-	switch r.style {
-	case StyleError:
-		return r.theme.Error.TitleStyle.Render(note)
-	case StyleSuccess:
-		return r.theme.StatusBar.MessageStyle.Render(note)
-	default:
-		return r.theme.StatusBar.Style.Render(note)
-	}
+	return r.currentStyles().note.Render(note)
 }
 
 // renderEmptySpace calculates and renders the empty space between components.
@@ -183,14 +198,7 @@ func (r *StatusBarRenderer) renderEmptySpace(components ...string) string {
 
 	emptySpace := strings.Repeat(" ", padding)
 
-	switch r.style {
-	case StyleError:
-		return r.theme.Error.TitleStyle.Render(emptySpace)
-	case StyleSuccess:
-		return r.theme.StatusBar.MessageStyle.Render(emptySpace)
-	default:
-		return r.theme.StatusBar.Style.Render(emptySpace)
-	}
+	return r.currentStyles().note.Render(emptySpace)
 }
 
 func (r *StatusBarRenderer) katLogoView() string {
