@@ -36,7 +36,7 @@ const statusMessageTimeout = time.Second * 3
 // statusMessageTimeoutMsg is sent when a pager status message expires.
 type statusMessageTimeoutMsg struct{ seq int }
 
-type PagerModel struct {
+type Model struct {
 	keyBinds         *common.KeyBinds
 	theme            *theme.Theme
 	keyHandler       *KeyHandler
@@ -61,7 +61,7 @@ type Config struct {
 	Printer   *niceyaml.Printer
 }
 
-func NewModel(c Config) PagerModel {
+func NewModel(c Config) Model {
 	// Init yamlviewport with printer.
 	var opts []yamlviewport.Option
 	if c.Printer != nil {
@@ -122,7 +122,7 @@ func NewModel(c Config) PagerModel {
 	si.SetStyles(styles)
 	si.Focus()
 
-	m := PagerModel{
+	m := Model{
 		theme:       c.Theme,
 		keyBinds:    c.CKeyBinds,
 		keyHandler:  NewKeyHandler(c.KeyBinds, c.CKeyBinds),
@@ -135,7 +135,7 @@ func NewModel(c Config) PagerModel {
 	return m
 }
 
-func (m *PagerModel) Update(msg tea.Msg) tea.Cmd {
+func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	var cmds []tea.Cmd
 
 	// Handle search mode.
@@ -168,7 +168,7 @@ func (m *PagerModel) Update(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m PagerModel) View() string {
+func (m Model) View() string {
 	if m.ViewState == StateSearching {
 		return lipgloss.JoinVertical(
 			lipgloss.Top,
@@ -186,7 +186,7 @@ func (m PagerModel) View() string {
 	)
 }
 
-func (m *PagerModel) SetSize(w, h int) {
+func (m *Model) SetSize(w, h int) {
 	m.width = w
 	m.height = h
 
@@ -205,7 +205,7 @@ func (m *PagerModel) SetSize(w, h int) {
 }
 
 // SetContent sets the YAML content to display.
-func (m *PagerModel) SetContent(source *niceyaml.Source) {
+func (m *Model) SetContent(source *niceyaml.Source) {
 	if source == nil || source.IsEmpty() {
 		return
 	}
@@ -214,7 +214,7 @@ func (m *PagerModel) SetContent(source *niceyaml.Source) {
 }
 
 // AddRevision adds a new revision for diff tracking.
-func (m *PagerModel) AddRevision(source *niceyaml.Source) {
+func (m *Model) AddRevision(source *niceyaml.Source) {
 	if source == nil || source.IsEmpty() {
 		return
 	}
@@ -222,7 +222,7 @@ func (m *PagerModel) AddRevision(source *niceyaml.Source) {
 	m.viewport.AddRevision(source)
 }
 
-func (m *PagerModel) Unload() {
+func (m *Model) Unload() {
 	slog.Debug("unload pager document")
 	if m.Help.Visible() {
 		m.ToggleHelp()
@@ -239,7 +239,7 @@ func (m *PagerModel) Unload() {
 	m.viewport.GotoTop()
 }
 
-func (m *PagerModel) ToggleHelp() {
+func (m *Model) ToggleHelp() {
 	m.Help.Toggle()
 	m.SetSize(m.width, m.height)
 
@@ -248,7 +248,7 @@ func (m *PagerModel) ToggleHelp() {
 	}
 }
 
-func (m PagerModel) statusBarView() string {
+func (m Model) statusBarView() string {
 	var opts []statusbar.StatusBarOpt
 	if m.showStatusMsg && m.statusMessage != "" {
 		opts = append(opts, statusbar.WithMessage(m.statusMessage, m.statusStyle))
@@ -258,17 +258,17 @@ func (m PagerModel) statusBarView() string {
 		RenderWithScroll(m.CurrentDocument.Title, m.viewport.ScrollPercent())
 }
 
-func (m PagerModel) helpView() string {
+func (m Model) helpView() string {
 	return m.Help.View(m.width)
 }
 
 // searchBarView renders the search input bar.
-func (m PagerModel) searchBarView() string {
+func (m Model) searchBarView() string {
 	return m.searchInput.View()
 }
 
 // StartSearch initializes search mode.
-func (m *PagerModel) StartSearch() tea.Cmd {
+func (m *Model) StartSearch() tea.Cmd {
 	m.ViewState = StateSearching
 
 	m.searchInput.Reset()
@@ -279,7 +279,7 @@ func (m *PagerModel) StartSearch() tea.Cmd {
 }
 
 // handleSearchMode handles key events when in search mode.
-func (m *PagerModel) handleSearchMode(msg tea.Msg) tea.Cmd {
+func (m *Model) handleSearchMode(msg tea.Msg) tea.Cmd {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
@@ -328,54 +328,54 @@ func (m *PagerModel) handleSearchMode(msg tea.Msg) tea.Cmd {
 }
 
 // ExitSearch exits search mode.
-func (m *PagerModel) ExitSearch() {
+func (m *Model) ExitSearch() {
 	m.ViewState = StateReady
 	m.searchInput.Blur()
 	m.searchInput.Reset()
 }
 
 // MoveUp moves the viewport up.
-func (m *PagerModel) MoveUp() {
+func (m *Model) MoveUp() {
 	m.viewport.ScrollUp(1)
 }
 
 // MoveDown moves the viewport down.
-func (m *PagerModel) MoveDown() {
+func (m *Model) MoveDown() {
 	m.viewport.ScrollDown(1)
 }
 
 // PageUp moves the viewport up by one page.
-func (m *PagerModel) PageUp() {
+func (m *Model) PageUp() {
 	m.viewport.PageUp()
 }
 
 // PageDown moves the viewport down by one page.
-func (m *PagerModel) PageDown() {
+func (m *Model) PageDown() {
 	m.viewport.PageDown()
 }
 
 // GoToTop moves to the top of the document.
-func (m *PagerModel) GoToTop() {
+func (m *Model) GoToTop() {
 	m.viewport.GotoTop()
 }
 
 // GoToBottom moves to the bottom of the document.
-func (m *PagerModel) GoToBottom() {
+func (m *Model) GoToBottom() {
 	m.viewport.GotoBottom()
 }
 
 // HalfPageUp moves the viewport up by half a page.
-func (m *PagerModel) HalfPageUp() {
+func (m *Model) HalfPageUp() {
 	m.viewport.HalfPageUp()
 }
 
 // HalfPageDown moves the viewport down by half a page.
-func (m *PagerModel) HalfPageDown() {
+func (m *Model) HalfPageDown() {
 	m.viewport.HalfPageDown()
 }
 
 // NextMatch goes to the next search match.
-func (m *PagerModel) NextMatch() tea.Cmd {
+func (m *Model) NextMatch() tea.Cmd {
 	count := m.viewport.SearchCount()
 	if count == 0 {
 		return m.sendStatusMessage("no matches found", statusbar.StyleError)
@@ -390,7 +390,7 @@ func (m *PagerModel) NextMatch() tea.Cmd {
 }
 
 // PrevMatch goes to the previous search match.
-func (m *PagerModel) PrevMatch() tea.Cmd {
+func (m *Model) PrevMatch() tea.Cmd {
 	count := m.viewport.SearchCount()
 	if count == 0 {
 		return m.sendStatusMessage("no matches found", statusbar.StyleError)
@@ -405,7 +405,7 @@ func (m *PagerModel) PrevMatch() tea.Cmd {
 }
 
 // CopyContent copies the current document content to clipboard.
-func (m *PagerModel) CopyContent() tea.Cmd {
+func (m *Model) CopyContent() tea.Cmd {
 	content := m.CurrentDocument.Body.Content()
 
 	return tea.Sequence(
@@ -419,7 +419,7 @@ func (m *PagerModel) CopyContent() tea.Cmd {
 }
 
 // sendStatusMessage sets a local status message that auto-clears after [statusMessageTimeout].
-func (m *PagerModel) sendStatusMessage(msg string, style statusbar.Style) tea.Cmd {
+func (m *Model) sendStatusMessage(msg string, style statusbar.Style) tea.Cmd {
 	m.showStatusMsg = true
 	m.statusMessage = msg
 	m.statusStyle = style
@@ -433,16 +433,16 @@ func (m *PagerModel) sendStatusMessage(msg string, style statusbar.Style) tea.Cm
 }
 
 // ToggleDiffMode cycles between diff modes.
-func (m *PagerModel) ToggleDiffMode() {
+func (m *Model) ToggleDiffMode() {
 	m.viewport.ToggleDiffMode()
 }
 
 // ToggleViewMode cycles between view modes.
-func (m *PagerModel) ToggleViewMode() {
+func (m *Model) ToggleViewMode() {
 	m.viewport.ToggleViewMode()
 }
 
 // ToggleWordWrap toggles word wrapping.
-func (m *PagerModel) ToggleWordWrap() {
+func (m *Model) ToggleWordWrap() {
 	m.viewport.ToggleWordWrap()
 }

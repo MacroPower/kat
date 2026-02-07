@@ -121,7 +121,7 @@ func NewKeyHandler(kb *KeyBinds, ckb *common.KeyBinds) *KeyHandler {
 }
 
 // HandlePagerKeys handles key events for pager view.
-func (h *KeyHandler) HandlePagerKeys(m *PagerModel, msg tea.KeyMsg) tea.Cmd {
+func (h *KeyHandler) HandlePagerKeys(m *Model, msg tea.KeyMsg) tea.Cmd {
 	key := msg.String()
 
 	switch {

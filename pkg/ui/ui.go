@@ -74,9 +74,9 @@ type model struct {
 	result           string
 	menu             menu.Model
 	spinner          spinner.Model
-	fullResult       pager.PagerModel
+	fullResult       pager.Model
 	list             resourcelist.Model
-	pager            pager.PagerModel
+	pager            pager.Model
 	state            State
 	overlayState     OverlayState
 	width            int
