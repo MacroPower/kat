@@ -14,6 +14,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/macropower/kat/pkg/keys"
+	"github.com/macropower/kat/pkg/kube"
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/statusbar"
 	"github.com/macropower/kat/pkg/ui/theme"
@@ -261,6 +262,12 @@ func (m *Model) Unload() {
 
 	m.ViewState = StateReady
 	m.viewport.GotoTop()
+}
+
+// CurrentDocumentObject returns the kube object of the currently loaded
+// document, or nil if no document is loaded.
+func (m *Model) CurrentDocumentObject() *kube.Object {
+	return m.CurrentDocument.Object
 }
 
 func (m *Model) ToggleHelp() {

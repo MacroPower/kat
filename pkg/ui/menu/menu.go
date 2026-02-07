@@ -172,6 +172,8 @@ func (m *Model) SetSize(w, h int) tea.Cmd {
 }
 
 func (m *Model) Unload() tea.Cmd {
+	m.Help.SetVisible(false)
+
 	// Replace the editor with a new instance.
 	err := m.addConfigEditor()
 	if err != nil {

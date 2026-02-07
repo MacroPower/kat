@@ -277,6 +277,23 @@ func (m *Model) SetSize(width, height int) tea.Cmd {
 	return nil
 }
 
+// ClearStatus removes the current status message.
+func (m *Model) ClearStatus() {
+	m.StatusMessage.Clear()
+}
+
+// SetStatusMessage stores a status message and returns a [tea.Cmd] that will
+// clear it after the default timeout.
+func (m *Model) SetStatusMessage(msg string, style statusbar.Style) tea.Cmd {
+	return m.StatusMessage.Set(msg, style)
+}
+
+// HandleStatusTimeout handles status message timeout messages. It returns
+// true if the message was consumed.
+func (m *Model) HandleStatusTimeout(msg tea.Msg) bool {
+	return m.StatusMessage.Update(msg)
+}
+
 // ToggleHelp toggles the help display.
 func (m *Model) ToggleHelp() {
 	m.Help.Toggle()

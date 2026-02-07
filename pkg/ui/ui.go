@@ -114,13 +114,10 @@ func (m *model) unloadDocument() tea.Cmd {
 	case stateShowMenu:
 		cmds = append(cmds, m.menu.Unload())
 
-		m.menu.Help.SetVisible(false)
-
 		fallthrough
 
 	case stateShowDocument, stateShowResult:
 		m.pager.Unload()
-		m.pager.Help.SetVisible(false)
 	}
 
 	m.state = stateShowList
@@ -237,7 +234,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = stateShowList
 			m.overlayState = overlayStateNone
 			m.pager.Unload()
-			m.pager.Help.SetVisible(false)
 
 			break
 		}
@@ -276,7 +272,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case command.EventStart:
 		m.loaded = false
-		m.list.StatusMessage.Clear()
+		m.list.ClearStatus()
 
 		m.overlayState = overlayStateLoading
 		cmds = append(cmds, m.spinner.Tick)
@@ -380,7 +376,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle status message timeouts.
-	m.list.StatusMessage.Update(msg)
+	m.list.HandleStatusTimeout(msg)
 
 	// Always pass messages to the other models so we can keep them
 	// updated, even if the user isn't currently viewing them.
@@ -628,7 +624,7 @@ func (m *model) notifyPagerRevisions(docs []*yamls.Document) []tea.Cmd {
 	var cmds []tea.Cmd
 
 	for _, doc := range docs {
-		if kube.ObjectEqual(doc.Object, m.pager.CurrentDocument.Object) {
+		if kube.ObjectEqual(doc.Object, m.pager.CurrentDocumentObject()) {
 			cmds = append(cmds, common.CmdHandler(pager.RevisionMsg{Document: *doc}))
 		}
 	}
@@ -656,7 +652,7 @@ func (m *model) updateChildModels(msg tea.Msg) []tea.Cmd {
 
 // sendStatusMessage sets a status bar message and schedules its auto-clear.
 func (m *model) sendStatusMessage(msg string, sty statusbar.Style) tea.Cmd {
-	return m.list.StatusMessage.Set(msg, sty)
+	return m.list.SetStatusMessage(msg, sty)
 }
 
 // handleWindowResize handles terminal window resize events.
