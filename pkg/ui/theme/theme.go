@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"image/color"
 	"os"
-	"sync"
 
 	"charm.land/lipgloss/v2"
 	"go.jacobcolvin.com/niceyaml/style"
@@ -208,35 +207,16 @@ func Register(name string, ss style.Styles) error {
 		return fmt.Errorf("%w: %q", ErrInvalidName, name)
 	}
 
-	customThemesMu.Lock()
-	defer customThemesMu.Unlock()
-
-	customThemes[name] = ss
+	// Default to dark mode for custom themes - most terminal users prefer dark.
+	nytheme.Register(name, func() style.Styles { return ss }, style.Dark)
 
 	return nil
 }
 
-var (
-	customThemesMu sync.Mutex
-	customThemes   = map[string]style.Styles{}
-)
-
 func resolveStyles(themeName string) style.Styles {
 	name := getStyle(themeName)
 
-	// Check custom themes first.
-	customThemesMu.Lock()
-
-	ss, ok := customThemes[name]
-
-	customThemesMu.Unlock() //nolint:staticcheck // Unlock immediately after map read.
-
-	if ok {
-		return ss
-	}
-
-	// Try niceyaml built-in themes.
-	ss, ok = nytheme.Styles(name)
+	ss, ok := nytheme.Styles(name)
 	if ok {
 		return ss
 	}
