@@ -29,7 +29,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
-	go.jacobcolvin.com/niceyaml v0.0.0-20260206015709-b2b0891bf88f
+	go.jacobcolvin.com/niceyaml v0.0.0-20260207195909-22dfe3ab0ac5
 	go.opentelemetry.io/otel v1.40.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.40.0
 	go.opentelemetry.io/otel/sdk v1.40.0
