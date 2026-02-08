@@ -12,53 +12,46 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name    string
+	tcs := map[string]struct {
 		match   string
 		profile string
 		wantErr bool
 	}{
-		{
-			name:    "valid rule",
+		"valid rule": {
 			match:   `files.exists(f, pathBase(f) in ["kustomization.yaml", "kustomization.yml"])`,
 			profile: "ks",
-			wantErr: false,
 		},
-		{
-			name:    "valid rule with simple expression",
+		"valid rule with simple expression": {
 			match:   `files.exists(f, pathExt(f) in [".yaml", ".yml"])`,
 			profile: "yaml",
-			wantErr: false,
 		},
-		{
-			name:    "invalid CEL expression",
+		"invalid CEL expression": {
 			match:   "path.invalidFunction()",
 			profile: "test",
 			wantErr: true,
 		},
-		{
-			name:    "empty match",
+		"empty match": {
 			match:   "",
 			profile: "test",
 			wantErr: true,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			r, err := rule.New(tt.profile, tt.match)
+			r, err := rule.New(tc.profile, tc.match)
 
-			if tt.wantErr {
+			if tc.wantErr {
 				require.Error(t, err)
 				assert.Nil(t, r)
-				assert.Contains(t, err.Error(), tt.match)
+				assert.Contains(t, err.Error(), tc.match)
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, r)
-				assert.Equal(t, tt.match, r.Match)
-				assert.Equal(t, tt.profile, r.Profile)
+				assert.Equal(t, tc.match, r.Match)
+				assert.Equal(t, tc.profile, r.Profile)
 			}
 		})
 	}
@@ -88,45 +81,38 @@ func TestMustNew(t *testing.T) {
 func TestRule_CompileMatch(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name    string
+	tcs := map[string]struct {
 		match   string
 		wantErr bool
 	}{
-		{
-			name:    "valid CEL expression",
-			match:   `files.exists(f, pathExt(f) in [".yaml", ".yml"])`,
-			wantErr: false,
+		"valid CEL expression": {
+			match: `files.exists(f, pathExt(f) in [".yaml", ".yml"])`,
 		},
-		{
-			name:    "complex CEL expression",
-			match:   `files.exists(f, pathBase(f) in ["kustomization.yaml", "kustomization.yml"])`,
-			wantErr: false,
+		"complex CEL expression": {
+			match: `files.exists(f, pathBase(f) in ["kustomization.yaml", "kustomization.yml"])`,
 		},
-		{
-			name:    "invalid CEL expression",
+		"invalid CEL expression": {
 			match:   "path.invalidFunction()",
 			wantErr: true,
 		},
-		{
-			name:    "empty expression",
+		"empty expression": {
 			match:   "",
 			wantErr: true,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
 			r := &rule.Rule{
-				Match:   tt.match,
+				Match:   tc.match,
 				Profile: "test",
 			}
 
 			err := r.CompileMatch()
 
-			if tt.wantErr {
+			if tc.wantErr {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "compile match expression")
 			} else {
@@ -142,53 +128,44 @@ func TestRule_CompileMatch(t *testing.T) {
 func TestRule_MatchFiles_BooleanAndLegacySupport(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name        string
-		expression  string
-		files       []string
-		wantMatches bool
+	tcs := map[string]struct {
+		expression string
+		files      []string
+		want       bool
 	}{
-		{
-			name:        "boolean expression - true",
-			expression:  `files.exists(f, pathExt(f) in [".yaml", ".yml"])`,
-			files:       []string{"/app/config.yaml", "/app/service.json"},
-			wantMatches: true,
+		"boolean expression - true": {
+			expression: `files.exists(f, pathExt(f) in [".yaml", ".yml"])`,
+			files:      []string{"/app/config.yaml", "/app/service.json"},
+			want:       true,
 		},
-		{
-			name:        "boolean expression - false",
-			expression:  `files.exists(f, pathExt(f) == ".xml")`,
-			files:       []string{"/app/config.yaml", "/app/service.json"},
-			wantMatches: false,
+		"boolean expression - false": {
+			expression: `files.exists(f, pathExt(f) == ".xml")`,
+			files:      []string{"/app/config.yaml", "/app/service.json"},
 		},
-		{
-			name:        "simple boolean - true",
-			expression:  `true`,
-			files:       []string{"/app/config.yaml"},
-			wantMatches: true,
+		"simple boolean - true": {
+			expression: `true`,
+			files:      []string{"/app/config.yaml"},
+			want:       true,
 		},
-		{
-			name:        "simple boolean - false",
-			expression:  `false`,
-			files:       []string{"/app/config.yaml"},
-			wantMatches: false,
+		"simple boolean - false": {
+			expression: `false`,
+			files:      []string{"/app/config.yaml"},
 		},
-		{
-			name:        "non-boolean expression returns false",
-			expression:  `files.filter(f, pathExt(f) in [".yaml", ".yml"])`,
-			files:       []string{"/app/config.yaml", "/app/service.json"},
-			wantMatches: false,
+		"non-boolean expression returns false": {
+			expression: `files.filter(f, pathExt(f) in [".yaml", ".yml"])`,
+			files:      []string{"/app/config.yaml", "/app/service.json"},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			r, err := rule.New("test-profile", tt.expression)
+			r, err := rule.New("test-profile", tc.expression)
 			require.NoError(t, err)
 
-			gotMatches := r.MatchFiles("/app", tt.files)
-			assert.Equal(t, tt.wantMatches, gotMatches)
+			gotMatches := r.MatchFiles("/app", tc.files)
+			assert.Equal(t, tc.want, gotMatches)
 		})
 	}
 }
