@@ -304,7 +304,7 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 		yamlConfig := string(yamlBytes)
 
 		printer := niceyaml.NewPrinter(
-			niceyaml.WithStyles(thm.NiceyamlStyles),
+			niceyaml.WithStyles(thm.Styles),
 			niceyaml.WithGutter(niceyaml.NoGutter()),
 		)
 		source := niceyaml.NewSourceFromString(yamlConfig)
@@ -645,4 +645,14 @@ func runUI(cfg *ui.Config, cr common.Commander) error {
 	}
 
 	return nil
+}
+
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func mustN(_ int, err error) {
+	must(err)
 }

@@ -7,6 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"go.jacobcolvin.com/niceyaml/style"
 
 	"github.com/macropower/kat/pkg/ui/theme"
 	"github.com/macropower/kat/pkg/version"
@@ -46,23 +47,23 @@ func (r *StatusBarRenderer) currentStyles() styleSet {
 	switch r.style {
 	case StyleError:
 		return styleSet{
-			note: r.theme.Error.TitleStyle,
-			pos:  r.theme.Error.TitleStyle,
-			help: r.theme.Error.TitleStyle,
+			note: r.theme.Style(style.TitleError),
+			pos:  r.theme.Style(style.TitleError),
+			help: r.theme.Style(style.TitleError),
 		}
 
 	case StyleSuccess:
 		return styleSet{
-			note: r.theme.StatusBar.MessageStyle,
-			pos:  r.theme.StatusBar.MessagePosStyle,
-			help: r.theme.StatusBar.MessageHelpStyle,
+			note: r.theme.Style(style.Title),
+			pos:  r.theme.Style(style.Title),
+			help: r.theme.Style(style.Title),
 		}
 
 	default:
 		return styleSet{
-			note: r.theme.StatusBar.Style,
-			pos:  r.theme.StatusBar.PosStyle,
-			help: r.theme.StatusBar.HelpStyle,
+			note: r.theme.Style(style.TitleSubtle),
+			pos:  r.theme.Style(style.TitleAccent),
+			help: r.theme.Style(style.TitleAccent),
 		}
 	}
 }
@@ -74,7 +75,7 @@ func NewStatusBarRenderer(t *theme.Theme, width int, opts ...StatusBarOpt) *Stat
 		theme: t,
 		width: width,
 		style: StyleNormal,
-		logo:  t.LogoStyle.Render(fmt.Sprintf(" kat %s ", version.GetVersion())),
+		logo:  t.Style(style.Title).Render(fmt.Sprintf(" kat %s ", version.GetVersion())),
 	}
 	for _, opt := range opts {
 		opt(sb)
@@ -87,9 +88,9 @@ func NewStatusBarRenderer(t *theme.Theme, width int, opts ...StatusBarOpt) *Stat
 type StatusBarOpt func(*StatusBarRenderer)
 
 // WithMessage sets a status message and style on the renderer.
-func WithMessage(message string, style Style) StatusBarOpt {
+func WithMessage(message string, s Style) StatusBarOpt {
 	return func(r *StatusBarRenderer) {
-		r.style = style
+		r.style = s
 		r.message = message
 	}
 }

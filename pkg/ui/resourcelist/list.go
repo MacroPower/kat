@@ -8,6 +8,7 @@ import (
 	"charm.land/bubbles/v2/list"
 	"charm.land/lipgloss/v2"
 	"github.com/sahilm/fuzzy"
+	"go.jacobcolvin.com/niceyaml/style"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -64,9 +65,9 @@ func NewModel(c Config) Model {
 	// Configure filter input.
 	inner.FilterInput.Prompt = "Find:"
 	styles := inner.FilterInput.Styles()
-	styles.Focused.Prompt = c.Theme.FilterStyle.MarginRight(1)
-	styles.Blurred.Prompt = c.Theme.FilterStyle.MarginRight(1)
-	styles.Cursor.Color = c.Theme.CursorStyle.GetForeground()
+	styles.Focused.Prompt = c.Theme.Style(style.TextAccentDim).MarginRight(1)
+	styles.Blurred.Prompt = c.Theme.Style(style.TextAccentDim).MarginRight(1)
+	styles.Cursor.Color = c.Theme.Style(style.TextSubtle).GetForeground()
 	inner.FilterInput.SetStyles(styles)
 
 	// Map keybindings.
@@ -99,8 +100,8 @@ func NewModel(c Config) Model {
 	inner.SetShowFilter(false)
 
 	// Style pagination dots to match the theme.
-	inner.Styles.ActivePaginationDot = c.Theme.SelectedStyle.SetString("•")
-	inner.Styles.InactivePaginationDot = c.Theme.SubtleStyle.SetString("◦")
+	inner.Styles.ActivePaginationDot = c.Theme.Style(style.TextAccent).SetString("•")
+	inner.Styles.InactivePaginationDot = c.Theme.Style(style.TextSubtleDim).SetString("◦")
 	inner.Styles.PaginationStyle = lipgloss.NewStyle().PaddingLeft(listIndent).PaddingBottom(1)
 	inner.Paginator.ActiveDot = inner.Styles.ActivePaginationDot.String()
 	inner.Paginator.InactiveDot = inner.Styles.InactivePaginationDot.String()
@@ -290,8 +291,8 @@ func (m *Model) ClearStatus() {
 
 // SetStatusMessage stores a status message and returns a [tea.Cmd] that will
 // clear it after the default timeout.
-func (m *Model) SetStatusMessage(msg string, style statusbar.Style) tea.Cmd {
-	return m.StatusMessage.Set(msg, style)
+func (m *Model) SetStatusMessage(msg string, s statusbar.Style) tea.Cmd {
+	return m.StatusMessage.Set(msg, s)
 }
 
 // HandleStatusTimeout handles status message timeout messages. It returns
@@ -323,7 +324,7 @@ func (m Model) chromeHeight() int {
 func (m Model) documentListView() string {
 	// Show "No results." when filtering yields no matches.
 	if m.inner.FilterState() != list.Unfiltered && len(m.inner.VisibleItems()) == 0 {
-		return indent(m.theme.SubtleStyle.Render("No results."), listIndent+2)
+		return indent(m.theme.Style(style.TextSubtleDim).Render("No results."), listIndent+2)
 	}
 
 	return indent(m.inner.View(), listIndent)
@@ -347,20 +348,20 @@ func (m Model) headerView() string {
 func (m Model) getHeaderSections() ([]string, lipgloss.Style) {
 	localCount := len(m.inner.Items())
 
-	dividerDot := m.theme.SubtleStyle.SetString(" • ")
-	dividerBar := m.theme.SubtleStyle.SetString(" │ ")
+	dividerDot := m.theme.Style(style.TextSubtleDim).SetString(" • ")
+	dividerBar := m.theme.Style(style.TextSubtleDim).SetString(" │ ")
 
 	// While filtering, show the filter input.
 	if m.inner.FilterState() == list.Filtering {
 		sections := []string{
-			m.theme.GenericTextStyle.Render(m.inner.FilterInput.View()),
+			m.theme.Style(style.Text).Render(m.inner.FilterInput.View()),
 		}
 
 		return sections, dividerDot
 	}
 
 	sections := []string{
-		m.theme.SubtleStyle.Render(fmt.Sprintf("%d resources", localCount)),
+		m.theme.Style(style.Text).Render(fmt.Sprintf("%d resources", localCount)),
 	}
 
 	// Show filtered count when a filter is applied.
@@ -370,7 +371,7 @@ func (m Model) getHeaderSections() ([]string, lipgloss.Style) {
 			len(m.inner.VisibleItems()),
 			m.inner.FilterValue(),
 		)
-		sections = append(sections, m.theme.SelectedStyle.Render(filterSection))
+		sections = append(sections, m.theme.Style(style.TextAccent).Render(filterSection))
 	}
 
 	return sections, dividerBar

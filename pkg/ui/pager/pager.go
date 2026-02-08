@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"go.jacobcolvin.com/niceyaml"
 	"go.jacobcolvin.com/niceyaml/bubbles/yamlviewport"
+	"go.jacobcolvin.com/niceyaml/style"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -121,9 +122,9 @@ func NewModel(c Config) Model {
 	si := textinput.New()
 	si.Prompt = "Search:"
 	styles := si.Styles()
-	styles.Focused.Prompt = c.Theme.FilterStyle.MarginRight(1)
-	styles.Blurred.Prompt = c.Theme.FilterStyle.MarginRight(1)
-	styles.Cursor.Color = c.Theme.CursorStyle.GetForeground()
+	styles.Focused.Prompt = c.Theme.Style(style.TextAccentDim).MarginRight(1)
+	styles.Blurred.Prompt = c.Theme.Style(style.TextAccentDim).MarginRight(1)
+	styles.Cursor.Color = c.Theme.Style(style.TextSubtle).GetForeground()
 	si.SetStyles(styles)
 	si.Focus()
 
@@ -470,8 +471,8 @@ func (m *Model) CopyContent() tea.Cmd {
 
 // sendStatusMessage sets a local status message that auto-clears after
 // [statusbar.StatusMessageTimeout].
-func (m *Model) sendStatusMessage(msg string, style statusbar.Style) tea.Cmd {
-	return m.StatusMessage.Set(msg, style)
+func (m *Model) sendStatusMessage(msg string, s statusbar.Style) tea.Cmd {
+	return m.StatusMessage.Set(msg, s)
 }
 
 // ToggleDiffMode cycles between diff modes.

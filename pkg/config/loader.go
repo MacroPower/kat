@@ -61,7 +61,7 @@ func NewLoaderFromBytes[T v1beta1.Object](
 			niceyaml.WithDecodeOptions(yaml.AllowDuplicateMapKey()),
 			niceyaml.WithErrorOptions(
 				niceyaml.WithPrinter(niceyaml.NewPrinter(
-					niceyaml.WithStyles(t.NiceyamlStyles),
+					niceyaml.WithStyles(t.Styles),
 					niceyaml.WithGutter(niceyaml.LineNumberGutter()),
 				)),
 				niceyaml.WithSourceLines(4),

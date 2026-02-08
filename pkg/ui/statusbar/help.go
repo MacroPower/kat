@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"go.jacobcolvin.com/niceyaml/style"
 
 	"github.com/macropower/kat/pkg/ui/theme"
 )
@@ -30,7 +31,7 @@ func (r *HelpRenderer) Render(width int) string {
 		Render(r.keyBinds.Render(width))
 
 	// Apply styling.
-	return r.theme.HelpStyle.Render(content)
+	return r.theme.Style(style.TitleAccent).Render(content)
 }
 
 // CalculateHelpHeight calculates the height needed for the help view.

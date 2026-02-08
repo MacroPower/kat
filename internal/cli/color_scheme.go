@@ -1,19 +1,16 @@
 package cli
 
 import (
-	"image/color"
-
-	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/fang"
-	"github.com/charmbracelet/x/exp/charmtone"
+	"go.jacobcolvin.com/niceyaml/style"
 
 	"github.com/macropower/kat/api/v1beta1/configs"
 	"github.com/macropower/kat/pkg/config"
 	"github.com/macropower/kat/pkg/ui/theme"
 )
 
-// Try to get the theme from the config, otherwise use the default color scheme.
-func ColorSchemeFunc(c lipgloss.LightDarkFunc) fang.ColorScheme {
+// LoadStyles returns the [style.Styles] from the user's config, falling back
+// to the default theme.
+func LoadStyles() style.Styles {
 	configPath := configs.GetPath()
 
 	cl, err := config.NewLoaderFromFile(
@@ -22,29 +19,8 @@ func ColorSchemeFunc(c lipgloss.LightDarkFunc) fang.ColorScheme {
 		config.WithThemeFromData(),
 	)
 	if err != nil {
-		return ThemeColorScheme(theme.Default, c)
+		return theme.Default.Styles
 	}
 
-	return ThemeColorScheme(cl.GetTheme(), c)
-}
-
-func ThemeColorScheme(t *theme.Theme, c lipgloss.LightDarkFunc) fang.ColorScheme {
-	return fang.ColorScheme{
-		Base:           t.GenericTextStyle.GetForeground(),
-		Title:          t.LogoStyle.GetBackground(),
-		Codeblock:      c(charmtone.Salt, lipgloss.Color("#2F2E36")),
-		Program:        t.SelectedStyle.GetForeground(),
-		Command:        t.SelectedStyle.GetForeground(),
-		DimmedArgument: t.SubtleStyle.GetForeground(),
-		Comment:        t.SubtleStyle.GetForeground(),
-		Flag:           t.SelectedStyle.GetForeground(),
-		Argument:       t.GenericTextStyle.GetForeground(),
-		Description:    t.GenericTextStyle.GetForeground(),
-		FlagDefault:    t.SelectedSubtleStyle.GetForeground(),
-		QuotedString:   t.GenericTextStyle.GetForeground(),
-		ErrorHeader: [2]color.Color{
-			t.Error.TitleStyle.GetForeground(),
-			t.Error.TitleStyle.GetBackground(),
-		},
-	}
+	return cl.GetTheme().Styles
 }

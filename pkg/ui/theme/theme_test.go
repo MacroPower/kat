@@ -62,7 +62,7 @@ func TestRegister(t *testing.T) {
 			if tc.name != "" {
 				newTheme := theme.New(tc.name)
 				assert.NotNil(t, newTheme)
-				assert.NotNil(t, newTheme.NiceyamlStyles)
+				assert.NotNil(t, newTheme.Styles)
 			}
 		})
 	}
@@ -77,71 +77,47 @@ func TestTheme_StylesRenderContent(t *testing.T) {
 	tcs := map[string]struct {
 		style lipgloss.Style
 	}{
-		"CursorStyle": {
-			style: themeInstance.CursorStyle,
+		"Style(OverlayGeneric)": {
+			style: themeInstance.Style(theme.Overlay),
 		},
-		"Error.OverlayStyle": {
-			style: themeInstance.Error.OverlayStyle,
+		"Style(OverlayError)": {
+			style: themeInstance.Style(theme.OverlayError),
 		},
-		"Error.TitleStyle": {
-			style: themeInstance.Error.TitleStyle,
+		"Style(TextAccent)": {
+			style: themeInstance.Style(style.TextAccent),
 		},
-		"ResultTitleStyle": {
-			style: themeInstance.ResultTitleStyle,
+		"Style(TextSubtleDim)": {
+			style: themeInstance.Style(style.TextSubtleDim),
 		},
-		"FilterStyle": {
-			style: themeInstance.FilterStyle,
+		"Style(TextAccentDim)": {
+			style: themeInstance.Style(style.TextAccentDim),
 		},
-		"GenericOverlayStyle": {
-			style: themeInstance.GenericOverlayStyle,
+		"Style(TextSubtle)": {
+			style: themeInstance.Style(style.TextSubtle),
 		},
-		"GenericTextStyle": {
-			style: themeInstance.GenericTextStyle,
+		"Style(TitleAccent)": {
+			style: themeInstance.Style(style.TitleAccent),
 		},
-		"HelpStyle": {
-			style: themeInstance.HelpStyle,
+		"Style(Title)": {
+			style: themeInstance.Style(style.Title),
 		},
-		"LineNumberStyle": {
-			style: themeInstance.LineNumberStyle,
+		"Style(TitleOK)": {
+			style: themeInstance.Style(style.TitleOK),
 		},
-		"LogoStyle": {
-			style: themeInstance.LogoStyle,
+		"Style(TitleSubtle)": {
+			style: themeInstance.Style(style.TitleSubtle),
 		},
-		"PaginationStyle": {
-			style: themeInstance.PaginationStyle,
+		"Style(TitleError)": {
+			style: themeInstance.Style(style.TitleError),
 		},
-		"SelectedStyle": {
-			style: themeInstance.SelectedStyle,
+		"Style(TextError)": {
+			style: themeInstance.Style(style.TextError),
 		},
-		"SelectedSubtleStyle": {
-			style: themeInstance.SelectedSubtleStyle,
+		"Style(GenericInserted)": {
+			style: themeInstance.Style(style.GenericInserted),
 		},
-		"StatusBar.HelpStyle": {
-			style: themeInstance.StatusBar.HelpStyle,
-		},
-		"StatusBar.MessageHelpStyle": {
-			style: themeInstance.StatusBar.MessageHelpStyle,
-		},
-		"StatusBar.MessagePosStyle": {
-			style: themeInstance.StatusBar.MessagePosStyle,
-		},
-		"StatusBar.MessageStyle": {
-			style: themeInstance.StatusBar.MessageStyle,
-		},
-		"StatusBar.PosStyle": {
-			style: themeInstance.StatusBar.PosStyle,
-		},
-		"StatusBar.Style": {
-			style: themeInstance.StatusBar.Style,
-		},
-		"SubtleStyle": {
-			style: themeInstance.SubtleStyle,
-		},
-		"InsertedStyle": {
-			style: themeInstance.InsertedStyle,
-		},
-		"DeletedStyle": {
-			style: themeInstance.DeletedStyle,
+		"Style(GenericDeleted)": {
+			style: themeInstance.Style(style.GenericDeleted),
 		},
 	}
 
@@ -170,5 +146,5 @@ func TestTheme_DifferentThemesProduceDifferentStyles(t *testing.T) {
 	assert.NotEqual(t, lightTheme, darkTheme)
 
 	// They should have different styles.
-	assert.NotEqual(t, lightTheme.GenericTextStyle.Render("x"), darkTheme.GenericTextStyle.Render("x"))
+	assert.NotEqual(t, lightTheme.Style(style.Text).Render("x"), darkTheme.Style(style.Text).Render("x"))
 }

@@ -8,6 +8,7 @@ import (
 	"charm.land/bubbles/v2/list"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"go.jacobcolvin.com/niceyaml/style"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -124,7 +125,7 @@ func (d *ItemDelegate) UpdateColumnWidths(docs []*yamls.Document) {
 // Highlighted items get a visible bar; others get a blank space.
 func (d *ItemDelegate) itemChrome(highlighted bool, unselectedSep string) (string, string) {
 	if highlighted {
-		return d.theme.SelectedStyle.Render("│"), d.theme.SelectedStyle.Render("")
+		return d.theme.Style(style.TextAccent).Render("│"), d.theme.Style(style.TextAccent).Render("")
 	}
 
 	return " ", unselectedSep
@@ -172,9 +173,9 @@ func (d *ItemDelegate) renderCompact(
 	gutter, separator := d.itemChrome(shouldHighlight, "")
 
 	// Compact mode uses a single style for all columns.
-	primaryStyle := d.theme.SubtleStyle
+	primaryStyle := d.theme.Style(style.TextSubtleDim)
 	if shouldHighlight {
-		primaryStyle = d.theme.SelectedStyle
+		primaryStyle = d.theme.Style(style.TextAccent)
 	}
 
 	styledGroup := styleItemText(group, filterValue, hasEmptyFilter, primaryStyle)
@@ -201,23 +202,23 @@ func (d *ItemDelegate) renderNormal(
 	title := ansi.Truncate(doc.Title, truncateTo, d.theme.Ellipsis)
 	desc := ansi.Truncate(doc.Desc, truncateTo, d.theme.Ellipsis)
 
-	gutter, separator := d.itemChrome(shouldHighlight, d.theme.GenericTextStyle.Render(""))
+	gutter, separator := d.itemChrome(shouldHighlight, d.theme.Style(style.Text).Render(""))
 
 	var titleStyle, descStyle lipgloss.Style
 
 	switch {
 	case shouldHighlight:
-		titleStyle = d.theme.SelectedStyle
-		descStyle = d.theme.SelectedSubtleStyle
+		titleStyle = d.theme.Style(style.TextAccentDim)
+		descStyle = d.theme.Style(style.TextAccent)
 
 	case hasEmptyFilter:
 		// Dim both rows when the filter prompt is open but empty.
-		titleStyle = d.theme.SubtleStyle
-		descStyle = d.theme.SubtleStyle
+		titleStyle = d.theme.Style(style.TextSubtleDim)
+		descStyle = d.theme.Style(style.TextSubtleDim)
 
 	default:
-		titleStyle = d.theme.GenericTextStyle
-		descStyle = d.theme.SubtleStyle
+		titleStyle = d.theme.Style(style.TextSubtle)
+		descStyle = d.theme.Style(style.TextSubtleDim)
 	}
 
 	styledTitle := styleItemText(title, filterValue, hasEmptyFilter, titleStyle)

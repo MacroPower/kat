@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/cellbuf"
 	"go.jacobcolvin.com/niceyaml"
+	"go.jacobcolvin.com/niceyaml/style"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -168,7 +169,7 @@ func newModel(cfg *Config, cmd common.Commander) *model {
 
 	// Create niceyaml Printer with theme styles and gutter config.
 	printerOpts := []niceyaml.PrinterOption{
-		niceyaml.WithStyles(t.NiceyamlStyles),
+		niceyaml.WithStyles(t.Styles),
 	}
 
 	if !*cfg.UI.LineNumbers {
@@ -180,7 +181,7 @@ func newModel(cfg *Config, cmd common.Commander) *model {
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Line
-	sp.Style = t.GenericTextStyle
+	sp.Style = t.Style(style.Text)
 
 	ckb := cfg.KeyBinds.Common
 
@@ -374,17 +375,17 @@ func (m *model) View() tea.View {
 	switch m.overlayState {
 	case overlayStateError:
 		overlayContent = m.errorView()
-		overlayStyle = m.theme.Error.OverlayStyle.Align(lipgloss.Left).Padding(1)
+		overlayStyle = m.theme.Style(theme.OverlayError).Align(lipgloss.Left).Padding(1)
 		widthFraction = 2.0 / 3.0
 
 	case overlayStateLoading:
 		overlayContent = m.loadingView()
-		overlayStyle = m.theme.GenericOverlayStyle.Align(lipgloss.Center).Padding(1)
+		overlayStyle = m.theme.Style(theme.Overlay).Align(lipgloss.Center).Padding(1)
 		widthFraction = 1.0 / 4.0
 
 	case overlayStateOutput:
 		overlayContent = m.resultView()
-		overlayStyle = m.theme.GenericOverlayStyle.Align(lipgloss.Left).Padding(1)
+		overlayStyle = m.theme.Style(theme.Overlay).Align(lipgloss.Left).Padding(1)
 		widthFraction = 2.0 / 3.0
 	}
 
@@ -394,7 +395,7 @@ func (m *model) View() tea.View {
 
 	v := tea.NewView(strings.TrimRight(s, " \n"))
 	v.AltScreen = true
-	v.BackgroundColor = m.theme.BackgroundColor
+	v.BackgroundColor = m.theme.Style(style.Text).GetBackground()
 	v.WindowTitle = "kat — " + m.cmd.String()
 
 	return v
@@ -407,7 +408,7 @@ func (m *model) resultView() string {
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Top,
-		m.theme.ResultTitleStyle.Padding(0, 1).Render("OUTPUT"),
+		m.theme.Style(style.TitleOK).Padding(0, 1).Render("OUTPUT"),
 		lipgloss.NewStyle().Padding(1, 0).Render(resultMsg),
 	)
 }
@@ -419,7 +420,7 @@ func (m *model) errorView() string {
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Top,
-		m.theme.Error.TitleStyle.Padding(0, 1).Render("ERROR"),
+		m.theme.Style(style.TitleError).Padding(0, 1).Render("ERROR"),
 		lipgloss.NewStyle().Padding(1, 0).Render(errMsg),
 	)
 }
@@ -454,7 +455,7 @@ func (m *model) placeOverlay(bg, fg string, widthFraction float64, overlayStyle 
 		maxTextWidth := max(0, overlayWidth-4)
 		truncMsg := "output truncated; press <!> to view full output"
 		helperText := ansi.Truncate(truncMsg, maxTextWidth, m.theme.Ellipsis)
-		lines = append(lines, "", m.theme.SubtleStyle.Render(helperText))
+		lines = append(lines, "", m.theme.Style(style.TextSubtleDim).Render(helperText))
 	}
 
 	styledFg := overlayStyle.Width(overlayWidth).Render(strings.Join(lines, "\n"))

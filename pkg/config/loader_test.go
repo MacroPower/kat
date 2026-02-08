@@ -222,7 +222,7 @@ kind: Configuration
 
 	got := cl.GetTheme()
 	require.NotNil(t, got)
-	assert.NotNil(t, got.NiceyamlStyles)
+	assert.NotNil(t, got.Styles)
 }
 
 func TestLoader_WithThemeFromData(t *testing.T) {
@@ -317,7 +317,7 @@ profiles:
 			t.Parallel()
 
 			require.NotNil(t, tc.want)
-			require.NotNil(t, tc.want.NiceyamlStyles)
+			require.NotNil(t, tc.want.Styles)
 
 			cl := config.NewLoaderFromBytes(
 				[]byte(tc.input), configs.New, config.WithThemeFromData(),
@@ -326,9 +326,9 @@ profiles:
 
 			got := cl.GetTheme()
 			require.NotNil(t, got)
-			require.NotNil(t, got.NiceyamlStyles)
+			require.NotNil(t, got.Styles)
 
-			assert.Equal(t, tc.want.NiceyamlStyles, got.NiceyamlStyles)
+			assert.Equal(t, tc.want.Styles, got.Styles)
 		})
 	}
 }
