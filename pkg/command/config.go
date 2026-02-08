@@ -154,14 +154,13 @@ func (c *Config) Validate() error {
 				continue // Skip if no pattern is defined.
 			}
 
-			uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
 			err := env.ValueFrom.CallerRef.Compile()
 			if err != nil {
 				return niceyaml.NewErrorFrom(
 					fmt.Errorf("invalid env pattern: %w", err),
 					niceyaml.WithPath(paths.Root().
 						Child("profiles", name, "env").
-						Index(uIdx).
+						Index(i).
 						Child("valueFrom", "callerRef", "pattern").
 						Key()),
 				)
@@ -173,14 +172,13 @@ func (c *Config) Validate() error {
 				continue // Skip if no pattern is defined.
 			}
 
-			uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
 			err := envFrom.CallerRef.Compile()
 			if err != nil {
 				return niceyaml.NewErrorFrom(
 					fmt.Errorf("invalid envFrom pattern: %w", err),
 					niceyaml.WithPath(paths.Root().
 						Child("profiles", name, "envFrom").
-						Index(uIdx).
+						Index(i).
 						Child("callerRef", "pattern").
 						Key()),
 				)
@@ -197,12 +195,11 @@ func (c *Config) Validate() error {
 	}
 
 	for i, r := range c.Rules {
-		uIdx := uint(i) //nolint:gosec // G115: integer overflow conversion int -> uint.
 		err := r.CompileMatch()
 		if err != nil {
 			return niceyaml.NewErrorFrom(
 				fmt.Errorf("invalid match: %w", err),
-				niceyaml.WithPath(paths.Root().Child("rules").Index(uIdx).Child("match").Key()),
+				niceyaml.WithPath(paths.Root().Child("rules").Index(i).Child("match").Key()),
 			)
 		}
 
@@ -210,7 +207,7 @@ func (c *Config) Validate() error {
 		if !ok {
 			return niceyaml.NewErrorFrom(
 				fmt.Errorf("profile %q not found", r.Profile),
-				niceyaml.WithPath(paths.Root().Child("rules").Index(uIdx).Child("profile").Key()),
+				niceyaml.WithPath(paths.Root().Child("rules").Index(i).Child("profile").Key()),
 			)
 		}
 	}

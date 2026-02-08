@@ -13,7 +13,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/cellbuf"
 	"go.jacobcolvin.com/niceyaml"
-	"go.jacobcolvin.com/niceyaml/style"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -179,12 +178,6 @@ func newModel(cfg *Config, cmd common.Commander) *model {
 	printer := niceyaml.NewPrinter(printerOpts...)
 	printer.SetWordWrap(*cfg.UI.WordWrap)
 
-	// Configure search/selected styles in the niceyaml styles.
-	ss := t.NiceyamlStyles
-	searchBg := t.SelectedStyle.GetForeground()
-	ss[style.Search] = ptr(lipgloss.NewStyle().Underline(true).Bold(true).Foreground(searchBg))
-	ss[style.SearchSelected] = ptr(t.LogoStyle.Bold(true))
-
 	sp := spinner.New()
 	sp.Spinner = spinner.Line
 	sp.Style = t.GenericTextStyle
@@ -229,10 +222,6 @@ func newModel(cfg *Config, cmd common.Commander) *model {
 	}
 
 	return m
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }
 
 func (m *model) Init() tea.Cmd {
