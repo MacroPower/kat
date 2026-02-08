@@ -418,10 +418,7 @@ func indent(s string, n int) string {
 // It batches consecutive characters with the same style into runs to minimize
 // render calls from O(n) to O(matches+1).
 func styleFilteredText(haystack, needles string, defaultStyle, matchedStyle lipgloss.Style) string {
-	normalizedHay, err := yamls.Normalize(haystack)
-	if err != nil {
-		return defaultStyle.Render(haystack)
-	}
+	normalizedHay := yamls.Normalize(haystack)
 
 	matches := fuzzyFind(needles, normalizedHay)
 	if len(matches) == 0 {

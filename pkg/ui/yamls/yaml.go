@@ -1,17 +1,13 @@
 package yamls
 
 import (
-	"fmt"
-	"log/slog"
-	"unicode"
-
 	"go.jacobcolvin.com/niceyaml"
-	"golang.org/x/text/runes"
-	"golang.org/x/text/transform"
-	"golang.org/x/text/unicode/norm"
+	"go.jacobcolvin.com/niceyaml/normalizer"
 
 	"github.com/macropower/kat/pkg/kube"
 )
+
+var norm = normalizer.New(normalizer.WithCaseFold(false))
 
 type Document struct {
 	Object *kube.Object
@@ -35,42 +31,11 @@ func (m *Document) FilterValue() string {
 
 // BuildFilterValue generates the filter value from Title and Desc.
 func (m *Document) BuildFilterValue() {
-	m.filterValue = ""
-
-	title, err := Normalize(m.Title)
-	if err == nil {
-		m.filterValue += title
-	} else {
-		slog.Error("error normalizing",
-			slog.String("title", m.Title),
-			slog.Any("error", err),
-		)
-
-		m.filterValue += m.Title
-	}
-
-	desc, err := Normalize(m.Desc)
-	if err == nil {
-		m.filterValue += desc
-	} else {
-		slog.Error("error normalizing",
-			slog.String("desc", m.Desc),
-			slog.Any("error", err),
-		)
-
-		m.filterValue += m.Desc
-	}
+	m.filterValue = Normalize(m.Title) + Normalize(m.Desc)
 }
 
-// Normalize text to aid in the filtering process. In particular, we remove
-// diacritics, "ö" becomes "o". Title that Mn is the unicode key for nonspacing
-// marks.
-func Normalize(in string) (string, error) {
-	t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
-	out, _, err := transform.String(t, in)
-	if err != nil {
-		return "", fmt.Errorf("error normalizing: %w", err)
-	}
-
-	return out, nil
+// Normalize removes diacritics from text to aid in the filtering process.
+// For example, "ö" becomes "o".
+func Normalize(in string) string {
+	return norm.Normalize(in)
 }
