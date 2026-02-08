@@ -14,7 +14,7 @@ require (
 	github.com/charmbracelet/fang v0.4.4
 	github.com/charmbracelet/x/ansi v0.11.6
 	github.com/charmbracelet/x/cellbuf v0.0.15
-	github.com/charmbracelet/x/exp/charmtone v0.0.0-20260109001716-2fbdffcb221f
+	github.com/charmbracelet/x/exp/charmtone v0.0.0-20260204111555-7642919e0bee
 	github.com/charmbracelet/x/exp/golden v0.0.0-20260204111555-7642919e0bee
 	github.com/charmbracelet/x/exp/strings v0.1.0
 	github.com/dustin/go-humanize v1.0.1
