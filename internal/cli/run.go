@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"go.jacobcolvin.com/niceyaml"
+	"go.jacobcolvin.com/x/version"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
@@ -17,6 +18,7 @@ import (
 	"golang.org/x/term"
 
 	tea "charm.land/bubbletea/v2"
+	xlog "go.jacobcolvin.com/x/log"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.39.0"
 
@@ -24,7 +26,6 @@ import (
 	"github.com/macropower/kat/api/v1beta1/policies"
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/config"
-	"github.com/macropower/kat/pkg/log"
 	"github.com/macropower/kat/pkg/mcp"
 	"github.com/macropower/kat/pkg/policy"
 	"github.com/macropower/kat/pkg/profile"
@@ -32,7 +33,6 @@ import (
 	"github.com/macropower/kat/pkg/ui/common"
 	"github.com/macropower/kat/pkg/ui/setup"
 	"github.com/macropower/kat/pkg/ui/theme"
-	"github.com/macropower/kat/pkg/version"
 )
 
 const (
@@ -354,8 +354,10 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 		return nil
 	}
 
-	logBuf := log.NewCircularBuffer(100)
-	logHandler, err := log.CreateHandlerWithStrings(logBuf, rc.LogLevel, rc.LogFormat)
+	pub := xlog.NewPublisher(xlog.WithBufferSize(100))
+	sub := pub.Subscribe()
+
+	logHandler, err := xlog.NewHandlerFromStrings(pub, rc.Log.Level, rc.Log.Format)
 	if err != nil {
 		return fmt.Errorf("create log handler: %w", err)
 	}
@@ -379,12 +381,12 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 	err = runUI(cfg.UI, cr)
 	if err != nil {
 		slog.Error("run UI", slog.Any("err", err))
-		flushLogs(cmd.ErrOrStderr(), logBuf)
+		flushLogs(cmd.ErrOrStderr(), pub, sub)
 
 		return fmt.Errorf("ui program failure: %w", err)
 	}
 
-	flushLogs(cmd.ErrOrStderr(), logBuf)
+	flushLogs(cmd.ErrOrStderr(), pub, sub)
 
 	return nil
 }
@@ -409,16 +411,17 @@ func writeToOutput(cmd *cobra.Command, run command.Output) error {
 	return nil
 }
 
-func flushLogs(w io.Writer, buf *log.CircularBuffer) {
-	slog.Debug("flush logs to console",
-		slog.Int("count", buf.Size()),
-		slog.Int("max", buf.Capacity()),
-		slog.Bool("truncated", buf.IsFull()),
-	)
-
-	_, err := buf.WriteTo(w)
+func flushLogs(w io.Writer, pub *xlog.Publisher, sub *xlog.Subscription) {
+	err := pub.Close()
 	if err != nil {
 		panic(err)
+	}
+
+	for entry := range sub.C() {
+		_, err := w.Write(entry)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 

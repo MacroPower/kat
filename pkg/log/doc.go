@@ -1,5 +1,6 @@
-// Package log provides logging utilities.
+// Package log provides trace-aware logging utilities.
 //
-// This package implements structured logging with support for different output
-// formats and log levels. Generally, it should only be used in the main package.
+// This package offers [WithContext] for extracting or creating a logger with
+// OpenTelemetry trace context. For handler creation, formatting, and log
+// buffering, use [go.jacobcolvin.com/x/log].
 package log

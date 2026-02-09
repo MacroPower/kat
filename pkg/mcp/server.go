@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.jacobcolvin.com/x/version"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/macropower/kat/pkg/command"
 	"github.com/macropower/kat/pkg/kube"
 	"github.com/macropower/kat/pkg/log"
-	"github.com/macropower/kat/pkg/version"
 )
 
 // ExecutionState tracks the current state of command execution.

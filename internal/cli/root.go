@@ -1,12 +1,11 @@
 package cli
 
 import (
-	"fmt"
 	"log/slog"
 
 	"github.com/spf13/cobra"
 
-	"github.com/macropower/kat/pkg/log"
+	xlog "go.jacobcolvin.com/x/log"
 )
 
 const (
@@ -15,8 +14,7 @@ const (
 )
 
 type RootArgs struct {
-	LogLevel  string
-	LogFormat string
+	Log *xlog.Config
 }
 
 func NewRootArgs() *RootArgs {
@@ -24,23 +22,10 @@ func NewRootArgs() *RootArgs {
 }
 
 func (ra *RootArgs) AddFlags(cmd *cobra.Command) {
-	cmd.PersistentFlags().
-		StringVar(&ra.LogLevel, "log-level", "info", fmt.Sprintf("Log level, one of: %s", log.AllLevels))
-	cmd.PersistentFlags().
-		StringVar(&ra.LogFormat, "log-format", "text", fmt.Sprintf("Log format, one of: %s", log.AllFormats))
+	ra.Log = xlog.NewConfig()
+	ra.Log.RegisterFlags(cmd.PersistentFlags())
 
-	var err error
-
-	err = cmd.RegisterFlagCompletionFunc("log-format",
-		cobra.FixedCompletions(log.AllFormats, cobra.ShellCompDirectiveNoFileComp),
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	err = cmd.RegisterFlagCompletionFunc("log-level",
-		cobra.FixedCompletions(log.AllLevels, cobra.ShellCompDirectiveNoFileComp),
-	)
+	err := ra.Log.RegisterCompletions(cmd)
 	if err != nil {
 		panic(err)
 	}
@@ -72,9 +57,9 @@ func NewRootCmd() *cobra.Command {
 
 func setupLogging(rc *RootArgs) func(cmd *cobra.Command, _ []string) error {
 	return func(cmd *cobra.Command, _ []string) error {
-		logHandler, err := log.CreateHandlerWithStrings(cmd.ErrOrStderr(), rc.LogLevel, rc.LogFormat)
+		logHandler, err := rc.Log.NewHandler(cmd.ErrOrStderr())
 		if err != nil {
-			return fmt.Errorf("create log handler: %w", err)
+			return err
 		}
 
 		slog.SetDefault(slog.New(logHandler))

@@ -6,9 +6,9 @@ import (
 
 	"github.com/charmbracelet/fang"
 	"go.jacobcolvin.com/niceyaml/fangs"
+	"go.jacobcolvin.com/x/version"
 
 	"github.com/macropower/kat/internal/cli"
-	"github.com/macropower/kat/pkg/version"
 )
 
 func main() {

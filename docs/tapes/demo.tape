@@ -82,7 +82,7 @@ Hide
 
   Ctrl+B
   Type o
-  Type 'go run -ldflags="-X github.com/macropower/kat/pkg/version.Version=$(git tag --sort=-version:refname | head -n1)" cmd/kat/main.go example/helm -w'  Enter
+  Type 'go run -ldflags="-X go.jacobcolvin.com/x/version.Version=$(git tag --sort=-version:refname | head -n1)" cmd/kat/main.go example/helm -w'  Enter
   Sleep 4s
 
 Show

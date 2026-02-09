@@ -9,7 +9,6 @@ require (
 	charm.land/bubbletea/v2 v2.0.0-rc.2.0.20251212194116-6348bd4b7475
 	charm.land/huh/v2 v2.0.0-20260105203756-d8977490d20c
 	charm.land/lipgloss/v2 v2.0.0-beta.3.0.20251205162909-7869489d8971
-	charm.land/log/v2 v2.0.0-20251110204020-529bb77f35da
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/fang v0.4.4
 	github.com/charmbracelet/x/ansi v0.11.6
@@ -29,6 +28,7 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 	go.jacobcolvin.com/niceyaml v0.0.0-20260208160755-217050e4aa3d
+	go.jacobcolvin.com/x v0.0.0-20260208230929-0664789a1fa6
 	go.opentelemetry.io/otel v1.40.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.40.0
 	go.opentelemetry.io/otel/sdk v1.40.0
@@ -38,6 +38,7 @@ require (
 
 require (
 	cel.dev/expr v0.25.1 // indirect
+	charm.land/log/v2 v2.0.0-20251110204020-529bb77f35da // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/aymanbagabas/go-udiff v0.3.1 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect

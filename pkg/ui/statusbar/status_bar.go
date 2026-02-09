@@ -8,9 +8,9 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"go.jacobcolvin.com/niceyaml/style"
+	"go.jacobcolvin.com/x/version"
 
 	"github.com/macropower/kat/pkg/ui/theme"
-	"github.com/macropower/kat/pkg/version"
 )
 
 const (

@@ -64,7 +64,7 @@ Set Width 900
 Set Height 600
 
 Hide
-  Type 'go run -ldflags="-X github.com/macropower/kat/pkg/version.Version=0.25.0" cmd/kat/main.go example/helm'  Enter
+  Type 'go run -ldflags="-X go.jacobcolvin.com/x/version.Version=0.25.0" cmd/kat/main.go example/helm'  Enter
   Sleep 4s
 Show
 
