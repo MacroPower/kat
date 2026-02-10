@@ -22,7 +22,7 @@ require (
 	github.com/google/jsonschema-go v0.4.2
 	github.com/invopop/jsonschema v0.13.0
 	github.com/mattn/go-shellwords v1.0.12
-	github.com/modelcontextprotocol/go-sdk v1.2.0
+	github.com/modelcontextprotocol/go-sdk v1.3.0
 	github.com/sahilm/fuzzy v0.1.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
