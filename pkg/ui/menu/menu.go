@@ -142,11 +142,17 @@ func (m Model) submitResults(ctx context.Context) tea.Cmd {
 }
 
 func (m Model) View() string {
+	statusBar := m.statusBarView()
+
+	bottom := statusBar
+	if m.Help.Visible() {
+		bottom = lipgloss.JoinVertical(lipgloss.Left, statusBar, m.helpView())
+	}
+
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		m.configeditor.View(),
-		m.statusBarView(),
-		m.helpView(),
+		bottom,
 	)
 }
 
@@ -156,17 +162,24 @@ func (m Model) statusBarView() string {
 	return m.statusBar.RenderWithNote("menu", m.theme.Ellipsis)
 }
 
+const statusBarHeight = 1
+
+func (m Model) chromeHeight() int {
+	helpHeight := m.Help.Height()
+	if helpHeight > 0 {
+		helpHeight++ // Account for separator line between status bar and help.
+	}
+
+	return statusBarHeight + helpHeight
+}
+
 func (m *Model) SetSize(w, h int) tea.Cmd {
 	m.width = w
 	m.height = h
 	m.Help.SetWidth(w)
 	m.statusBar.SetWidth(w)
 
-	if helpH := m.Help.Height(); helpH > 0 {
-		m.configeditor.SetHeight(h - helpH - 2)
-	} else {
-		m.configeditor.SetHeight(h - 1)
-	}
+	m.configeditor.SetHeight(h - m.chromeHeight())
 
 	return nil
 }

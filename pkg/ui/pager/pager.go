@@ -192,21 +192,27 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m Model) View() string {
+	var bottomBar string
 	if m.ViewState == StateSearching {
-		return lipgloss.JoinVertical(
-			lipgloss.Top,
-			m.viewport.View(),
-			m.searchBarView(),
-			m.helpView(),
-		)
+		bottomBar = m.searchBarView()
+	} else {
+		bottomBar = m.statusBarView()
+	}
+
+	bottom := bottomBar
+	if m.Help.Visible() {
+		bottom = lipgloss.JoinVertical(lipgloss.Top, bottomBar, m.helpView())
 	}
 
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		m.viewport.View(),
-		m.statusBarView(),
-		m.helpView(),
+		bottom,
 	)
+}
+
+func (m Model) chromeHeight() int {
+	return statusBarHeight + m.Help.Height()
 }
 
 func (m *Model) SetSize(w, h int) tea.Cmd {
@@ -215,18 +221,10 @@ func (m *Model) SetSize(w, h int) tea.Cmd {
 	m.Help.SetWidth(w)
 	m.statusBar.SetWidth(w)
 
-	// Calculate viewport dimensions.
-	viewportHeight := h - statusBarHeight
-
-	// Subtract help height if visible.
-	if helpH := m.Help.Height(); helpH > 0 {
-		viewportHeight -= (statusBarHeight + helpH)
-	}
-
 	m.searchInput.SetWidth(w - ansi.StringWidth(m.searchInput.Prompt))
 
 	m.viewport.SetWidth(w)
-	m.viewport.SetHeight(viewportHeight)
+	m.viewport.SetHeight(h - m.chromeHeight())
 
 	return nil
 }
