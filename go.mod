@@ -7,7 +7,7 @@ toolchain go1.25.7
 require (
 	charm.land/bubbles/v2 v2.0.0-rc.1
 	charm.land/bubbletea/v2 v2.0.0-rc.2.0.20251212194116-6348bd4b7475
-	charm.land/huh/v2 v2.0.0-20260105203756-d8977490d20c
+	charm.land/huh/v2 9dc45e34a40b
 	charm.land/lipgloss/v2 v2.0.0-beta.3.0.20251205162909-7869489d8971
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/fang v0.4.4
