@@ -13,7 +13,7 @@
     "bashInteractive": "5.2p37",
     "tmux": "3.5",
     "syft": "1.41.1",
-    "cosign": "3.0.4",
+    "cosign": "3.0.6",
     "renovate": "42.83.1"
   },
   "shell": {
