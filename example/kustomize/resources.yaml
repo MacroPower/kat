@@ -6,16 +6,16 @@ metadata:
     name: example-ingress
 spec:
   rules:
-  - host: <Host>
-    http:
-      paths:
-      - pathType: Prefix
-        path: "/"
-        backend:
-          service:
-            name: <Service>
-            port:
-              number: 80
+    - host: <Host>
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: <Service>
+                port:
+                  number: 80
 ---
 apiVersion: apps/v1
 kind: Deployment

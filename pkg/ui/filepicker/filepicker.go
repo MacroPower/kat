@@ -32,10 +32,10 @@ type FilteredFS interface {
 	ReadDir(name string) ([]os.DirEntry, error)
 }
 
-var lastID int64
+var lastID atomic.Int64
 
 func nextID() int {
-	return int(atomic.AddInt64(&lastID, 1))
+	return int(lastID.Add(1))
 }
 
 // New returns a new filepicker model with default styling and key bindings.
@@ -327,6 +327,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if m.selected >= len(m.files) {
 				m.selected = len(m.files) - 1
 			}
+
 			if m.selected > m.maxIdx {
 				m.minIdx++
 				m.maxIdx++
@@ -337,6 +338,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if m.selected < 0 {
 				m.selected = 0
 			}
+
 			if m.selected < m.minIdx {
 				m.minIdx--
 				m.maxIdx--
@@ -469,6 +471,7 @@ func (m Model) View() tea.View {
 			if m.ShowPermissions {
 				selected += " " + info.Mode().String()
 			}
+
 			if m.ShowSize {
 				selected += fmt.Sprintf("%"+strconv.Itoa(m.Styles.FileSize.GetWidth())+"s", size)
 			}
@@ -477,6 +480,7 @@ func (m Model) View() tea.View {
 			if isSymlink {
 				selected += " → " + symlinkPath
 			}
+
 			if disabled {
 				s.WriteString(m.Styles.DisabledSelected.Render(m.Cursor) + m.Styles.DisabledSelected.Render(selected))
 			} else {
@@ -500,12 +504,15 @@ func (m Model) View() tea.View {
 
 		fileName := style.Render(name)
 		s.WriteString(m.Styles.Cursor.Render(" "))
+
 		if isSymlink {
 			fileName += " → " + symlinkPath
 		}
+
 		if m.ShowPermissions {
 			s.WriteString(" " + m.Styles.Permission.Render(info.Mode().String()))
 		}
+
 		if m.ShowSize {
 			s.WriteString(m.Styles.FileSize.Render(size))
 		}
@@ -586,6 +593,7 @@ func (m Model) didSelectAnyFile(msg tea.Msg) (bool, string) {
 
 		// If the msg was not a KeyMsg, then the file could not have been selected this iteration.
 		// Only a KeyMsg can select a file.
+
 	default:
 		return false, ""
 	}

@@ -424,6 +424,7 @@ func TestCELErrorHandling(t *testing.T) {
 				if err != nil {
 					return
 				}
+
 				// Check if result contains error
 				errVal, ok := result.(*types.Err)
 				if ok {
@@ -741,11 +742,14 @@ func TestCELHasFunction(t *testing.T) {
 			if tc.err != "" && err != nil {
 				// Type errors happen at compile time
 				assert.Contains(t, err.Error(), tc.err)
+
 				return
 			}
+
 			if err != nil {
 				// For now, let's skip tests that don't compile and focus on getting the basic functionality working
 				t.Skipf("Compilation failed: %v", err)
+
 				return
 			}
 
@@ -754,8 +758,10 @@ func TestCELHasFunction(t *testing.T) {
 			if tc.err != "" {
 				if err != nil {
 					assert.Contains(t, err.Error(), tc.err)
+
 					return
 				}
+
 				// Check if result is an error value
 				errVal, ok := result.(*types.Err)
 				require.True(t, ok, "expected an error result")

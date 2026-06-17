@@ -34,6 +34,7 @@ func (m *mockExecutor) String() string {
 // newMockExecutor creates a mock executor that returns the specified result and error.
 func newMockExecutor(stdout, stderr string, err error) *mockExecutor {
 	var result *execs.Result
+
 	if err == nil {
 		result = &execs.Result{
 			Stdout: stdout,
@@ -209,6 +210,7 @@ func TestProfile_Exec(t *testing.T) {
 
 			if tc.wantErr != nil {
 				require.Error(t, err)
+
 				if tc.wantErr.Error() != "" {
 					assert.Contains(t, err.Error(), tc.wantErr.Error())
 				}
@@ -236,6 +238,7 @@ func TestProfile_Environment(t *testing.T) {
 		"static environment variable": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
+
 				// No OS environment setup needed.
 			},
 			profileOpts: []profile.ProfileOpt{
@@ -302,6 +305,7 @@ func TestProfile_Environment(t *testing.T) {
 		"hook with static environment variable": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
+
 				// No setup needed.
 			},
 			profileOpts: []profile.ProfileOpt{
@@ -372,6 +376,7 @@ func TestProfile_Environment(t *testing.T) {
 		"empty environment variable name": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
+
 				// No setup needed.
 			},
 			profileOpts: []profile.ProfileOpt{
@@ -390,6 +395,7 @@ func TestProfile_Environment(t *testing.T) {
 		"empty environment variable value": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
+
 				// No setup needed.
 			},
 			profileOpts: []profile.ProfileOpt{
@@ -408,6 +414,7 @@ func TestProfile_Environment(t *testing.T) {
 		"missing caller reference": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
+
 				// Don't set NONEXISTENT_VAR.
 			},
 			profileOpts: []profile.ProfileOpt{
@@ -562,6 +569,7 @@ func TestProfile_MatchFiles(t *testing.T) {
 
 			match, files := p.MatchFiles("/app", tt.files)
 			assert.Equal(t, tt.expectedMatch, match)
+
 			if tt.expectedFiles != nil {
 				assert.ElementsMatch(t, tt.expectedFiles, files)
 			} else {

@@ -40,10 +40,12 @@ func ReadFile(path string) ([]byte, error) {
 		if err == nil && pathInfo.IsDir() {
 			return nil, fmt.Errorf("%s: path is a directory", path)
 		}
+
 		if err == nil && !pathInfo.Mode().IsRegular() {
 			return nil, fmt.Errorf("%s: unknown file state", path)
 		}
 	}
+
 	if err != nil {
 		return nil, fmt.Errorf("stat file: %w", err)
 	}
@@ -83,6 +85,7 @@ func WriteIfNotExists(path string, data []byte) error {
 		if err == nil && pathInfo.Mode().IsRegular() {
 			return nil // File already exists.
 		}
+
 		if pathInfo.IsDir() {
 			return fmt.Errorf("%s: path is a directory", path)
 		}
@@ -121,6 +124,7 @@ func FindConfigFile(targetPath string, fileNames []string) (string, error) {
 	}
 
 	var searchDir string
+
 	if info.IsDir() {
 		searchDir = absPath
 	} else {

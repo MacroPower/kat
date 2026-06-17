@@ -183,6 +183,7 @@ func TestConfig_ValidationErrors(t *testing.T) {
 
 			if tc.expectError {
 				require.Error(t, err)
+
 				if tc.errorPath != "" {
 					assert.Contains(t, err.Error(), tc.errorPath)
 				}
@@ -254,6 +255,7 @@ func TestConfig_Validate_EdgeCases(t *testing.T) {
 
 			if tc.expectError {
 				require.Error(t, configErr)
+
 				if tc.errorPath != "" {
 					assert.Contains(t, configErr.Error(), tc.errorPath)
 				}

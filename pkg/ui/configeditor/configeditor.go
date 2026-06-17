@@ -135,6 +135,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 					return common.ErrMsg{Err: fmt.Errorf("unexpected file field type: %T", field.GetValue())}
 				}
 			}
+
 			if filePath == "" {
 				break
 			}

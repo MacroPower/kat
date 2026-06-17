@@ -154,12 +154,15 @@ func newModel(cfg *Config, cmd common.Commander) *model {
 		if profile.UI.Theme != "" {
 			uiTheme = profile.UI.Theme
 		}
+
 		if profile.UI.Compact != nil {
 			cfg.UI.Compact = profile.UI.Compact
 		}
+
 		if profile.UI.WordWrap != nil {
 			cfg.UI.WordWrap = profile.UI.WordWrap
 		}
+
 		if profile.UI.LineNumbers != nil {
 			cfg.UI.LineNumbers = profile.UI.LineNumbers
 		}
@@ -262,6 +265,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.Stderr != "" {
 				m.err = fmt.Errorf("%w\n\n%s", m.err, msg.Stderr)
 			}
+
 			if msg.Stdout != "" {
 				m.err = fmt.Errorf("%w\n\n%s", m.err, msg.Stdout)
 			}
@@ -270,6 +274,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.result = msg.Stdout
 
 		var body string
+
 		if msg.Error != nil {
 			body += "# Error\n" + msg.Error.Error() + "\n---\n"
 			m.overlayState = overlayStateError
@@ -489,6 +494,7 @@ func (m *model) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 			return nil, tea.Batch(cmds...)
 		}
+
 		// If we're showing a result, <!> exits the result view.
 		cmds = append(cmds, m.unloadDocument())
 		m.overlayState = overlayStateNone
@@ -544,12 +550,15 @@ func (m *model) handleGlobalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool)
 		isShowingList := m.state == stateShowList
 
 		var cmds []tea.Cmd
+
 		if isShowingDocument || isShowingMenu || !m.loaded {
 			cmds = append(cmds, m.unloadDocument())
 		}
+
 		if isShowingList {
 			m.list.ResetFiltering()
 		}
+
 		if m.state == stateShowDocument {
 			m.pager.ExitSearch()
 		}
@@ -595,10 +604,12 @@ func (m *model) isTextInputFocused() bool {
 		// Pass through to list handler.
 		return true
 	}
+
 	if m.state == stateShowDocument && m.pager.IsSearching() {
 		// Pass through to pager search handler.
 		return true
 	}
+
 	if m.state == stateShowMenu {
 		// Pass through to menu.
 		return true

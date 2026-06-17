@@ -754,6 +754,7 @@ func TestKeyBindRenderer_Render(t *testing.T) {
 		t.Parallel()
 
 		var kbr keys.KeyBindRenderer
+
 		kbr.AddColumn(
 			keys.NewBind("quit", keys.New("q")),
 			keys.NewBind("help", keys.New("h")),
@@ -776,6 +777,7 @@ func TestKeyBindRenderer_Render(t *testing.T) {
 		t.Parallel()
 
 		var kbr keys.KeyBindRenderer
+
 		kbr.AddColumn(
 			keys.NewBind("quit", keys.New("q")),
 			keys.NewBind("help", keys.New("h")),
@@ -806,6 +808,7 @@ func TestKeyBindRenderer_Render(t *testing.T) {
 		t.Parallel()
 
 		var kbr keys.KeyBindRenderer
+
 		kbr.AddColumn(
 			keys.NewBind("up", keys.New("k"), keys.New("up", keys.WithAlias("↑"))),
 			keys.NewBind("down", keys.New("j"), keys.New("down", keys.WithAlias("↓"))),
@@ -824,6 +827,7 @@ func TestKeyBindRenderer_Render(t *testing.T) {
 		t.Parallel()
 
 		var kbr keys.KeyBindRenderer
+
 		kbr.AddColumn(
 			keys.NewBind("quit", keys.New("q"), keys.New("esc", keys.Hidden())),
 			keys.NewBind("help", keys.New("h")),
@@ -841,6 +845,7 @@ func TestKeyBindRenderer_Render(t *testing.T) {
 		t.Parallel()
 
 		var kbr keys.KeyBindRenderer
+
 		// First column has 3 keybinds
 		kbr.AddColumn(
 			keys.NewBind("quit", keys.New("q")),
@@ -868,6 +873,7 @@ func TestKeyBindRenderer_Render(t *testing.T) {
 		t.Parallel()
 
 		var kbr keys.KeyBindRenderer
+
 		kbr.AddColumn(
 			keys.NewBind("quit application", keys.New("q")),
 		)

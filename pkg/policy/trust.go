@@ -158,6 +158,7 @@ func (m *TrustManager) ensureTrusted(
 
 			return false, nil
 		}
+
 		if err != nil {
 			return false, fmt.Errorf("prompt: %w", err)
 		}

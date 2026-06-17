@@ -44,6 +44,7 @@ func (m *mockCommandRunner) RunContext(ctx context.Context) command.Output {
 
 	// Get the next output.
 	var output command.Output
+
 	if m.outputIndex < len(m.outputs) {
 		output = m.outputs[m.outputIndex]
 		m.outputIndex++

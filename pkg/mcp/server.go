@@ -304,6 +304,7 @@ func (s *Server) waitForCompletion(ctx context.Context, reloadTime time.Time) er
 
 		// Wait for the next completion.
 		s.completionCond.Wait()
+
 		// The condition variable's Wait() method atomically releases the mutex and waits.
 		// This allows updateState() in another goroutine to acquire the lock.
 		// After updateState() broadcasts and releases the lock, Wait() re-acquires it before returning.

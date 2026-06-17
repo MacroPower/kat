@@ -113,6 +113,7 @@ func TestCommand_SetBaseEnv(t *testing.T) {
 
 	// Should contain the new base environment variables (essential ones).
 	assert.Contains(t, result, "PATH=/usr/bin")
+
 	// Should not contain the initial variable since it's not essential.
 	for _, envVar := range result {
 		assert.NotContains(t, envVar, "INITIAL=value")
@@ -139,6 +140,7 @@ func TestCommand_Build(t *testing.T) {
 				// Should contain essential vars from base env.
 				assert.Contains(t, result, "PATH=/usr/bin")
 				assert.Contains(t, result, "HOME=/home/test")
+
 				// Should not contain non-essential vars.
 				for _, envVar := range result {
 					assert.NotContains(t, envVar, "NON_ESSENTIAL=value")
@@ -179,6 +181,7 @@ func TestCommand_Build(t *testing.T) {
 			},
 			validate: func(t *testing.T, result []string) {
 				t.Helper()
+
 				// Should not contain the variable since the caller reference doesn't exist.
 				for _, env := range result {
 					assert.NotContains(t, env, "FROM_CALLER=")
@@ -210,6 +213,7 @@ func TestCommand_Build(t *testing.T) {
 		"environment variable from caller reference - PATH": {
 			setupEnv: func() execs.Command {
 				t.Helper()
+
 				// Test referencing PATH which is provided in base environment.
 				baseEnv := []string{"PATH=/usr/bin:/bin"}
 				env := execs.NewCommand(baseEnv)
@@ -281,6 +285,7 @@ func TestCommand_Build(t *testing.T) {
 				t.Helper()
 				assert.Contains(t, result, "TEST_PATTERN_VAR1=pattern_value1")
 				assert.Contains(t, result, "TEST_PATTERN_VAR2=pattern_value2")
+
 				// OTHER_VAR should not be included since it doesn't match the pattern.
 				for _, envVar := range result {
 					assert.NotContains(t, envVar, "OTHER_VAR=other_value")
@@ -303,6 +308,7 @@ func TestCommand_Build(t *testing.T) {
 			validate: func(t *testing.T, result []string) {
 				t.Helper()
 				assert.Contains(t, result, "OVERRIDE_VAR=new_value")
+
 				// Should not contain the old value.
 				for _, envVar := range result {
 					assert.NotContains(t, envVar, "OVERRIDE_VAR=old_value")
@@ -327,6 +333,7 @@ func TestCommand_Build(t *testing.T) {
 			},
 			validate: func(t *testing.T, result []string) {
 				t.Helper()
+
 				// Should not contain the variable since the reference doesn't exist.
 				for _, env := range result {
 					assert.NotContains(t, env, "MISSING_REF=")
@@ -351,6 +358,7 @@ func TestCommand_Build(t *testing.T) {
 			},
 			validate: func(t *testing.T, result []string) {
 				t.Helper()
+
 				// Should not contain the nonexistent variable.
 				for _, envVar := range result {
 					assert.NotContains(t, envVar, "NONEXISTENT_BASE_VAR=")
@@ -504,6 +512,7 @@ func TestCommand_CompilePatterns(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(t, err)
+
 				if tt.errMsg != "" {
 					assert.Contains(t, err.Error(), tt.errMsg)
 				}
@@ -655,6 +664,7 @@ func TestCommand_Build_EdgeCases(t *testing.T) {
 			validate: func(t *testing.T, result []string) {
 				t.Helper()
 				assert.Contains(t, result, "PATH=/usr/bin")
+
 				// Malformed entry should be ignored in base env parsing.
 				found := slices.Contains(result, "MALFORMED_NO_EQUALS")
 
@@ -676,6 +686,7 @@ func TestCommand_Build_EdgeCases(t *testing.T) {
 			},
 			validate: func(t *testing.T, result []string) {
 				t.Helper()
+
 				// Empty values are skipped in applyEnv, so should not be present.
 				for _, env := range result {
 					assert.NotContains(t, env, "EMPTY_VAR=")
@@ -1008,8 +1019,10 @@ func TestCommand_Exec(t *testing.T) {
 			if tt.validate != nil {
 				tt.validate(t, result, err)
 			}
+
 			if tt.wantErr {
 				require.Error(t, err)
+
 				if tt.errType != nil {
 					require.ErrorIs(t, err, tt.errType)
 				}
@@ -1177,6 +1190,7 @@ func TestCommand_ExecWithStdin(t *testing.T) {
 			if tt.validate != nil {
 				tt.validate(t, result, err)
 			}
+
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -1205,6 +1219,7 @@ func TestCommand_ExecWithContext(t *testing.T) {
 		result, err := exe.Exec(ctx, "")
 		require.Error(t, err)
 		assert.ErrorIs(t, err, execs.ErrCommandExecution)
+
 		// May or may not have result depending on timing.
 		_ = result
 	})
@@ -1332,6 +1347,7 @@ func TestCommand_ApplyEnvFrom_EdgeCases(t *testing.T) {
 
 		// Should only contain essential variables.
 		assert.Contains(t, result, "PATH=/usr/bin")
+
 		// Should not contain TEST_VAR since CallerRef is nil.
 		for _, env := range result {
 			assert.NotContains(t, env, "TEST_VAR=test_value")
@@ -1356,6 +1372,7 @@ func TestCommand_ApplyEnvFrom_EdgeCases(t *testing.T) {
 
 		// Should only contain essential variables.
 		assert.Contains(t, result, "PATH=/usr/bin")
+
 		// Should not contain TEST_VAR.
 		for _, env := range result {
 			assert.NotContains(t, env, "TEST_VAR=test_value")
@@ -1382,6 +1399,7 @@ func TestCommand_ApplyEnvFrom_EdgeCases(t *testing.T) {
 
 		// Should only contain essential variables.
 		assert.Contains(t, result, "PATH=/usr/bin")
+
 		// Should not contain TEST_VAR since pattern doesn't match.
 		for _, env := range result {
 			assert.NotContains(t, env, "TEST_VAR=test_value")

@@ -322,6 +322,7 @@ func verifyStaticOutput(t *testing.T, output command.Output, expectError bool, e
 	t.Helper()
 
 	assert.Equal(t, command.TypeRun, output.Type)
+
 	if expectError {
 		require.Error(t, output.Error)
 		assert.Contains(t, output.Error.Error(), errorMsg)

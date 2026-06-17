@@ -44,6 +44,7 @@ func TestStatusMessageModel(t *testing.T) {
 			t.Parallel()
 
 			var m statusbar.StatusMessageModel
+
 			tc.setup(&m)
 
 			assert.Equal(t, tc.want, m.Visible())
@@ -83,6 +84,7 @@ func TestStatusMessageModel_Update(t *testing.T) {
 		t.Parallel()
 
 		var m statusbar.StatusMessageModel
+
 		m.Set("msg", statusbar.StyleSuccess)
 
 		consumed := m.Update("random string message")

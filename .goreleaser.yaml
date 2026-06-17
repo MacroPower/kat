@@ -156,33 +156,33 @@ nix:
       installShellCompletion ./completion/fish/kat.fish
 
 docker_manifests:
-  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}'
+  - name_template: "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}"
     image_templates: &baseImageTemplates
-      - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-amd64'
-      - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-arm64'
+      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-amd64"
+      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-arm64"
     skip_push: false
-  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:latest'
+  - name_template: "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:latest"
     image_templates: *baseImageTemplates
     skip_push: auto
-  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}'
+  - name_template: "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}"
     image_templates: *baseImageTemplates
     skip_push: auto
-  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}'
+  - name_template: "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}"
     image_templates: *baseImageTemplates
     skip_push: auto
 
-  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-alpine'
+  - name_template: "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-alpine"
     image_templates: &alpineImageTemplates
-      - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-alpine-amd64'
-      - '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-alpine-arm64'
+      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-alpine-amd64"
+      - "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:{{ .Tag }}-alpine-arm64"
     skip_push: false
-  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:latest-alpine'
+  - name_template: "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:latest-alpine"
     image_templates: *alpineImageTemplates
     skip_push: auto
-  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}-alpine'
+  - name_template: "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}-alpine"
     image_templates: *alpineImageTemplates
     skip_push: auto
-  - name_template: '{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-alpine'
+  - name_template: "{{ .Env.DOCKER_REGISTRY }}/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-alpine"
     image_templates: *alpineImageTemplates
     skip_push: auto
 

@@ -39,6 +39,7 @@ func (m *mockExecutor) String() string {
 // newMockExecutor creates a mock executor that returns the specified result and error.
 func newMockExecutor(stdout, stderr string, err error) *mockExecutor {
 	var result *execs.Result
+
 	if err == nil {
 		result = &execs.Result{
 			Stdout: stdout,
@@ -304,6 +305,7 @@ func TestCommandRunner_CancellationBehavior(t *testing.T) {
 
 	// Collect results with timeout
 	var outputs []command.Output
+
 	assert.Eventually(t, func() bool {
 		select {
 		case output := <-results:
@@ -318,6 +320,7 @@ func TestCommandRunner_CancellationBehavior(t *testing.T) {
 	assert.Len(t, outputs, 2)
 
 	var hasCancel, hasSuccess bool
+
 	for _, output := range outputs {
 		if output.Error != nil && strings.Contains(output.Error.Error(), "signal: killed") {
 			hasCancel = true
@@ -345,9 +348,15 @@ func newFakeWatcher() *fakeWatcher {
 	}
 }
 
-func (f *fakeWatcher) Add(string) error              { return nil }
-func (f *fakeWatcher) Remove(string) error           { return nil }
-func (f *fakeWatcher) Close() error                  { close(f.events); close(f.errors); return nil }
+func (f *fakeWatcher) Add(string) error    { return nil }
+func (f *fakeWatcher) Remove(string) error { return nil }
+
+func (f *fakeWatcher) Close() error {
+	close(f.events)
+	close(f.errors)
+
+	return nil
+}
 func (f *fakeWatcher) Events() <-chan fsnotify.Event { return f.events }
 func (f *fakeWatcher) Errors() <-chan error          { return f.errors }
 
@@ -438,6 +447,7 @@ func TestCommandRunner_FileWatcher(t *testing.T) {
 					batch[i].Name = testFileFullPath
 					fw.events <- batch[i]
 				}
+
 				// Wait long enough for the batch timer to fire and the run to
 				// complete before sending the next batch.
 				time.Sleep(3 * batchDuration)
@@ -447,6 +457,7 @@ func TestCommandRunner_FileWatcher(t *testing.T) {
 			require.Len(t, events, wantEvents)
 
 			var startCount, endCount int
+
 			for _, event := range events {
 				t.Logf("event: %T: %+v", event, event)
 
@@ -615,6 +626,7 @@ func TestCommandRunner_RunPluginContext(t *testing.T) {
 
 			// Verify output type
 			assert.Equal(t, command.TypePlugin, output.Type)
+
 			// Context cancellation and timeouts may or may not affect the result
 			// depending on timing, so we just verify the basic structure
 		})
@@ -930,6 +942,7 @@ func TestRunner_FindProfile(t *testing.T) {
 			// Handle expected errors during runner creation
 			if tc.expectErr != nil {
 				require.ErrorIs(t, err, tc.expectErr)
+
 				return
 			}
 
@@ -1045,6 +1058,7 @@ func TestRunner_Configure(t *testing.T) {
 			},
 			checkFunc: func(t *testing.T, r *command.Runner) {
 				t.Helper()
+
 				// Watch should be enabled (no direct way to test this without accessing private fields)
 				// We can test indirectly by checking if the runner was configured without error
 				name, _ := r.GetCurrentProfile()
@@ -1061,6 +1075,7 @@ func TestRunner_Configure(t *testing.T) {
 
 			if tc.wantErr {
 				require.Error(t, err)
+
 				return
 			}
 
@@ -1269,6 +1284,7 @@ func TestRunner_PathEscapePrevention(t *testing.T) {
 			root, err := os.OpenRoot(rootDir)
 
 			require.NoError(t, err)
+
 			defer func() {
 				require.NoError(t, root.Close())
 			}()
@@ -1427,6 +1443,7 @@ func TestRunner_SymlinkPathEscapePrevention(t *testing.T) {
 			root, err := os.OpenRoot(rootDir)
 
 			require.NoError(t, err)
+
 			defer func() {
 				require.NoError(t, root.Close())
 			}()

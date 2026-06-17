@@ -103,6 +103,7 @@ func TestConfig_Write(t *testing.T) {
 				assert.Contains(t, err.Error(), tc.errMsg)
 			} else {
 				require.NoError(t, err)
+
 				// Verify file exists and has content.
 				_, err := os.Stat(path)
 				require.NoError(t, err)
@@ -209,6 +210,7 @@ func TestWriteDefault(t *testing.T) {
 				assert.Contains(t, err.Error(), tc.errMsg)
 			} else {
 				require.NoError(t, err)
+
 				// Verify file exists and has content.
 				info, err := os.Stat(path)
 				require.NoError(t, err)
@@ -399,6 +401,7 @@ func TestUnmarshalAndValidateDefaultConfig(t *testing.T) {
 
 	// Verify that profiles exist.
 	assert.NotEmpty(t, cfg.Command.Profiles, "default config should have profiles")
+
 	// Verify that all profiles are valid.
 	for profileName, p := range cfg.Command.Profiles {
 		assert.NotEmpty(t, p.Command.Command, "profile %q should have a command", profileName)

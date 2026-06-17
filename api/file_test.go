@@ -428,6 +428,7 @@ func TestFindConfigFile(t *testing.T) {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
+
 				if tc.want == "" {
 					assert.Empty(t, got)
 				} else {

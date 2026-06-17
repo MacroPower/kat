@@ -117,6 +117,7 @@ func TestRule_CompileMatch(t *testing.T) {
 				assert.Contains(t, err.Error(), "compile match expression")
 			} else {
 				require.NoError(t, err)
+
 				// Calling CompileMatch again should not cause an error.
 				err2 := r.CompileMatch()
 				require.NoError(t, err2)

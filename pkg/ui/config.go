@@ -127,12 +127,15 @@ func (kb *KeyBinds) EnsureDefaults() {
 	if kb.Common == nil {
 		kb.Common = &common.KeyBinds{}
 	}
+
 	if kb.List == nil {
 		kb.List = &resourcelist.KeyBinds{}
 	}
+
 	if kb.Menu == nil {
 		kb.Menu = &menu.KeyBinds{}
 	}
+
 	if kb.Pager == nil {
 		kb.Pager = &pager.KeyBinds{}
 	}

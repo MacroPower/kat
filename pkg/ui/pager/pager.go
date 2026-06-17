@@ -70,6 +70,7 @@ type Config struct {
 func NewModel(c Config) Model {
 	// Init yamlviewport with printer.
 	var opts []yamlviewport.Option
+
 	if c.Printer != nil {
 		opts = append(opts, yamlviewport.WithPrinter(c.Printer))
 	}
@@ -193,6 +194,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 
 func (m Model) View() string {
 	var bottomBar string
+
 	if m.ViewState == StateSearching {
 		bottomBar = m.searchBarView()
 	} else {
@@ -249,9 +251,11 @@ func (m *Model) AddRevision(source *niceyaml.Source) {
 
 func (m *Model) Unload() {
 	slog.Debug("unload pager document")
+
 	if m.Help.Visible() {
 		m.ToggleHelp()
 	}
+
 	// Clear search state.
 	if m.ViewState == StateSearching {
 		m.ExitSearch()
@@ -293,6 +297,7 @@ func (m *Model) ToggleHelp() {
 
 func (m Model) statusBarView() string {
 	var opts []statusbar.StatusBarOpt
+
 	if opt := m.StatusMessage.Opt(); opt != nil {
 		opts = append(opts, opt)
 	}

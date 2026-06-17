@@ -384,6 +384,7 @@ func (m Model) statusBarView() string {
 	progress := fmt.Sprintf("%d/%d", p.Page+1, p.TotalPages)
 
 	var opts []statusbar.StatusBarOpt
+
 	if opt := m.StatusMessage.Opt(); opt != nil {
 		opts = append(opts, opt)
 	}

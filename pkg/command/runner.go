@@ -372,6 +372,7 @@ func (cr *Runner) FindProfiles(path string) ([]ProfileMatch, error) {
 				Profile: p,
 			})
 		}
+
 		if len(matches) > 0 {
 			return matches, nil
 		}
@@ -395,6 +396,7 @@ func (cr *Runner) FindProfiles(path string) ([]ProfileMatch, error) {
 			Profile: p,
 		})
 	}
+
 	if len(matches) > 0 {
 		return matches, nil
 	}
@@ -549,6 +551,7 @@ func (cr *Runner) watchSource(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+
 		if d.IsDir() {
 			// Skip directories, we only want to match against files.
 			return nil
@@ -612,6 +615,7 @@ func (cr *Runner) removeWatchers(ctx context.Context) {
 		if errors.Is(err, fsnotify.ErrNonExistentWatch) {
 			continue
 		}
+
 		if err != nil {
 			logger.ErrorContext(ctx, "remove path from watcher", slog.Any("err", err))
 		}
@@ -751,6 +755,7 @@ func (cr *Runner) flushFileEvents(ctx context.Context, pendingEvents map[string]
 
 				return false
 			}
+
 			if matched {
 				shouldRun = true
 				break // At least one file matches, that's enough to trigger the command.
@@ -874,9 +879,11 @@ func (cr *Runner) findMatchInDirectory(dirPath string) ([]*rule.Rule, error) {
 		if err != nil {
 			return err
 		}
+
 		if d.IsDir() && path != dirPath {
 			return filepath.SkipDir // Skip subdirectories.
 		}
+
 		if !d.IsDir() {
 			files = append(files, path)
 		}
@@ -894,6 +901,7 @@ func (cr *Runner) findMatchInDirectory(dirPath string) ([]*rule.Rule, error) {
 			matchedRules = append(matchedRules, r)
 		}
 	}
+
 	if len(matchedRules) > 0 {
 		return matchedRules, nil
 	}

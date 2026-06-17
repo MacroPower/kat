@@ -134,9 +134,11 @@ func NewRunCmd(ra *RunArgs) *cobra.Command {
 				argsBeforeDash = args[:dashPos]
 				extraArgs = args[dashPos:]
 			}
+
 			if len(argsBeforeDash) > 0 {
 				path = argsBeforeDash[0]
 			}
+
 			if len(argsBeforeDash) > 1 {
 				commandOrProfile = argsBeforeDash[1]
 			}
@@ -175,6 +177,7 @@ func tryGetProfileNames(configPath string) []cobra.Completion {
 	for k, v := range cfg.Command.Profiles {
 		profileNameDesc[k] = v.String()
 	}
+
 	if len(profileNameDesc) == 0 {
 		return nil
 	}
@@ -218,6 +221,7 @@ func runCompletion(ra *RunArgs) func(*cobra.Command, []string, string) ([]cobra.
 // Can be removed after https://github.com/spf13/cobra/pull/2259 is merged.
 func argsLenAtDash(args []string) int {
 	var dashPos int
+
 	for _, arg := range args {
 		if arg == "__complete" {
 			// Ignore the __complete argument.
@@ -247,6 +251,7 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 	}
 
 	var configPath string
+
 	if rc.ConfigPath != "" {
 		configPath = rc.ConfigPath
 	} else {
@@ -273,6 +278,7 @@ func run(cmd *cobra.Command, rc *RunArgs) error {
 	if rc.Trust {
 		trustMode = policy.TrustModeAllow
 	}
+
 	if rc.NoTrust {
 		trustMode = policy.TrustModeSkip
 	}
@@ -398,12 +404,14 @@ func writeToOutput(cmd *cobra.Command, run command.Output) error {
 			return fmt.Errorf("write to stdout: %w", err)
 		}
 	}
+
 	if run.Stderr != "" {
 		_, err := fmt.Fprint(cmd.ErrOrStderr(), run.Stderr)
 		if err != nil {
 			return fmt.Errorf("write to stderr: %w", err)
 		}
 	}
+
 	if run.Error != nil {
 		return fmt.Errorf("run error: %w", run.Error)
 	}
@@ -492,6 +500,7 @@ func loadAnyRuntimeConfigs(grcPath, prcPath string, tm policy.TrustMode) (*confi
 	if rcErr != nil {
 		return nil, nil, fmt.Errorf("load runtime config: %w", rcErr)
 	}
+
 	if trc == nil {
 		// No trusted runtime config found, only use the global config.
 		return cfg, thm, nil

@@ -208,12 +208,14 @@ func (p *Profile) Build() error {
 	}
 
 	p.Command.SetBaseEnv(os.Environ())
+
 	if p.Hooks != nil {
 		err := p.Hooks.Build()
 		if err != nil {
 			return fmt.Errorf("build hooks: %w", err)
 		}
 	}
+
 	if p.Plugins != nil {
 		for _, plugin := range p.Plugins {
 			err := plugin.Build()
@@ -328,15 +330,18 @@ func (p *Profile) MatchFiles(dirPath string, files []string) (bool, []string) {
 	// CEL expression must return a list of files.
 	if listVal, ok := result.Value().([]ref.Val); ok {
 		var matchedFiles []string
+
 		for _, item := range listVal {
 			if str, ok := item.Value().(string); ok {
 				matchedFiles = append(matchedFiles, str)
 			}
 		}
+
 		// If we got a non-empty list, return these specific files.
 		if len(matchedFiles) > 0 {
 			return true, matchedFiles
 		}
+
 		// Empty list means no match.
 		return false, nil
 	}
@@ -395,6 +400,7 @@ func (p *Profile) Exec(ctx context.Context, dir string) (*execs.Result, error) {
 			hr, err := hook.Exec(ctx, dir)
 			if err != nil {
 				p.status.SetError(ctx)
+
 				return hr, fmt.Errorf("%w: preRender: %w", ErrHookExecution, err)
 			}
 		}
@@ -405,6 +411,7 @@ func (p *Profile) Exec(ctx context.Context, dir string) (*execs.Result, error) {
 	result, err := p.executor.Exec(ctx, dir)
 	if err != nil {
 		p.status.SetError(ctx)
+
 		return result, err //nolint:wrapcheck // Primary command does not need additional context.
 	}
 
@@ -416,6 +423,7 @@ func (p *Profile) Exec(ctx context.Context, dir string) (*execs.Result, error) {
 			hr, err := hook.ExecWithStdin(ctx, dir, []byte(result.Stdout))
 			if err != nil {
 				p.status.SetError(ctx)
+
 				return hr, fmt.Errorf("%w: postRender: %w", ErrHookExecution, err)
 			}
 		}

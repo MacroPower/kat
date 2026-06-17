@@ -70,6 +70,7 @@ func (f *FilePicker) Cursor(cursor string) *FilePicker {
 // Picking sets whether the file picker should be in the picking files state.
 func (f *FilePicker) Picking(v bool) *FilePicker {
 	f.setPicking(v)
+
 	return f
 }
 
@@ -138,6 +139,7 @@ func (f *FilePicker) AllowedTypes(types []string) *FilePicker {
 // exceeds the height, the file field will become scrollable.
 func (f *FilePicker) Height(height int) *FilePicker {
 	f.WithHeight(height)
+
 	return f
 }
 
@@ -216,14 +218,17 @@ func (f *FilePicker) Update(msg tea.Msg) (huh.Model, tea.Cmd) {
 
 		case key.Matches(msg, f.keymap.Close):
 			f.setPicking(false)
+
 			return f, huh.NextField
 
 		case key.Matches(msg, f.keymap.Next):
 			f.setPicking(false)
+
 			return f, huh.NextField
 
 		case key.Matches(msg, f.keymap.Prev):
 			f.setPicking(false)
+
 			return f, huh.PrevField
 		}
 	}
@@ -253,6 +258,7 @@ func (f *FilePicker) activeStyles() *huh.FieldStyles {
 	if theme == nil {
 		theme = huh.ThemeFunc(huh.ThemeCharm)
 	}
+
 	if f.focused {
 		return &theme.Theme(f.hasDarkBg).Focused
 	}
@@ -279,9 +285,11 @@ func (f *FilePicker) View() string {
 	styles := f.activeStyles()
 
 	var parts []string
+
 	if f.title != "" {
 		parts = append(parts, f.renderTitle())
 	}
+
 	if f.description != "" {
 		parts = append(parts, f.renderDescription())
 	}
@@ -394,6 +402,7 @@ func (f *FilePicker) WithHeight(height int) huh.Field {
 	if f.title != "" {
 		adjust += lipgloss.Height(f.renderTitle())
 	}
+
 	if f.description != "" {
 		adjust += lipgloss.Height(f.renderDescription())
 	}

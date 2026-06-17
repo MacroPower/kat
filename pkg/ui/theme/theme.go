@@ -105,6 +105,7 @@ func getDefaultStyle() string {
 	if !term.IsTerminal(int(os.Stdout.Fd())) {
 		return defaultDarkTheme // Fallback.
 	}
+
 	if lipgloss.HasDarkBackground(os.Stdin, os.Stdout) {
 		return defaultDarkTheme
 	}

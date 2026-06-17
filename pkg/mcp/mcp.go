@@ -53,6 +53,7 @@ func truncateString(str string, maxLen int) string {
 	if str == "" {
 		return ""
 	}
+
 	if len(str) > maxLen {
 		return str[:maxLen] + "\n[OUTPUT TRUNCATED]"
 	}

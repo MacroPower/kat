@@ -410,6 +410,7 @@ func TestFilteredFS_ReadDir(t *testing.T) {
 
 			if tc.expectError {
 				require.Error(t, err)
+
 				return
 			}
 
@@ -432,6 +433,7 @@ func TestFilteredFS_ReadDir(t *testing.T) {
 			if tc.expectedFiles != nil {
 				assert.ElementsMatch(t, tc.expectedFiles, actualFiles)
 			}
+
 			if tc.expectedDirs != nil {
 				assert.ElementsMatch(t, tc.expectedDirs, actualDirs)
 			}

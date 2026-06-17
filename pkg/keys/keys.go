@@ -212,10 +212,12 @@ func (kbr *KeyBindRenderer) Render(width int) string {
 
 	// Build the final output by combining rows from all columns.
 	var sb strings.Builder
+
 	for row := range maxRows {
 		for col := range colRows {
 			// Get the row content for this column, or empty string if column doesn't have this row.
 			var rowContent string
+
 			if row < len(colRows[col]) {
 				rowContent = colRows[col][row]
 			} else {

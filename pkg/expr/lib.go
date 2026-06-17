@@ -44,6 +44,7 @@ func (lib) CompileOptions() []cel.EnvOption {
 					if !ok {
 						return types.NewErr("has: invalid event value")
 					}
+
 					if eventInt > math.MaxUint32 {
 						return types.NewErr("has: event value out of range")
 					}
@@ -54,6 +55,7 @@ func (lib) CompileOptions() []cel.EnvOption {
 					if !ok {
 						return types.NewErr("has: invalid flag value")
 					}
+
 					if flagInt > math.MaxUint32 {
 						return types.NewErr("has: flag value out of range")
 					}
@@ -69,6 +71,7 @@ func (lib) CompileOptions() []cel.EnvOption {
 					if !ok {
 						return types.NewErr("has: invalid event value")
 					}
+
 					if eventInt > math.MaxUint32 {
 						return types.NewErr("has: event value out of range")
 					}
@@ -87,6 +90,7 @@ func (lib) CompileOptions() []cel.EnvOption {
 
 					// Check if the event has any of the specified flags.
 					var mask int64
+
 					for i := range flagSize {
 						flagVal := flagsList.Get(i)
 						flagInt, ok := flagVal.(types.Int).Value().(int64)
@@ -96,6 +100,7 @@ func (lib) CompileOptions() []cel.EnvOption {
 
 						mask |= flagInt
 					}
+
 					if mask > math.MaxUint32 {
 						return types.NewErr("has: flag value out of range")
 					}
@@ -169,7 +174,7 @@ func (lib) CompileOptions() []cel.EnvOption {
 
 					logger := slog.With(
 						slog.String("file", filePathStr),
-						slog.String("yamlPath", yamlPathStr),
+						slog.String("yaml_path", yamlPathStr),
 					)
 
 					// Read file content.

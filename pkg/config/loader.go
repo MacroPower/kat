@@ -107,6 +107,7 @@ func (l *Loader[T]) Load() (T, error) {
 	err := l.decode(cfg)
 	if err != nil {
 		var zero T
+
 		return zero, l.source.WrapError(err) //nolint:wrapcheck // WrapError adds context.
 	}
 
@@ -168,6 +169,7 @@ func getTheme(data []byte) *theme.Theme {
 	themeName = extractThemeWithRegex(data)
 	if themeName != "" {
 		slog.Debug("extracted theme using regex fallback", slog.String("theme", themeName))
+
 		return theme.New(themeName)
 	}
 

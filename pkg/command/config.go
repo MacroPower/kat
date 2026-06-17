@@ -108,6 +108,7 @@ func (c *Config) EnsureDefaults() {
 				)),
 		}
 	}
+
 	if c.Rules == nil {
 		c.Rules = []*rule.Rule{
 			rule.MustNew("ks", existsKustomizeProject),
@@ -184,6 +185,7 @@ func (c *Config) Validate() error {
 				)
 			}
 		}
+
 		// TODO: Build should return *ConfigError to avoid the duplicate validation above.
 		err = p.Build()
 		if err != nil {
