@@ -1,0 +1,22 @@
+version: "3"
+
+set: [errexit, nounset, pipefail]
+shopt: [globstar]
+
+# scan is intentionally not fingerprinted with `sources`: its result also
+# depends on the external vulnerability database, which changes over time
+# independently of the source tree, so a source-only checksum could report a
+# stale "no vulnerabilities" pass after a new advisory is published. Dagger's
+# cache governs how often the scan actually re-runs.
+tasks:
+  scan:
+    desc: Scans source dependencies for vulnerabilities via the security toolchain
+    cmd: dagger call ci security
+
+  sarif-source:
+    desc: Generates the source-dependency SARIF report (GitHub Code Scanning)
+    cmd: dagger call ci security-source-sarif export --path trivy-source.sarif
+
+  sarif-image:
+    desc: Generates the runtime-image SARIF report (GitHub Code Scanning)
+    cmd: dagger call ci security-image-sarif export --path trivy-image.sarif

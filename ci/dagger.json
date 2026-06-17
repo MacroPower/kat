@@ -1,0 +1,33 @@
+{
+  "name": "ci",
+  "engineVersion": "v0.21.4",
+  "sdk": {
+    "source": "go"
+  },
+  "include": [
+    "../go.mod",
+    "../go.sum"
+  ],
+  "dependencies": [
+    {
+      "name": "devbox",
+      "source": "github.com/MacroPower/x/toolchains/devbox@main",
+      "pin": "8990610a338bb60f9aa8708d5fa89e1c3c6725dc"
+    },
+    {
+      "name": "goreleaser",
+      "source": "github.com/MacroPower/x/toolchains/goreleaser@main",
+      "pin": "8990610a338bb60f9aa8708d5fa89e1c3c6725dc"
+    },
+    {
+      "name": "security",
+      "source": "github.com/MacroPower/x/toolchains/security@main",
+      "pin": "8990610a338bb60f9aa8708d5fa89e1c3c6725dc"
+    },
+    {
+      "name": "zizmor",
+      "source": "github.com/MacroPower/x/toolchains/zizmor@main",
+      "pin": "8990610a338bb60f9aa8708d5fa89e1c3c6725dc"
+    }
+  ]
+}

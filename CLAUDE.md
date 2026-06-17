@@ -9,18 +9,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Development Commands
 
 ```bash
-# Format code
-task format
-
-# Lint all (Go, YAML, Actions, Renovate, GoReleaser)
-task lint
-
-# Run tests
-task test
+task format    # Format and tidy code, run generators
+task lint      # golangci-lint, go mod tidy check, prettier
+task test      # Run tests (race detector, on the devbox PATH)
+task check     # Local gate: lint + test (tools on the devbox PATH, no Dagger)
+task check:all # Everything CI runs (adds security, GitHub config, releaser, via Dagger)
 
 # Run a single test
 go test ./pkg/config -run TestConfigLoader
 ```
+
+Devbox provides all required tools on PATH automatically. Go build/test/lint run
+locally; CI reproduces them inside the devbox environment via the `ci` Dagger
+toolchain (`dagger call ci <task>`), so local and CI execute identical commands.
+The `ci` module composes the shared toolchains from github.com/MacroPower/x
+(devbox, goreleaser, security, zizmor), pinned in `ci/dagger.json` and the root
+`dagger.json`.
+
+The release pipeline (GoReleaser binaries/archives + Dagger-native multi-arch
+image publish for the scratch and alpine variants + cosign keyless signing +
+macOS notarization) lives in the `ci` module; see `ci/CLAUDE.md`. The vhs-driven
+end-to-end suite stays local: `task e2e`.
 
 ## Architecture
 

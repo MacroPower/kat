@@ -1,0 +1,34 @@
+version: "3"
+
+set: [errexit, nounset, pipefail]
+shopt: [globstar]
+
+vars:
+  # Host directory the snapshot build is exported to; cleaned by the root
+  # `clean` task and ignored by .gitignore.
+  DIST: ./dist
+
+tasks:
+  check:
+    desc: Validates the GoReleaser configuration
+    # Validation depends only on the GoReleaser config, so `sources` skips the
+    # Dagger invocation when it does not change.
+    sources:
+      - .goreleaser.yaml
+    cmd: dagger call ci lint-releaser
+
+  # snapshot and images are not fingerprinted here: they cross-compile all
+  # targets (and build the runtime images), and Dagger's content-addressed
+  # cache already rebuilds only when an input changes.
+  snapshot:
+    desc: Cross-compiles all targets without publishing (writes to ./dist)
+    cmd: dagger call ci build export --path={{.DIST}}
+
+  images:
+    desc: Builds the scratch and alpine runtime images without publishing
+    summary: |
+      Builds every runtime image variant (default scratch + alpine) for the
+      native architecture without publishing, exercising kat's Dockerfiles
+      through Dagger's DockerBuild. Syncs the containers so build failures
+      surface here.
+    cmd: dagger call ci build-images sync

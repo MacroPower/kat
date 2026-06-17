@@ -1,0 +1,126 @@
+version: "3"
+
+set: [errexit, nounset, pipefail]
+shopt: [globstar]
+
+# Go tasks call the local toolchain (go, golangci-lint) directly; devbox
+# provides both on PATH. kat is a single Go module built CGO_ENABLED=0, so the
+# package set is the module-relative ./... pattern.
+vars:
+  GO_PKGS: ./...
+  TEST_TIMEOUT: 30m
+  DEADCODE_VERSION: v0.46.0 # renovate: datasource=go depName=golang.org/x/tools
+
+tasks:
+  # lint, format, tidy, and tidy:check are fingerprinted with `sources` so a
+  # no-op `task check` skips them. lint and format additionally read
+  # .golangci.yaml and depend on the golangci-lint binary, so devbox.lock is a
+  # source (a Go or golangci-lint version bump invalidates their cache). tidy
+  # reads neither, so its sources stop at the module files.
+  lint:
+    desc: Lints Go code with golangci-lint
+    sources: &go-lint-sources
+      - "**/*.go"
+      - go.mod
+      - go.sum
+      - .golangci.yaml
+      - devbox.lock
+    cmd: golangci-lint run
+
+  format:
+    desc: Formats Go code with golangci-lint --fix
+    sources: *go-lint-sources
+    cmd: golangci-lint run --fix
+
+  tidy:
+    desc: Tidies go.mod and go.sum
+    sources: &go-tidy-sources
+      - "**/*.go"
+      - go.mod
+      - go.sum
+    cmd: go mod tidy
+
+  tidy:check:
+    desc: Verifies go.mod and go.sum are tidy
+    summary: |
+      Runs `go mod tidy -diff`, which reports the changes tidy would make and
+      exits non-zero if any are needed, without modifying the files. Being
+      read-only, it is safe to run alongside go:lint and go:test and needs no
+      .git (the check runs inside the devbox container in CI).
+    sources: *go-tidy-sources
+    cmd: go mod tidy -diff
+
+  # test and test:cover are deliberately not fingerprinted with `sources`. Go's
+  # build/test cache is content-addressed and re-runs exactly the packages that
+  # changed; a file-glob fingerprint here would be coarser and could skip a
+  # stale test.
+  test:
+    desc: Runs Go tests with the race detector
+    summary: |
+      Runs the unit tests with the race detector.
+
+      For a single package or extra flags, call go directly:
+        go test -run TestName ./pkg/config/...
+    cmds:
+      - go test -timeout={{.TEST_TIMEOUT}} -race -vet=all {{.GO_PKGS}}
+
+  test:cover:
+    desc: Runs all Go tests with coverage profiling
+    summary: |
+      Runs every test with -coverprofile, which disables Go's test result
+      cache. Writes the profile to OUTPUT.
+
+      Args:
+        OUTPUT: Coverage profile path (default: .test/coverage.txt)
+    vars:
+      OUTPUT: '{{.OUTPUT | default ".test/coverage.txt"}}'
+    cmds:
+      - mkdir -p .test
+      - go test -timeout={{.TEST_TIMEOUT}} -race -vet=all -coverprofile={{.OUTPUT}} {{.GO_PKGS}}
+
+  generate:
+    desc: Runs go generate
+    cmds:
+      - go generate {{.GO_PKGS}}
+
+  # deadcode and bench are advisory tasks whose whole purpose is the report they
+  # print to stdout. They are deliberately not fingerprinted: a `sources` cache
+  # hit would skip the command and suppress that output. Run them on demand.
+  deadcode:
+    desc: Reports unreachable Go functions (advisory)
+    label: "go:deadcode {{.PKG}}"
+    summary: |
+      Reports unreachable functions via the golang.org/x/tools deadcode
+      analyzer. Advisory only; not part of the standard gate.
+
+      Args:
+        PKG: Go package(s) to analyze (default: ./...)
+        FLAGS: Additional flags to pass to `deadcode` (default: "")
+
+      Examples:
+        task go:deadcode FLAGS="-test -generated"
+    vars:
+      PKG: "{{.PKG | default .GO_PKGS}}"
+      FLAGS: '{{.FLAGS | default ""}}'
+    cmds:
+      - go run golang.org/x/tools/cmd/deadcode@{{.DEADCODE_VERSION}} {{.FLAGS}} {{.PKG}}
+
+  bench:
+    desc: Runs Go benchmarks on the host
+    label: "go:bench {{.PKG}}"
+    summary: |
+      Runs Go benchmarks on the host. Benchmarks measure host performance,
+      so they stay outside Dagger where containerization would distort
+      results.
+
+      Args:
+        PKG: Go package to benchmark (default: ./...)
+        FLAGS: Additional flags to pass to `go test` (default: "")
+
+      Examples:
+        task go:bench PKG=./pkg/helm FLAGS="-cpuprofile profile.out -run=^\$"
+    vars:
+      PKG: "{{.PKG | default .GO_PKGS}}"
+      FLAGS: '{{.FLAGS | default ""}}'
+    cmds:
+      - go test -bench=. -benchmem {{.FLAGS}} {{.PKG}}

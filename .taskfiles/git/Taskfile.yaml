@@ -1,0 +1,58 @@
+version: "3"
+
+set: [errexit, nounset, pipefail]
+shopt: [globstar]
+
+tasks:
+  hooks:install:
+    desc: Installs git hooks
+    preconditions:
+      - sh: command -v lefthook
+        msg: "lefthook is not installed. Run 'task install' first."
+    cmds:
+      - lefthook install
+
+  worktree:add:
+    desc: Adds a git worktree for the given branch
+    summary: |
+      Adds a git worktree under .worktrees/ for the given branch.
+      Creates the branch if it doesn't already exist.
+
+      Args:
+        BRANCH: Branch name (required, e.g. feat/foo)
+    requires:
+      vars: [BRANCH]
+    vars:
+      # Branch names may contain slashes; flatten them so each worktree
+      # is a single directory under .worktrees/.
+      DIR: '{{.BRANCH | replace "/" "-"}}'
+    cmds:
+      - mkdir -p .worktrees
+      - cmd: git worktree add ".worktrees/{{.DIR}}" "{{.BRANCH}}"
+        if: 'git show-ref --verify --quiet "refs/heads/{{.BRANCH}}" || git show-ref --verify --quiet "refs/remotes/origin/{{.BRANCH}}"'
+      - cmd: git worktree add -b "{{.BRANCH}}" ".worktrees/{{.DIR}}"
+        if: '! git show-ref --verify --quiet "refs/heads/{{.BRANCH}}" && ! git show-ref --verify --quiet "refs/remotes/origin/{{.BRANCH}}"'
+
+  worktree:ls:
+    desc: Lists all git worktrees
+    cmds:
+      - git worktree list
+
+  worktree:rm:
+    desc: Removes a git worktree and deletes the branch
+    prompt: "Remove worktree and branch '{{.BRANCH}}'?"
+    summary: |
+      Removes the worktree under .worktrees/ for the given branch
+      and deletes the branch.
+
+      Args:
+        BRANCH: Branch name (required, e.g. feat/foo)
+    requires:
+      vars: [BRANCH]
+    vars:
+      DIR: '{{.BRANCH | replace "/" "-"}}'
+    cmds:
+      - cmd: git worktree remove ".worktrees/{{.DIR}}"
+        if: '[ -d ".worktrees/{{.DIR}}" ]'
+      - cmd: git branch -D "{{.BRANCH}}"
+        if: 'git show-ref --verify --quiet "refs/heads/{{.BRANCH}}"'

@@ -1,0 +1,15 @@
+version: "3"
+
+set: [errexit, nounset, pipefail]
+shopt: [globstar]
+
+tasks:
+  install:
+    desc: Installs development dependencies
+    cmds:
+      - devbox install
+
+  gc:
+    desc: Runs Nix GC
+    cmds:
+      - nix-collect-garbage

@@ -25,9 +25,15 @@ coverage.txt
 # Devbox
 .devbox/
 
+# Worktrees
+.worktrees/
+
 # Temp files
 .tmp/
 .task/
+
+# SARIF scan output (from `task security:sarif-source`)
+*.sarif
 
 # Generated files
 completion/

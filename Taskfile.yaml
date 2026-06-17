@@ -1,244 +1,116 @@
 version: "3"
 
-vars:
-  GO_FILES_CMD: >-
-    go list -f {{"{{.Dir}}"}} ./... | xargs -I {} find {} -name "*.go"
-  PRETTIER_TARGETS: "*.{yaml,md,json} **/*.{yaml,md,json}"
+set: [errexit, nounset, pipefail]
+shopt: [globstar]
 
-env:
-  HOSTNAME:
-    sh: hostname
+# The .taskfiles/ segmentation is intentional, even where a namespace holds
+# only thin Dagger wrappers — do not flatten it into this file.
+includes:
+  dagger: ./.taskfiles/dagger/Taskfile.yaml
+  dev: ./.taskfiles/dev/Taskfile.yaml
+  fmt: ./.taskfiles/fmt/Taskfile.yaml
+  gh: ./.taskfiles/gh/Taskfile.yaml
+  git: ./.taskfiles/git/Taskfile.yaml
+  go: ./.taskfiles/go/Taskfile.yaml
+  release: ./.taskfiles/release/Taskfile.yaml
+  security: ./.taskfiles/security/Taskfile.yaml
 
 tasks:
   default:
+    cmd: task -l
+
+  format:
+    desc: Runs all format and generate targets
+    cmds:
+      - task: go:tidy
+      - task: go:generate
+      - task: go:format
+      - task: fmt:format
+
+  lint:
+    desc: Runs all lint targets
+    deps: [go:lint, go:tidy:check, fmt:lint]
+
+  test:
+    desc: Runs all test targets
+    deps: [go:test]
+
+  # check is the fast local gate: lint and test invoke their tools straight off
+  # the devbox PATH, so it needs no Dagger engine. check:ci adds the gates whose
+  # tools (Trivy, zizmor, goreleaser) are not on the devbox PATH and so run
+  # through Dagger. check:all is the union -- the full set CI runs, mirrored by
+  # the validate.yaml matrix.
+  check:
+    desc: Runs the local checks using devbox
+    deps: [lint, test]
+
+  check:ci:
+    desc: Runs the Dagger-backed checks
+    deps: [security:scan, gh:lint, release:check]
+
+  check:all:
+    desc: Runs every check, local and Dagger-backed
+    deps: [check, check:ci]
+
+  check:toolchains:
+    desc: Runs the ci toolchain's integration tests via Dagger
+    cmds:
+      - dagger check -m ci/tests
+
+  scan:
+    desc: Scans source dependencies for vulnerabilities
+    cmds:
+      - task: security:scan
+
+  pre-commit:
+    desc: Runs all pre-commit targets
     cmds:
       - task: format
       - task: lint
       - task: test
-      - task: build
-
-  format:
-    desc: Runs all format targets
-    deps: [go-format, prettier-format]
-
-  lint:
-    desc: Runs all lint targets
-    deps:
-      - go-lint
-      - renovate-lint
-      - actions-lint
-      - goreleaser-lint
-      - prettier-lint
-
-  test:
-    desc: Runs all test targets
-    deps: [go-test]
-
-  pre-commit:
-    desc: Runs all pre-commit targets
-    deps: [lint, test]
 
   build:
-    desc: Runs all build targets
-    deps: [go-build]
+    desc: Cross-compiles all targets without publishing (writes to ./dist)
+    cmds:
+      - task: release:snapshot
 
   release:
-    desc: Runs all release targets
-    deps: [go-release]
+    desc: Releases kat for the given tag via Dagger
+    summary: |
+      Runs the full release pipeline (GoReleaser binaries/archives/checksums/
+      SBOMs/notarize/brew/nix plus the Dagger-native multi-arch image publish
+      and cosign keyless signing) for the given tag. Intended for CI; running it
+      locally requires registry, OIDC, and macOS-notary credentials.
 
-  dev-install:
-    desc: Installs development dependencies
+      Args:
+        TAG: Version tag to release (required, e.g. v1.2.3)
+    requires:
+      vars: [TAG]
     cmds:
-      - devbox install
-      - nix-collect-garbage
+      - dagger call ci release --tag={{.TAG}} dist --output=./dist
 
   install:
-    desc: Builds and installs binaries
+    desc: Builds and installs the kat binary for the host platform
     cmds:
-      - goreleaser build --snapshot --clean --single-target
-
-  go-format:
-    desc: Formats Go code including imports
-    cmds:
-      - golangci-lint run --fix
-
-  go-lint:
-    desc: Lints Go code
-    cmds:
-      - golangci-lint run
-
-  go-test:
-    desc: Run Go tests
-    summary: |
-      Run Go tests
-
-      Args:
-        PKG: Go package to test (default: ./...)
-        FLAGS: Additional flags to pass to `go test` (default: "")
-        PKG_FLAGS: Additional flags to pass to test packages (default: "")
-    vars:
-      PKG: '{{.PKG | default "./..."}}'
-      FLAGS: '{{.FLAGS | default ""}}'
-      PKG_FLAGS: '{{.PKG_FLAGS | default ""}}'
-    cmds:
-      - go test {{.FLAGS}} {{.PKG}} {{.PKG_FLAGS}}
-
-  go-cover:
-    desc: Runs Go tests with coverage
-    cmds:
-      - go install gotest.tools/gotestsum@latest
-      - cmd: mkdir -p .test/
-        silent: true
-      - gotestsum --junitfile=.test/junit.xml --format=pkgname -- -race -vet=all -coverprofile=.test/cover.out ./...
-
-  go-bench:
-    desc: Run Go benchmarks
-    summary: |
-      Run Go benchmarks
-
-      Args:
-        PKG: Go package to test (default: ./...)
-        FLAGS: Additional flags to pass to `go test` (default: "")
-
-      Examples:
-        task go-bench PKG=./pkg/helm FLAGS="-cpuprofile profile.out -run=^\$"
-    vars:
-      PKG: '{{.PKG | default "./..."}}'
-      FLAGS: '{{.FLAGS | default ""}}'
-    cmds:
-      - go test -bench=. -benchmem -tags={{.BUILD_TAGS}} {{.FLAGS}} {{.PKG}}
-
-  go-gen:
-    desc: Generates Go code
-    cmds:
-      - go generate ./...
-
-  go-build:
-    desc: Builds Go binaries
-    vars:
-      FLAGS: '{{.FLAGS | default "--skip=docker,homebrew,nix,sign"}}'
-    cmds:
-      - goreleaser release --snapshot --clean {{ .FLAGS }}
-
-  go-build-images:
-    desc: Builds Go binaries and Docker images
-    vars:
-      FLAGS: '{{.FLAGS | default "--skip=homebrew,nix,sign"}}'
-    cmds:
-      - goreleaser release --snapshot --clean {{ .FLAGS }}
-
-  go-release:
-    desc: Releases Go binaries
-    vars:
-      FLAGS: '{{.FLAGS | default ""}}'
-    cmds:
-      - goreleaser release --clean {{.FLAGS}}
-
-  prettier-format:
-    desc: Formats YAML, JSON, and Markdown files
-    cmds:
-      - prettier --config ./.prettierrc.yaml -w {{.PRETTIER_TARGETS}}
-
-  prettier-lint:
-    desc: Lints YAML, JSON, and Markdown files
-    cmds:
-      - prettier --config ./.prettierrc.yaml --check {{.PRETTIER_TARGETS}}
-
-  go-deadcode:
-    desc: Finds dead code in Go
-    summary: |
-      Finds dead code in Go.
-
-      Args:
-        PKG: Go package(s) to evaluate (default: ./...)
-        FLAGS: Additional flags to pass to `deadcode` (default: "")
-
-      Examples:
-        task go-deadcode FLAGS="-test -generated"
-    vars:
-      PKG: '{{.PKG | default "./..."}}'
-      FLAGS: '{{.FLAGS | default ""}}'
-    cmds:
-      - go install golang.org/x/tools/cmd/deadcode@latest
-      - deadcode {{.FLAGS}} {{.PKG}}
-
-  renovate-lint:
-    desc: Lints Renovate configuration
-    cmds:
-      - renovate-config-validator .github/renovate.json5
-
-  actions-lint:
-    desc: Lints GitHub Actions
-    cmds:
-      - zizmor .github/workflows --config .github/zizmor.yaml
-
-  goreleaser-lint:
-    desc: Lints GoReleaser configuration
-    cmds:
-      - goreleaser check
-
-  install-hooks:
-    desc: Install git hooks
-    vars:
-      PRE_COMMIT_FILE: "{{.ROOT_DIR}}/.git/hooks/pre-commit"
-      COMMIT_MSG_FILE: "{{.ROOT_DIR}}/.git/hooks/commit-msg"
-    env:
-      PRE_COMMIT: |-
-        #!/bin/bash
-
-        git stash --keep-index --include-untracked --quiet
-
-        exitCode=0
-
-        devbox run -- task {{.TASK}} || exitCode=$?
-        devbox run -- task pre-commit || exitCode=$?
-
-        if [ $exitCode -eq 0 ]; then
-          git add .
-        else
-          git stash --keep-index --include-untracked --quiet && git stash drop --quiet
-        fi
-
-        git stash pop --quiet
-
-        exit $exitCode
-      COMMIT_MSG: |-
-        #!/bin/bash
-
-        devbox run -- conform enforce --commit-msg-file $1
-    cmds:
-      - echo "${PRE_COMMIT}" > {{.PRE_COMMIT_FILE}}
-      - chmod u+x {{.PRE_COMMIT_FILE}}
-      - echo "${COMMIT_MSG}" > {{.COMMIT_MSG_FILE}}
-      - chmod u+x {{.COMMIT_MSG_FILE}}
-
-  e2e-test:
-    internal: true
-    requires:
-      vars: [TEST]
-    cmds:
-      - vhs e2e/tapes/{{.TEST}}.tape -q
-
-  e2e-all:
-    internal: true
-    requires:
-      vars: [TESTS]
-    cmds:
-      - for:
-          var: TESTS
-        task: e2e-test
-        vars:
-          TEST: "{{.ITEM}}"
+      - dagger call ci binary export --path=./kat
 
   e2e:
-    desc: Runs all end-to-end tests
+    desc: Runs all end-to-end tests (vhs-driven, local)
+    summary: |
+      Builds kat, records every e2e/tapes/*.tape with vhs, then asserts the
+      golden output under e2e/golden is unchanged. Runs locally because it needs
+      vhs and a terminal; it is not part of the Dagger gate.
     vars:
       TESTS:
         sh: cd e2e/tapes && ls *.tape | sed 's/\.tape//'
     cmds:
       - go build -o kat cmd/kat/main.go
       - defer: rm -f kat
-      - task: e2e-all
-        vars:
-          TESTS: "{{.TESTS}}"
+      - for: { var: TESTS }
+        cmd: vhs e2e/tapes/{{.ITEM}}.tape -q
       - git diff --exit-code e2e/golden
+
+  clean:
+    desc: Removes build artifacts and caches
+    cmds:
+      - rm -rf dist/ .test/ .task/ .tmp/ kat

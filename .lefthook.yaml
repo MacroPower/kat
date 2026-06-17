@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://json.schemastore.org/lefthook.json
+
+pre-commit:
+  commands:
+    check:
+      run: devbox run -- task check
+
+commit-msg:
+  commands:
+    commitlint:
+      run: devbox run -- dagger --progress=logs call commitlint lint --source=. --msg-file={1}

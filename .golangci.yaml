@@ -91,7 +91,7 @@ linters:
     - predeclared
     - reassign
     # - recvcheck
-    - revive
+    # - revive  # gocritic (enable-all) covers most checks; disabled to match the x standard config.
     - sloglint
     - staticcheck
     - tagalign
@@ -259,6 +259,13 @@ linters:
           - recvcheck
           - exhaustive
           - nestif
+      # The MCP tools declare Kubernetes/JSON-schema field names ("apiVersion",
+      # "kind", "name", "namespace") and JSON type literals ("string", "object")
+      # inline; the repetition is intrinsic to the schema definitions, not a code
+      # smell, so it reads clearer than hoisting each to a named constant.
+      - path: pkg/mcp/
+        linters:
+          - goconst
       - path: _test\.go
         text: "fieldalignment:"
       - source: "= `"

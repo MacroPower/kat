@@ -1,0 +1,61 @@
+version: "3"
+
+set: [errexit, nounset, pipefail]
+shopt: [globstar]
+
+vars:
+  NIX_REPO: https://github.com/dagger/nix
+  NIX_CLONE: .tmp/dagger-nix
+
+tasks:
+  update:
+    desc: Updates the Dagger version pins and regenerates all modules
+    summary: |
+      Updates every Dagger version pin in lockstep: the engineVersion in
+      each dagger.json, the CLI version passed to dagger-for-github in
+      workflows, and the github:dagger/nix flake commit in devbox.json.
+      Then reinstalls the devbox environment and reruns dagger develop in
+      every module so generated code matches the new engine.
+
+      Run `task check` afterwards to verify the upgrade.
+
+      Args:
+        VERSION: Dagger version tag (required), e.g. v0.21.4
+    requires:
+      vars: [VERSION]
+    preconditions:
+      - sh: echo '{{.VERSION}}' | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'
+        msg: "VERSION must be a full tag like v0.21.4."
+    vars:
+      DAGGER_JSON:
+        sh: git ls-files '*dagger.json'
+      WORKFLOWS:
+        sh: git ls-files '.github/workflows/*.yaml'
+      MODULES:
+        sh: git ls-files '*dagger.json' | xargs grep -l '"sdk"' | xargs -n1 dirname
+    cmds:
+      # The flake repo has no tags, so resolve VERSION to the commit on
+      # main whose release message published it.
+      - |
+        rm -rf {{.NIX_CLONE}}
+        git clone --quiet --filter=tree:0 --no-checkout --single-branch {{.NIX_REPO}} {{.NIX_CLONE}}
+        sha="$(git -C {{.NIX_CLONE}} log --grep='-> {{.VERSION}}$' --format=%H -n 1)"
+        if [ -z "$sha" ]; then
+          echo "no commit in {{.NIX_REPO}} publishes {{.VERSION}}" >&2
+          exit 1
+        fi
+        sed -i.bak "s|github:dagger/nix/[0-9a-f]*#|github:dagger/nix/${sha}#|g" devbox.json
+        rm -f devbox.json.bak
+      - for: { var: DAGGER_JSON, split: "\n" }
+        cmd: >-
+          sed -i.bak 's|"engineVersion": "v[^"]*"|"engineVersion": "{{.VERSION}}"|'
+          {{.ITEM}} && rm -f {{.ITEM}}.bak
+      # Only dagger-for-github pins a quoted v-prefixed version input.
+      - for: { var: WORKFLOWS, split: "\n" }
+        cmd: >-
+          sed -i.bak 's|version: "v[0-9][^"]*"|version: "{{.VERSION}}"|'
+          {{.ITEM}} && rm -f {{.ITEM}}.bak
+      - devbox install
+      - devbox run -- dagger version
+      - for: { var: MODULES, split: "\n" }
+        cmd: devbox run -- dagger develop -m {{.ITEM}}

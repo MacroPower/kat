@@ -1,0 +1,56 @@
+{
+  "name": "kat-dev",
+  "engineVersion": "v0.21.4",
+  "toolchains": [
+    {
+      "name": "ci",
+      "source": "ci",
+      "customizations": [
+        {
+          "argument": "source",
+          "ignore": [
+            ".git",
+            ".claude",
+            ".worktrees",
+            ".workmux",
+            ".devbox",
+            ".task",
+            ".test",
+            ".tmp",
+            "dist"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "devbox",
+      "source": "github.com/MacroPower/x/toolchains/devbox@main",
+      "pin": "8990610a338bb60f9aa8708d5fa89e1c3c6725dc",
+      "customizations": [
+        {
+          "argument": "source",
+          "ignore": [
+            ".git",
+            ".claude",
+            ".worktrees",
+            ".workmux",
+            ".devbox",
+            ".task",
+            ".test",
+            ".tmp",
+            "dist"
+          ]
+        },
+        {
+          "argument": "cacheNamespace",
+          "default": "github.com/macropower/kat/ci"
+        }
+      ]
+    },
+    {
+      "name": "commitlint",
+      "source": "github.com/MacroPower/x/toolchains/commitlint@main",
+      "pin": "8990610a338bb60f9aa8708d5fa89e1c3c6725dc"
+    }
+  ]
+}

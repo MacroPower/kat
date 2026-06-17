@@ -14,4 +14,32 @@
     "gomodTidy",
     "gomodUpdateImportPaths",
   ],
+  customManagers: [
+    // Tool and image versions pinned as Go constants in the ci module,
+    // annotated with `// renovate:` comments, e.g.:
+    //   renovateVersion = "43.224.0" // renovate: datasource=npm depName=renovate
+    //   renovateImage   = "public.ecr.aws/docker/library/node:24-slim" // renovate: datasource=docker depName=public.ecr.aws/docker/library/node
+    // For image references, the version is the tag after the last colon.
+    {
+      customType: "regex",
+      managerFilePatterns: ["/^ci/.+\\.go$/"],
+      matchStrings: [
+        '"(?:[^"]*:)?(?<currentValue>[^":]+)"\\s*// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)',
+      ],
+      versioningTemplate: "{{#if (equals datasource 'docker')}}docker{{else}}semver-coerced{{/if}}",
+    },
+    // Tool versions pinned in Taskfiles as `<value> # renovate:` annotations,
+    // e.g. the advisory deadcode pin:
+    //   DEADCODE_VERSION: v0.46.0 # renovate: datasource=go depName=golang.org/x/tools
+    // (devbox.json tool versions are handled by Renovate's built-in devbox
+    // manager, so they need no customManager here.)
+    {
+      customType: "regex",
+      managerFilePatterns: ["/(^|/)Taskfile\\.yaml$/", "/(^|/)\\.taskfiles/.+\\.yaml$/"],
+      matchStrings: [
+        '(?<currentValue>v?[0-9][^\\s#"]*)\\s*#\\s*renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)',
+      ],
+      versioningTemplate: "{{#if (equals datasource 'docker')}}docker{{else}}semver-coerced{{/if}}",
+    },
+  ],
 }

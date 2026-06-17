@@ -11,8 +11,8 @@ on:
         required: true
 
 jobs:
-  goreleaser:
-    name: goreleaser
+  release:
+    name: release
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -33,6 +33,11 @@ jobs:
           app-id: "${{ secrets.BOT_APP_ID }}"
           private-key: "${{ secrets.BOT_APP_PRIVATE_KEY }}"
           owner: "${{ github.repository_owner }}"
+          # Scope the installation token to release publishing: tag checkout and
+          # release upload here, plus the formula/package bump commits
+          # GoReleaser's homebrew and nix pipes push to homebrew-tap and
+          # nur-packages.
+          permission-contents: write
           repositories: |
             kat
             homebrew-tap
@@ -46,28 +51,44 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - name: Determine tag
+        id: tag
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          if [ -n "$INPUT_TAG" ]; then
+            echo "value=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Capture OIDC request URL
+        id: oidc
+        run: echo "request-url=$ACTIONS_ID_TOKEN_REQUEST_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Set up devbox
-        uses: jetify-com/devbox-install-action@v0.14.0
+      - name: Release via Dagger
+        uses: dagger/dagger-for-github@v8.4.1
         with:
-          enable-cache: true
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: "${{ github.actor }}"
-          password: "${{ secrets.GITHUB_TOKEN }}"
-
-      - name: Release in devbox
-        run: devbox run -- task go-release
+          version: "v0.21.4"
+          call: >-
+            ci release
+            --github-token=env://GITHUB_TOKEN
+            --registry-username="${{ github.actor }}"
+            --registry-password=env://REGISTRY_PASSWORD
+            --tag="${{ steps.tag.outputs.value }}"
+            --oidc-request-url="${{ steps.oidc.outputs.request-url }}"
+            --oidc-request-token=env://ACTIONS_ID_TOKEN_REQUEST_TOKEN
+            --macos-sign-p12=env://MACOS_SIGN_P12
+            --macos-sign-password=env://MACOS_SIGN_PASSWORD
+            --macos-notary-key=env://MACOS_NOTARY_KEY
+            --macos-notary-key-id=env://MACOS_NOTARY_KEY_ID
+            --macos-notary-issuer-id=env://MACOS_NOTARY_ISSUER_ID
+            dist --output=./dist
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+          enable-github-summary: "true"
         env:
           GITHUB_TOKEN: "${{ steps.app-token.outputs.token }}"
+          REGISTRY_PASSWORD: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Attest Build Provenance (checksums.txt)
         uses: actions/attest-build-provenance@v3

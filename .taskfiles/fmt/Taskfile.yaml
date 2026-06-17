@@ -1,0 +1,39 @@
+version: "3"
+
+set: [errexit, nounset, pipefail]
+shopt: [globstar]
+
+# Prettier checks and formats YAML, JSON, and Markdown; devbox provides it on
+# PATH (it bundles its own Node runtime). Patterns are quoted so prettier does
+# its own globbing; .prettierignore excludes dagger.json files, testdata, the
+# e2e golden output, and the generated completion/man files.
+vars:
+  PRETTIER_CONFIG: ./.prettierrc.yaml
+  PRETTIER_PATTERNS: '"*.yaml" "*.md" "*.json" "**/*.yaml" "**/*.md" "**/*.json"'
+
+# `sources` lets Task skip prettier entirely when no formattable file changed.
+# The globs mirror PRETTIER_PATTERNS, and the `exclude:` entries mirror
+# .prettierignore (which Task does not read); .prettierignore and the config
+# itself are sources too, so editing either re-runs prettier. `exclude:` must
+# follow the positive globs it negates.
+tasks:
+  lint:
+    desc: Lints YAML, JSON, and Markdown formatting with prettier
+    sources: &prettier-sources
+      - "**/*.yaml"
+      - "**/*.md"
+      - "**/*.json"
+      - .prettierignore
+      - exclude: "**/dagger.json"
+      - exclude: "**/testdata/**"
+      - exclude: "e2e/golden/**"
+      - exclude: "completion/**"
+      - exclude: "man/**"
+    cmds:
+      - prettier --config {{.PRETTIER_CONFIG}} --check {{.PRETTIER_PATTERNS}}
+
+  format:
+    desc: Formats YAML, JSON, and Markdown with prettier
+    sources: *prettier-sources
+    cmds:
+      - prettier --config {{.PRETTIER_CONFIG}} -w {{.PRETTIER_PATTERNS}}
