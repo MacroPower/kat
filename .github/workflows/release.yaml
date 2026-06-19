@@ -91,11 +91,11 @@ jobs:
           REGISTRY_PASSWORD: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Attest Build Provenance (checksums.txt)
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-checksums: ./dist/checksums.txt
 
       - name: Attest Build Provenance (digests.txt)
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-checksums: ./dist/digests.txt
