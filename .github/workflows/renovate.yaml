@@ -62,7 +62,7 @@ jobs:
           permission-vulnerability-alerts: read
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           token: "${{ steps.app-token.outputs.token }}"
           persist-credentials: false
