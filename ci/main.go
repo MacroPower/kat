@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	goreleaserVersion = "v2.16.0" // renovate: datasource=github-releases depName=goreleaser/goreleaser
+	goreleaserVersion = "v2.17.0" // renovate: datasource=github-releases depName=goreleaser/goreleaser
 
 	defaultRegistry = "ghcr.io/macropower/kat"
 
