@@ -1,14 +1,12 @@
 module github.com/macropower/kat
 
-go 1.25.0
-
-toolchain go1.25.7
+go 1.25.8
 
 require (
-	charm.land/bubbles/v2 v2.0.0-rc.1
+	charm.land/bubbles/v2 v2.0.0
 	charm.land/bubbletea/v2 v2.0.8
-	charm.land/huh/v2 v2.0.0-20260105203756-d8977490d20c
-	charm.land/lipgloss/v2 v2.0.0-beta.3.0.20251205162909-7869489d8971
+	charm.land/huh/v2 v2.0.3
+	charm.land/lipgloss/v2 v2.0.1
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/fang v0.4.4
 	github.com/charmbracelet/x/ansi v0.11.7
@@ -40,7 +38,7 @@ require (
 	cel.dev/expr v0.25.1 // indirect
 	charm.land/log/v2 v2.0.0-20251110204020-529bb77f35da // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
-	github.com/aymanbagabas/go-udiff v0.3.1 // indirect
+	github.com/aymanbagabas/go-udiff v0.4.1 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/catppuccin/go v0.3.0 // indirect
