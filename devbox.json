@@ -11,7 +11,7 @@
       "version": "16.1.0",
       "platforms": ["aarch64-linux", "x86_64-linux"]
     },
-    "vhs": "0.10.0",
+    "vhs": "0.11.0",
     "github:dagger/nix/89dee52f7839a290326eb1f929a4ac99d4a1aae1#packages.aarch64-darwin.dagger": {
       "version": "",
       "platforms": ["aarch64-darwin"]
