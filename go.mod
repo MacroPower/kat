@@ -16,7 +16,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/goccy/go-yaml v1.19.2
-	github.com/google/cel-go v0.27.0
+	github.com/google/cel-go v0.29.2
 	github.com/google/jsonschema-go v0.4.3
 	github.com/invopop/jsonschema v0.13.0
 	github.com/mattn/go-shellwords v1.0.13
@@ -81,6 +81,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.40.0 // indirect
 	go.opentelemetry.io/otel/metric v1.43.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948 // indirect
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
