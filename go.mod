@@ -14,7 +14,7 @@ require (
 	github.com/charmbracelet/x/exp/golden v0.0.0-20260204111555-7642919e0bee
 	github.com/charmbracelet/x/exp/strings v0.1.0
 	github.com/dustin/go-humanize v1.0.1
-	github.com/fsnotify/fsnotify v1.9.0
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/goccy/go-yaml v1.19.2
 	github.com/google/cel-go v0.29.2
 	github.com/google/jsonschema-go v0.4.3
