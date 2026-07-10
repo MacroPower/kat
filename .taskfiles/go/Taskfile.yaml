@@ -9,7 +9,7 @@ shopt: [globstar]
 vars:
   GO_PKGS: ./...
   TEST_TIMEOUT: 30m
-  DEADCODE_VERSION: v0.47.0 # renovate: datasource=go depName=golang.org/x/tools
+  DEADCODE_VERSION: v0.48.0 # renovate: datasource=go depName=golang.org/x/tools
 
 tasks:
   # lint, format, tidy, and tidy:check are fingerprinted with `sources` so a
