@@ -35,7 +35,7 @@ jobs:
           find api -name '*.json' -exec cp {} _site/schemas/ \;
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
 
   deploy:
     name: deploy
