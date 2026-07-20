@@ -11,7 +11,7 @@ require (
 	github.com/charmbracelet/fang v0.4.4
 	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/charmbracelet/x/cellbuf v0.0.15
-	github.com/charmbracelet/x/exp/golden v0.0.0-20260204111555-7642919e0bee
+	github.com/charmbracelet/x/exp/golden v0.0.0-20260720091843-3eef36eaaa28
 	github.com/charmbracelet/x/exp/strings v0.1.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fsnotify/fsnotify v1.10.1
