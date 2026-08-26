@@ -4,7 +4,7 @@
     "go": "1.26.4",
     "go-task": "3.48.0",
     "lefthook": "2.1.5",
-    "golangci-lint": "2.12.2",
+    "golangci-lint": "2.13.1",
     "prettier": "3.8.3",
     "git": "2.54.0",
     "gcc": {
