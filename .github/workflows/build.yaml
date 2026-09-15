@@ -31,7 +31,7 @@ jobs:
       - name: Build images via Dagger
         uses: dagger/dagger-for-github@v8.4.1
         with:
-          version: "v0.21.4"
+          version: "0.21.9"
           call: ci build-images sync
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
           enable-github-summary: "true"
