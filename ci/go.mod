@@ -48,6 +48,6 @@ replace go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc => go.opente
 
 replace go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp => go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.20.0
 
-replace go.opentelemetry.io/otel/log => go.opentelemetry.io/otel/log v0.20.0
+replace go.opentelemetry.io/otel/log => go.opentelemetry.io/otel/log v1.47.0
 
-replace go.opentelemetry.io/otel/sdk/log => go.opentelemetry.io/otel/sdk/log v0.20.0
+replace go.opentelemetry.io/otel/sdk/log => go.opentelemetry.io/otel/sdk/log v1.47.0
